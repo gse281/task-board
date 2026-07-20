@@ -94,6 +94,9 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .mcall{background:var(--green);color:#fff;border:none;border-radius:10px;padding:9px 15px;font-size:18px;text-decoration:none;display:inline-block}
 .mcall.add{background:var(--panel);color:var(--muted);border:1px solid var(--line);font-size:14px}
 .mcall.done2{background:var(--panel);color:var(--green);border:1px solid var(--line)}
+.datepop{position:fixed;z-index:9999;background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:8px;box-shadow:0 12px 34px rgba(0,0,0,.55)}
+.datepop .inp{width:200px}
+.dp-row{display:flex;gap:6px;margin-top:6px;justify-content:flex-end}
 .dobadge{display:inline-block;font-size:11px;color:var(--blue);background:rgba(91,143,176,.12);border-radius:6px;padding:2px 7px;margin:4px 0 0}
 .dobadge.due{color:var(--accent);background:rgba(224,164,88,.14)}
 .mas{display:flex;gap:5px;margin:5px 0 2px}
@@ -197,7 +200,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-20 14:55';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-20 18:29';   // replaced with deploy date/time by deploy.sh
 /* ============================================================
    Task Dashboard — single-file, no build step.
    Data: Airtable (paste token in ⚙︎ Settings, stored locally).
@@ -1229,14 +1232,7 @@ function taskEl(t,sectionId){
     saveAug();render();}, a.blink||autoBlinkOn(t,sectionId)));
   const datb=document.createElement('button'); datb.className='masb'+(doDateOf(t)?' on':''); datb.textContent='📅'; datb.title=doDateOf(t)?('Scheduled '+doDateOf(t)):'Schedule for a date';
   datb.onclick=e=>{ e.stopPropagation();
-    if(isMobileView()){ openDatePicker(t); return; }   // phones: use a real, visible picker
-    const r=datb.getBoundingClientRect();
-    const inp=document.createElement('input'); inp.type='date'; if(doDateOf(t))inp.value=doDateOf(t);
-    inp.style.cssText='position:fixed;left:'+Math.round(r.left)+'px;top:'+Math.round(r.bottom+4)+'px;z-index:9999;opacity:0;width:1px;height:1px';
-    document.body.appendChild(inp);
-    inp.addEventListener('change',()=>{ setDoDate(t.id,inp.value); inp.remove(); render(); });
-    inp.addEventListener('blur',()=>setTimeout(()=>{if(inp.isConnected)inp.remove();},250));
-    try{ inp.showPicker(); }catch(err){ inp.style.opacity='1'; inp.style.width='auto'; inp.style.height='auto'; inp.focus(); }
+    if(isMobileView()) openDatePicker(t); else openDatePickerAt(t,datb);
   };
   mas.appendChild(datb);
   nm.after(mas);
@@ -1272,6 +1268,23 @@ function autoBlinkOn(t,sectionId){ return (sectionId==='focus'||sectionId==='nex
 function cleanName(t){ return (t.name||'').replace(/\s*\(V\d+-\d+\)\s*$/i,'').trim()||'(untitled)'; }
 function displayName(t){ return (t.project?t.project+' - ':'')+cleanName(t); }
 function doDateOf(t){ return t.doDate || A(t.id).doDate || ''; }
+// Desktop: a small visible date popover anchored right under the 📅 button.
+function openDatePickerAt(t,anchor){
+  document.querySelectorAll('.datepop').forEach(e=>e.remove());
+  const r=anchor.getBoundingClientRect();
+  const pop=document.createElement('div'); pop.className='datepop';
+  pop.innerHTML='<input type="date" class="inp" value="'+esc(doDateOf(t))+'"><div class="dp-row"><button class="btn ghost" data-clear>Clear</button><button class="btn primary" data-ok>Set</button></div>';
+  pop.style.left=Math.max(8,Math.min(window.innerWidth-250,Math.round(r.left)))+'px';
+  pop.style.top=Math.min(window.innerHeight-140,Math.round(r.bottom+6))+'px';
+  document.body.appendChild(pop);
+  const inp=pop.querySelector('input');
+  pop.querySelector('[data-ok]').onclick=()=>{ setDoDate(t.id,inp.value); pop.remove(); render(); };
+  pop.querySelector('[data-clear]').onclick=()=>{ setDoDate(t.id,''); pop.remove(); render(); };
+  inp.addEventListener('change',()=>{ setDoDate(t.id,inp.value); pop.remove(); render(); });
+  setTimeout(()=>{ inp.focus(); try{ inp.showPicker(); }catch(e){} },0);
+  const off=ev=>{ if(!pop.contains(ev.target)){ pop.remove(); document.removeEventListener('mousedown',off); } };
+  setTimeout(()=>document.addEventListener('mousedown',off),0);
+}
 // Phone-friendly date picker (a real visible input, so iOS shows its wheel properly).
 function openDatePicker(t){
   const bd=document.createElement('div'); bd.className='backdrop';
@@ -1598,7 +1611,7 @@ let _rsT; addEventListener('resize',()=>{if(document.getElementById('grid').clas
 /* first load: render, then fetch; auto-refresh once/day */
 dailyReset();
 if(cfg.apiKey){ render(); atFetch(); }
-else { tasks=demoTasks(); render(); toast('Demo data — add your Airtable key in ⚙︎ to load real tasks'); }
+else { tasks=demoTasks(); render(); toast('⚠️ DEMO data — paste your Airtable key to load your real tasks'); openSettings(); }
 </script>
 </body>
 </html>
