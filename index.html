@@ -116,6 +116,9 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
   .panel-body{max-height:none}
   .panel{margin-bottom:2px}
 }
+.calrefresh{margin:0 0 0 6px;border:none;cursor:pointer;font-size:13px;line-height:1;padding:3px 8px}
+.calrefresh.spin{animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .joinbtn{display:inline-block;margin-top:4px;background:var(--blue);color:#14110f;text-decoration:none;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:800}
 .search-results{position:fixed;top:58px;left:50%;transform:translateX(-50%);width:min(536px,92vw);max-height:56vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;z-index:45;box-shadow:0 14px 36px rgba(0,0,0,.55)}
 .search-results .sr{padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
@@ -201,7 +204,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-20 18:48';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-20 19:02';   // replaced with deploy date/time by deploy.sh
 /* ============================================================
    Task Dashboard — single-file, no build step.
    Data: Airtable (paste token in ⚙︎ Settings, stored locally).
@@ -848,6 +851,7 @@ function mobileMeetings(){
   const evs=calendar.filter(e=>e.date===todayISO()).sort((a,b)=>a.sort-b.sort);
   const p=document.createElement('div'); p.className='panel';
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>📅 Meetings</h3><span class="count">'+evs.length+'</span>';
+  head.appendChild(calRefreshBtn());
   p.appendChild(head);
   const body=document.createElement('div'); body.className='panel-body';
   if(!evs.length) body.innerHTML='<div class="empty">No meetings today.</div>';
@@ -1071,15 +1075,23 @@ function textsPanel(){
   p.addEventListener('drop',e=>{e.preventDefault();const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'untexted');});
   return p;
 }
+// ⟳ on the 📅 Today panel: re-pulls just the Calendar table, no page reload.
+function calRefreshBtn(){
+  const b=document.createElement('button'); b.className='joinbtn calrefresh'; b.textContent='⟳'; b.title='Refresh today’s calendar';
+  b.onclick=async e=>{ e.stopPropagation();
+    if(!cfg.apiKey){ toast('Add your Airtable key first'); return; }
+    b.classList.add('spin'); await fetchCalendar(); b.classList.remove('spin'); blinkOff=null; render(); toast('Calendar refreshed'); };
+  return b;
+}
 function calendarPanel(){
   const today=todayISO();
   const evs=calendar.filter(e=>e.date===today).sort((a,b)=>a.sort-b.sort);
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='calendar';
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls('calendar','📅 Today',null)+`<span class="count">${evs.length}</span>`;
-  p.appendChild(head); wirePanel(p,head,'calendar');
+  p.appendChild(head); wirePanel(p,head,'calendar'); head.appendChild(calRefreshBtn());
   const body=document.createElement('div'); body.className='panel-body';
   if(!cfg.apiKey){ body.innerHTML='<div class="empty">Add your Airtable key to load the calendar.</div>'; }
-  else if(!evs.length){ body.innerHTML='<div class="empty">No events for today.<br><span style="font-size:11px">Say “refresh my calendar” to pull the latest.</span></div>'; }
+  else if(!evs.length){ body.innerHTML='<div class="empty">No events for today.<br><span style="font-size:11px">Hit ⟳ to pull the latest.</span></div>'; }
   else {
     evs.forEach(e=>{const d=document.createElement('div');d.className='cal-ev';
       d.innerHTML='<div class="cal-when">'+esc(e.when)+'</div><div class="cal-title">'+esc(e.title)+'</div>'+(e.location?'<div class="cal-loc">📍 '+esc(e.location)+'</div>':'')+meetingLink(e);
