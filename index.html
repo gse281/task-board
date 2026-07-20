@@ -197,7 +197,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-20 14:46';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-20 14:55';   // replaced with deploy date/time by deploy.sh
 /* ============================================================
    Task Dashboard — single-file, no build step.
    Data: Airtable (paste token in ⚙︎ Settings, stored locally).
@@ -854,9 +854,9 @@ function showCriteria(id){
   if(id==='bulb'&&activeBulb) return toast('Filter → '+activeBulb.dim+': '+(activeBulb.label||activeBulb.val));
   toast(SECTION_CRITERIA[id]||('Section: '+id));
 }
-function resetLayout(){ meta.pos={}; saveMeta(); render(); toast('↺ Layout reset'); }
+function resetLayout(){ meta.pos={}; meta.layoutMode='fit'; saveMeta(); render(); toast('↺ Layout reset — fitted to screen'); }
 function saveLayout(){ meta.savedLayout=JSON.parse(JSON.stringify(meta.pos||{})); saveMeta(); toast('💾 Layout saved'); }
-function restoreLayout(){ if(!meta.savedLayout){toast('No saved layout yet');return;} meta.pos=JSON.parse(JSON.stringify(meta.savedLayout)); saveMeta(); render(); toast('↩ Layout restored'); }
+function restoreLayout(){ if(!meta.savedLayout){toast('No saved layout yet');return;} meta.pos=JSON.parse(JSON.stringify(meta.savedLayout)); meta.layoutMode='custom'; saveMeta(); render(); toast('↩ Layout restored'); }
 function panelRects(exceptId){ const b=document.getElementById('board'); const out=[];
   [...b.children].forEach(p=>{ if(!p.classList.contains('panel'))return; const id=p.dataset.section; if(id===exceptId)return;
     out.push({x:parseInt(p.style.left)||0,y:parseInt(p.style.top)||0,w:p.offsetWidth,h:p.offsetHeight}); }); return out; }
@@ -884,16 +884,32 @@ function resolveAllOverlaps(){
     const id=o.p.dataset.section; if(id){ meta.pos[id]=meta.pos[id]||{}; meta.pos[id].x=o.x; meta.pos[id].y=o.y; meta.pos[id].w=o.w; } });
   saveMeta(); adjustBoardHeight();
 }
-// Pack all panels into the fewest, shortest columns so it fits the screen (no across-scroll, minimal down-scroll).
-function fitToScreen(){
-  const board=document.getElementById('board'); const W=252,GAP=12;
-  const cols=Math.max(1,Math.floor((board.clientWidth-GAP)/(W+GAP)));
-  const colH=new Array(cols).fill(14);
-  [...board.children].filter(p=>p.classList.contains('panel')).forEach(p=>{
-    let c=0; for(let i=1;i<cols;i++) if(colH[i]<colH[c])c=i;
-    const x=GAP+c*(W+GAP), y=colH[c]; p.style.left=x+'px'; p.style.top=y+'px'; p.style.width=W+'px';
-    colH[c]=y+p.offsetHeight+GAP; const id=p.dataset.section; if(id)meta.pos[id]={x,y,w:W}; });
-  saveMeta(); adjustBoardHeight(); toast('⛶ Fit to screen');
+// Fit EVERY panel into the visible window as sized cells — the page never scrolls.
+// Content that doesn't fit a cell scrolls inside that panel.
+function fitToScreen(silent){
+  const board=document.getElementById('board'); const GAP=10;
+  const panels=[...board.children].filter(p=>p.classList.contains('panel'));
+  const n=panels.length; if(!n) return;
+  const availW=board.clientWidth-GAP;
+  const availH=Math.max(240, window.innerHeight - board.getBoundingClientRect().top - GAP - 6);
+  let best={cols:Math.ceil(Math.sqrt(n)),score:-1};
+  for(let cols=1; cols<=Math.min(n,8); cols++){
+    const rows=Math.ceil(n/cols);
+    const cw=availW/cols-GAP, ch=availH/rows-GAP;
+    if(cw<170||ch<105) continue;                       // unusably small
+    const score=Math.min(cw/265,1)*Math.min(ch/250,1); // prefer close to an ideal cell
+    if(score>best.score) best={cols,score};
+  }
+  const cols=best.cols, rows=Math.ceil(n/cols);
+  const cw=Math.floor(availW/cols)-GAP, ch=Math.floor(availH/rows)-GAP;
+  panels.forEach((p,i)=>{ const c=i%cols, r=Math.floor(i/cols);
+    const x=GAP+c*(cw+GAP), y=GAP+r*(ch+GAP);
+    p.style.left=x+'px'; p.style.top=y+'px'; p.style.width=cw+'px'; p.style.height=ch+'px';
+    const b=p.querySelector('.panel-body'); if(b){ b.style.maxHeight='none'; b.style.overflowY='auto'; }
+    const id=p.dataset.section; if(id) meta.pos[id]={x,y,w:cw,h:ch}; });
+  board.style.height=(availH)+'px';
+  meta.layoutMode='fit'; saveMeta();
+  if(!silent) toast('⛶ Fit to screen');
 }
 function adjustBoardHeight(){
   const board=document.getElementById('board'); let mb=0;
@@ -909,12 +925,15 @@ function layoutFreeform(board){
   let idx=0;
   panels.forEach(p=>{ const id=p.dataset.section; if(id==='bulb')return;
     let pos=meta.pos[id]; if(!pos){ const col=idx%cols,row=Math.floor(idx/cols); pos={x:GAP+col*(W+GAP),y:14+row*290,w:W}; meta.pos[id]=pos; }
-    p.style.left=pos.x+'px'; p.style.top=pos.y+'px'; p.style.width=(pos.w||W)+'px'; wire(p,id); idx++; });
+    p.style.left=pos.x+'px'; p.style.top=pos.y+'px'; p.style.width=(pos.w||W)+'px';
+    if(pos.h){ p.style.height=pos.h+'px'; const b=p.querySelector('.panel-body'); if(b)b.style.maxHeight='none'; }
+    wire(p,id); idx++; });
   // the opened bulb: keep it where you last put it, but never let it overlap
   const bulb=panels.find(p=>p.dataset.section==='bulb');
   if(bulb){ const pos=meta.pos.bulb||{x:GAP,y:8,w:W}; bulb.style.left=pos.x+'px'; bulb.style.top=pos.y+'px'; bulb.style.width=(pos.w||W)+'px'; wire(bulb,'bulb');
     if(bulb.classList.contains('flash')) meta.pos.bulb=snapAndResolve(bulb,'bulb'); }   // only re-place when freshly opened
-  resolveAllOverlaps();   // guarantee no overlaps + within screen width
+  // default: everything fits the window (no page scroll). Once you drag a panel, your arrangement wins.
+  if(meta.layoutMode==='custom') resolveAllOverlaps(); else fitToScreen(true);
 }
 function enablePanelDrag(p,head,id){
   head.style.cursor='move';
@@ -926,7 +945,7 @@ function enablePanelDrag(p,head,id){
     const mv=ev=>{ const dx=ev.clientX-sx, dy=ev.clientY-sy; if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
       p.style.left=Math.max(0,px+dx)+'px'; p.style.top=Math.max(0,py+dy)+'px'; };
     const up=()=>{ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); p.style.zIndex='';
-      if(moved){ snapAndResolve(p,id); resolveAllOverlaps(); }
+      if(moved){ meta.layoutMode='custom'; snapAndResolve(p,id); resolveAllOverlaps(); }
       else showCriteria(id); };
     document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
   });
