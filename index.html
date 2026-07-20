@@ -200,7 +200,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-20 18:29';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-20 18:35';   // replaced with deploy date/time by deploy.sh
 /* ============================================================
    Task Dashboard — single-file, no build step.
    Data: Airtable (paste token in ⚙︎ Settings, stored locally).
@@ -764,7 +764,7 @@ function renderMobile(board){
   board.appendChild(mobileMeetings());
 }
 function mobileSlotPanel(title,slot){
-  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)===slot);
+  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)===slot).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
   const p=document.createElement('div'); p.className='panel';
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>'+title+'</h3><span class="count">'+items.length+'</span>';
   p.appendChild(head);
@@ -794,7 +794,7 @@ function openPicker(dim){
   bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
 }
 function mobileCalls(){
-  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)==='calls');
+  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)==='calls').sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
   const p=document.createElement('div'); p.className='panel';
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>📞 Calls</h3><span class="count">'+items.length+'</span>';
   p.appendChild(head);
