@@ -1,0 +1,1559 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Task Dashboard</title>
+<style>
+:root{
+  --bg:#14110f; --panel:#1d1916; --panel2:#241f1b; --ink:#f5f3ee; --muted:#a8a29a;
+  --line:#2c2723; --accent:#e0a458; --green:#3a8f5f; --red:#c2553f; --blue:#5b8fb0;
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+button{font:inherit;color:inherit;cursor:pointer}
+.hidden{display:none!important}
+
+/* Top bar */
+.topbar{position:sticky;top:0;z-index:20;display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+  padding:10px 12px;background:rgba(20,17,15,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.brand{font-weight:800;letter-spacing:.3px;margin-right:4px}
+.brand .dot{color:var(--accent)}
+.date{color:var(--muted);font-size:13px}
+.build{color:var(--accent);font-size:11px;border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.search{flex:1;min-width:160px;background:var(--panel);border:1px solid var(--line);color:var(--ink);
+  border-radius:10px;padding:9px 12px;font-size:15px}
+.tb-btn{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:14px}
+.tb-btn.on{background:var(--accent);border-color:var(--accent);color:#14110f;font-weight:700}
+.tb-btn.accent{background:var(--accent);border-color:var(--accent);color:#14110f;font-weight:700}
+
+/* Filter chips */
+.filters{display:flex;flex-direction:column;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line)}
+.filter-group{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.filter-group>.lbl{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.4px;width:56px;flex:none}
+.chip[draggable]{cursor:grab}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13px;color:var(--muted)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:#14110f;font-weight:700}
+.chip .n{opacity:.6;margin-left:4px;font-size:11px}
+.filter-more{max-height:0;overflow:hidden;transition:max-height .2s}
+.filter-group.expanded .filter-more{max-height:400px}
+
+/* Board */
+.board{position:relative;padding:14px 12px 80px;min-height:70vh}
+@keyframes flash{0%,45%{box-shadow:0 0 0 4px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+.panel.flash{animation:flash 1.4s ease-out}
+.panel.bulbhalo{box-shadow:0 0 0 2px var(--accent);border-color:var(--accent)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);display:flex;flex-direction:column;break-inside:avoid;-webkit-column-break-inside:avoid;margin-bottom:12px}
+.panel.wide{grid-column:span 1}
+.panel-head{display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:8px 10px;border-bottom:1px solid var(--line);position:sticky;top:0}
+.panel-head h3{margin:0;font-size:14px;font-weight:800;letter-spacing:.2px;flex:1 1 auto;min-width:64px}
+.panel-head .phead-ctrl,.panel-head .mini,.panel-head .send-list{padding:2px 5px;font-size:11px}
+.panel-head .send-list{margin-left:auto;padding:2px 7px}
+.panel-head .count{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:1px 9px;font-size:12px;color:var(--muted)}
+.panel-body{padding:6px;display:flex;flex-direction:column;gap:4px;min-height:0;flex:1;overflow-y:auto;max-height:calc(100vh - 110px)}
+.panel.drop-hover{outline:2px dashed var(--accent);outline-offset:-4px}
+.panel.stub .panel-body{align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:18px}
+
+/* Task card */
+.task{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px;cursor:grab;position:relative}
+.task:active{cursor:grabbing}
+.task.blink{animation:blink 1s ease-in-out infinite;border-color:var(--accent)}
+@keyframes blink{0%,100%{box-shadow:0 0 0 0 rgba(224,164,88,.0)}50%{box-shadow:0 0 0 3px rgba(224,164,88,.55)}}
+.task .name{font-weight:600;font-size:13px;line-height:1.25;padding-right:82px}
+.topright{position:absolute;top:4px;right:6px;display:flex;flex-direction:row;align-items:center;gap:4px}
+.donex{background:none;border:none;color:var(--green);cursor:pointer;font-size:15px;line-height:1;padding:4px 7px;font-weight:800;border-radius:6px}
+.add-inline .submit-sm{font-size:11px;padding:0 8px}
+.details{display:none;margin-top:6px}
+.task.open .details{display:block}
+.task .meta{color:var(--muted);font-size:11px;margin-top:0;display:flex;gap:5px;flex-wrap:wrap}
+.task .tag{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:0 6px;font-size:10px}
+.task .next{margin-top:5px;font-size:11px;color:var(--accent);background:rgba(224,164,88,.1);border-radius:6px;padding:5px 8px}
+.task .next.ndone{color:var(--green);background:rgba(58,143,95,.12)}
+.task.drop-before{border-top:2px solid var(--accent)}
+textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
+.cal-ev{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:7px;padding:4px 8px}
+.cal-when{font-size:10px;color:var(--blue);font-weight:700}
+.cal-title{font-size:12px;font-weight:600;line-height:1.2}
+.cal-loc{font-size:10px;color:var(--muted)}
+.cal-now{border-left-color:var(--accent);animation:blink 1.1s ease-in-out infinite}
+.joinbtn.stopblink{background:var(--line);color:var(--muted);margin-left:6px}
+.txt-item{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.txt-from{font-weight:700;font-size:13px}
+.txt-when{color:var(--muted);font-size:11px;font-weight:400}
+.txt-prev{color:var(--muted);font-size:12px;margin-top:2px}
+.txt-reply{width:100%;margin-top:6px;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px 9px;font-size:14px}
+.mfilters{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+.mfbtn{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 4px;font-size:12px;font-weight:700}
+.madd{display:flex;gap:6px;margin-bottom:10px}
+.madd input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:12px;font-size:16px}
+.madd button{background:var(--accent);border:none;color:#14110f;border-radius:11px;padding:0 18px;font-weight:800;font-size:15px}
+.mrow{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:7px}
+.mrow-name{flex:1;font-weight:600;font-size:15px}
+.mcall{background:var(--green);color:#fff;border:none;border-radius:10px;padding:9px 15px;font-size:18px;text-decoration:none;display:inline-block}
+.mcall.add{background:var(--panel);color:var(--muted);border:1px solid var(--line);font-size:14px}
+.mcall.done2{background:var(--panel);color:var(--green);border:1px solid var(--line)}
+.dobadge{display:inline-block;font-size:11px;color:var(--blue);background:rgba(91,143,176,.12);border-radius:6px;padding:2px 7px;margin:4px 0 0}
+.dobadge.due{color:var(--accent);background:rgba(224,164,88,.14)}
+.mas{display:flex;gap:5px;margin:5px 0 2px}
+.masb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:3px 10px;font-size:13px;font-weight:800;line-height:1}
+.masb.on{background:var(--accent);border-color:var(--accent);color:#14110f}
+@media(max-width:640px){
+  #bulkBtn,#meetBtn,#gridBtn,#picBtn{display:none}
+  .board{padding:10px 10px 90px;min-height:0}
+  body{font-size:17px}
+  .card-task,.task .name{font-size:15px}
+  .donex,.reveal{font-size:19px;padding:7px 11px}
+  .masb{font-size:16px;padding:6px 13px}
+  .mini{font-size:14px;padding:7px 10px}
+  .mrow-name{font-size:16px}
+  .mcall{font-size:20px;padding:11px 17px}
+  .panel-body{max-height:none}
+  .panel{margin-bottom:2px}
+}
+.joinbtn{display:inline-block;margin-top:4px;background:var(--blue);color:#14110f;text-decoration:none;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:800}
+.search-results{position:fixed;top:58px;left:50%;transform:translateX(-50%);width:min(536px,92vw);max-height:56vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;z-index:45;box-shadow:0 14px 36px rgba(0,0,0,.55)}
+.search-results .sr{padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.search-results .sr:hover{background:var(--panel2)}
+.search-results .sr .m{color:var(--muted);font-size:12px}
+.task .row{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
+.mini{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px 7px;font-size:12px;line-height:1}
+.mini.done{color:var(--green)} .mini.on{background:var(--accent);border-color:var(--accent);color:#14110f}
+.task .age{font-size:10px;color:var(--muted)}
+
+/* Grid overlay */
+#grid{position:fixed;inset:0;z-index:15;pointer-events:none;display:none}
+#grid.on{display:block}
+.gcell{position:absolute;border-right:1px solid rgba(224,164,88,.18);border-bottom:1px solid rgba(224,164,88,.18)}
+.glabel{position:absolute;font-size:10px;color:rgba(224,164,88,.7);padding:2px 3px;font-weight:700}
+
+/* Modal */
+.backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;width:100%;max-width:440px;max-height:88vh;overflow:auto}
+.modal h3{margin:0 0 12px}
+.field{display:block;margin:8px 0}
+.field .lbl{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+.inp{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:15px}
+textarea.inp{min-height:70px;resize:vertical}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 14px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#14110f;font-weight:700}
+.btn.ghost{background:transparent}
+.note{color:var(--muted);font-size:12px;margin-top:6px;line-height:1.5}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:9px 16px;font-size:14px;z-index:60}
+.fab{position:fixed;right:16px;bottom:16px;width:54px;height:54px;border-radius:50%;background:var(--accent);
+  border:none;color:#14110f;font-size:28px;z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.4)}
+.empty{color:var(--muted);font-size:12px;text-align:center;padding:7px}
+a.tellink{color:var(--green);text-decoration:none}
+.demo-banner{margin:8px 12px 0;padding:8px 12px;background:rgba(224,164,88,.14);border:1px solid var(--accent);border-radius:10px;font-size:13px;display:flex;gap:10px;align-items:center}
+.demo-banner button{margin-left:auto;padding:6px 12px}
+.drag-handle{cursor:grab;color:var(--muted);font-size:13px;letter-spacing:-2px;user-select:none}
+.phead-ctrl{background:none;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:11px;padding:2px 6px}
+.phead-ctrl:hover{color:var(--ink)}
+.reveal{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:4px 7px;line-height:1;border-radius:6px}
+.killx{background:none;border:none;color:var(--red);cursor:pointer;font-size:15px;padding:4px 7px;line-height:1}
+.reveal:hover,.donex:hover{background:var(--line)}
+.panel-sub{font-size:11px;color:var(--muted);padding:0 12px 6px;margin-top:-6px;border-bottom:1px solid var(--line)}
+.task.dragging{opacity:.35}
+.task.bigtix{border-color:var(--accent);background:rgba(224,164,88,.08);box-shadow:inset 3px 0 0 var(--accent)}
+.panel.dragging{opacity:.35}
+.ack-block{background:rgba(58,143,95,.08);border:1px solid rgba(58,143,95,.3);border-radius:8px;padding:7px 9px;margin-bottom:6px}
+.ack-h{font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px}
+.ack-i{font-size:12px;color:var(--muted);line-height:1.5}
+.add-inline{display:flex;gap:6px;margin-bottom:8px}
+.add-inline input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 9px;font-size:13px}
+.add-inline button{background:var(--accent);border:none;color:#14110f;border-radius:8px;padding:0 12px;font-weight:800;font-size:16px}
+.more-btn{background:var(--panel);border:1px dashed var(--line);color:var(--muted);border-radius:8px;padding:6px;font-size:12px;width:100%}
+.idea{display:flex;gap:6px;align-items:flex-start;font-size:13px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
+.idea button{background:none;border:none;color:var(--muted);cursor:pointer;margin-left:auto}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="brand">Task<span class="dot">·</span>Board</span>
+  <span class="date" id="date"></span>
+  <span class="build" id="buildTag" title="Last update"></span>
+  <span class="build" id="taskCount" title="Total open tasks"></span>
+  <input class="search" id="search" placeholder="Search tasks…">
+  <button class="tb-btn" id="bulkBtn" title="Bulk add — paste a list">📋 Bulk</button>
+  <button class="tb-btn" id="meetBtn" title="Today's meetings">📅 Meetings</button>
+  <button class="tb-btn" id="gridBtn" title="Toggle reference grid">▦ Grid</button>
+  <button class="tb-btn" id="picBtn" title="Photo → list">📷</button>
+  <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
+  <button class="tb-btn" id="settingsBtn">⚙︎</button>
+</div>
+
+<div class="filters" id="filters"></div>
+
+<div class="board" id="board"></div>
+
+<div id="searchResults" class="search-results hidden"></div>
+<button class="fab" id="addBtn">＋</button>
+<div id="grid"></div>
+<input type="file" id="picInput" accept="image/*" class="hidden">
+
+<script>
+"use strict";
+const BUILD='2026-07-20 14:23';   // replaced with deploy date/time by deploy.sh
+/* ============================================================
+   Task Dashboard — single-file, no build step.
+   Data: Airtable (paste token in ⚙︎ Settings, stored locally).
+   Extra state (section, flags, next steps, phone) lives in
+   localStorage keyed by record id — no Airtable schema changes.
+   ============================================================ */
+
+const LS = {
+  cfg:'tb.cfg', aug:'tb.aug', meta:'tb.meta'
+};
+const cfg = JSON.parse(localStorage.getItem(LS.cfg)||'{}');
+cfg.baseId = cfg.baseId||'appdDTNBbVrp6hVOv';
+cfg.tableId = cfg.tableId||'tblLpOdHqxoP3siYk';
+let aug = JSON.parse(localStorage.getItem(LS.aug)||'{}');
+let meta = JSON.parse(localStorage.getItem(LS.meta)||'{}');
+let tasks = [];
+let demo = false;
+let activeBulb = null;   // {dim,val} when a project/lead/sub bulb is opened on the board
+let improvements = [];   // Airtable-backed improvement notes (Improvements table)
+let dragChip = null;     // {dim,val} while dragging a filter bulb to reorder
+let calendar = [];       // Airtable-cached calendar events (Calendar table)
+let texts = [];          // unanswered texts (Texts table), populated by the agent
+let outbox = [];         // queued follow-ups awaiting your approval (Outbox table)
+let lastFetchAt = 0;     // when data was last refreshed (for the counter)
+let blinkOff = null;     // which current-meeting the user silenced (resets on refresh / new meeting)
+let flashBulb = false;   // flash a bulb panel when opened from a filter chip
+const IMPROV_TABLE = 'tblRU8tV4IrV64dth';
+const CAL_TABLE = 'tblTL2OeN8b1k2J8W';
+let emails = [];         // emails needing attention (Emails table), populated by the agent
+const TEXTS_TABLE = 'tblra9OCiZ4IyLfuI';
+const OUTBOX_TABLE = 'tbldBWbf32EkmkovK';
+const EMAILS_TABLE = 'tblvMTXGiw9seQnKd';
+let filters = { project:null, lead:null, sub:null };
+let query = '';
+
+/* Sample data so the board isn't empty before you add your Airtable key */
+function demoTasks(){
+  demo = true;
+  const mk=(id,name,project,lead,sub,days,sec,extra)=>{
+    const t={id,createdTime:new Date(Date.now()-days*86400000).toISOString(),name,project,lead,sub,status:'Open'};
+    aug[id]=Object.assign({section:sec},extra||{}); return t;
+  };
+  return [
+    mk('demo1','Call Mark Ospala re: permit','1Oak','Mark Ospala','Permits',2,'calls'),
+    mk('demo2','Sprinkler quote follow-up','Riverside','Gary Capelli','Landscaping',9,'afternoon',{blink:true}),
+    mk('demo3','Review Albert drawings','Albert Project','Albert','Design',1,'bigticket'),
+    mk('demo4','Send invoice to Michelle','Admin','MF Michelle Falls','Billing',0,'morning'),
+    mk('demo5','New: check text from Daniel','', '', '',0,'incoming'),
+    mk('demo6','Kitchen backsplash decision','Riverside','Leora','Finishes',14,'nextup'),
+    mk('demo7','Confirm steel delivery date','1Oak','Maurico Steel','Materials',12,'afternoon'),
+    mk('demo8','Draft scope for basement reno','Basement','', 'Planning',20,'backlog'),
+  ];
+}
+
+const saveCfg = ()=>localStorage.setItem(LS.cfg, JSON.stringify(cfg));
+const saveAug = ()=>localStorage.setItem(LS.aug, JSON.stringify(aug));
+const saveMeta= ()=>localStorage.setItem(LS.meta,JSON.stringify(meta));
+const A = id => (aug[id] = aug[id]||{});
+
+/* Phone book from the brief's call rosters (name -> number) for one-tap calls */
+const PHONE = {
+ "Matis":"+19177707013","Usher Cms":"+13476758115","Yosef Joseph Fried":"+17189308663",
+ "Alex Martinez Masonry":"+15163515977","Robert Cavallino":"+19176823066","Jk Joe Kohler":"+17328329329",
+ "Gustavo 1oak":"+12016653647","Herman Horizon":"+19175150418","Eli Calkins":"+12038953850",
+ "Sam Mari":"+19176606115","Maurico Steel":"+13477532790","Kalman MR Elec":"+19293436140",
+ "Cristen Flores":"+13475002702","Cesar Green Global Melendez":"+13476753315","Leora":"+18186325428",
+ "MF Michelle Falls":"+13477712078","RKE Rebecca Eaker":"+12819246125"
+};
+function phoneFor(t){
+  const a=A(t.id); if(t.phoneRemote) return t.phoneRemote; if(a.phone) return a.phone;
+  const key=Object.keys(PHONE).find(n=> (t.lead&&t.lead.includes(n))||(t.name&&t.name.includes(n)));
+  return key?PHONE[key]:null;
+}
+
+/* ---------- Sections ---------- */
+const BUCKETS = [
+  {id:'incoming', name:'📥 Incoming'},
+  {id:'morning',  name:'🌅 Morning Call'},
+  {id:'afternoon',name:'☀️ Afternoon Call'},
+  {id:'nextup',   name:'⏭ Next Up'},
+  {id:'focus',    name:'🎯 Now / Focus'},
+  {id:'bigticket',name:'🏔 Big Ticket'},
+  {id:'calls',    name:'📞 Calls'},
+  {id:'backlog',  name:'🗂 Backlog'},
+  {id:'done',     name:'✅ Done'},
+  {id:'dontcare', name:"🚫 Don't care"},
+  {id:'autosort', name:'🔮 Auto-sort'},
+];
+const SECTION_SUB = {
+  backlog:'Unsorted open items — nothing scheduled yet',
+  stillopen:'Aging 10+ days, untouched — review or ✕ to kill',
+  done:'Drop here to complete & clear (like the Trash)',
+  dontcare:'Drop here to snooze it a month',
+  autosort:'Drop here — I guess its project/lead',
+};
+// 4th filter line: quick categories that aren't project/lead/sub (map to sections).
+const CATEGORIES = [
+  {id:'today',name:'📆 To do today'},
+  {id:'priority',name:'🔥 Priority'},
+  {id:'incoming',name:'📥 Incoming'},
+  {id:'bigticket',name:'🏔 Big Ticket'},
+  {id:'nextup',name:'⏭ Next Up'},
+  {id:'focus',name:'🎯 Now/Focus'},
+  {id:'calls',name:'📞 Calls'},
+  {id:'morning',name:'🌅 Morning'},
+  {id:'afternoon',name:'☀️ Afternoon'},
+  {id:'stillopen',name:'❓ Still open'},
+  {id:'yestboard',name:'🕘 Yesterday'},
+];
+// "Added on" browse — tasks by creation date window.
+const ADDED_RANGES=[{key:'today',name:'Today'},{key:'yest',name:'Yesterday'},{key:'2',name:'Last 2 days'},{key:'7',name:'Last week'},{key:'30',name:'Last month'}];
+function inAddedRange(t,key){
+  if(!t.createdTime) return false;
+  const c=new Date(t.createdTime).getTime(), now=Date.now(), d=new Date();
+  const startToday=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
+  if(key==='today') return c>=startToday;
+  if(key==='yest') return c>=startToday-86400000 && c<startToday;
+  if(key==='2') return c>=now-2*86400000;
+  if(key==='7') return c>=now-7*86400000;
+  if(key==='30') return c>=now-30*86400000;
+  return false;
+}
+// Priority score: importance from age + how you've flagged/handled it.
+function priorityScore(t){
+  const a=A(t.id); let s=daysOpen(t);
+  if(a.blink) s+=40;
+  s+=(a.reminderCount||0)*8;
+  if(a.nextStep||t.nextStepRemote) s+=6;
+  if(t.typeRemote==='call' || /^\s*call\b/i.test(t.name||'')) s+=5;
+  if(a.awaiting) s+=10;
+  return s;
+}
+function priorityList(){ return tasks.filter(t=>t.status==='Open').sort((a,b)=>((b.priorityRemote||priorityScore(b))-(a.priorityRemote||priorityScore(a)))).slice(0,25); }
+// Yesterday's board — what was placed in your sections yesterday (from the reset log).
+function yesterdayBoard(){
+  const d=new Date(); d.setDate(d.getDate()-1);
+  const y=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const log=(meta.resetLog&&meta.resetLog[y])||[]; const ids=new Set(log.map(x=>x.id));
+  return tasks.filter(t=>ids.has(t.id));
+}
+
+// Shown in the Improvements panel so you can see what's been done, on the page.
+const CHANGELOG = [
+  'Compact task cards + reveal arrow for actions',
+  'Every section has its own add box at the bottom',
+  'Incoming no longer auto-fills — only what you add',
+  'Done = drop-to-clear trash zone (small bubble)',
+  "Don't care = drop to snooze a month",
+  'Bulbs open as a board panel next to Incoming, with add box',
+  'Still open? items have a ✕ to kill instantly',
+  'Task names show "PROJECT - task", id removed (shown in edit mode)',
+  'Fixed real Airtable saving (your lead field is SBLead)',
+  'Section resize — width AND height — plus reorder, all remembered',
+  'Guess project/lead on unsorted items',
+  'Drag feedback matches task drag',
+];
+const STUBS = [
+  {id:'untexted', name:'💬 Unanswered texts', msg:'Will list texts you haven’t replied to (needs iMessage connection). Not wired yet.'},
+  {id:'emails',   name:'✉️ Emails (Gmail)', msg:'Connect Gmail to pull emails that need your attention. Not wired yet — tell Claude to connect it.'},
+  {id:'calendar', name:'📅 Calendar',        msg:'Connect Google Calendar to show today’s schedule here (Superhuman-style). Not wired yet.'},
+];
+function defaultSection(t){
+  if(t.status==='Done') return null;
+  if(t.slotRemote==='morning') return 'morning';
+  if(t.slotRemote==='afternoon') return 'afternoon';
+  if(t.typeRemote==='call' || A(t.id).type==='call' || /^\s*call\b/i.test(t.name||'')) return 'calls';
+  return 'backlog';   // Incoming is ONLY for items you add/drop there — never auto-filled
+}
+// Quick M/A/S: assign to a call slot (synced to Airtable), or snooze.
+function setSlot(id,slot){
+  const t=tasks.find(x=>x.id===id); const cur=(sectionOf(t)===slot); const nv=cur?null:slot;
+  A(id).section=nv; if(t){t.slotRemote=nv||''; t.sectionRemote=nv||'';} saveAug(); render();
+  atPatch(id,{MeetingSlot:nv||'', Section:nv||''});
+}
+function sectionOf(t){ return A(t.id).section || t.sectionRemote || defaultSection(t); }
+// Move a task to a section AND sync it to Airtable so every device agrees.
+function setSection(id,sec){
+  A(id).section=sec||null; const t=tasks.find(x=>x.id===id); if(t)t.sectionRemote=sec||'';
+  saveAug(); atPatch(id,{Section:sec||''});
+}
+
+/* ---------- Airtable ---------- */
+const AT = 'https://api.airtable.com/v0/';
+function atUrl(){ return AT+cfg.baseId+'/'+encodeURIComponent(cfg.tableId); }
+function flat(v){ if(v==null)return''; if(Array.isArray(v))return v.map(x=>x&&typeof x==='object'?(x.name||x.id||''):x).filter(Boolean).join(', '); if(typeof v==='object')return v.name||v.id||''; return String(v);}
+async function atFetch(){
+  if(!cfg.apiKey){ toast('Add your Airtable key in ⚙︎ Settings'); return; }
+  let offset,out=[],g=0;
+  do{
+    const u=new URL(atUrl()); u.searchParams.set('pageSize','100'); if(offset)u.searchParams.set('offset',offset);
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}});
+    if(!r.ok){ toast('Airtable error '+r.status); return; }
+    const d=await r.json();
+    out=out.concat((d.records||[]).map(rec=>({
+      id:rec.id, createdTime:rec.createdTime,
+      name:flat(rec.fields.Task), project:flat(rec.fields.Project),
+      lead:flat(rec.fields.SBLead), sub:flat(rec.fields.Sub),
+      status:flat(rec.fields.Status)||'Open',
+      phoneRemote:flat(rec.fields.Phone), nextStepRemote:flat(rec.fields.NextStep),
+      typeRemote:(flat(rec.fields.Type)||'').toLowerCase(),
+      slotRemote:(flat(rec.fields.MeetingSlot)||'').toLowerCase(),
+      sectionRemote:(flat(rec.fields.Section)||'').toLowerCase(),
+      priorityRemote:+flat(rec.fields.Priority)||0,
+      doDate:(flat(rec.fields.DoDate)||'').slice(0,10)
+    })));
+    offset=d.offset;
+  }while(offset&&++g<50);
+  tasks=out; demo=false; lastFetchAt=Date.now(); blinkOff=null; meta.lastRefresh=todayStr(); saveMeta();
+  // backfill: push this device's local placements up to Airtable so other devices see them
+  for(const t of tasks){ const s=A(t.id).section; if(s && t.sectionRemote!==s){ t.sectionRemote=s; atPatch(t.id,{Section:s}); } }
+  // Incoming holds only today's items — anything aged out drops to Backlog
+  for(const t of tasks){ if((A(t.id).section==='incoming'||t.sectionRemote==='incoming') && daysOpen(t)>0){ A(t.id).section=null; t.sectionRemote=''; atPatch(t.id,{Section:''}); } }
+  saveAug(); await fetchImprovements(); await fetchCalendar();
+  await fetchTexts(); await fetchOutbox(); await fetchEmails();
+  const doneN=improvements.filter(i=>i.status==='Done').length;
+  if(doneN>(meta.ackSeen||0)) toast('✓ '+(doneN-(meta.ackSeen||0))+' improvement'+(doneN-(meta.ackSeen||0)===1?'':'s')+' addressed — open Improvements');
+  render();
+}
+async function atPatch(id,fields){
+  if(demo||!cfg.apiKey) return;               // demo mode: local only
+  const r=await fetch(atUrl()+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
+    body:JSON.stringify({fields,typecast:true})});
+  if(!r.ok) toast('Save failed '+r.status);
+}
+async function atDelete(id){
+  if(demo||!cfg.apiKey) return;
+  await fetch(atUrl()+'/'+id,{method:'DELETE',headers:{Authorization:'Bearer '+cfg.apiKey}});
+}
+async function atCreate(name){
+  if(demo||!cfg.apiKey){
+    const t={id:'local'+Date.now(),createdTime:new Date().toISOString(),name,project:'',lead:'',sub:'',status:'Open'};
+    A(t.id).section='incoming'; tasks.unshift(t); saveAug(); return t;
+  }
+  const r=await fetch(atUrl(),{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
+    body:JSON.stringify({fields:{Task:name,Status:'Open'},typecast:true})});
+  if(!r.ok){ toast('Create failed '+r.status); return null; }
+  const rec=await r.json();
+  const t={id:rec.id,createdTime:rec.createdTime,name,project:'',lead:'',sub:'',status:'Open'};
+  tasks.unshift(t); return t;
+}
+
+// ── Improvements table (Claude reads these directly from Airtable) ──
+function improvUrl(){ return 'https://api.airtable.com/v0/'+cfg.baseId+'/'+IMPROV_TABLE; }
+async function fetchImprovements(){
+  if(!cfg.apiKey) return;
+  try{
+    const u=new URL(improvUrl()); u.searchParams.set('pageSize','100');
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}});
+    if(!r.ok) return;
+    const d=await r.json();
+    improvements=(d.records||[]).map(rec=>({id:rec.id,createdTime:rec.createdTime,note:flat(rec.fields.Note),status:flat(rec.fields.Status)||'New'}));
+  }catch(e){}
+}
+async function createImprovement(text){
+  const r=await fetch(improvUrl(),{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:{Note:text,Status:'New'},typecast:true})});
+  if(r.ok){const rec=await r.json();improvements.unshift({id:rec.id,createdTime:rec.createdTime,note:text,status:'New'});toast('✓ Saved — Claude will see it');}
+  else toast('Improvement save failed '+r.status);
+}
+async function deleteImprovement(id){
+  await fetch(improvUrl()+'/'+id,{method:'DELETE',headers:{Authorization:'Bearer '+cfg.apiKey}});
+  improvements=improvements.filter(x=>x.id!==id);
+}
+
+/* ---------- Helpers ---------- */
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+async function fetchTexts(){
+  if(!cfg.apiKey) return;
+  try{
+    const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+TEXTS_TABLE); u.searchParams.set('pageSize','100');
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return;
+    const d=await r.json();
+    texts=(d.records||[]).filter(rec=>flat(rec.fields.Status)!=='Cleared').map(rec=>({id:rec.id,from:flat(rec.fields.From),preview:flat(rec.fields.Preview),received:flat(rec.fields.Received),handle:flat(rec.fields.Handle)}));
+  }catch(e){}
+}
+async function clearText(id){
+  texts=texts.filter(x=>x.id!==id); render();
+  await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+TEXTS_TABLE+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Cleared'},typecast:true})});
+}
+// ── Outbox: review queue for follow-ups (you approve; agent sends) ──
+async function fetchOutbox(){
+  if(!cfg.apiKey) return;
+  try{
+    const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+OUTBOX_TABLE); u.searchParams.set('pageSize','100');
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return;
+    const d=await r.json();
+    outbox=(d.records||[]).map(rec=>({id:rec.id,to:flat(rec.fields.To),handle:flat(rec.fields.Handle),channel:flat(rec.fields.Channel),message:flat(rec.fields.Message),task:flat(rec.fields.TaskName),status:flat(rec.fields.Status)||'Draft'}));
+  }catch(e){}
+}
+async function setOutboxStatus(id,st){
+  const o=outbox.find(x=>x.id===id); if(o)o.status=st; render();
+  await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+OUTBOX_TABLE+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:st},typecast:true})});
+}
+async function deleteOutbox(id){
+  outbox=outbox.filter(x=>x.id!==id); render();
+  await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+OUTBOX_TABLE+'/'+id,{method:'DELETE',headers:{Authorization:'Bearer '+cfg.apiKey}});
+}
+function queueSend(t){
+  const a=A(t.id); const defMsg=a.nextStep||t.nextStepRemote||('Following up on: '+cleanName(t));
+  const ph=phoneFor(t)||'';
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML=`<div class="modal"><h3>📤 Queue a follow-up</h3>
+    <label class="field"><span class="lbl">Channel</span><select class="inp" id="q_ch"><option value="text">Text</option><option value="email">Email</option></select></label>
+    <label class="field"><span class="lbl">To (name)</span><input class="inp" id="q_to" value="${esc(t.lead||'')}"></label>
+    <label class="field"><span class="lbl">Phone (text) / email</span><input class="inp" id="q_handle" value="${esc(ph)}"></label>
+    <label class="field"><span class="lbl">Message</span><textarea class="inp" id="q_msg">${esc(defMsg)}</textarea></label>
+    <div class="note">Goes to your review queue (📤 To send). Nothing sends until you Approve it there.</div>
+    <div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" data-ok>Queue</button></div></div>`;
+  bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();});
+  bd.querySelector('[data-x]').onclick=()=>bd.remove();
+  bd.querySelector('[data-ok]').onclick=async()=>{ const g=id=>bd.querySelector(id).value.trim(); bd.remove();
+    await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+OUTBOX_TABLE,{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
+      body:JSON.stringify({fields:{To:g('#q_to'),Handle:g('#q_handle'),Channel:g('#q_ch'),Message:g('#q_msg'),TaskName:cleanName(t),Status:'Draft'},typecast:true})});
+    await fetchOutbox(); toast('📤 Queued for review'); render(); };
+  document.body.appendChild(bd); bd.querySelector('#q_msg').focus();
+}
+function editOutbox(o){
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML=`<div class="modal"><h3>Edit queued message</h3>
+    <label class="field"><span class="lbl">Channel (direction)</span><select class="inp" id="e_ch"><option value="text"${o.channel==='text'?' selected':''}>Text</option><option value="email"${o.channel==='email'?' selected':''}>Email</option></select></label>
+    <label class="field"><span class="lbl">To (name)</span><input class="inp" id="e_to" value="${esc(o.to)}"></label>
+    <label class="field"><span class="lbl">Phone (text) / email</span><input class="inp" id="e_handle" value="${esc(o.handle)}"></label>
+    <label class="field"><span class="lbl">Message</span><textarea class="inp" id="e_msg">${esc(o.message)}</textarea></label>
+    <div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" data-ok>Save</button></div></div>`;
+  bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();});
+  bd.querySelector('[data-x]').onclick=()=>bd.remove();
+  bd.querySelector('[data-ok]').onclick=async()=>{ const g=id=>bd.querySelector(id).value.trim(); bd.remove();
+    const f={To:g('#e_to'),Handle:g('#e_handle'),Channel:g('#e_ch'),Message:g('#e_msg')};
+    Object.assign(o,{to:f.To,handle:f.Handle,channel:f.Channel,message:f.Message}); render();
+    await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+OUTBOX_TABLE+'/'+o.id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:f,typecast:true})}); };
+  document.body.appendChild(bd); bd.querySelector('#e_msg').focus();
+}
+function outboxPanel(){
+  const drafts=outbox.filter(o=>o.status==='Draft'), approved=outbox.filter(o=>o.status==='Approved');
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='tosend';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls('tosend','📤 To send',null)+`<span class="count">${drafts.length}</span>`;
+  p.appendChild(head); wirePanel(p,head,'tosend');
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!drafts.length&&!approved.length) body.innerHTML='<div class="empty">Nothing to send.<br><span style="font-size:11px">Queue a follow-up from any task (📤).</span></div>';
+  drafts.forEach(o=>{const d=document.createElement('div');d.className='txt-item';
+    d.innerHTML='<div class="txt-from">'+esc(o.to||o.handle)+' <span class="txt-when">'+esc(o.channel)+'</span></div><div class="txt-prev">'+esc(o.message)+'</div>';
+    const row=document.createElement('div');row.className='row';
+    row.appendChild(btn('✅ Approve & send','mini on',' ',()=>setOutboxStatus(o.id,'Approved')));
+    row.appendChild(btn('✏️ Edit','mini',' ',()=>editOutbox(o)));
+    row.appendChild(btn('✕ Discard','mini',' ',()=>deleteOutbox(o.id)));
+    d.appendChild(row); body.appendChild(d);});
+  approved.forEach(o=>{const d=document.createElement('div');d.className='txt-item';d.style.opacity='.6';
+    d.innerHTML='<div class="txt-from">'+esc(o.to||o.handle)+' <span class="txt-when">⏳ sending…</span></div><div class="txt-prev">'+esc(o.message)+'</div>';
+    body.appendChild(d);});
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{e.preventDefault();const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'tosend');});
+  return p;
+}
+
+// ── Daily reset: each new day, log the board then clear placements EXCEPT
+//    Big Ticket / Next Up / Now-Focus (your priorities stay put). ──
+function dailyReset(){
+  const today=todayISO();
+  if(meta.lastReset===today) return;
+  const keep=new Set(['bigticket','nextup','focus']);
+  if(meta.lastReset){ // log the day that just ended
+    const snap=Object.keys(aug).filter(id=>aug[id].section).map(id=>({id,section:aug[id].section}));
+    meta.resetLog=meta.resetLog||{}; meta.resetLog[meta.lastReset]=snap;
+    const ks=Object.keys(meta.resetLog).sort(); while(ks.length>14) delete meta.resetLog[ks.shift()];
+  }
+  for(const id of Object.keys(aug)){ const s=aug[id].section; if(s && !keep.has(s)){ aug[id].section=null; if(cfg.apiKey)atPatch(id,{Section:''}); } }
+  meta.lastReset=today; saveAug(); saveMeta();
+}
+
+async function fetchEmails(){
+  if(!cfg.apiKey) return;
+  try{
+    const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+EMAILS_TABLE); u.searchParams.set('pageSize','100');
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return;
+    const d=await r.json();
+    emails=(d.records||[]).filter(rec=>flat(rec.fields.Status)!=='Cleared').map(rec=>({id:rec.id,subject:flat(rec.fields.Subject),from:flat(rec.fields.From),preview:flat(rec.fields.Preview),received:flat(rec.fields.Received),link:flat(rec.fields.Link)}));
+  }catch(e){}
+}
+async function clearEmail(id){
+  emails=emails.filter(x=>x.id!==id); render();
+  await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+EMAILS_TABLE+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Cleared'},typecast:true})});
+}
+async function fetchCalendar(){
+  if(!cfg.apiKey) return;
+  try{
+    const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CAL_TABLE); u.searchParams.set('pageSize','100');
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return;
+    const d=await r.json();
+    calendar=(d.records||[]).map(rec=>({title:flat(rec.fields.Title),when:flat(rec.fields.When),date:flat(rec.fields.Date),sort:+flat(rec.fields.Sort)||0,location:flat(rec.fields.Location),link:flat(rec.fields.Link)}));
+  }catch(e){}
+}
+function daysOpen(t){ if(!t.createdTime)return 0; return Math.floor((Date.now()-new Date(t.createdTime))/86400000);}
+function lastTouch(t){ return Math.max(t.createdTime?+new Date(t.createdTime):0, A(t.id).lastTouched||0);}
+function touch(id){ A(id).lastTouched=Date.now(); saveAug(); }
+let toastT;
+function toast(m){ let e=document.querySelector('.toast'); if(!e){e=document.createElement('div');e.className='toast';document.body.appendChild(e);} e.textContent=m; clearTimeout(toastT); toastT=setTimeout(()=>e.remove(),2800);}
+
+/* ---------- Filtering ---------- */
+function visible(t){
+  if(filters.project && t.project!==filters.project) return false;
+  if(filters.lead && t.lead!==filters.lead) return false;
+  if(filters.sub && t.sub!==filters.sub) return false;
+  return true;
+}
+
+/* "Still open?" = aging & untouched, likely dead/irrelevant */
+function stillOpenItems(){
+  return tasks.filter(t=> t.status==='Open' && visible(t) && !(A(t.id).snoozeUntil>Date.now()) &&
+    (Date.now()-lastTouch(t))/86400000 >= 10 );
+}
+
+/* ---------- Render ---------- */
+const expanded = new Set();   // ephemeral: which capped sections are showing all
+
+function orderedPanels(){
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),'stillopen','tosend','ideas',...STUBS.map(s=>s.id)];
+  let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
+  def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
+  return ord.filter(id=>def.includes(id) && id!=='backlog');   // backlog hidden
+}
+function reorderPanels(fromId,toId){
+  if(fromId===toId)return;
+  let ord=orderedPanels().filter(x=>x!==fromId);
+  const i=ord.indexOf(toId); ord.splice(i<0?ord.length:i,0,fromId);
+  meta.order=ord; saveMeta(); render();
+}
+function cycleWidth(id){ meta.width=meta.width||{}; meta.width[id]=((meta.width[id]||1)%3)+1; saveMeta(); render(); }
+function cycleHeight(id){ meta.height=meta.height||{}; meta.height[id]=((meta.height[id]||2)%3)+1; saveMeta(); render(); }
+function heightPx(id){ const h=meta.height&&meta.height[id]; return h?({1:'150px',2:'400px',3:'700px'})[h]:null; }
+// Manual within-section task ordering (drag a task onto another to resort).
+function orderRows(items,sec){
+  const ord=meta.taskOrder&&meta.taskOrder[sec]; if(!ord)return items;
+  return [...items].sort((a,b)=>{const ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);return (ia<0?1e9:ia)-(ib<0?1e9:ib);});
+}
+function reorderTask(sec,fromId,beforeId){
+  meta.taskOrder=meta.taskOrder||{};
+  let ids=tasks.filter(t=>t.status==='Open' && sectionOf(t)===sec).map(t=>t.id);
+  const ord=meta.taskOrder[sec];
+  if(ord){ const inOrd=ord.filter(x=>ids.includes(x)); ids=[...inOrd,...ids.filter(x=>!inOrd.includes(x))]; }
+  ids=ids.filter(x=>x!==fromId);
+  const i=ids.indexOf(beforeId); ids.splice(i<0?ids.length:i,0,fromId);
+  meta.taskOrder[sec]=ids; saveMeta(); touch(fromId); saveAug(); render();
+}
+function setMax(id){
+  const cur=(meta.max&&meta.max[id])||'';
+  const n=prompt('Max tasks to show in this section (blank = show all):',cur); if(n===null)return;
+  meta.max=meta.max||{}; if(!n.trim())delete meta.max[id]; else meta.max[id]=Math.max(1,parseInt(n)||1);
+  saveMeta(); render();
+}
+
+function render(){
+  document.getElementById('date').textContent = new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+  renderBanner();
+  const tc=document.getElementById('taskCount'); if(tc)tc.textContent='📋 '+tasks.filter(t=>t.status==='Open').length+' open';
+  const board=document.getElementById('board'); board.innerHTML='';
+  const filt=document.getElementById('filters');
+  if(isMobileView()){ filt.style.display='none'; renderMobile(board); return; }
+  filt.style.display=''; renderFilters();
+  const notSnoozed=t=>!(A(t.id).snoozeUntil>Date.now());
+  const openVisible = tasks.filter(t=>t.status==='Open' && visible(t) && notSnoozed(t));
+  orderedPanels().forEach(id=>{
+    const stub=STUBS.find(s=>s.id===id);
+    if(id==='stillopen') board.appendChild(panelEl('stillopen','❓ Still open?', stillOpenItems(), false));
+    else if(id==='ideas') board.appendChild(ideasPanel());
+    else if(id==='calendar') board.appendChild(calendarPanel());
+    else if(id==='untexted') board.appendChild(textsPanel());
+    else if(id==='emails') board.appendChild(emailsPanel());
+    else if(id==='tosend') board.appendChild(outboxPanel());
+    else if(stub) board.appendChild(stubPanel(stub));
+    else { const b=BUCKETS.find(x=>x.id===id); if(!b)return;
+      let items = (b.id==='done'||b.id==='dontcare'||b.id==='autosort') ? [] : openVisible.filter(t=>sectionOf(t)===b.id);
+      if(b.id==='incoming') items=items.filter(t=>daysOpen(t)===0);   // Incoming = today only
+      board.appendChild(panelEl(b.id,b.name,items,true)); }
+    // Opened bulb (project/lead/sub) sits right after Incoming so you can drag between them
+    if(id==='incoming' && activeBulb) board.appendChild(bulbPanel());
+  });
+  layoutFreeform(board);
+}
+
+/* A project/lead/sub "bulb" opened as a live board panel (drag tasks out of it) */
+function bulbPanel(){
+  const {dim,val,label}=activeBulb;
+  const isCat = dim==='category'; const isAdded = dim==='added';
+  const fmap={project:'Project',lead:'SBLead',sub:'Sub'};
+  const items = isAdded ? tasks.filter(t=>inAddedRange(t,val)).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0))
+              : isCat ? (val==='stillopen'?stillOpenItems():val==='priority'?priorityList():val==='today'?todayPlan():val==='yestboard'?yesterdayBoard():tasks.filter(t=>t.status==='Open'&&sectionOf(t)===val))
+              : tasks.filter(t=>t.status==='Open'&&t[dim]===val);
+  const title = isAdded ? ('🗓 Added: '+label) : isCat ? label : '🔎 '+val;
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='bulb';
+  meta.width=meta.width||{}; p.style.gridColumn='span '+(meta.width.bulb||1);
+  const head=document.createElement('div'); head.className='panel-head';
+  head.innerHTML=`<button class="phead-ctrl" data-prev title="Previous">◀</button><h3>${esc(title)}</h3><button class="phead-ctrl" data-next title="Next">▶</button><button class="mini send-list" title="Send this list">⤴</button><span class="count">${items.length}</span><button class="phead-ctrl" data-close title="Close">✕</button>`;
+  head.querySelector('.send-list').onclick=()=>sendList(isCat?label:(dim+': '+val),items);
+  head.querySelector('[data-close]').onclick=()=>{activeBulb=null;render();};
+  const cycle=delta=>{
+    if(isCat){ let i=CATEGORIES.findIndex(c=>c.id===val)+delta; if(i<0)i=CATEGORIES.length-1; if(i>=CATEGORIES.length)i=0; activeBulb={dim:'category',val:CATEGORIES[i].id,label:CATEGORIES[i].name}; render(); return; }
+    if(isAdded){ let i=ADDED_RANGES.findIndex(r=>r.key===val)+delta; if(i<0)i=ADDED_RANGES.length-1; if(i>=ADDED_RANGES.length)i=0; activeBulb={dim:'added',val:ADDED_RANGES[i].key,label:ADDED_RANGES[i].name}; render(); return; }
+    const vals=orderedVals(dim,countsFor(dim)); if(!vals.length)return; let i=vals.indexOf(val)+delta; if(i<0)i=vals.length-1; if(i>=vals.length)i=0; activeBulb={dim,val:vals[i]}; render();
+  };
+  head.querySelector('[data-prev]').onclick=()=>cycle(-1);
+  head.querySelector('[data-next]').onclick=()=>cycle(1);
+  p.appendChild(head);
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!items.length){const e=document.createElement('div');e.className='empty';e.textContent='Nothing open here.';body.appendChild(e);}
+  items.forEach(t=>body.appendChild(taskEl(t,isAdded?'added':'bulb')));
+  if(!isAdded && !(isCat && ['stillopen','priority','yestboard','today'].includes(val))){
+    const add=document.createElement('div'); add.className='add-inline';
+    add.innerHTML='<input placeholder="Add to '+esc(isCat?label:val)+'…"><button>＋</button>';
+    const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';
+      const t=await atCreate(v); if(!t)return;
+      if(isCat){ setSection(t.id,val); if(val==='calls'){A(t.id).type='call'; atPatch(t.id,{Type:'call'});} }
+      else { t[dim]=val; await atPatch(t.id,{[fmap[dim]]:val}); }
+      render(); const n=document.querySelector('.panel[data-section="bulb"] .add-inline input'); if(n)n.focus();};
+    add.querySelector('button').onclick=go; add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+    body.appendChild(add);
+  }
+  p.appendChild(body);
+  // drop a task here to ASSIGN this project/lead/sub — or move into this category
+  p.addEventListener('dragover',e=>{e.preventDefault();p.classList.add('drop-hover');});
+  p.addEventListener('dragleave',e=>{if(!p.contains(e.relatedTarget))p.classList.remove('drop-hover');});
+  p.addEventListener('drop',async e=>{e.preventDefault();p.classList.remove('drop-hover');
+    const d=e.dataTransfer.getData('text/plain'); if(!d||d==='chip'||d.startsWith('panel:'))return;
+    if(isAdded)return;
+    const t=tasks.find(x=>x.id===d); if(!t)return;
+    if(isCat){ setSection(d,val); if(val==='calls'){A(d).type='call'; atPatch(d,{Type:'call'});} touch(d); toast('Moved → '+label); render(); return; }
+    t[dim]=val; touch(d); saveAug(); toast('Set '+dim+' → '+val); render();
+    await atPatch(t.id,{[fmap[dim]]:val});
+  });
+  p.classList.add('bulbhalo');
+  if(flashBulb){ p.classList.add('flash'); flashBulb=false; }
+  return p;
+}
+
+// ── Mobile layout: record fast, call fast, recall fast ──
+function isMobileView(){ return window.innerWidth<=640; }
+function renderMobile(board){
+  // 4 top buttons: project / lead / sub / category (each opens a picker)
+  const fb=document.createElement('div'); fb.className='mfilters';
+  [['project','📁 Project'],['lead','👤 Lead'],['sub','🏷 Sub'],['category','🗂 Category']].forEach(([dim,lbl])=>{
+    const b=document.createElement('button'); b.className='mfbtn'; b.textContent=lbl; b.onclick=()=>openPicker(dim); fb.appendChild(b);
+  });
+  board.appendChild(fb);
+  // quick-add incoming
+  const qa=document.createElement('div'); qa.className='madd';
+  qa.innerHTML='<input placeholder="➕ Add incoming…"><button>Add</button>';
+  const go=async()=>{const inp=qa.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section='incoming';saveAug();render();qa.querySelector('input').focus();}};
+  qa.querySelector('button').onclick=go; qa.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+  board.appendChild(qa);
+  // drilled-in bulb (from a picker) shows here
+  if(activeBulb) board.appendChild(bulbPanel());
+  // always-visible bubbles: Calls + Morning/Afternoon calls + Meetings
+  board.appendChild(mobileCalls());
+  board.appendChild(mobileSlotPanel('🌅 Morning call','morning'));
+  board.appendChild(mobileSlotPanel('☀️ Afternoon call','afternoon'));
+  board.appendChild(mobileMeetings());
+}
+function mobileSlotPanel(title,slot){
+  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)===slot);
+  const p=document.createElement('div'); p.className='panel';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>'+title+'</h3><span class="count">'+items.length+'</span>';
+  p.appendChild(head);
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!items.length) body.innerHTML='<div class="empty">—</div>';
+  items.slice(0,5).forEach(t=>{const d=document.createElement('div'); d.className='mrow';
+    const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t); d.appendChild(nm);
+    const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); d.appendChild(done);
+    body.appendChild(d);});
+  if(items.length>5){const m=document.createElement('button'); m.className='more-btn'; m.textContent='+'+(items.length-5)+' more'; m.onclick=()=>{activeBulb={dim:'category',val:slot,label:title};render();}; body.appendChild(m);}
+  p.appendChild(body); return p;
+}
+function openPicker(dim){
+  let entries;
+  if(dim==='category') entries=CATEGORIES.map(c=>({val:c.id,label:c.name,name:c.name}));
+  else { const c=countsFor(dim); entries=orderedVals(dim,c).map(v=>({val:v,label:v,name:v+' ('+c[v]+')'})); }
+  const bd=document.createElement('div'); bd.className='backdrop';
+  const box=document.createElement('div'); box.className='modal';
+  box.innerHTML='<h3 style="text-transform:capitalize">'+esc(dim)+'</h3>';
+  const list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:62vh;overflow:auto';
+  if(!entries.length){const e=document.createElement('div');e.className='empty';e.textContent='None yet';list.appendChild(e);}
+  entries.forEach(e=>{const b=document.createElement('button');b.className='btn';b.style.textAlign='left';b.textContent=e.name;
+    b.onclick=()=>{ activeBulb={dim,val:e.val,label:e.label}; bd.remove(); render(); }; list.appendChild(b);});
+  box.appendChild(list);
+  const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>';
+  act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
+  bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
+}
+function mobileCalls(){
+  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)==='calls');
+  const p=document.createElement('div'); p.className='panel';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>📞 Calls</h3><span class="count">'+items.length+'</span>';
+  p.appendChild(head);
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!items.length) body.innerHTML='<div class="empty">No calls queued.</div>';
+  items.slice(0,5).forEach(t=>{const ph=phoneFor(t); const d=document.createElement('div'); d.className='mrow';
+    const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t); d.appendChild(nm);
+    if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; d.appendChild(c); }
+    else { const b=document.createElement('button'); b.className='mcall add'; b.textContent='＋#'; b.onclick=()=>{const n=prompt('Number for '+(t.lead||t.name)); if(n){A(t.id).phone=n;saveAug();render();}}; d.appendChild(b); }
+    const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); d.appendChild(done);
+    body.appendChild(d);});
+  if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more';m.onclick=()=>{activeBulb={dim:'category',val:'calls',label:'📞 Calls'};render();};body.appendChild(m);}
+  const add=document.createElement('div');add.className='add-inline';add.innerHTML='<input placeholder="Add a call…"><button>＋</button>';
+  const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).type='call';t.typeRemote='call';saveAug();atPatch(t.id,{Type:'call'});render();}};
+  add.querySelector('button').onclick=go;add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+  body.appendChild(add);
+  p.appendChild(body); return p;
+}
+function mobileMeetings(){
+  const evs=calendar.filter(e=>e.date===todayISO()).sort((a,b)=>a.sort-b.sort);
+  const p=document.createElement('div'); p.className='panel';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>📅 Meetings</h3><span class="count">'+evs.length+'</span>';
+  p.appendChild(head);
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!evs.length) body.innerHTML='<div class="empty">No meetings today.</div>';
+  else { const now=new Date(); const nowMin=now.getHours()*60+now.getMinutes(); let cur=evs.findIndex(e=>e.sort+60>=nowMin); if(cur<0)cur=evs.length-1;
+    evs.slice(Math.max(0,cur),Math.max(0,cur)+5).forEach((e,i)=>{const key=e.title+e.when; const isNow=(i===0);
+      const d=document.createElement('div'); d.className='cal-ev'+((isNow&&blinkOff!==key)?' cal-now':'');
+      d.innerHTML='<div class="cal-when">'+esc(e.when)+'</div><div class="cal-title">'+esc(e.title)+'</div>'+meetingLink(e);
+      if(isNow && blinkOff!==key){ const stop=document.createElement('button'); stop.className='joinbtn stopblink'; stop.textContent='🔕 Stop'; stop.title='Stop blinking until next refresh'; stop.onclick=ev=>{ev.stopPropagation(); blinkOff=key; render();}; d.appendChild(stop); }
+      body.appendChild(d);});
+  }
+  p.appendChild(body); return p;
+}
+
+// ── Free-form canvas: absolutely position every panel; drag the header to move,
+//    drag the bottom-right to resize. Positions/sizes remembered in meta.pos. ──
+const SECTION_CRITERIA={
+  priority:'🔥 Priority — auto-ranked by importance (age + 🔔 blink + reminders + what you\'re actively working). The agent tunes it.',
+  incoming:'📥 Incoming — only items you add or drop here.',
+  bigticket:'🏔 Big Ticket — tasks you placed here (big, multi-step).',
+  nextup:'⏭ Next Up — tasks you placed here to do next.',
+  focus:'🎯 Now/Focus — your current focus items.',
+  calls:'📞 Calls — tasks of type Call, or named "Call …".',
+  morning:'🌅 Morning — tagged to the morning call (M button).',
+  afternoon:'☀️ Afternoon — tagged to the afternoon call (A button).',
+  stillopen:'❓ Still open — open 10+ days and untouched.',
+  done:'✅ Done — drop a task here to complete it.',
+  dontcare:'🚫 Don\'t care — drop here to snooze a month.',
+  autosort:'🔮 Auto-sort — drop here and I guess its project/lead.',
+  yestboard:'🕘 Yesterday — what was on your board yesterday.',
+  ideas:'💡 Improvements & Changes — your requests to Claude.',
+  tosend:'📤 To send — follow-ups awaiting your approval.',
+  untexted:'💬 Unanswered texts — texts you haven\'t replied to.',
+  calendar:'📅 Today — your meetings today.',
+  emails:'✉️ Emails — needs Gmail connection.',
+  bulb:'🔎 A filtered view — use ◀ ▶ in its header to change the filter.'
+};
+function showCriteria(id){
+  if(id==='bulb'&&activeBulb) return toast('Filter → '+activeBulb.dim+': '+(activeBulb.label||activeBulb.val));
+  toast(SECTION_CRITERIA[id]||('Section: '+id));
+}
+function resetLayout(){ meta.pos={}; saveMeta(); render(); toast('↺ Layout reset'); }
+function saveLayout(){ meta.savedLayout=JSON.parse(JSON.stringify(meta.pos||{})); saveMeta(); toast('💾 Layout saved'); }
+function restoreLayout(){ if(!meta.savedLayout){toast('No saved layout yet');return;} meta.pos=JSON.parse(JSON.stringify(meta.savedLayout)); saveMeta(); render(); toast('↩ Layout restored'); }
+function panelRects(exceptId){ const b=document.getElementById('board'); const out=[];
+  [...b.children].forEach(p=>{ if(!p.classList.contains('panel'))return; const id=p.dataset.section; if(id===exceptId)return;
+    out.push({x:parseInt(p.style.left)||0,y:parseInt(p.style.top)||0,w:p.offsetWidth,h:p.offsetHeight}); }); return out; }
+function rectsOverlap(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
+// Snap to the column grid + push down out of any collision.
+function snapAndResolve(p,id){
+  const COL=252,GAP=12;
+  let x=parseInt(p.style.left)||0, y=parseInt(p.style.top)||0, w=p.offsetWidth, h=p.offsetHeight;
+  x=Math.max(GAP, Math.round((x-GAP)/(COL+GAP))*(COL+GAP)+GAP);
+  y=Math.max(8, Math.round(y/16)*16);
+  const others=panelRects(id); let g=0;
+  while(g++<300){ const me={x,y,w,h}; const hit=others.find(o=>rectsOverlap(me,o)); if(!hit)break; y=hit.y+hit.h+GAP; }
+  p.style.left=x+'px'; p.style.top=y+'px';
+  return {x,y,w};
+}
+// Global guarantee: NO panel overlaps, and nothing runs off the right edge.
+function resolveAllOverlaps(){
+  const board=document.getElementById('board'); const GAP=12; const bw=board.clientWidth;
+  const arr=[...board.children].filter(p=>p.classList.contains('panel')).map(p=>({p,x:parseInt(p.style.left)||0,y:parseInt(p.style.top)||0,w:p.offsetWidth,h:p.offsetHeight}));
+  arr.forEach(o=>{ if(o.w>bw-2*GAP)o.w=bw-2*GAP; if(o.x+o.w>bw-GAP)o.x=Math.max(GAP,bw-GAP-o.w); if(o.x<GAP)o.x=GAP; });
+  arr.sort((a,b)=>a.y-b.y||a.x-b.x);
+  const placed=[];
+  arr.forEach(o=>{ let g=0; while(g++<500){ const hit=placed.find(q=>o.x<q.x+q.w&&o.x+o.w>q.x&&o.y<q.y+q.h&&o.y+o.h>q.y); if(!hit)break; o.y=hit.y+hit.h+GAP; } placed.push(o);
+    o.p.style.left=o.x+'px'; o.p.style.top=o.y+'px'; o.p.style.width=o.w+'px';
+    const id=o.p.dataset.section; if(id){ meta.pos[id]=meta.pos[id]||{}; meta.pos[id].x=o.x; meta.pos[id].y=o.y; meta.pos[id].w=o.w; } });
+  saveMeta(); adjustBoardHeight();
+}
+// Pack all panels into the fewest, shortest columns so it fits the screen (no across-scroll, minimal down-scroll).
+function fitToScreen(){
+  const board=document.getElementById('board'); const W=252,GAP=12;
+  const cols=Math.max(1,Math.floor((board.clientWidth-GAP)/(W+GAP)));
+  const colH=new Array(cols).fill(14);
+  [...board.children].filter(p=>p.classList.contains('panel')).forEach(p=>{
+    let c=0; for(let i=1;i<cols;i++) if(colH[i]<colH[c])c=i;
+    const x=GAP+c*(W+GAP), y=colH[c]; p.style.left=x+'px'; p.style.top=y+'px'; p.style.width=W+'px';
+    colH[c]=y+p.offsetHeight+GAP; const id=p.dataset.section; if(id)meta.pos[id]={x,y,w:W}; });
+  saveMeta(); adjustBoardHeight(); toast('⛶ Fit to screen');
+}
+function adjustBoardHeight(){
+  const board=document.getElementById('board'); let mb=0;
+  [...board.children].forEach(p=>{ if(p.classList.contains('panel')) mb=Math.max(mb,(parseInt(p.style.top)||0)+p.offsetHeight); });
+  board.style.height=(mb+140)+'px';
+}
+function layoutFreeform(board){
+  meta.pos=meta.pos||{};
+  const W=252,GAP=12; const cols=Math.max(1,Math.floor((board.clientWidth-GAP)/(W+GAP)));
+  const panels=[...board.children].filter(p=>p.classList.contains('panel'));
+  const wire=(p,id)=>{ p.style.position='absolute'; p.style.resize='horizontal'; p.style.overflow='hidden';
+    const head=p.querySelector('.panel-head'); if(head){ const dh=head.querySelector('.drag-handle'); if(dh)dh.draggable=false; enablePanelDrag(p,head,id); } enablePanelResizeSave(p,id); };
+  let idx=0;
+  panels.forEach(p=>{ const id=p.dataset.section; if(id==='bulb')return;
+    let pos=meta.pos[id]; if(!pos){ const col=idx%cols,row=Math.floor(idx/cols); pos={x:GAP+col*(W+GAP),y:14+row*290,w:W}; meta.pos[id]=pos; }
+    p.style.left=pos.x+'px'; p.style.top=pos.y+'px'; p.style.width=(pos.w||W)+'px'; wire(p,id); idx++; });
+  // the opened bulb: keep it where you last put it, but never let it overlap
+  const bulb=panels.find(p=>p.dataset.section==='bulb');
+  if(bulb){ const pos=meta.pos.bulb||{x:GAP,y:8,w:W}; bulb.style.left=pos.x+'px'; bulb.style.top=pos.y+'px'; bulb.style.width=(pos.w||W)+'px'; wire(bulb,'bulb');
+    if(bulb.classList.contains('flash')) meta.pos.bulb=snapAndResolve(bulb,'bulb'); }   // only re-place when freshly opened
+  resolveAllOverlaps();   // guarantee no overlaps + within screen width
+}
+function enablePanelDrag(p,head,id){
+  head.style.cursor='move';
+  head.addEventListener('pointerdown',e=>{
+    if(e.target.closest('button,input,select,a,textarea')) return;   // let header controls work
+    e.preventDefault();
+    const sx=e.clientX, sy=e.clientY, px=parseInt(p.style.left)||0, py=parseInt(p.style.top)||0; let moved=false;
+    p.style.zIndex=10;
+    const mv=ev=>{ const dx=ev.clientX-sx, dy=ev.clientY-sy; if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
+      p.style.left=Math.max(0,px+dx)+'px'; p.style.top=Math.max(0,py+dy)+'px'; };
+    const up=()=>{ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); p.style.zIndex='';
+      if(moved){ snapAndResolve(p,id); resolveAllOverlaps(); }
+      else showCriteria(id); };
+    document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
+  });
+}
+function enablePanelResizeSave(p,id){
+  if(p._ro)return;
+  try{ const ro=new ResizeObserver(()=>{ clearTimeout(p._rt); p._rt=setTimeout(()=>{ const o=meta.pos[id]||{}; o.w=p.offsetWidth; o.x=parseInt(p.style.left)||o.x; o.y=parseInt(p.style.top)||o.y; meta.pos[id]=o; resolveAllOverlaps(); },350); }); ro.observe(p); p._ro=ro; }catch(e){}
+}
+
+function renderBanner(){
+  let b=document.getElementById('demoBanner');
+  if(demo){
+    if(!b){ b=document.createElement('div'); b.id='demoBanner'; b.className='demo-banner';
+      b.innerHTML='⚠️ Showing <b>demo data</b> — this is NOT your Airtable yet. <button class="btn primary" id="dbk">Add Airtable key</button>';
+      document.getElementById('filters').after(b);
+      b.querySelector('#dbk').onclick=openSettings; }
+  } else if(b) b.remove();
+}
+
+function headCtrls(id,title,items){
+  return `<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>${title}</h3>`+
+    `<button class="phead-ctrl" data-w title="Change width">⇔</button>`+
+    `<button class="phead-ctrl" data-h title="Change height">↕</button>`+
+    (items?`<button class="phead-ctrl" data-m title="Max shown">#${(meta.max&&meta.max[id])||''}</button>`:'')+
+    (items?`<button class="mini send-list" title="Send this list">⤴</button>`:'')+
+    (items?`<button class="phead-ctrl" data-pop title="Float this out to its own window">⧉</button>`:'')+
+    (items?`<span class="count">${items.length}</span>`:'');
+}
+function wirePanel(p,head,id){
+  meta.width=meta.width||{}; p.style.gridColumn='span '+(meta.width[id]||1);
+  head.querySelector('[data-w]').onclick=()=>cycleWidth(id);
+  const hb=head.querySelector('[data-h]'); if(hb)hb.onclick=()=>cycleHeight(id);
+  const dh=head.querySelector('.drag-handle');
+  dh.addEventListener('dragstart',e=>{e.stopPropagation();e.dataTransfer.setData('text/plain','panel:'+id);try{e.dataTransfer.setDragImage(p,20,20);}catch(_){}p.classList.add('dragging');});
+  dh.addEventListener('dragend',()=>p.classList.remove('dragging'));
+  p.addEventListener('dragover',e=>{e.preventDefault();p.classList.add('drop-hover');});
+  p.addEventListener('dragleave',e=>{if(!p.contains(e.relatedTarget))p.classList.remove('drop-hover');});
+  p.addEventListener('drop',()=>p.classList.remove('drop-hover'));
+}
+// Clickable join link for a calendar event: a URL → "Open", a phone → "Call".
+function meetingLink(e){
+  const url=(e.link&&/^https?:/i.test(e.link))?e.link:'';
+  if(url){
+    const zm=url.match(/zoom\.us\/j\/(\d+)/);       // open the Zoom APP, skip the web page
+    if(zm){ const pw=(url.match(/[?&]pwd=([^&#]+)/)||[])[1]||''; const deep='zoommtg://zoom.us/join?confno='+zm[1]+(pw?'&pwd='+pw:''); return `<a class="joinbtn" href="${deep}">▶ Join</a>`; }
+    return `<a class="joinbtn" href="${esc(url)}" target="_blank" rel="noopener">Open ↗</a>`;
+  }
+  const digits=(e.location||'').replace(/[^\d]/g,'');
+  if(digits.length>=10) return `<a class="joinbtn" href="tel:${digits}">📞 Call</a>`;
+  return '';
+}
+function emailsPanel(){
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='emails';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls('emails','✉️ Emails',null)+`<span class="count">${emails.length}</span>`;
+  p.appendChild(head); wirePanel(p,head,'emails');
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!cfg.apiKey) body.innerHTML='<div class="empty">Add your Airtable key.</div>';
+  else if(!emails.length) body.innerHTML='<div class="empty">Inbox clear 🎉<br><span style="font-size:11px">Agent scans Gmail through the day.</span></div>';
+  else emails.forEach(e=>{const d=document.createElement('div');d.className='txt-item';
+    d.innerHTML='<div class="txt-from">'+esc(e.from)+(e.received?' <span class="txt-when">'+esc(e.received)+'</span>':'')+'</div><div class="txt-prev"><b>'+esc(e.subject)+'</b>'+(e.preview?' — '+esc(e.preview):'')+'</div>';
+    const row=document.createElement('div');row.className='row';
+    if(e.link){const a=document.createElement('a');a.className='mini';a.textContent='✉️ Open';a.href=e.link;a.target='_blank';a.rel='noopener';row.appendChild(a);}
+    row.appendChild(btn('✓ Clear','mini',' ',()=>clearEmail(e.id)));
+    d.appendChild(row); body.appendChild(d);});
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{e.preventDefault();const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'emails');});
+  return p;
+}
+function textsPanel(){
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='untexted';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls('untexted','💬 Unanswered texts',null)+`<span class="count">${texts.length}</span>`;
+  p.appendChild(head); wirePanel(p,head,'untexted');
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!cfg.apiKey) body.innerHTML='<div class="empty">Add your Airtable key.</div>';
+  else if(!texts.length) body.innerHTML='<div class="empty">All caught up 🎉<br><span style="font-size:11px">Agent scans your texts through the day.</span></div>';
+  else texts.forEach(t=>{const d=document.createElement('div');d.className='txt-item';
+    d.innerHTML='<div class="txt-from">'+esc(t.from)+(t.received?' <span class="txt-when">'+esc(t.received)+'</span>':'')+'</div><div class="txt-prev">'+esc(t.preview)+'</div>';
+    const row=document.createElement('div');row.className='row';
+    row.appendChild(btn('✓ Clear','mini',' ',()=>clearText(t.id)));
+    d.appendChild(row);
+    const rin=document.createElement('input'); rin.className='txt-reply'; rin.placeholder='Reply here (sends from your number)…';
+    rin.addEventListener('keydown',async e=>{ if(e.key!=='Enter')return; const v=rin.value.trim(); if(!v)return; rin.value='';
+      await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+OUTBOX_TABLE,{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
+        body:JSON.stringify({fields:{To:t.from,Handle:t.handle,Channel:'text',Message:v,TaskName:'Reply',Status:'Approved'},typecast:true})});
+      toast('Reply queued — sends shortly'); clearText(t.id); });
+    d.appendChild(rin);
+    body.appendChild(d);});
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{e.preventDefault();const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'untexted');});
+  return p;
+}
+function calendarPanel(){
+  const today=todayISO();
+  const evs=calendar.filter(e=>e.date===today).sort((a,b)=>a.sort-b.sort);
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='calendar';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls('calendar','📅 Today',null)+`<span class="count">${evs.length}</span>`;
+  p.appendChild(head); wirePanel(p,head,'calendar');
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!cfg.apiKey){ body.innerHTML='<div class="empty">Add your Airtable key to load the calendar.</div>'; }
+  else if(!evs.length){ body.innerHTML='<div class="empty">No events for today.<br><span style="font-size:11px">Say “refresh my calendar” to pull the latest.</span></div>'; }
+  else {
+    evs.forEach(e=>{const d=document.createElement('div');d.className='cal-ev';
+      d.innerHTML='<div class="cal-when">'+esc(e.when)+'</div><div class="cal-title">'+esc(e.title)+'</div>'+(e.location?'<div class="cal-loc">📍 '+esc(e.location)+'</div>':'')+meetingLink(e);
+      body.appendChild(d);});
+    // auto-scroll so the current/next meeting is visible for a fast click-to-join
+    const now=new Date(); const nowMin=now.getHours()*60+now.getMinutes();
+    let cur=evs.findIndex(e=>e.sort+60>=nowMin); if(cur<0)cur=evs.length-1;
+    const kids=body.querySelectorAll('.cal-ev');
+    if(kids[cur]){ const key=evs[cur].title+evs[cur].when;
+      if(blinkOff!==key){ kids[cur].classList.add('cal-now');
+        const stop=document.createElement('button'); stop.className='joinbtn stopblink'; stop.textContent='🔕 Stop'; stop.title='Stop blinking until next refresh';
+        stop.onclick=e=>{e.stopPropagation(); blinkOff=key; render();}; kids[cur].appendChild(stop); }
+      setTimeout(()=>{ body.scrollTop=Math.max(0,kids[cur].offsetTop-8); },0); }
+  }
+  const plan=todayPlan();
+  if(plan.length){ const h=document.createElement('div'); h.className='ack-h'; h.style.margin='8px 0 4px'; h.textContent='📋 To do today ('+plan.length+')'; body.appendChild(h);
+    plan.forEach(t=>body.appendChild(taskEl(t,'today'))); }
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{e.preventDefault();const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'calendar');});
+  return p;
+}
+function stubPanel(s){
+  const p=document.createElement('div'); p.className='panel stub'; p.dataset.section=s.id;
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls(s.id,s.name,null);
+  p.appendChild(head); wirePanel(p,head,s.id);
+  const body=document.createElement('div'); body.className='panel-body'; body.innerHTML='<div>'+s.msg+'</div>';
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{e.preventDefault();const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),s.id);});
+  return p;
+}
+function openImprovement(o){
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML=`<div class="modal"><h3>Improvement</h3>
+    <div class="note" style="margin-bottom:6px">Status: <b>${esc(o.status||'New')}</b></div>
+    <label class="field"><span class="lbl">Note — edit / add to it</span><textarea class="inp" id="im_note">${esc(o.note)}</textarea></label>
+    <div class="modal-actions">
+      <button class="btn ghost" data-del>Delete</button>
+      <button class="btn" data-toggle>${o.status==='Done'?'↩ Reopen':'✓ Mark done'}</button>
+      <button class="btn ghost" data-x>Close</button>
+      <button class="btn primary" data-ok>Save</button>
+    </div></div>`;
+  bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();});
+  const patch=async f=>fetch(improvUrl()+'/'+o.id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:f,typecast:true})});
+  bd.querySelector('[data-x]').onclick=()=>bd.remove();
+  bd.querySelector('[data-del]').onclick=async()=>{bd.remove();await deleteImprovement(o.id);render();};
+  bd.querySelector('[data-toggle]').onclick=async()=>{bd.remove();const st=o.status==='Done'?'New':'Done';o.status=st;render();await patch({Status:st});};
+  bd.querySelector('[data-ok]').onclick=async()=>{const v=bd.querySelector('#im_note').value;bd.remove();o.note=v;render();await patch({Note:v});};
+  document.body.appendChild(bd); bd.querySelector('#im_note').focus();
+}
+function ideasPanel(){
+  const useAT=!!cfg.apiKey;
+  meta.ideas=meta.ideas||[];
+  const active = useAT ? improvements.filter(i=>i.status!=='Done')
+                       : meta.ideas.map((it,i)=>({id:i,note:it.text}));
+  const doneItems = useAT ? improvements.filter(i=>i.status==='Done') : null;
+  const done   = useAT ? doneItems.map(i=>i.note) : CHANGELOG;
+  const numMap={}; const fmtD=iso=>{try{return new Date(iso).toLocaleDateString(undefined,{month:'short',day:'numeric'});}catch(e){return'';}};
+  if(useAT)[...improvements].sort((a,b)=>new Date(a.createdTime||0)-new Date(b.createdTime||0)).forEach((i,idx)=>numMap[i.id]=idx+1);
+  const pre=it=>useAT?('#'+numMap[it.id]+' · '+fmtD(it.createdTime)+' — '):'';
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='ideas';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls('ideas','💡 Improvements & Changes',null)+`<span class="count">${active.length}</span>`;
+  p.appendChild(head); wirePanel(p,head,'ideas');
+  const body=document.createElement('div'); body.className='panel-body';
+  // add box — saves to the Airtable Improvements table so Claude reads it directly
+  const add=document.createElement('div'); add.className='add-inline';
+  add.innerHTML='<input placeholder="Note a change / improvement…"><button class="submit-sm">Submit</button>';
+  const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';
+    if(useAT){ await createImprovement(v); } else { meta.ideas.unshift({text:v,at:Date.now()}); saveMeta(); }
+    render(); const n=document.querySelector('.panel[data-section="ideas"] .add-inline input'); if(n)n.focus();};
+  add.querySelector('button').onclick=go; add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+  body.appendChild(add);
+  // active notes (top)
+  active.forEach(it=>{const d=document.createElement('div');d.className='idea';d.innerHTML='<span>'+esc(pre(it)+it.note)+'</span>';
+    if(useAT){const sp=d.querySelector('span');sp.style.cursor='pointer';sp.title='Open — augment / reopen';sp.onclick=()=>openImprovement(it);}
+    const del=document.createElement('button');del.textContent='✕';
+    del.onclick=async()=>{ if(useAT){await deleteImprovement(it.id);} else {meta.ideas.splice(it.id,1);saveMeta();} render(); };
+    d.appendChild(del);body.appendChild(d);});
+  // acknowledged (bottom)
+  if(done.length){
+    const ack=document.createElement('div'); ack.className='ack-block';
+    const closed = meta.ackCollapsed!==false;   // default CLOSED
+    const h=document.createElement('div'); h.className='ack-h'; h.style.cursor='pointer';
+    h.textContent=(closed?'▸':'▾')+' ✓ Addressed by Claude ('+done.length+')';
+    h.onclick=()=>{ meta.ackCollapsed = closed?false:true; saveMeta(); render(); };
+    ack.appendChild(h);
+    if(!closed){ const l=document.createElement('div');
+      (useAT?doneItems:done).forEach(o=>{const di=document.createElement('div');di.className='ack-i';di.textContent='✓ '+(useAT?(pre(o)+o.note):o);
+        if(useAT){di.style.cursor='pointer';di.title='Open — see / augment / reopen';di.onclick=()=>openImprovement(o);} l.appendChild(di);});
+      ack.appendChild(l); meta.ackSeen=done.length; saveMeta(); }
+    body.appendChild(ack);
+  }
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{e.preventDefault();const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'ideas');});
+  return p;
+}
+
+function panelEl(sectionId,title,items,isDrop){
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section=sectionId;
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls(sectionId,title,items);
+  p.appendChild(head); wirePanel(p,head,sectionId);
+  head.querySelector('.send-list').onclick=()=>sendList(title,items);
+  head.querySelector('[data-m]').onclick=()=>setMax(sectionId);
+  const pb=head.querySelector('[data-pop]'); if(pb)pb.onclick=()=>popOut(sectionId,title);
+  if(SECTION_SUB[sectionId]){ const s=document.createElement('div'); s.className='panel-sub'; s.textContent=SECTION_SUB[sectionId]; p.appendChild(s); }
+  const body=document.createElement('div'); body.className='panel-body';
+  const hp=heightPx(sectionId)||((sectionId==='done'||sectionId==='dontcare'||sectionId==='autosort')?'70px':null);
+  if(hp) body.style.maxHeight=hp;   // panels otherwise auto-size to their content (align-items:start)
+
+  const list=orderRows(items,sectionId);
+  const max=(meta.max&&meta.max[sectionId])||0;
+  const shown=(max&&list.length>max&&!expanded.has(sectionId))?list.slice(0,max):list;
+  if(!list.length){ const e=document.createElement('div'); e.className='empty'; e.textContent=sectionId==='done'?'🗑 drop to complete':sectionId==='dontcare'?'🚫 drop to ignore':sectionId==='autosort'?'🔮 drop to auto-sort':'—'; body.appendChild(e); }
+  shown.forEach(t=>body.appendChild(taskEl(t,sectionId)));
+  if(max&&list.length>max){
+    const mb=document.createElement('button'); mb.className='more-btn';
+    mb.textContent=expanded.has(sectionId)?'Show less':('+'+(list.length-max)+' more');
+    mb.onclick=()=>{ expanded.has(sectionId)?expanded.delete(sectionId):expanded.add(sectionId); render(); };
+    body.appendChild(mb);
+  }
+
+  if(isDrop && sectionId!=='done' && sectionId!=='dontcare' && sectionId!=='autosort'){   // add bubble at the BOTTOM of each real section
+    const add=document.createElement('div'); add.className='add-inline';
+    add.innerHTML='<input placeholder="Add…"><button>＋</button>';
+    const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section=sectionId;if(sectionId==='calls')A(t.id).type='call';saveAug();render(); const n=document.querySelector('.panel[data-section="'+sectionId+'"] .add-inline input'); if(n)n.focus();}};
+    add.querySelector('button').onclick=go; add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+    body.appendChild(add);
+  }
+  p.appendChild(body);
+
+  p.addEventListener('drop',e=>{e.preventDefault();
+    const d=e.dataTransfer.getData('text/plain'); if(!d||d==='chip')return;
+    if(d.startsWith('panel:')){ reorderPanels(d.slice(6),sectionId); return; }
+    if(isDrop){
+      if(sectionId==='done'){ const t=tasks.find(x=>x.id===d); if(t)markDone(t); return; }
+      if(sectionId==='dontcare'){ A(d).snoozeUntil=Date.now()+30*86400000; touch(d); saveAug(); toast('🚫 Snoozed a month'); render(); return; }
+      if(sectionId==='autosort'){ const t=tasks.find(x=>x.id===d); if(t){const g=guessCategory(t);
+        if(g.project){t.project=g.project;atPatch(t.id,{Project:g.project});}
+        if(g.lead){t.lead=g.lead;atPatch(t.id,{SBLead:g.lead});}
+        A(d).section='backlog'; touch(d); saveAug();
+        toast((g.project||g.lead)?('Sorted → '+[g.project,g.lead].filter(Boolean).join(' / ')):'No confident guess'); }
+        render(); return; }
+      setSection(d,sectionId); if(sectionId==='calls'){A(d).type='call'; const rt=tasks.find(x=>x.id===d); if(rt)rt.typeRemote='call'; atPatch(d,{Type:'call'});} touch(d); render();
+    }
+  });
+  return p;
+}
+
+function taskEl(t,sectionId){
+  const a=A(t.id); const el=document.createElement('div');
+  el.className='task'+((a.blink||autoBlinkOn(t,sectionId))?' blink':'')+(sectionOf(t)==='bigticket'?' bigtix':''); el.draggable=true;
+  el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',t.id);el.classList.add('dragging');});
+  el.addEventListener('dragend',()=>el.classList.remove('dragging'));
+  // drop a task onto this one to resort within the section (or move + place)
+  el.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();el.classList.add('drop-before');});
+  el.addEventListener('dragleave',()=>el.classList.remove('drop-before'));
+  el.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();el.classList.remove('drop-before');
+    const d=e.dataTransfer.getData('text/plain'); if(!d||d==='chip'||d.startsWith('panel:')||d===t.id)return;
+    if(!BUCKETS.find(b=>b.id===sectionId)||sectionId==='done'||sectionId==='dontcare')return;
+    const src=tasks.find(x=>x.id===d); if(!src)return;
+    if(sectionOf(src)!==sectionId){ A(d).section=sectionId; if(sectionId==='calls')A(d).type='call'; }
+    reorderTask(sectionId,d,t.id);
+  });
+  const ph=phoneFor(t);
+  el.innerHTML =
+    `<div class="topright"><button class="donex" title="Quick done">✕</button><span class="age">${daysOpen(t)}d</span><button class="reveal" title="Details & actions">▸</button></div>`+
+    `<div class="name">${esc(sectionId==='bulb'?cleanName(t):displayName(t))}</div>`+
+    (()=>{const ns=a.nextStep||t.nextStepRemote; if(!ns)return''; const done=/^\s*✓/.test(ns); return `<div class="next${done?' ndone':''}">${done?'':'→ '}${esc(ns)}</div>`;})()+
+    `<div class="details">`+
+      `<div class="meta">${t.project?`<span class="tag">📁 ${esc(t.project)}</span>`:''}${t.lead?`<span class="tag">👤 ${esc(t.lead)}</span>`:''}${t.sub?`<span class="tag">${esc(t.sub)}</span>`:''}</div>`+
+    `</div>`;
+  const nm=el.querySelector('.name'); nm.style.cursor='pointer'; nm.title='Edit';
+  nm.onclick=e=>{e.stopPropagation();openDetail(t);};
+  const mas=document.createElement('div'); mas.className='mas';
+  const mk=(ltr,title,fn,on)=>{const b=document.createElement('button');b.className='masb'+(on?' on':'');b.textContent=ltr;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;};
+  mas.appendChild(mk('M','Add to morning call',()=>setSlot(t.id,'morning'), sectionOf(t)==='morning'));
+  mas.appendChild(mk('A','Add to afternoon call',()=>setSlot(t.id,'afternoon'), sectionOf(t)==='afternoon'));
+  mas.appendChild(mk('S','Snooze 3 days',()=>{A(t.id).snoozeUntil=Date.now()+3*86400000;saveAug();toast('😴 Snoozed 3 days');render();}));
+  mas.appendChild(mk('🔔','Important — tap to blink / tap to snooze 5 min',()=>{const aa=A(t.id);
+    if(aa.blink||autoBlinkOn(t,sectionId)){ if(autoBlinkOn(t,sectionId))aa.blinkSnoozeUntil=Date.now()+5*60000; aa.blink=false; toast('🔕 Snoozed 5 min'); }
+    else { aa.blink=true; }
+    saveAug();render();}, a.blink||autoBlinkOn(t,sectionId)));
+  const datb=document.createElement('button'); datb.className='masb'+(doDateOf(t)?' on':''); datb.textContent='📅'; datb.title=doDateOf(t)?('Scheduled '+doDateOf(t)):'Schedule for a date';
+  datb.onclick=e=>{ e.stopPropagation(); const r=datb.getBoundingClientRect();
+    const inp=document.createElement('input'); inp.type='date'; if(doDateOf(t))inp.value=doDateOf(t);
+    inp.style.cssText='position:fixed;left:'+Math.round(r.left)+'px;top:'+Math.round(r.bottom+4)+'px;z-index:9999;opacity:0;width:1px;height:1px';
+    document.body.appendChild(inp);
+    inp.addEventListener('change',()=>{ setDoDate(t.id,inp.value); inp.remove(); render(); });
+    inp.addEventListener('blur',()=>setTimeout(()=>{if(inp.isConnected)inp.remove();},250));
+    try{ inp.showPicker(); }catch(err){ inp.style.opacity='1'; inp.style.width='auto'; inp.style.height='auto'; inp.focus(); }
+  };
+  mas.appendChild(datb);
+  nm.after(mas);
+  const od=doDateOf(t);
+  if(od){ const db=document.createElement('div'); db.className='dobadge'+(od<=todayISO()?' due':''); db.textContent='📅 '+(od===todayISO()?'Today':od<todayISO()?('Overdue '+od):od); nm.after(db); }
+  const nx=el.querySelector('.next'); if(nx){ nx.style.cursor='pointer'; nx.title='Open task / next-step status'; nx.onclick=e=>{e.stopPropagation();openDetail(t);}; }
+  const details=el.querySelector('.details');
+  const rev=el.querySelector('.reveal');
+  rev.onclick=e=>{e.stopPropagation(); const open=el.classList.toggle('open'); rev.textContent=open?'▾':'▸';};
+  const dx=el.querySelector('.donex'); if(dx) dx.onclick=e=>{e.stopPropagation();markDone(t);};
+  const row=document.createElement('div'); row.className='row';
+  row.appendChild(btn('✓','mini done','Mark done',()=>markDone(t)));
+  row.appendChild(btn(a.blink?'🔔':'🔕','mini'+(a.blink?' on':''),'Blink/important',()=>{a.blink=!a.blink;saveAug();render();}));
+  row.appendChild(btn('📝','mini','Next step / directive',()=>editNext(t)));
+  row.appendChild(btn('✉️','mini','Send as email',()=>sendEmail(t)));
+  row.appendChild(btn('💬','mini','Send as text',()=>sendText(t)));
+  row.appendChild(btn('📤','mini','Queue a follow-up for review',()=>queueSend(t)));
+  if(!t.project||!t.lead) row.appendChild(btn('🔮','mini','Guess project/lead',()=>openDetail(t,guessCategory(t))));
+  if(ph) { const c=document.createElement('a'); c.className='mini'; c.href='tel:'+ph; c.textContent='📞'; c.title='Call '+ph; row.appendChild(c); }
+  else row.appendChild(btn('📞','mini','Add number to call',()=>{const n=prompt('Phone number for '+(t.lead||t.name));if(n){a.phone=n;saveAug();render();}}));
+  if(sectionId==='stillopen'){
+    row.appendChild(btn('Still on it','mini',' ',()=>{touch(t.id);toast('Kept — bumped');render();}));
+    row.appendChild(btn('Close','mini',' ',()=>markDone(t)));
+  }
+  details.appendChild(row);
+  return el;
+}
+function btn(txt,cls,title,fn){const b=document.createElement('button');b.className=cls;b.textContent=txt;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+// Display name: drop the "(V5-###)" id and prefix the project for context.
+// Now/Focus + Next Up always nag: their items blink unless snoozed (snooze lasts 5 min).
+function autoBlinkOn(t,sectionId){ return (sectionId==='focus'||sectionId==='nextup') && !(A(t.id).blinkSnoozeUntil>Date.now()); }
+function cleanName(t){ return (t.name||'').replace(/\s*\(V\d+-\d+\)\s*$/i,'').trim()||'(untitled)'; }
+function displayName(t){ return (t.project?t.project+' - ':'')+cleanName(t); }
+function doDateOf(t){ return t.doDate || A(t.id).doDate || ''; }
+function setDoDate(id,dateStr){ const a=A(id); a.doDate=dateStr||''; const t=tasks.find(x=>x.id===id); if(t)t.doDate=dateStr||''; saveAug(); atPatch(id,{DoDate:dateStr||''}); }
+function todayPlan(){ const td=todayISO(); return tasks.filter(t=>t.status==='Open' && doDateOf(t) && doDateOf(t)<=td).sort((a,b)=>doDateOf(a).localeCompare(doDateOf(b))); }
+
+/* ---------- Filters UI ---------- */
+function countsFor(dim){
+  const counts={}; tasks.filter(t=>t.status==='Open').forEach(t=>{const v=t[dim];if(v)counts[v]=(counts[v]||0)+1;});
+  return counts;
+}
+function orderedVals(dim,counts){
+  const all=Object.keys(counts);
+  const ord=(meta.chipOrder&&meta.chipOrder[dim])||[];
+  const inOrd=ord.filter(v=>counts[v]!=null);
+  const rest=all.filter(v=>!inOrd.includes(v)).sort((a,b)=>counts[b]-counts[a]);
+  return [...inOrd,...rest];
+}
+function reorderChip(dim,from,to){
+  let ord=orderedVals(dim,countsFor(dim)).filter(v=>v!==from);
+  const i=ord.indexOf(to); ord.splice(i<0?ord.length:i,0,from);
+  meta.chipOrder=meta.chipOrder||{}; meta.chipOrder[dim]=ord; saveMeta(); render();
+}
+function renderFilters(){
+  const wrap=document.getElementById('filters'); wrap.innerHTML='';
+  ['project','lead','sub'].forEach(dim=>{                 // each dimension on its own line
+    const g=document.createElement('div'); g.className='filter-group';
+    const counts=countsFor(dim);
+    const lbl=document.createElement('span'); lbl.className='lbl'; lbl.textContent=dim; g.appendChild(lbl);
+    orderedVals(dim,counts).forEach(v=>g.appendChild(filterChip(dim,v,counts[v])));   // show ALL
+    const addc=document.createElement('button'); addc.className='chip'; addc.textContent='＋'; addc.title='New '+dim;
+    addc.onclick=()=>{ const v=prompt('New '+dim+' name:'); if(v&&v.trim()){ activeBulb={dim,val:v.trim(),label:v.trim()}; flashBulb=true; render(); } };
+    g.appendChild(addc);
+    wrap.appendChild(g);
+  });
+  // 4th line: categories (Big Ticket, Calls, etc.) — not project/lead/sub
+  const cg=document.createElement('div'); cg.className='filter-group';
+  const clbl=document.createElement('span'); clbl.className='lbl'; clbl.textContent='category'; cg.appendChild(clbl);
+  CATEGORIES.forEach(c=>{
+    const n=c.id==='stillopen'?stillOpenItems().length:c.id==='priority'?priorityList().length:c.id==='today'?todayPlan().length:c.id==='yestboard'?yesterdayBoard().length:tasks.filter(t=>t.status==='Open'&&sectionOf(t)===c.id).length;
+    const b=document.createElement('button'); b.className='chip'; b.innerHTML=esc(c.name)+`<span class="n">${n}</span>`;
+    b.onclick=()=>{ activeBulb={dim:'category',val:c.id,label:c.name}; flashBulb=true; render(); };
+    cg.appendChild(b);
+  });
+  wrap.appendChild(cg);
+  // 5th line: tasks by date added
+  const ag=document.createElement('div'); ag.className='filter-group';
+  const albl=document.createElement('span'); albl.className='lbl'; albl.textContent='added'; ag.appendChild(albl);
+  ADDED_RANGES.forEach(r=>{
+    const n=tasks.filter(t=>inAddedRange(t,r.key)).length;
+    const b=document.createElement('button'); b.className='chip'; b.innerHTML=esc(r.name)+`<span class="n">${n}</span>`;
+    b.onclick=()=>{ activeBulb={dim:'added',val:r.key,label:r.name}; flashBulb=true; render(); };
+    ag.appendChild(b);
+  });
+  wrap.appendChild(ag);
+}
+function filterChip(dim,val,n){
+  const c=document.createElement('button'); c.className='chip'; c.draggable=true;
+  c.innerHTML=esc(val)+`<span class="n">${n}</span>`;
+  c.onclick=()=>{ activeBulb={dim,val}; flashBulb=true; render(); };   // opens as a board panel next to Incoming
+  c.addEventListener('dragstart',e=>{dragChip={dim,val};e.dataTransfer.setData('text/plain','chip');e.stopPropagation();});
+  c.addEventListener('dragover',e=>e.preventDefault());
+  c.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();if(dragChip&&dragChip.dim===dim){reorderChip(dim,dragChip.val,val);}dragChip=null;});
+  return c;
+}
+
+/* ---------- Actions ---------- */
+async function markDone(t){ t.status='Done'; A(t.id).section=null; t.sectionRemote=''; saveAug(); render(); await atPatch(t.id,{Status:'Done',Section:''}); toast('✅ Done'); }
+function editNext(t){
+  openModal(`Next step for "${t.name}"`, `
+    <label class="field"><span class="lbl">What to do (free text — I'll act on it)</span>
+      <textarea class="inp" id="ns" placeholder="e.g. Text Gary about the quote">${esc(A(t.id).nextStep||'')}</textarea></label>
+    <label class="field"><span class="lbl">Type</span>
+      <select class="inp" id="nt">
+        <option value="">—</option><option value="text">Text</option><option value="email">Email</option>
+        <option value="call">Call</option><option value="follow">Follow up</option>
+      </select></label>
+    <div class="note">Tip: leave a type and it routes to the right button. "Follow up" keeps nagging until you mark it done.</div>`,
+    ()=>{const v=document.getElementById('ns').value.trim();const ty=document.getElementById('nt').value;
+      const a=A(t.id); a.nextStep=v; if(ty)a.type=ty; if(ty==='follow')a.awaiting=true; touch(t.id); saveAug(); render();});
+  // suggestion (tiny "learning" heuristic)
+  setTimeout(()=>{const g=guessNext(t); if(g&&!A(t.id).nextStep){const el=document.getElementById('ns'); if(el&&!el.value)el.placeholder='Suggested: '+g;}},0);
+}
+function guessNext(t){
+  const n=(t.name||'').toLowerCase();
+  if(n.startsWith('call')) return 'Call '+(t.lead||'them');
+  if(n.startsWith('email')) return 'Email '+(t.lead||'them');
+  if(n.startsWith('text')||n.startsWith('whatsapp')) return 'Text '+(t.lead||'them');
+  if(t.lead) return 'Follow up with '+t.lead;
+  return null;
+}
+// "Learning" v1: guess project/lead for an unsorted task by matching the most
+// similar already-categorized task (shared keywords). Opens for your approval.
+function guessCategory(t){
+  const words=(t.name||'').toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>3);
+  let best=null,score=0;
+  for(const o of tasks){
+    if(o.id===t.id || (!o.project&&!o.lead)) continue;
+    const ow=(o.name||'').toLowerCase(); let s=0; words.forEach(w=>{if(ow.includes(w))s++;});
+    if(s>score){score=s;best=o;}
+  }
+  return (best&&score>0)?{project:t.project||best.project,lead:t.lead||best.lead}:{};
+}
+function sendText(t){
+  const body=A(t.id).nextStep||t.name; const ph=phoneFor(t);
+  window.open('sms:'+(ph||'')+'&body='+encodeURIComponent(body),'_blank');
+  A(t.id).awaiting=true; touch(t.id); saveAug();
+}
+function sendEmail(t){
+  const body=A(t.id).nextStep||t.name;
+  window.open('mailto:?subject='+encodeURIComponent(t.name)+'&body='+encodeURIComponent(body),'_blank');
+  A(t.id).awaiting=true; touch(t.id); saveAug();
+}
+
+/* ---------- Task detail / edit ---------- */
+function openDetail(t,guess){
+  const a=A(t.id); guess=guess||{};
+  const gp=t.project||guess.project||'', gl=t.lead||guess.lead||'', gs=t.sub||'';
+  const uniq=dim=>[...new Set(tasks.map(x=>x[dim]).filter(Boolean))].sort();
+  const dl=(id,dim)=>`<datalist id="${id}">${uniq(dim).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`;
+  const secOpts=BUCKETS.map(b=>`<option value="${b.id}"${sectionOf(t)===b.id?' selected':''}>${b.name}</option>`).join('');
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML=`<div class="modal"><h3>Edit task</h3>
+    <div class="note" style="margin:0 0 8px">ID: ${esc(t.id)}</div>
+    <label class="field"><span class="lbl">Task</span><input class="inp" id="d_name" value="${esc(t.name)}"></label>
+    <label class="field"><span class="lbl">Project${guess.project&&!t.project?' · guessed':''}</span><input class="inp" id="d_proj" list="dl_proj" value="${esc(gp)}" placeholder="type or pick…">${dl('dl_proj','project')}</label>
+    <label class="field"><span class="lbl">Lead${guess.lead&&!t.lead?' · guessed':''}</span><input class="inp" id="d_lead" list="dl_lead" value="${esc(gl)}" placeholder="type or pick…">${dl('dl_lead','lead')}</label>
+    <label class="field"><span class="lbl">Sub</span><input class="inp" id="d_sub" list="dl_sub" value="${esc(gs)}" placeholder="type or pick…">${dl('dl_sub','sub')}</label>
+    <label class="field"><span class="lbl">Section</span><select class="inp" id="d_sec">${secOpts}</select></label>
+    <label class="field"><span class="lbl">Next step</span><input class="inp" id="d_next" value="${esc(a.nextStep||'')}"></label>
+    <div class="modal-actions">
+      <button class="btn ghost" data-del>Delete</button>
+      <button class="btn" data-done>✓ Done</button>
+      <button class="btn ghost" data-x>Cancel</button>
+      <button class="btn primary" data-ok>Save</button>
+    </div></div>`;
+  bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();});
+  bd.querySelector('[data-x]').onclick=()=>bd.remove();
+  bd.querySelector('[data-done]').onclick=()=>{bd.remove();markDone(t);};
+  bd.querySelector('[data-del]').onclick=async()=>{ if(!confirm('Delete this task?'))return; bd.remove();
+    tasks=tasks.filter(x=>x.id!==t.id); delete aug[t.id]; saveAug(); render(); await atDelete(t.id); toast('Deleted'); };
+  bd.querySelector('[data-ok]').onclick=async()=>{
+    const g=id=>bd.querySelector(id).value.trim();
+    t.name=g('#d_name'); t.project=g('#d_proj'); t.lead=g('#d_lead'); t.sub=g('#d_sub');
+    a.section=g('#d_sec'); a.nextStep=g('#d_next'); touch(t.id); saveAug(); bd.remove(); render();
+    await atPatch(t.id,{Task:t.name,Project:t.project,SBLead:t.lead,Sub:t.sub}); toast('Saved');
+  };
+  document.body.appendChild(bd); bd.querySelector('#d_name').focus();
+}
+
+/* ---------- Send a whole list ---------- */
+function sendList(title,items){
+  if(!items.length){ toast('Nothing in this list'); return; }
+  const body=title.replace(/^[^\w]+/,'')+':\n'+items.map((t,i)=>(i+1)+'. '+t.name).join('\n');
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML=`<div class="modal"><h3>Send "${esc(title)}"</h3>
+    <textarea class="inp" id="sl" style="min-height:140px">${esc(body)}</textarea>
+    <div class="modal-actions"><button class="btn ghost" data-x>Cancel</button>
+    <button class="btn" data-sms>💬 Text</button><button class="btn primary" data-mail>✉️ Email</button></div></div>`;
+  bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();});
+  bd.querySelector('[data-x]').onclick=()=>bd.remove();
+  bd.querySelector('[data-sms]').onclick=()=>{window.open('sms:&body='+encodeURIComponent(bd.querySelector('#sl').value),'_blank');bd.remove();};
+  bd.querySelector('[data-mail]').onclick=()=>{window.open('mailto:?subject='+encodeURIComponent(title)+'&body='+encodeURIComponent(bd.querySelector('#sl').value),'_blank');bd.remove();};
+  document.body.appendChild(bd);
+}
+
+/* ---------- Add / photo ---------- */
+function addTask(){
+  openModal('Add task',`<label class="field"><span class="lbl">Task</span><input class="inp" id="nt" placeholder="What needs doing?"></label>`,
+   async()=>{const v=document.getElementById('nt').value.trim(); if(!v)return; const t=await atCreate(v); if(t){toast('Added');render();}});
+}
+async function photoToList(file){
+  if(!cfg.anthropicKey){ toast('Add an Anthropic key in ⚙︎ to read photos'); return; }
+  toast('Reading photo…');
+  const b64=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.readAsDataURL(file);});
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{
+      'content-type':'application/json','x-api-key':cfg.anthropicKey,'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:cfg.model||'claude-haiku-4-5-20251001',max_tokens:400,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:file.type||'image/jpeg',data:b64}},
+          {type:'text',text:'Extract action items / list items from this image. Return ONLY a JSON array of short task strings.'}]}]})});
+    const d=await r.json(); const txt=(d.content||[]).map(c=>c.text||'').join('');
+    const arr=JSON.parse(txt.match(/\[[\s\S]*\]/)[0]);
+    for(const name of arr){ await atCreate(String(name)); }
+    toast('Added '+arr.length+' items'); render();
+  }catch(e){ toast('Could not read photo'); }
+}
+
+/* Float a section out into its own always-on-top browser window. It's a live
+   snapshot (re-open or hit its refresh to update after changes in the app). */
+function popOut(sectionId,title){
+  const rows = sectionId==='stillopen' ? stillOpenItems()
+             : tasks.filter(t=>t.status==='Open' && sectionOf(t)===sectionId);
+  const w=window.open('','pop_'+sectionId,'width=340,height=620,menubar=no,toolbar=no');
+  if(!w){ toast('Allow pop-ups to float a panel out'); return; }
+  const body = rows.length
+    ? rows.map(t=>`<div class="t">${esc(displayName(t))}${(t.lead||t.sub)?`<div class="m">${esc([t.lead,t.sub].filter(Boolean).join(' · '))}</div>`:''}</div>`).join('')
+    : '<div class="m">Empty</div>';
+  w.document.write(`<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(title)}</title>
+    <style>body{margin:0;background:#14110f;color:#f5f3ee;font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:12px}
+    h3{margin:0 0 10px;font-size:15px} .t{background:#241f1b;border:1px solid #2c2723;border-radius:8px;padding:8px 10px;margin-bottom:6px}
+    .m{color:#a8a29a;font-size:12px} .hint{color:#a8a29a;font-size:11px;margin-bottom:10px}</style>
+    <h3>${esc(title)} — ${rows.length}</h3><div class="hint">Snapshot · click ⧉ in the app again to update</div>${body}`);
+  w.document.close();
+}
+
+/* Bulk add — paste a list, one task per line. A first line like "YOSS 07.08.26"
+   auto-sets the project for all of them. New items land in Incoming. */
+function bulkAdd(){
+  openModal('📋 Bulk add tasks', `
+    <label class="field"><span class="lbl">Project (optional — applies to all)</span><input class="inp" id="bp" placeholder="e.g. YOSS"></label>
+    <label class="field"><span class="lbl">One task per line</span><textarea class="inp" id="bl" placeholder="Paste your list here…"></textarea></label>
+    <div class="note">Tip: a first line like “YOSS 07.08.26” auto-fills the project and is skipped.</div>`,
+   async()=>{
+     let proj=document.getElementById('bp').value.trim();
+     let lines=document.getElementById('bl').value.split('\n').map(s=>s.trim()).filter(Boolean);
+     if(!proj && lines.length){ const m=lines[0].match(/^([A-Za-z0-9&]{2,})\s+\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}$/); if(m){proj=m[1];lines=lines.slice(1);} }
+     let n=0;
+     for(const name of lines){ const t=await atCreate(name); if(t){ A(t.id).section='incoming'; if(proj){t.project=proj; await atPatch(t.id,{Project:proj});} n++; } }
+     saveAug(); render(); toast('Added '+n+' task'+(n===1?'':'s')+(proj?' to '+proj:''));
+   });
+}
+
+/* Quick link: today's meetings — dial-in + what's queued in the call sections */
+function meetingsModal(){
+  const today=todayISO();
+  const evs=calendar.filter(e=>e.date===today).sort((a,b)=>a.sort-b.sort);
+  const evHtml=evs.length? evs.map(e=>`<div class="cal-ev"><div class="cal-when">${esc(e.when)}</div><div class="cal-title">${esc(e.title)}</div>${e.location?`<div class="cal-loc">📍 ${esc(e.location)}</div>`:''}${meetingLink(e)}</div>`).join('') : '<div class="ack-i">No calendar events today.</div>';
+  const q=sec=>tasks.filter(t=>t.status==='Open'&&sectionOf(t)===sec);
+  const list=arr=>arr.length?arr.map(t=>'<div class="ack-i">• '+esc(displayName(t))+'</div>').join(''):'<div class="ack-i">—</div>';
+  openModal("📅 Today's meetings",
+    '<div class="ack-h">📆 Calendar</div>'+evHtml+
+    '<div class="note" style="margin:12px 0 10px">📞 Team room: <a class="joinbtn" href="https://meetings.dialpad.com/room/rbenjamini" target="_blank" rel="noopener">Dialpad ↗</a></div>'+
+    '<div class="ack-h">🌅 Morning call agenda</div>'+list(q('morning'))+
+    '<div class="ack-h" style="margin-top:10px">☀️ Afternoon call agenda</div>'+list(q('afternoon')),
+    null);
+}
+
+/* ---------- Modal ---------- */
+function openModal(title,html,onSave){
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML=`<div class="modal"><h3>${esc(title)}</h3>${html}
+    <div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" data-ok>Save</button></div></div>`;
+  bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();});
+  bd.querySelector('[data-x]').onclick=()=>bd.remove();
+  bd.querySelector('[data-ok]').onclick=()=>{ onSave&&onSave(); bd.remove(); };
+  document.body.appendChild(bd);
+  const f=bd.querySelector('input,textarea,select'); if(f)f.focus();
+}
+function openSettings(){
+  openModal('Settings',`
+    <label class="field"><span class="lbl">Airtable API key (Personal Access Token)</span><input class="inp" id="k" value="${esc(cfg.apiKey||'')}" placeholder="pat..."></label>
+    <label class="field"><span class="lbl">Airtable Base ID</span><input class="inp" id="b" value="${esc(cfg.baseId)}"></label>
+    <label class="field"><span class="lbl">Airtable Table ID</span><input class="inp" id="tb" value="${esc(cfg.tableId)}"></label>
+    <label class="field"><span class="lbl">Anthropic API key (optional — photo→list)</span><input class="inp" id="an" value="${esc(cfg.anthropicKey||'')}" placeholder="sk-ant-..."></label>
+    <div class="field" style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn primary" onclick="saveLayout()">💾 Save my layout</button><button type="button" class="btn" onclick="restoreLayout()">↩ Restore saved</button><button type="button" class="btn" onclick="fitToScreen()">⛶ Fit to screen</button><button type="button" class="btn ghost" onclick="resetLayout()">↺ Reset</button></div>
+    <div class="note">Keys are stored only in this browser (localStorage). Scope the Airtable token to just this base. Drag panels by their header; drag the bottom-right corner to resize.</div>`,
+   ()=>{cfg.apiKey=val('k');cfg.baseId=val('b');cfg.tableId=val('tb');cfg.anthropicKey=val('an');saveCfg();atFetch();});
+}
+const val=id=>document.getElementById(id).value.trim();
+
+/* ---------- Reference grid overlay ---------- */
+function buildGrid(){
+  const g=document.getElementById('grid'); g.innerHTML='';
+  const cw=140, ch=120, cols=Math.ceil(innerWidth/cw), rows=Math.ceil(innerHeight/ch);
+  const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
+    const c=document.createElement('div'); c.className='gcell';
+    c.style.cssText=`left:${x*cw}px;top:${y*ch}px;width:${cw}px;height:${ch}px`;
+    const l=document.createElement('div'); l.className='glabel';
+    l.style.cssText=`left:${x*cw+2}px;top:${y*ch+2}px`; l.textContent=letters[x%26]+(y+1);
+    g.appendChild(c); g.appendChild(l);
+  }
+}
+
+/* ---------- Wire up ---------- */
+function minsSince(ms){ return ms?Math.max(0,Math.round((Date.now()-ms)/60000)):null; }
+function buildMs(){ try{ return new Date(BUILD.replace(' ','T')).getTime(); }catch(e){ return 0; } }
+function updateAgo(){ const bt=document.getElementById('buildTag'); if(!bt)return;
+  const u=minsSince(buildMs()); const r=lastFetchAt?minsSince(lastFetchAt):null;
+  bt.textContent='🔄 '+(r==null?'—':r+'m')+' · 🔧 '+(u==null?'?':u+'m'); bt.title='Data refreshed '+(r==null?'never':r+'m ago')+' · app updated '+(u==null?'?':u+'m ago'); }
+updateAgo(); setInterval(updateAgo,30000);
+setInterval(()=>{ if(cfg.apiKey) atFetch(); }, 30*60*1000);   // auto-refresh data every 30 min
+setInterval(()=>{ if(!document.querySelector('.backdrop')) render(); }, 60000);   // re-check blink snoozes (~1 min)
+document.getElementById('search').addEventListener('input',e=>{query=e.target.value;renderSearch();});
+document.addEventListener('click',e=>{ if(!e.target.closest('#searchResults')&&e.target.id!=='search'){const b=document.getElementById('searchResults'); if(b)b.classList.add('hidden');} });
+function renderSearch(){
+  const box=document.getElementById('searchResults'); const q=query.trim().toLowerCase();
+  if(!q){ box.classList.add('hidden'); box.innerHTML=''; return; }
+  const matches=tasks.filter(t=>t.status==='Open' && (t.name+' '+t.project+' '+t.lead+' '+t.sub).toLowerCase().includes(q)).slice(0,60);
+  box.innerHTML = matches.length
+    ? matches.map(t=>`<div class="sr" data-id="${t.id}"><div>${esc(displayName(t))}</div><div class="m">${esc([t.lead,t.sub].filter(Boolean).join(' · '))||'—'}</div></div>`).join('')
+    : '<div class="sr m">No matches</div>';
+  box.classList.remove('hidden');
+  box.querySelectorAll('.sr[data-id]').forEach(el=>el.onclick=()=>{const t=tasks.find(x=>x.id===el.dataset.id); box.classList.add('hidden'); document.getElementById('search').value=''; query=''; if(t)openDetail(t);});
+}
+document.getElementById('refreshBtn').onclick=()=>location.reload();   // full reload, like the address bar
+document.getElementById('settingsBtn').onclick=openSettings;
+document.getElementById('addBtn').onclick=addTask;
+document.getElementById('picBtn').onclick=()=>document.getElementById('picInput').click();
+document.getElementById('meetBtn').onclick=meetingsModal;
+document.getElementById('bulkBtn').onclick=bulkAdd;
+document.getElementById('picInput').onchange=e=>{if(e.target.files[0])photoToList(e.target.files[0]);};
+document.getElementById('gridBtn').onclick=()=>{const g=document.getElementById('grid');g.classList.toggle('on');document.getElementById('gridBtn').classList.toggle('on',g.classList.contains('on'));if(g.classList.contains('on'))buildGrid();};
+let _rsT; addEventListener('resize',()=>{if(document.getElementById('grid').classList.contains('on'))buildGrid(); clearTimeout(_rsT); _rsT=setTimeout(render,200);});
+
+/* first load: render, then fetch; auto-refresh once/day */
+dailyReset();
+if(cfg.apiKey){ render(); atFetch(); }
+else { tasks=demoTasks(); render(); toast('Demo data — add your Airtable key in ⚙︎ to load real tasks'); }
+</script>
+</body>
+</html>
