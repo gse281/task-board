@@ -197,7 +197,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-20 14:23';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-20 14:46';   // replaced with deploy date/time by deploy.sh
 /* ============================================================
    Task Dashboard — single-file, no build step.
    Data: Airtable (paste token in ⚙︎ Settings, stored locally).
@@ -401,7 +401,8 @@ async function atFetch(){
       slotRemote:(flat(rec.fields.MeetingSlot)||'').toLowerCase(),
       sectionRemote:(flat(rec.fields.Section)||'').toLowerCase(),
       priorityRemote:+flat(rec.fields.Priority)||0,
-      doDate:(flat(rec.fields.DoDate)||'').slice(0,10)
+      doDate:(flat(rec.fields.DoDate)||'').slice(0,10),
+      updatedAt:flat(rec.fields.UpdatedAt)
     })));
     offset=d.offset;
   }while(offset&&++g<50);
@@ -703,6 +704,11 @@ function bulbPanel(){
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length){const e=document.createElement('div');e.className='empty';e.textContent='Nothing open here.';body.appendChild(e);}
   items.forEach(t=>body.appendChild(taskEl(t,isAdded?'added':'bulb')));
+  if(isCat && val==='calls'){ const past=pastCalls();
+    if(past.length){ const h=document.createElement('div'); h.className='ack-h'; h.style.margin='8px 0 4px'; h.textContent='📞 Past calls — last 14 days'; body.appendChild(h);
+      past.forEach(t=>{ const d=document.createElement('div'); d.className='txt-item';
+        d.innerHTML='<div class="txt-prev">✓ '+esc(cleanName(t))+' <span class="txt-when">'+esc((t.updatedAt||'').slice(0,10))+'</span></div>';
+        body.appendChild(d); }); } }
   if(!isAdded && !(isCat && ['stillopen','priority','yestboard','today'].includes(val))){
     const add=document.createElement('div'); add.className='add-inline';
     add.innerHTML='<input placeholder="Add to '+esc(isCat?label:val)+'…"><button>＋</button>';
@@ -1203,7 +1209,9 @@ function taskEl(t,sectionId){
     else { aa.blink=true; }
     saveAug();render();}, a.blink||autoBlinkOn(t,sectionId)));
   const datb=document.createElement('button'); datb.className='masb'+(doDateOf(t)?' on':''); datb.textContent='📅'; datb.title=doDateOf(t)?('Scheduled '+doDateOf(t)):'Schedule for a date';
-  datb.onclick=e=>{ e.stopPropagation(); const r=datb.getBoundingClientRect();
+  datb.onclick=e=>{ e.stopPropagation();
+    if(isMobileView()){ openDatePicker(t); return; }   // phones: use a real, visible picker
+    const r=datb.getBoundingClientRect();
     const inp=document.createElement('input'); inp.type='date'; if(doDateOf(t))inp.value=doDateOf(t);
     inp.style.cssText='position:fixed;left:'+Math.round(r.left)+'px;top:'+Math.round(r.bottom+4)+'px;z-index:9999;opacity:0;width:1px;height:1px';
     document.body.appendChild(inp);
@@ -1245,8 +1253,26 @@ function autoBlinkOn(t,sectionId){ return (sectionId==='focus'||sectionId==='nex
 function cleanName(t){ return (t.name||'').replace(/\s*\(V\d+-\d+\)\s*$/i,'').trim()||'(untitled)'; }
 function displayName(t){ return (t.project?t.project+' - ':'')+cleanName(t); }
 function doDateOf(t){ return t.doDate || A(t.id).doDate || ''; }
+// Phone-friendly date picker (a real visible input, so iOS shows its wheel properly).
+function openDatePicker(t){
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML=`<div class="modal"><h3>📅 Schedule</h3>
+    <div class="note" style="margin-bottom:8px">${esc(cleanName(t))}</div>
+    <input class="inp" id="dp_date" type="date" value="${esc(doDateOf(t))}">
+    <div class="modal-actions"><button class="btn ghost" data-clear>Clear</button><button class="btn ghost" data-x>Cancel</button><button class="btn primary" data-ok>Save</button></div></div>`;
+  bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();});
+  bd.querySelector('[data-x]').onclick=()=>bd.remove();
+  bd.querySelector('[data-clear]').onclick=()=>{bd.remove(); setDoDate(t.id,''); render();};
+  bd.querySelector('[data-ok]').onclick=()=>{const v=bd.querySelector('#dp_date').value; bd.remove(); setDoDate(t.id,v); render();};
+  document.body.appendChild(bd);
+}
 function setDoDate(id,dateStr){ const a=A(id); a.doDate=dateStr||''; const t=tasks.find(x=>x.id===id); if(t)t.doDate=dateStr||''; saveAug(); atPatch(id,{DoDate:dateStr||''}); }
 function todayPlan(){ const td=todayISO(); return tasks.filter(t=>t.status==='Open' && doDateOf(t) && doDateOf(t)<=td).sort((a,b)=>doDateOf(a).localeCompare(doDateOf(b))); }
+function isCallTask(t){ return t.typeRemote==='call' || t.sectionRemote==='calls' || A(t.id).type==='call' || /^\s*call\b/i.test(t.name||''); }
+// Calls you already handled, so you can look back at previous days' call lists.
+function pastCalls(){ const cut=Date.now()-14*86400000;
+  return tasks.filter(t=>t.status==='Done' && isCallTask(t) && t.updatedAt && new Date(t.updatedAt).getTime()>=cut)
+    .sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)); }
 
 /* ---------- Filters UI ---------- */
 function countsFor(dim){
