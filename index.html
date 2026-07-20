@@ -200,7 +200,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-20 18:35';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-20 18:37';   // replaced with deploy date/time by deploy.sh
 /* ============================================================
    Task Dashboard — single-file, no build step.
    Data: Airtable (paste token in ⚙︎ Settings, stored locally).
@@ -774,7 +774,7 @@ function mobileSlotPanel(title,slot){
     const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t); d.appendChild(nm);
     const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); d.appendChild(done);
     body.appendChild(d);});
-  if(items.length>5){const m=document.createElement('button'); m.className='more-btn'; m.textContent='+'+(items.length-5)+' more'; m.onclick=()=>{activeBulb={dim:'category',val:slot,label:title};render();}; body.appendChild(m);}
+  if(items.length>5){const m=document.createElement('button'); m.className='more-btn'; m.textContent='+'+(items.length-5)+' more — tap to see all'; m.onclick=()=>{activeBulb={dim:'category',val:slot,label:title};render();}; body.appendChild(m);}
   p.appendChild(body); return p;
 }
 function openPicker(dim){
@@ -806,7 +806,7 @@ function mobileCalls(){
     else { const b=document.createElement('button'); b.className='mcall add'; b.textContent='＋#'; b.onclick=()=>{const n=prompt('Number for '+(t.lead||t.name)); if(n){A(t.id).phone=n;saveAug();render();}}; d.appendChild(b); }
     const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); d.appendChild(done);
     body.appendChild(d);});
-  if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more';m.onclick=()=>{activeBulb={dim:'category',val:'calls',label:'📞 Calls'};render();};body.appendChild(m);}
+  if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'calls',label:'📞 Calls'};render();};body.appendChild(m);}
   const add=document.createElement('div');add.className='add-inline';add.innerHTML='<input placeholder="Add a call…"><button>＋</button>';
   const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).type='call';t.typeRemote='call';saveAug();atPatch(t.id,{Type:'call'});render();}};
   add.querySelector('button').onclick=go;add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
