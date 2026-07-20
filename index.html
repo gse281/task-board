@@ -91,6 +91,7 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .madd button{background:var(--accent);border:none;color:#14110f;border-radius:11px;padding:0 18px;font-weight:800;font-size:15px}
 .mrow{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:7px}
 .mrow-name{flex:1;font-weight:600;font-size:15px}
+.mnum{font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
 .mcall{background:var(--green);color:#fff;border:none;border-radius:10px;padding:9px 15px;font-size:18px;text-decoration:none;display:inline-block}
 .mcall.add{background:var(--panel);color:var(--muted);border:1px solid var(--line);font-size:14px}
 .mcall.done2{background:var(--panel);color:var(--green);border:1px solid var(--line)}
@@ -200,7 +201,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-20 18:37';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-20 18:48';   // replaced with deploy date/time by deploy.sh
 /* ============================================================
    Task Dashboard — single-file, no build step.
    Data: Airtable (paste token in ⚙︎ Settings, stored locally).
@@ -269,6 +270,12 @@ const PHONE = {
  "Cristen Flores":"+13475002702","Cesar Green Global Melendez":"+13476753315","Leora":"+18186325428",
  "MF Michelle Falls":"+13477712078","RKE Rebecca Eaker":"+12819246125"
 };
+// Saving a number writes it to Airtable too, so the iPhone gets it as well.
+function savePhone(t,n){
+  n=(n||'').trim(); if(!n) return;
+  A(t.id).phone=n; t.phoneRemote=n; saveAug(); atPatch(t.id,{Phone:n}); render();
+}
+function askPhone(t){ savePhone(t, prompt('Phone number for '+(t.lead||cleanName(t))||'')); }
 function phoneFor(t){
   const a=A(t.id); if(t.phoneRemote) return t.phoneRemote; if(a.phone) return a.phone;
   const key=Object.keys(PHONE).find(n=> (t.lead&&t.lead.includes(n))||(t.name&&t.name.includes(n)));
@@ -757,11 +764,30 @@ function renderMobile(board){
   board.appendChild(qa);
   // drilled-in bulb (from a picker) shows here
   if(activeBulb) board.appendChild(bulbPanel());
-  // always-visible bubbles: Calls + Morning/Afternoon calls + Meetings
+  // always-visible bubbles: Incoming + Calls + Morning/Afternoon calls + Meetings
+  board.appendChild(mobileIncoming());
   board.appendChild(mobileCalls());
   board.appendChild(mobileSlotPanel('🌅 Morning call','morning'));
   board.appendChild(mobileSlotPanel('☀️ Afternoon call','afternoon'));
   board.appendChild(mobileMeetings());
+}
+// 📥 Incoming on the phone — same rule as desktop (today's items only), so what
+// you drop into Incoming on the Mac shows up here (Section syncs via Airtable).
+function mobileIncoming(){
+  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)==='incoming'&&daysOpen(t)===0)
+                   .sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
+  const p=document.createElement('div'); p.className='panel';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>📥 Incoming</h3><span class="count">'+items.length+'</span>';
+  p.appendChild(head);
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!items.length) body.innerHTML='<div class="empty">Nothing new today.</div>';
+  items.slice(0,5).forEach(t=>{const ph=phoneFor(t); const d=document.createElement('div'); d.className='mrow';
+    const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t); d.appendChild(nm);
+    if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; d.appendChild(c); }
+    const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); d.appendChild(done);
+    body.appendChild(d);});
+  if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'incoming',label:'📥 Incoming'};render();};body.appendChild(m);}
+  p.appendChild(body); return p;
 }
 function mobileSlotPanel(title,slot){
   const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)===slot).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
@@ -770,8 +796,11 @@ function mobileSlotPanel(title,slot){
   p.appendChild(head);
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length) body.innerHTML='<div class="empty">—</div>';
-  items.slice(0,5).forEach(t=>{const d=document.createElement('div'); d.className='mrow';
+  // Morning/Afternoon are call slots — same tap-to-call treatment as 📞 Calls.
+  items.slice(0,5).forEach(t=>{const ph=phoneFor(t); const d=document.createElement('div'); d.className='mrow';
     const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t); d.appendChild(nm);
+    if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; d.appendChild(c); }
+    else { const b=document.createElement('button'); b.className='mcall add'; b.textContent='＋#'; b.onclick=()=>askPhone(t); d.appendChild(b); }
     const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); d.appendChild(done);
     body.appendChild(d);});
   if(items.length>5){const m=document.createElement('button'); m.className='more-btn'; m.textContent='+'+(items.length-5)+' more — tap to see all'; m.onclick=()=>{activeBulb={dim:'category',val:slot,label:title};render();}; body.appendChild(m);}
@@ -801,9 +830,11 @@ function mobileCalls(){
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length) body.innerHTML='<div class="empty">No calls queued.</div>';
   items.slice(0,5).forEach(t=>{const ph=phoneFor(t); const d=document.createElement('div'); d.className='mrow';
-    const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t); d.appendChild(nm);
+    const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t);
+    if(ph){ const s=document.createElement('div'); s.className='mnum'; s.textContent=ph; nm.appendChild(s); }
+    d.appendChild(nm);
     if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; d.appendChild(c); }
-    else { const b=document.createElement('button'); b.className='mcall add'; b.textContent='＋#'; b.onclick=()=>{const n=prompt('Number for '+(t.lead||t.name)); if(n){A(t.id).phone=n;saveAug();render();}}; d.appendChild(b); }
+    else { const b=document.createElement('button'); b.className='mcall add'; b.textContent='＋#'; b.onclick=()=>askPhone(t); d.appendChild(b); }
     const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); d.appendChild(done);
     body.appendChild(d);});
   if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'calls',label:'📞 Calls'};render();};body.appendChild(m);}
@@ -1252,7 +1283,7 @@ function taskEl(t,sectionId){
   row.appendChild(btn('📤','mini','Queue a follow-up for review',()=>queueSend(t)));
   if(!t.project||!t.lead) row.appendChild(btn('🔮','mini','Guess project/lead',()=>openDetail(t,guessCategory(t))));
   if(ph) { const c=document.createElement('a'); c.className='mini'; c.href='tel:'+ph; c.textContent='📞'; c.title='Call '+ph; row.appendChild(c); }
-  else row.appendChild(btn('📞','mini','Add number to call',()=>{const n=prompt('Phone number for '+(t.lead||t.name));if(n){a.phone=n;saveAug();render();}}));
+  else row.appendChild(btn('📞','mini','Add number to call',()=>askPhone(t)));
   if(sectionId==='stillopen'){
     row.appendChild(btn('Still on it','mini',' ',()=>{touch(t.id);toast('Kept — bumped');render();}));
     row.appendChild(btn('Close','mini',' ',()=>markDone(t)));
