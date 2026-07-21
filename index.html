@@ -57,7 +57,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .panel.stub .panel-body{align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:18px}
 
 /* Task card */
-.task{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px;cursor:grab;position:relative}
+.task{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px 7px;cursor:grab;position:relative}
 .task:active{cursor:grabbing}
 .task.blink{animation:blink 1s ease-in-out infinite;border-color:var(--accent)}
 @keyframes blink{0%,100%{box-shadow:0 0 0 0 rgba(224,164,88,.0)}50%{box-shadow:0 0 0 3px rgba(224,164,88,.55)}}
@@ -89,7 +89,11 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .madd{display:flex;gap:6px;margin-bottom:10px}
 .madd input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:12px;font-size:16px}
 .madd button{background:var(--accent);border:none;color:#14110f;border-radius:11px;padding:0 18px;font-weight:800;font-size:15px}
-.mrow{display:flex;align-items:center;gap:10px;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:7px}
+.mrow{position:relative;overflow:hidden;background:var(--panel2);border:1px solid var(--line);border-radius:11px;margin-bottom:6px}
+.mrow-inner{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--panel2);position:relative;z-index:1;transition:transform .18s ease}
+.mrow-actions{position:absolute;right:0;top:0;height:100%;display:flex;align-items:center;gap:4px;padding:0 6px;z-index:0}
+.trayb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:8px 9px;font-size:14px;font-weight:800;line-height:1}
+.trayb.on{background:var(--accent);border-color:var(--accent);color:#14110f}
 .mrow-name{flex:1;font-weight:600;font-size:15px}
 .mnum{font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
 .mcall{background:var(--green);color:#fff;border:none;border-radius:10px;padding:9px 15px;font-size:18px;text-decoration:none;display:inline-block}
@@ -100,8 +104,8 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .dp-row{display:flex;gap:6px;margin-top:6px;justify-content:flex-end}
 .dobadge{display:inline-block;font-size:11px;color:var(--blue);background:rgba(91,143,176,.12);border-radius:6px;padding:2px 7px;margin:4px 0 0}
 .dobadge.due{color:var(--accent);background:rgba(224,164,88,.14)}
-.mas{display:flex;gap:5px;margin:5px 0 2px}
-.masb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:3px 10px;font-size:13px;font-weight:800;line-height:1}
+.mas{display:flex;gap:4px;margin:3px 0 1px;flex-wrap:wrap}
+.masb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:800;line-height:1.3}
 .masb.on{background:var(--accent);border-color:var(--accent);color:#14110f}
 @media(max-width:640px){
   #bulkBtn,#meetBtn,#gridBtn,#picBtn{display:none}
@@ -204,7 +208,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-20 19:02';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-21 07:28';   // replaced with deploy date/time by deploy.sh
 /* ============================================================
    Task Dashboard — single-file, no build step.
    Data: Airtable (paste token in ⚙︎ Settings, stored locally).
@@ -784,13 +788,42 @@ function mobileIncoming(){
   p.appendChild(head);
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length) body.innerHTML='<div class="empty">Nothing new today.</div>';
-  items.slice(0,5).forEach(t=>{const ph=phoneFor(t); const d=document.createElement('div'); d.className='mrow';
-    const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t); d.appendChild(nm);
-    if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; d.appendChild(c); }
-    const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); d.appendChild(done);
-    body.appendChild(d);});
+  items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t)));
   if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'incoming',label:'📥 Incoming'};render();};body.appendChild(m);}
   p.appendChild(body); return p;
+}
+// One mobile task row: tap name to open, tap-to-call/done, and SWIPE LEFT for M / A / C / S / 📅.
+function mobileRow(t,opts){
+  opts=opts||{};
+  const ph=phoneFor(t);
+  const row=document.createElement('div'); row.className='mrow';
+  const inner=document.createElement('div'); inner.className='mrow-inner';
+  const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t);
+  if(ph&&opts.showNumber){ const s=document.createElement('div'); s.className='mnum'; s.textContent=ph; nm.appendChild(s); }
+  inner.appendChild(nm);
+  if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; inner.appendChild(c); }
+  else if(opts.addNumber){ const b=document.createElement('button'); b.className='mcall add'; b.textContent='＋#'; b.onclick=()=>askPhone(t); inner.appendChild(b); }
+  const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); inner.appendChild(done);
+  row.appendChild(inner);
+
+  const tray=document.createElement('div'); tray.className='mrow-actions';
+  const mkT=(label,title,fn,on)=>{const b=document.createElement('button');b.className='trayb'+(on?' on':'');b.textContent=label;b.title=title;
+    b.onclick=e=>{e.stopPropagation();fn();};return b;};
+  tray.appendChild(mkT('M','Morning call',()=>setSlot(t.id,'morning'), sectionOf(t)==='morning'));
+  tray.appendChild(mkT('A','Afternoon call',()=>setSlot(t.id,'afternoon'), sectionOf(t)==='afternoon'));
+  tray.appendChild(mkT('C','Move to Calls',()=>setCall(t.id), sectionOf(t)==='calls'));
+  tray.appendChild(mkT('S','Snooze 10 days',()=>snoozeTask(t.id)));
+  tray.appendChild(mkT('📅','Schedule',()=>openDatePicker(t)));
+  row.appendChild(tray);
+
+  const TRAY=196; let sx=0,sy=0,dx=0,open=false,active=false;
+  row.addEventListener('touchstart',e=>{const p=e.touches[0];sx=p.clientX;sy=p.clientY;dx=open?-TRAY:0;active=true;},{passive:true});
+  row.addEventListener('touchmove',e=>{ if(!active)return; const p=e.touches[0], mx=p.clientX-sx, my=p.clientY-sy;
+    if(Math.abs(my)>Math.abs(mx)){ active=false; return; }
+    dx=Math.max(-TRAY,Math.min(0,(open?-TRAY:0)+mx)); inner.style.transform='translateX('+dx+'px)'; },{passive:true});
+  row.addEventListener('touchend',()=>{ if(!active)return; active=false; open=dx<-TRAY/3;
+    inner.style.transform='translateX('+(open?-TRAY:0)+'px)'; });
+  return row;
 }
 function mobileSlotPanel(title,slot){
   const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)===slot).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
@@ -800,12 +833,7 @@ function mobileSlotPanel(title,slot){
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length) body.innerHTML='<div class="empty">—</div>';
   // Morning/Afternoon are call slots — same tap-to-call treatment as 📞 Calls.
-  items.slice(0,5).forEach(t=>{const ph=phoneFor(t); const d=document.createElement('div'); d.className='mrow';
-    const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t); d.appendChild(nm);
-    if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; d.appendChild(c); }
-    else { const b=document.createElement('button'); b.className='mcall add'; b.textContent='＋#'; b.onclick=()=>askPhone(t); d.appendChild(b); }
-    const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); d.appendChild(done);
-    body.appendChild(d);});
+  items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t,{addNumber:true})));
   if(items.length>5){const m=document.createElement('button'); m.className='more-btn'; m.textContent='+'+(items.length-5)+' more — tap to see all'; m.onclick=()=>{activeBulb={dim:'category',val:slot,label:title};render();}; body.appendChild(m);}
   p.appendChild(body); return p;
 }
@@ -832,14 +860,7 @@ function mobileCalls(){
   p.appendChild(head);
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length) body.innerHTML='<div class="empty">No calls queued.</div>';
-  items.slice(0,5).forEach(t=>{const ph=phoneFor(t); const d=document.createElement('div'); d.className='mrow';
-    const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t);
-    if(ph){ const s=document.createElement('div'); s.className='mnum'; s.textContent=ph; nm.appendChild(s); }
-    d.appendChild(nm);
-    if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; d.appendChild(c); }
-    else { const b=document.createElement('button'); b.className='mcall add'; b.textContent='＋#'; b.onclick=()=>askPhone(t); d.appendChild(b); }
-    const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); d.appendChild(done);
-    body.appendChild(d);});
+  items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t,{showNumber:true,addNumber:true})));
   if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'calls',label:'📞 Calls'};render();};body.appendChild(m);}
   const add=document.createElement('div');add.className='add-inline';add.innerHTML='<input placeholder="Add a call…"><button>＋</button>';
   const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).type='call';t.typeRemote='call';saveAug();atPatch(t.id,{Type:'call'});render();}};
@@ -1268,7 +1289,8 @@ function taskEl(t,sectionId){
   const mk=(ltr,title,fn,on)=>{const b=document.createElement('button');b.className='masb'+(on?' on':'');b.textContent=ltr;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;};
   mas.appendChild(mk('M','Add to morning call',()=>setSlot(t.id,'morning'), sectionOf(t)==='morning'));
   mas.appendChild(mk('A','Add to afternoon call',()=>setSlot(t.id,'afternoon'), sectionOf(t)==='afternoon'));
-  mas.appendChild(mk('S','Snooze 3 days',()=>{A(t.id).snoozeUntil=Date.now()+3*86400000;saveAug();toast('😴 Snoozed 3 days');render();}));
+  mas.appendChild(mk('C','Move to Calls',()=>setCall(t.id), sectionOf(t)==='calls'));
+  mas.appendChild(mk('S','Snooze 10 days',()=>snoozeTask(t.id)));
   mas.appendChild(mk('🔔','Important — tap to blink / tap to snooze 5 min',()=>{const aa=A(t.id);
     if(aa.blink||autoBlinkOn(t,sectionId)){ if(autoBlinkOn(t,sectionId))aa.blinkSnoozeUntil=Date.now()+5*60000; aa.blink=false; toast('🔕 Snoozed 5 min'); }
     else { aa.blink=true; }
@@ -1306,6 +1328,17 @@ function taskEl(t,sectionId){
 function btn(txt,cls,title,fn){const b=document.createElement('button');b.className=cls;b.textContent=txt;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;}
 function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 // Display name: drop the "(V5-###)" id and prefix the project for context.
+// Snooze = push it out 10 days (hides it, and moves its date out 10 days).
+function snoozeTask(id){
+  const ms=Date.now()+10*86400000, d=new Date(ms);
+  const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  A(id).snoozeUntil=ms; setDoDate(id,iso); saveAug(); toast('😴 Snoozed 10 days'); render();
+}
+// "C" — move a task into Calls (syncs via Type + Section).
+function setCall(id){
+  const t=tasks.find(x=>x.id===id); A(id).type='call'; if(t)t.typeRemote='call';
+  setSection(id,'calls'); atPatch(id,{Type:'call'}); toast('📞 Moved to Calls'); render();
+}
 // Now/Focus + Next Up always nag: their items blink unless snoozed (snooze lasts 5 min).
 function autoBlinkOn(t,sectionId){ return (sectionId==='focus'||sectionId==='nextup') && !(A(t.id).blinkSnoozeUntil>Date.now()); }
 function cleanName(t){ return (t.name||'').replace(/\s*\(V\d+-\d+\)\s*$/i,'').trim()||'(untitled)'; }
@@ -1473,6 +1506,14 @@ function openDetail(t,guess){
     <label class="field"><span class="lbl">Sub</span><input class="inp" id="d_sub" list="dl_sub" value="${esc(gs)}" placeholder="type or pick…">${dl('dl_sub','sub')}</label>
     <label class="field"><span class="lbl">Section</span><select class="inp" id="d_sec">${secOpts}</select></label>
     <label class="field"><span class="lbl">Next step</span><input class="inp" id="d_next" value="${esc(a.nextStep||'')}"></label>
+    <div class="field" style="display:flex;gap:6px;flex-wrap:wrap">
+      <button type="button" class="btn" data-snooze>😴 Snooze 10d</button>
+      <button type="button" class="btn" data-calls>📞 To Calls</button>
+      <button type="button" class="btn" data-m>🌅 Morning</button>
+      <button type="button" class="btn" data-a>☀️ Afternoon</button>
+      <button type="button" class="btn" data-sched>📅 Schedule</button>
+      <button type="button" class="btn" data-blink>🔔 Blink</button>
+    </div>
     <div class="modal-actions">
       <button class="btn ghost" data-del>Delete</button>
       <button class="btn" data-done>✓ Done</button>
@@ -1482,6 +1523,12 @@ function openDetail(t,guess){
   bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();});
   bd.querySelector('[data-x]').onclick=()=>bd.remove();
   bd.querySelector('[data-done]').onclick=()=>{bd.remove();markDone(t);};
+  bd.querySelector('[data-snooze]').onclick=()=>{bd.remove();snoozeTask(t.id);};
+  bd.querySelector('[data-calls]').onclick=()=>{bd.remove();setCall(t.id);};
+  bd.querySelector('[data-m]').onclick=()=>{bd.remove();setSlot(t.id,'morning');};
+  bd.querySelector('[data-a]').onclick=()=>{bd.remove();setSlot(t.id,'afternoon');};
+  bd.querySelector('[data-sched]').onclick=()=>{bd.remove();openDatePicker(t);};
+  bd.querySelector('[data-blink]').onclick=()=>{const aa=A(t.id);aa.blink=!aa.blink;saveAug();bd.remove();render();toast(aa.blink?'🔔 Blinking':'🔕 Off');};
   bd.querySelector('[data-del]').onclick=async()=>{ if(!confirm('Delete this task?'))return; bd.remove();
     tasks=tasks.filter(x=>x.id!==t.id); delete aug[t.id]; saveAug(); render(); await atDelete(t.id); toast('Deleted'); };
   bd.querySelector('[data-ok]').onclick=async()=>{
