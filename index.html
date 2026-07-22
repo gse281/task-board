@@ -233,7 +233,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-22 18:32';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-22 18:40';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
@@ -1155,7 +1155,7 @@ function fitToScreen(silent){
     if(score>best.score) best={cols,score};
   }
   const cols=best.cols, rows=Math.ceil(n/cols);
-  const cw=Math.floor(availW/cols)-GAP, ch=Math.floor(availH/rows)-GAP;
+  const cw=Math.min(300, Math.floor(availW/cols)-GAP), ch=Math.floor(availH/rows)-GAP;   // hard cap: never fat
   panels.forEach((p,i)=>{ const c=i%cols, r=Math.floor(i/cols);
     const x=GAP+c*(cw+GAP), y=GAP+r*(ch+GAP);
     p.style.left=x+'px'; p.style.top=y+'px'; p.style.width=cw+'px'; p.style.height=ch+'px';
@@ -1985,6 +1985,10 @@ document.getElementById('gridBtn').onclick=()=>{const g=document.getElementById(
 let _rsT; addEventListener('resize',()=>{if(document.getElementById('grid').classList.contains('on'))buildGrid(); clearTimeout(_rsT); _rsT=setTimeout(render,200);});
 
 /* first load: render, then fetch; auto-refresh once/day */
+// One-time layout migration: old builds saved fat panel widths — wipe them so
+// the new 252px fit takes over. (Bump LAYOUT_VER to force a re-fit everywhere.)
+const LAYOUT_VER=2;
+if(meta.layoutVer!==LAYOUT_VER){ meta.pos={}; meta.layoutMode='fit'; meta.layoutVer=LAYOUT_VER; saveMeta(); }
 dailyReset();
 if(cfg.apiKey){ render(); atFetch(); }
 else { tasks=demoTasks(); render(); toast('⚠️ DEMO data — paste your Airtable key to load your real tasks'); openSettings(); }
