@@ -233,7 +233,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-22 18:40';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-22 18:51';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
@@ -754,13 +754,26 @@ function setMax(id){
   saveMeta(); render();
 }
 
+// Re-rendering must never lose where you were scrolled in a list (e.g. after ✓ Clear).
+function saveScrolls(){
+  const s={};
+  document.querySelectorAll('.panel').forEach(p=>{ const b=p.querySelector('.panel-body'); if(!b||!b.scrollTop)return;
+    const k=p.dataset.section||((p.querySelector('h3')||{}).textContent||''); if(k)s[k]=b.scrollTop; });
+  return s;
+}
+function restoreScrolls(s){
+  requestAnimationFrame(()=>{ document.querySelectorAll('.panel').forEach(p=>{
+    const k=p.dataset.section||((p.querySelector('h3')||{}).textContent||'');
+    if(k&&s[k]){ const b=p.querySelector('.panel-body'); if(b)b.scrollTop=s[k]; } }); });
+}
 function render(){
+  const scrolls=saveScrolls();
   document.getElementById('date').textContent = new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
   renderBanner();
   const tc=document.getElementById('taskCount'); if(tc)tc.textContent='📋 '+tasks.filter(t=>t.status==='Open').length+' open';
   const board=document.getElementById('board'); board.innerHTML='';
   const filt=document.getElementById('filters');
-  if(isMobileView()){ filt.style.display='none'; renderMobile(board); return; }
+  if(isMobileView()){ filt.style.display='none'; renderMobile(board); restoreScrolls(scrolls); return; }
   filt.style.display=''; renderFilters();
   const notSnoozed=t=>!(A(t.id).snoozeUntil>Date.now());
   const openVisible = tasks.filter(t=>t.status==='Open' && visible(t) && notSnoozed(t));
@@ -784,6 +797,13 @@ function render(){
     if(id==='incoming' && activeBulb) board.appendChild(bulbPanel());
   });
   layoutFreeform(board);
+  restoreScrolls(scrolls);
+}
+// Email links open in the Superhuman APP (not Gmail) — convert the Gmail
+// thread link to Superhuman's deep-link scheme.
+function shLink(url){
+  const m=(url||'').match(/#[^/]*\/([0-9a-f]{12,})/i);
+  return m ? 'superhuman://mail.superhuman.com/thread/'+m[1] : url;
 }
 
 /* A project/lead/sub "bulb" opened as a live board panel (drag tasks out of it) */
@@ -892,7 +912,7 @@ function mobileEmails(){
   else emails.slice(0,6).forEach(e=>{const d=document.createElement('div');d.className='txt-item';
     d.innerHTML='<div class="txt-from">'+esc(e.from)+(e.received?' <span class="txt-when">'+esc(e.received)+'</span>':'')+'</div><div class="txt-prev"><b>'+esc(e.subject)+'</b>'+(e.preview?' — '+esc(e.preview):'')+'</div>';
     const row=document.createElement('div');row.className='row';
-    if(e.link){const a=document.createElement('a');a.className='mini';a.textContent='✉️ Open';a.href=e.link;a.target='_blank';a.rel='noopener';row.appendChild(a);}
+    if(e.link){const a=document.createElement('a');a.className='mini';a.textContent='⚡ Open';a.title='Open in Superhuman';a.href=shLink(e.link);row.appendChild(a);}
     const cl=document.createElement('button');cl.className='mini';cl.textContent='✓ Clear';cl.onclick=()=>clearEmail(e.id);row.appendChild(cl);
     d.appendChild(row); body.appendChild(d);});
   if(emails.length>6){const m=document.createElement('div');m.className='empty';m.textContent='+'+(emails.length-6)+' more';body.appendChild(m);}
@@ -1267,7 +1287,8 @@ function emailsPanel(){
   else emails.forEach(e=>{const d=document.createElement('div');d.className='txt-item';
     d.innerHTML='<div class="txt-from">'+esc(e.from)+(e.received?' <span class="txt-when">'+esc(e.received)+'</span>':'')+'</div><div class="txt-prev"><b>'+esc(e.subject)+'</b>'+(e.preview?' — '+esc(e.preview):'')+'</div>';
     const row=document.createElement('div');row.className='row';
-    if(e.link){const a=document.createElement('a');a.className='mini';a.textContent='✉️ Open';a.href=e.link;a.target='_blank';a.rel='noopener';row.appendChild(a);}
+    if(e.link){const a=document.createElement('a');a.className='mini';a.textContent='⚡ Open';a.title='Open in Superhuman';a.href=shLink(e.link);row.appendChild(a);
+      d.style.cursor='pointer'; d.onclick=ev=>{ if(!ev.target.closest('button,a')) location.href=shLink(e.link); };}
     row.appendChild(btn('✓ Clear','mini',' ',()=>clearEmail(e.id)));
     d.appendChild(row); body.appendChild(d);});
   p.appendChild(body);
