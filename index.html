@@ -233,7 +233,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-22 18:53';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-22 18:56';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
@@ -762,9 +762,10 @@ function saveScrolls(){
   return s;
 }
 function restoreScrolls(s){
-  requestAnimationFrame(()=>{ document.querySelectorAll('.panel').forEach(p=>{
+  const apply=()=>{ document.querySelectorAll('.panel').forEach(p=>{
     const k=p.dataset.section||((p.querySelector('h3')||{}).textContent||'');
-    if(k&&s[k]){ const b=p.querySelector('.panel-body'); if(b)b.scrollTop=s[k]; } }); });
+    if(k&&s[k]){ const b=p.querySelector('.panel-body'); if(b)b.scrollTop=s[k]; } }); };
+  apply(); setTimeout(apply,50);   // immediate + once more after layout settles
 }
 function render(){
   const scrolls=saveScrolls();
