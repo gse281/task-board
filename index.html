@@ -55,6 +55,13 @@ button{font:inherit;color:inherit;cursor:pointer}
 .panel-body{padding:6px;display:flex;flex-direction:column;gap:4px;min-height:0;flex:1;overflow-y:auto;max-height:calc(100vh - 110px)}
 .panel.drop-hover{outline:2px dashed var(--accent);outline-offset:-4px}
 .panel.stub .panel-body{align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:18px}
+/* Done / Don't care / Auto-sort: one-line drop bubbles — header IS the drop zone */
+.panel.micro{height:40px!important;min-height:0;overflow:hidden}
+.panel.micro .panel-body,.panel.micro .panel-sub{display:none}
+.panel.micro .panel-head{border-bottom:none}
+/* P/L/S/C quick-assign bubbles beside the ✕ */
+.plscb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:5px;font-size:9px;font-weight:800;padding:2px 4px;line-height:1;cursor:pointer}
+.plscb:hover{color:var(--ink);border-color:var(--accent)}
 
 /* Task card */
 .task{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px 7px;cursor:grab;position:relative}
@@ -62,6 +69,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .task.blink{animation:blink 1s ease-in-out infinite;border-color:var(--accent)}
 @keyframes blink{0%,100%{box-shadow:0 0 0 0 rgba(224,164,88,.0)}50%{box-shadow:0 0 0 3px rgba(224,164,88,.55)}}
 .task .name{font-weight:600;font-size:13px;line-height:1.25;padding-right:82px}
+@media(min-width:641px){.task .name{padding-right:188px}}
 .topright{position:absolute;top:4px;right:6px;display:flex;flex-direction:row;align-items:center;gap:4px}
 .donex{background:none;border:none;color:var(--green);cursor:pointer;font-size:15px;line-height:1;padding:4px 7px;font-weight:800;border-radius:6px}
 .add-inline .submit-sm{font-size:11px;padding:0 8px}
@@ -167,8 +175,9 @@ textarea.inp{min-height:70px;resize:vertical}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#14110f;font-weight:700}
 .btn.ghost{background:transparent}
 .note{color:var(--muted);font-size:12px;margin-top:6px;line-height:1.5}
-.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);
-  border-radius:999px;padding:9px 16px;font-size:14px;z-index:60}
+/* Action feedback pops mid-screen (not the bottom), by request */
+.toast{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);background:var(--panel2);border:1px solid var(--accent);
+  border-radius:12px;padding:12px 20px;font-size:15px;font-weight:600;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .fab{position:fixed;right:16px;bottom:16px;width:54px;height:54px;border-radius:50%;background:var(--accent);
   border:none;color:#14110f;font-size:28px;z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.4)}
 .empty{color:var(--muted);font-size:12px;text-align:center;padding:7px}
@@ -208,6 +217,7 @@ a.tellink{color:var(--green);text-decoration:none}
   <button class="tb-btn" id="meetBtn" title="Today's meetings">📅 Meetings</button>
   <button class="tb-btn" id="gridBtn" title="Toggle reference grid">▦ Grid</button>
   <button class="tb-btn" id="picBtn" title="Photo → list">📷</button>
+  <button class="tb-btn" id="undoBtn" title="Undo last action (⌘Z)">↩ Undo</button>
   <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
   <button class="tb-btn" id="settingsBtn">⚙︎</button>
 </div>
@@ -223,9 +233,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-21 22:41';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-22 18:32';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
   {v:'2026-07-21 · drawer', d:'Pull-down drawer at top for filters + Incoming (hidden by default). Task rows simplified to 3 actions (📞/🔍, Move, ✓) with bigger text; swipe left = snooze, swipe right = done. Added tasks appear instantly. + button adds straight to Incoming. Incoming auto-sort. New Email + Still Open sections. Bell on Calls. Build hidden from header — tap 🔧 for this log.'},
   {v:'2026-07-21 · 21:18', d:'Wrench tooltip, category-name tap opens full list, date ranges exclude today, add-to-morning/afternoon, snooze hides from lists, pull-to-refresh, below-fold layout.'},
 ];
@@ -422,13 +433,18 @@ function defaultSection(t){
 // Quick M/A/S: assign to a call slot (synced to Airtable), or snooze.
 function setSlot(id,slot){
   const t=tasks.find(x=>x.id===id); const cur=(sectionOf(t)===slot); const nv=cur?null:slot;
+  const prev={sec:A(id).section,secR:t?t.sectionRemote:'',slotR:t?t.slotRemote:''};
+  pushUndo('move: '+(t?cleanName(t):id),async()=>{ A(id).section=prev.sec; if(t){t.sectionRemote=prev.secR;t.slotRemote=prev.slotR;} await atPatch(id,{MeetingSlot:prev.slotR||'',Section:prev.secR||''}); });
   A(id).section=nv; if(t){t.slotRemote=nv||''; t.sectionRemote=nv||'';} saveAug(); render();
   atPatch(id,{MeetingSlot:nv||'', Section:nv||''});
 }
 function sectionOf(t){ return A(t.id).section || t.sectionRemote || defaultSection(t); }
 // Move a task to a section AND sync it to Airtable so every device agrees.
 function setSection(id,sec){
-  A(id).section=sec||null; const t=tasks.find(x=>x.id===id); if(t)t.sectionRemote=sec||'';
+  const t=tasks.find(x=>x.id===id);
+  const prev={sec:A(id).section,secR:t?t.sectionRemote:''};
+  pushUndo('move: '+(t?cleanName(t):id),async()=>{ A(id).section=prev.sec; if(t)t.sectionRemote=prev.secR; await atPatch(id,{Section:prev.secR||prev.sec||''}); });
+  A(id).section=sec||null; if(t)t.sectionRemote=sec||'';
   saveAug(); atPatch(id,{Section:sec||''});
 }
 
@@ -450,6 +466,7 @@ async function atFetch(){
       lead:flat(rec.fields.SBLead), sub:flat(rec.fields.Sub),
       status:flat(rec.fields.Status)||'Open',
       phoneRemote:flat(rec.fields.Phone), nextStepRemote:flat(rec.fields.NextStep),
+      sourceRemote:flat(rec.fields.Source),
       typeRemote:(flat(rec.fields.Type)||'').toLowerCase(),
       slotRemote:(flat(rec.fields.MeetingSlot)||'').toLowerCase(),
       sectionRemote:(flat(rec.fields.Section)||'').toLowerCase(),
@@ -468,6 +485,7 @@ async function atFetch(){
   await fetchTexts(); await fetchOutbox(); await fetchEmails();
   const doneN=improvements.filter(i=>i.status==='Done').length;
   if(doneN>(meta.ackSeen||0)) toast('✓ '+(doneN-(meta.ackSeen||0))+' improvement'+(doneN-(meta.ackSeen||0)===1?'':'s')+' addressed — open Improvements');
+  await dailyKick();
   render();
 }
 async function atPatch(id,fields){
@@ -544,7 +562,7 @@ async function fetchOutbox(){
     const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+OUTBOX_TABLE); u.searchParams.set('pageSize','100');
     const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return;
     const d=await r.json();
-    outbox=(d.records||[]).map(rec=>({id:rec.id,to:flat(rec.fields.To),handle:flat(rec.fields.Handle),channel:flat(rec.fields.Channel),message:flat(rec.fields.Message),task:flat(rec.fields.TaskName),status:flat(rec.fields.Status)||'Draft'}));
+    outbox=(d.records||[]).map(rec=>({id:rec.id,createdTime:rec.createdTime,to:flat(rec.fields.To),handle:flat(rec.fields.Handle),channel:flat(rec.fields.Channel),message:flat(rec.fields.Message),task:flat(rec.fields.TaskName),status:flat(rec.fields.Status)||'Draft'}));
   }catch(e){}
 }
 async function setOutboxStatus(id,st){
@@ -623,8 +641,27 @@ function dailyReset(){
     meta.resetLog=meta.resetLog||{}; meta.resetLog[meta.lastReset]=snap;
     const ks=Object.keys(meta.resetLog).sort(); while(ks.length>14) delete meta.resetLog[ks.shift()];
   }
-  for(const id of Object.keys(aug)){ const s=aug[id].section; if(s && !keep.has(s)){ aug[id].section=null; if(cfg.apiKey)atPatch(id,{Section:''}); } }
+  // 📌 pinned tasks stay wherever you put them until done
+  for(const id of Object.keys(aug)){ const s=aug[id].section; if(s && !keep.has(s) && !aug[id].pin){ aug[id].section=null; if(cfg.apiKey)atPatch(id,{Section:''}); } }
   meta.lastReset=today; saveAug(); saveMeta();
+}
+// Runs once a day AFTER data loads: kick untouched Still-open items 10 days out,
+// auto-categorize anything with no project/lead, and drop stale outbox drafts.
+async function dailyKick(){
+  const today=todayISO();
+  if(meta.lastKick===today || demo) return;
+  let kicked=0,sorted=0;
+  for(const t of stillOpenItems()){ A(t.id).snoozeUntil=Date.now()+10*86400000; kicked++; }
+  for(const t of tasks){
+    if(t.status!=='Open'||t.project||t.lead||A(t.id).pin) continue;
+    const g=guessCategory(t); if(!g.project&&!g.lead) continue;
+    if(g.project){t.project=g.project;} if(g.lead){t.lead=g.lead;}
+    atPatch(t.id,{...(g.project?{Project:g.project}:{}),...(g.lead?{SBLead:g.lead}:{})}); sorted++;
+  }
+  // stale unapproved drafts (2+ days old) get cleared — if you didn't send it, it wasn't important
+  for(const o of outbox.filter(o=>o.status==='Draft' && (Date.now()-new Date(o.createdTime||Date.now()).getTime())>2*86400000)) deleteOutbox(o.id);
+  meta.lastKick=today; saveAug(); saveMeta();
+  if(kicked||sorted) toast('🌅 Daily sweep: '+(kicked?kicked+' stale kicked 10d':'')+(kicked&&sorted?' · ':'')+(sorted?sorted+' auto-sorted':''));
 }
 
 async function fetchEmails(){
@@ -655,6 +692,15 @@ function touch(id){ A(id).lastTouched=Date.now(); saveAug(); }
 let toastT;
 function toast(m){ let e=document.querySelector('.toast'); if(!e){e=document.createElement('div');e.className='toast';document.body.appendChild(e);} e.textContent=m; clearTimeout(toastT); toastT=setTimeout(()=>e.remove(),2800);}
 
+// ── Undo: every destructive/move action pushes an inverse; ↩ or ⌘Z pops it. ──
+const undoStack=[];
+function pushUndo(desc,fn){ undoStack.push({desc,fn}); if(undoStack.length>25)undoStack.shift(); }
+async function undoLast(){
+  const u=undoStack.pop(); if(!u){ toast('Nothing to undo'); return; }
+  try{ await u.fn(); }catch(e){}
+  saveAug(); saveMeta(); render(); toast('↩ Undid: '+u.desc);
+}
+
 /* ---------- Filtering ---------- */
 function visible(t){
   if(filters.project && t.project!==filters.project) return false;
@@ -673,7 +719,7 @@ function stillOpenItems(){
 const expanded = new Set();   // ephemeral: which capped sections are showing all
 
 function orderedPanels(){
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),'stillopen','tosend','ideas',...STUBS.map(s=>s.id)];
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),'priority','spotlight','external','stillopen','tosend','ideas',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
   return ord.filter(id=>def.includes(id) && id!=='backlog');   // backlog hidden
@@ -721,6 +767,9 @@ function render(){
   orderedPanels().forEach(id=>{
     const stub=STUBS.find(s=>s.id===id);
     if(id==='stillopen') board.appendChild(panelEl('stillopen','❓ Still open?', stillOpenItems(), false));
+    else if(id==='priority') board.appendChild(panelEl('priority','🔥 Priority', priorityList().filter(t=>visible(t)&&notSnoozed(t)).slice(0,10), false));
+    else if(id==='spotlight') board.appendChild(spotlightPanel());
+    else if(id==='external') board.appendChild(panelEl('external','📡 From outside', openVisible.filter(t=>t.sourceRemote), false));
     else if(id==='ideas') board.appendChild(ideasPanel());
     else if(id==='calendar') board.appendChild(calendarPanel());
     else if(id==='untexted') board.appendChild(textsPanel());
@@ -1013,7 +1062,9 @@ const SECTION_CRITERIA={
   calls:'📞 Calls — tasks of type Call, or named "Call …".',
   morning:'🌅 Morning — tagged to the morning call (M button).',
   afternoon:'☀️ Afternoon — tagged to the afternoon call (A button).',
-  stillopen:'❓ Still open — open 10+ days and untouched.',
+  stillopen:'❓ Still open — open 10+ days and untouched (untouched ones auto-kick 10 days each morning).',
+  spotlight:'🎲 Spotlight — a random project each day, so nothing rots unseen.',
+  external:'📡 From outside — tasks added by agents from texts, Day One, reMarkable, etc.',
   done:'✅ Done — drop a task here to complete it.',
   dontcare:'🚫 Don\'t care — drop here to snooze a month.',
   autosort:'🔮 Auto-sort — drop here and I guess its project/lead.',
@@ -1036,43 +1087,71 @@ function panelRects(exceptId){ const b=document.getElementById('board'); const o
   [...b.children].forEach(p=>{ if(!p.classList.contains('panel'))return; const id=p.dataset.section; if(id===exceptId)return;
     out.push({x:parseInt(p.style.left)||0,y:parseInt(p.style.top)||0,w:p.offsetWidth,h:p.offsetHeight}); }); return out; }
 function rectsOverlap(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
-// Snap to the column grid + push down out of any collision.
+// Snap the dragged panel to the column grid — it STAYS where you dropped it;
+// anything it lands on gets relocated instead (see resolveAllOverlaps).
 function snapAndResolve(p,id){
   const COL=252,GAP=12;
-  let x=parseInt(p.style.left)||0, y=parseInt(p.style.top)||0, w=p.offsetWidth, h=p.offsetHeight;
+  let x=parseInt(p.style.left)||0, y=parseInt(p.style.top)||0, w=p.offsetWidth;
   x=Math.max(GAP, Math.round((x-GAP)/(COL+GAP))*(COL+GAP)+GAP);
   y=Math.max(8, Math.round(y/16)*16);
-  const others=panelRects(id); let g=0;
-  while(g++<300){ const me={x,y,w,h}; const hit=others.find(o=>rectsOverlap(me,o)); if(!hit)break; y=hit.y+hit.h+GAP; }
   p.style.left=x+'px'; p.style.top=y+'px';
   return {x,y,w};
 }
-// Global guarantee: NO panel overlaps, and nothing runs off the right edge.
-function resolveAllOverlaps(){
+// Find the nearest free spot for a panel — prefer ABOVE the fold, near where it was.
+function boardViewH(){ const b=document.getElementById('board'); return Math.max(300, window.innerHeight - b.getBoundingClientRect().top - 16); }
+function findSpot(w,h,placed,prefX,prefY,bw){
+  const GAP=12,COL=252, viewH=boardViewH();
+  const cols=Math.max(1,Math.floor((bw-GAP)/(COL+GAP)));
+  let best=null;
+  for(let k=0;k<cols;k++){
+    const x=GAP+k*(COL+GAP); if(x+w>bw-2) continue;
+    let y=8,g=0;
+    while(g++<400){ const r={x,y,w,h}; const hit=placed.find(q=>rectsOverlap(r,q)); if(!hit)break; y=hit.y+hit.h+GAP; }
+    const belowFold=(y+h>viewH)?1:0;
+    const score=belowFold*100000 + Math.abs(x-prefX)*1.5 + Math.abs(y-prefY);
+    if(!best||score<best.score) best={x,y,score};
+  }
+  return best||{x:GAP,y:8};
+}
+// Global guarantee: NO overlaps, nothing off the right edge, and panels stay
+// ON SCREEN whenever there's room — displaced panels find the nearest free
+// column slot instead of being shoved below the fold.
+// priorityId (the panel you just dragged) is placed first and never moved.
+function resolveAllOverlaps(priorityId){
   const board=document.getElementById('board'); const GAP=12; const bw=board.clientWidth;
-  const arr=[...board.children].filter(p=>p.classList.contains('panel')).map(p=>({p,x:parseInt(p.style.left)||0,y:parseInt(p.style.top)||0,w:p.offsetWidth,h:p.offsetHeight}));
+  const arr=[...board.children].filter(p=>p.classList.contains('panel')).map(p=>({p,id:p.dataset.section,x:parseInt(p.style.left)||0,y:parseInt(p.style.top)||0,w:p.offsetWidth,h:p.offsetHeight}));
   arr.forEach(o=>{ if(o.w>bw-2*GAP)o.w=bw-2*GAP; if(o.x+o.w>bw-GAP)o.x=Math.max(GAP,bw-GAP-o.w); if(o.x<GAP)o.x=GAP; });
-  arr.sort((a,b)=>a.y-b.y||a.x-b.x);
   const placed=[];
-  arr.forEach(o=>{ let g=0; while(g++<500){ const hit=placed.find(q=>o.x<q.x+q.w&&o.x+o.w>q.x&&o.y<q.y+q.h&&o.y+o.h>q.y); if(!hit)break; o.y=hit.y+hit.h+GAP; } placed.push(o);
-    o.p.style.left=o.x+'px'; o.p.style.top=o.y+'px'; o.p.style.width=o.w+'px';
-    const id=o.p.dataset.section; if(id){ meta.pos[id]=meta.pos[id]||{}; meta.pos[id].x=o.x; meta.pos[id].y=o.y; meta.pos[id].w=o.w; } });
+  const put=o=>{ placed.push(o); o.p.style.left=o.x+'px'; o.p.style.top=o.y+'px'; o.p.style.width=o.w+'px';
+    if(o.id){ meta.pos[o.id]=meta.pos[o.id]||{}; meta.pos[o.id].x=o.x; meta.pos[o.id].y=o.y; meta.pos[o.id].w=o.w; } };
+  const pri=priorityId?arr.find(o=>o.id===priorityId):null;
+  if(pri) put(pri);
+  arr.filter(o=>o!==pri).sort((a,b)=>a.y-b.y||a.x-b.x).forEach(o=>{
+    if(placed.some(q=>rectsOverlap(o,q))){ const s=findSpot(o.w,o.h,placed,o.x,o.y,bw); o.x=s.x; o.y=s.y; }
+    put(o);
+  });
   saveMeta(); adjustBoardHeight();
 }
 // Fit EVERY panel into the visible window as sized cells — the page never scrolls.
 // Content that doesn't fit a cell scrolls inside that panel.
 function fitToScreen(silent){
   const board=document.getElementById('board'); const GAP=10;
-  const panels=[...board.children].filter(p=>p.classList.contains('panel'));
-  const n=panels.length; if(!n) return;
+  const all=[...board.children].filter(p=>p.classList.contains('panel'));
+  if(!all.length) return;
+  // Done / Don't care / Auto-sort collapse to a one-line bottom strip
+  const micro=all.filter(p=>p.classList.contains('micro'));
+  const panels=all.filter(p=>!p.classList.contains('micro'));
+  const n=panels.length;
   const availW=board.clientWidth-GAP;
-  const availH=Math.max(240, window.innerHeight - board.getBoundingClientRect().top - GAP - 6);
+  const MH=micro.length?40+GAP:0;
+  const availH=Math.max(240, window.innerHeight - board.getBoundingClientRect().top - GAP - 6) - MH;
+  // Columns target the ORIGINAL 252px width — score punishes wider cells too.
   let best={cols:Math.ceil(Math.sqrt(n)),score:-1};
-  for(let cols=1; cols<=Math.min(n,8); cols++){
+  for(let cols=1; cols<=Math.min(n,10); cols++){
     const rows=Math.ceil(n/cols);
     const cw=availW/cols-GAP, ch=availH/rows-GAP;
-    if(cw<170||ch<105) continue;                       // unusably small
-    const score=Math.min(cw/265,1)*Math.min(ch/250,1); // prefer close to an ideal cell
+    if(cw<170||ch<105) continue;                            // unusably small
+    const score=Math.min(cw/252,252/cw)*Math.min(ch/250,1); // peak at 252px-wide cells
     if(score>best.score) best={cols,score};
   }
   const cols=best.cols, rows=Math.ceil(n/cols);
@@ -1082,7 +1161,11 @@ function fitToScreen(silent){
     p.style.left=x+'px'; p.style.top=y+'px'; p.style.width=cw+'px'; p.style.height=ch+'px';
     const b=p.querySelector('.panel-body'); if(b){ b.style.maxHeight='none'; b.style.overflowY='auto'; }
     const id=p.dataset.section; if(id) meta.pos[id]={x,y,w:cw,h:ch}; });
-  board.style.height=(availH)+'px';
+  if(micro.length){ const mw=Math.floor(availW/micro.length)-GAP, my=GAP+rows*(ch+GAP);
+    micro.forEach((p,i)=>{ const x=GAP+i*(mw+GAP);
+      p.style.left=x+'px'; p.style.top=my+'px'; p.style.width=mw+'px'; p.style.height='40px';
+      const id=p.dataset.section; if(id) meta.pos[id]={x,y:my,w:mw,h:40}; }); }
+  board.style.height=(availH+MH)+'px';
   meta.layoutMode='fit'; saveMeta();
   if(!silent) toast('⛶ Fit to screen');
 }
@@ -1116,11 +1199,13 @@ function enablePanelDrag(p,head,id){
     if(e.target.closest('button,input,select,a,textarea')) return;   // let header controls work
     e.preventDefault();
     const sx=e.clientX, sy=e.clientY, px=parseInt(p.style.left)||0, py=parseInt(p.style.top)||0; let moved=false;
+    const posBefore=JSON.stringify(meta.pos||{}), modeBefore=meta.layoutMode;
     p.style.zIndex=10;
     const mv=ev=>{ const dx=ev.clientX-sx, dy=ev.clientY-sy; if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
       p.style.left=Math.max(0,px+dx)+'px'; p.style.top=Math.max(0,py+dy)+'px'; };
     const up=()=>{ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); p.style.zIndex='';
-      if(moved){ meta.layoutMode='custom'; snapAndResolve(p,id); resolveAllOverlaps(); }
+      if(moved){ pushUndo('panel move',async()=>{ meta.pos=JSON.parse(posBefore); meta.layoutMode=modeBefore; saveMeta(); });
+        meta.layoutMode='custom'; snapAndResolve(p,id); resolveAllOverlaps(id); }
       else showCriteria(id); };
     document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
   });
@@ -1198,7 +1283,11 @@ function textsPanel(){
   else if(!texts.length) body.innerHTML='<div class="empty">All caught up 🎉<br><span style="font-size:11px">Agent scans your texts through the day.</span></div>';
   else texts.forEach(t=>{const d=document.createElement('div');d.className='txt-item';
     d.innerHTML='<div class="txt-from">'+esc(t.from)+(t.received?' <span class="txt-when">'+esc(t.received)+'</span>':'')+'</div><div class="txt-prev">'+esc(t.preview)+'</div>';
+    // click the message → jump into that conversation in the Messages app
+    const openMsg=()=>{ const h=(t.handle||'').trim(); if(h) location.href='sms:'+(h.includes('@')?h:h.replace(/[^\d+]/g,'')); };
+    if(t.handle){ d.style.cursor='pointer'; d.title='Open in Messages'; d.onclick=openMsg; }
     const row=document.createElement('div');row.className='row';
+    if(t.handle) row.appendChild(btn('💬 Open','mini',' ',openMsg));
     row.appendChild(btn('✓ Clear','mini',' ',()=>clearText(t.id)));
     d.appendChild(row);
     const rin=document.createElement('input'); rin.className='txt-reply'; rin.placeholder='Reply here (sends from your number)…';
@@ -1325,8 +1414,20 @@ function ideasPanel(){
   return p;
 }
 
+// 🎲 A different project every day — seeded by the date so it's stable all day.
+function spotlightPanel(){
+  const projs=[...new Set(tasks.filter(t=>t.status==='Open'&&t.project).map(t=>t.project))].sort();
+  let name='', items=[];
+  if(projs.length){
+    const seed=[...todayISO()].reduce((a,c)=>a*31+c.charCodeAt(0),7)>>>0;
+    name=projs[seed%projs.length];
+    items=tasks.filter(t=>t.status==='Open'&&t.project===name&&notSnoozed(t));
+  }
+  return panelEl('spotlight','🎲 '+(name||'Spotlight'),items,false);
+}
+const MICRO=new Set(['done','dontcare','autosort']);
 function panelEl(sectionId,title,items,isDrop){
-  const p=document.createElement('div'); p.className='panel'; p.dataset.section=sectionId;
+  const p=document.createElement('div'); p.className='panel'+(MICRO.has(sectionId)?' micro':''); p.dataset.section=sectionId;
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls(sectionId,title,items);
   p.appendChild(head); wirePanel(p,head,sectionId);
   head.querySelector('.send-list').onclick=()=>sendList(title,items);
@@ -1363,7 +1464,9 @@ function panelEl(sectionId,title,items,isDrop){
     if(d.startsWith('panel:')){ reorderPanels(d.slice(6),sectionId); return; }
     if(isDrop){
       if(sectionId==='done'){ const t=tasks.find(x=>x.id===d); if(t)markDone(t); return; }
-      if(sectionId==='dontcare'){ A(d).snoozeUntil=Date.now()+30*86400000; touch(d); saveAug(); toast('🚫 Snoozed a month'); render(); return; }
+      if(sectionId==='dontcare'){ const pv=A(d).snoozeUntil; const tt=tasks.find(x=>x.id===d);
+        pushUndo('snooze month: '+(tt?cleanName(tt):d),async()=>{ A(d).snoozeUntil=pv; });
+        A(d).snoozeUntil=Date.now()+30*86400000; touch(d); saveAug(); toast('🚫 Snoozed a month'); render(); return; }
       if(sectionId==='autosort'){ const t=tasks.find(x=>x.id===d); if(t){const g=guessCategory(t);
         if(g.project){t.project=g.project;atPatch(t.id,{Project:g.project});}
         if(g.lead){t.lead=g.lead;atPatch(t.id,{SBLead:g.lead});}
@@ -1393,7 +1496,7 @@ function taskEl(t,sectionId){
   });
   const ph=phoneFor(t);
   el.innerHTML =
-    `<div class="topright"><button class="donex" title="Quick done">✕</button><span class="age">${daysOpen(t)}d</span><button class="reveal" title="Details & actions">▸</button></div>`+
+    `<div class="topright"><span class="plsc"><button class="plscb" data-pl="project" title="Set project">P</button><button class="plscb" data-pl="lead" title="Set lead">L</button><button class="plscb" data-pl="sub" title="Set sub">S</button><button class="plscb" data-pl="cat" title="Move to a section">C</button></span><button class="donex" title="Quick done">✕</button><span class="age">${daysOpen(t)}d</span><button class="reveal" title="Details & actions">▸</button></div>`+
     `<div class="name">${esc(sectionId==='bulb'?cleanName(t):displayName(t))}</div>`+
     (()=>{const ns=a.nextStep||t.nextStepRemote; if(!ns)return''; const done=/^\s*✓/.test(ns); return `<div class="next${done?' ndone':''}">${done?'':'→ '}${esc(ns)}</div>`;})()+
     `<div class="details">`+
@@ -1401,12 +1504,14 @@ function taskEl(t,sectionId){
     `</div>`;
   const nm=el.querySelector('.name'); nm.style.cursor='pointer'; nm.title='Edit';
   nm.onclick=e=>{e.stopPropagation();openDetail(t);};
+  el.querySelectorAll('.plscb').forEach(b=>b.onclick=e=>{e.stopPropagation(); const d=b.dataset.pl; d==='cat'?moveSectionPicker(t):pickAssign(t,d);});
   const mas=document.createElement('div'); mas.className='mas';
   const mk=(ltr,title,fn,on)=>{const b=document.createElement('button');b.className='masb'+(on?' on':'');b.textContent=ltr;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;};
   mas.appendChild(mk('M','Add to morning call',()=>setSlot(t.id,'morning'), sectionOf(t)==='morning'));
   mas.appendChild(mk('A','Add to afternoon call',()=>setSlot(t.id,'afternoon'), sectionOf(t)==='afternoon'));
   mas.appendChild(mk('C','Move to Calls',()=>setCall(t.id), sectionOf(t)==='calls'));
   mas.appendChild(mk('S','Snooze 10 days',()=>snoozeTask(t.id)));
+  mas.appendChild(mk('📌','Keep here until done — survives the daily reset',()=>{const aa=A(t.id);aa.pin=!aa.pin;saveAug();render();toast(aa.pin?'📌 Pinned — stays put until done':'Unpinned');},a.pin));
   mas.appendChild(mk('🔔','Important — tap to blink / tap to snooze 5 min',()=>{const aa=A(t.id);
     if(aa.blink||autoBlinkOn(t,sectionId)){ if(autoBlinkOn(t,sectionId))aa.blinkSnoozeUntil=Date.now()+5*60000; aa.blink=false; toast('🔕 Snoozed 5 min'); }
     else { aa.blink=true; }
@@ -1446,9 +1551,28 @@ function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 // Display name: drop the "(V5-###)" id and prefix the project for context.
 // Snooze = push it out 10 days (hides it, and moves its date out 10 days).
 function snoozeTask(id){
+  const t=tasks.find(x=>x.id===id);
+  const prev={sn:A(id).snoozeUntil,dd:doDateOf(t||{id})};
+  pushUndo('snooze: '+(t?cleanName(t):id),async()=>{ A(id).snoozeUntil=prev.sn; setDoDate(id,prev.dd||''); });
   const ms=Date.now()+10*86400000, d=new Date(ms);
   const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   A(id).snoozeUntil=ms; setDoDate(id,iso); saveAug(); toast('😴 Snoozed 10 days'); render();
+}
+// P/L/S quick-assign: pick from existing values (or type a new one).
+function pickAssign(t,dim){
+  const fmap={project:'Project',lead:'SBLead',sub:'Sub'};
+  const vals=[...new Set(tasks.map(x=>x[dim]).filter(Boolean))].sort();
+  const bd=document.createElement('div'); bd.className='backdrop';
+  const box=document.createElement('div'); box.className='modal';
+  box.innerHTML='<h3 style="text-transform:capitalize">'+esc(dim)+' → '+esc(cleanName(t))+'</h3>';
+  const list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:56vh;overflow:auto';
+  const setv=async v=>{ bd.remove(); t[dim]=v; touch(t.id); saveAug(); render(); toast('Set '+dim+' → '+v); await atPatch(t.id,{[fmap[dim]]:v}); };
+  vals.forEach(v=>{const b=document.createElement('button');b.className='btn';b.style.textAlign='left';b.textContent=v+(t[dim]===v?'  ✓':'');b.onclick=()=>setv(v);list.appendChild(b);});
+  const nw=document.createElement('button'); nw.className='btn'; nw.style.textAlign='left'; nw.textContent='＋ New '+dim+'…';
+  nw.onclick=()=>{ const v=prompt('New '+dim+':'); if(v&&v.trim())setv(v.trim()); };
+  list.appendChild(nw); box.appendChild(list);
+  const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
+  bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
 }
 // "C" — move a task into Calls (syncs via Type + Section).
 function setCall(id){
@@ -1559,7 +1683,10 @@ function filterChip(dim,val,n){
 }
 
 /* ---------- Actions ---------- */
-async function markDone(t){ t.status='Done'; A(t.id).section=null; t.sectionRemote=''; saveAug(); render(); await atPatch(t.id,{Status:'Done',Section:''}); toast('✅ Done'); }
+async function markDone(t){
+  const prev={sec:A(t.id).section,secR:t.sectionRemote};
+  pushUndo('done: '+cleanName(t),async()=>{ t.status='Open'; A(t.id).section=prev.sec; t.sectionRemote=prev.secR; await atPatch(t.id,{Status:'Open',Section:prev.secR||prev.sec||''}); });
+  t.status='Done'; A(t.id).section=null; t.sectionRemote=''; saveAug(); render(); await atPatch(t.id,{Status:'Done',Section:''}); toast('✅ Done'); }
 function editNext(t){
   openModal(`Next step for "${t.name}"`, `
     <label class="field"><span class="lbl">What to do (free text — I'll act on it)</span>
@@ -1646,6 +1773,10 @@ function openDetail(t,guess){
   bd.querySelector('[data-sched]').onclick=()=>{bd.remove();openDatePicker(t);};
   bd.querySelector('[data-blink]').onclick=()=>{const aa=A(t.id);aa.blink=!aa.blink;saveAug();bd.remove();render();toast(aa.blink?'🔔 Blinking':'🔕 Off');};
   bd.querySelector('[data-del]').onclick=async()=>{ if(!confirm('Delete this task?'))return; bd.remove();
+    const snap={name:t.name,project:t.project,lead:t.lead,sub:t.sub,sec:sectionOf(t),next:a.nextStep||t.nextStepRemote,phone:phoneFor(t),aug:JSON.stringify(aug[t.id]||{})};
+    pushUndo('delete: '+cleanName(t),async()=>{ const nt=await atCreate(snap.name); if(!nt)return;
+      aug[nt.id]=JSON.parse(snap.aug); await atPatch(nt.id,{Project:snap.project||'',SBLead:snap.lead||'',Sub:snap.sub||'',Section:snap.sec||'',NextStep:snap.next||'',Phone:snap.phone||''});
+      Object.assign(nt,{project:snap.project,lead:snap.lead,sub:snap.sub,sectionRemote:snap.sec}); });
     tasks=tasks.filter(x=>x.id!==t.id); delete aug[t.id]; saveAug(); render(); await atDelete(t.id); toast('Deleted'); };
   bd.querySelector('[data-ok]').onclick=async()=>{
     const g=id=>bd.querySelector(id).value.trim();
@@ -1797,8 +1928,10 @@ function minsSince(ms){ return ms?Math.max(0,Math.round((Date.now()-ms)/60000)):
 function buildMs(){ try{ return new Date(BUILD.replace(' ','T')).getTime(); }catch(e){ return 0; } }
 function updateAgo(){ const bt=document.getElementById('buildTag'); if(!bt)return;
   const r=lastFetchAt?minsSince(lastFetchAt):null;
-  bt.textContent='🔄 '+(r==null?'—':r+'m ago');   // header shows ONLY last-refresh; build lives under the wrench
-  bt.title='Data refreshed '+(r==null?'never':r+'m ago')+' · tap for build & changelog'; }
+  const b=minsSince(buildMs());
+  const bTxt=b==null?'—':b<180?b+'m':b<2880?Math.round(b/60)+'h':Math.round(b/1440)+'d';
+  bt.textContent='🔄 '+(r==null?'—':r+'m')+' · 🔧 '+bTxt;   // data age · build age
+  bt.title='Data refreshed '+(r==null?'never':r+'m ago')+' · Build '+BUILD+' ('+bTxt+' old) — click for changelog'; }
 // Wrench + build details are hidden until you tap the refresh chip → opens the changelog.
 function showChangelog(){
   const bd=document.createElement('div'); bd.className='backdrop';
@@ -1839,6 +1972,8 @@ function renderSearch(){
   box.classList.remove('hidden');
   box.querySelectorAll('.sr[data-id]').forEach(el=>el.onclick=()=>{const t=tasks.find(x=>x.id===el.dataset.id); box.classList.add('hidden'); document.getElementById('search').value=''; query=''; if(t)openDetail(t);});
 }
+document.getElementById('undoBtn').onclick=undoLast;
+document.addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='z'&&!e.target.closest('input,textarea,select')){ e.preventDefault(); undoLast(); } });
 document.getElementById('refreshBtn').onclick=()=>location.reload();   // full reload, like the address bar
 document.getElementById('settingsBtn').onclick=openSettings;
 document.getElementById('addBtn').onclick=addTask;
