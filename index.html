@@ -233,7 +233,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-22 18:51';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-22 18:53';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
@@ -913,6 +913,8 @@ function mobileEmails(){
     d.innerHTML='<div class="txt-from">'+esc(e.from)+(e.received?' <span class="txt-when">'+esc(e.received)+'</span>':'')+'</div><div class="txt-prev"><b>'+esc(e.subject)+'</b>'+(e.preview?' — '+esc(e.preview):'')+'</div>';
     const row=document.createElement('div');row.className='row';
     if(e.link){const a=document.createElement('a');a.className='mini';a.textContent='⚡ Open';a.title='Open in Superhuman';a.href=shLink(e.link);row.appendChild(a);}
+    row.appendChild(btn('↩','mini','Reply',()=>emailReply(e)));
+    row.appendChild(btn('➕','mini','Make a task',()=>emailToTask(e)));
     const cl=document.createElement('button');cl.className='mini';cl.textContent='✓ Clear';cl.onclick=()=>clearEmail(e.id);row.appendChild(cl);
     d.appendChild(row); body.appendChild(d);});
   if(emails.length>6){const m=document.createElement('div');m.className='empty';m.textContent='+'+(emails.length-6)+' more';body.appendChild(m);}
@@ -1277,6 +1279,29 @@ function meetingLink(e){
   if(digits.length>=10) return `<a class="joinbtn" href="tel:${digits}">📞 Call</a>`;
   return '';
 }
+// ── Mail triage: reply (→ send queue), turn into a task, open in Superhuman, clear ──
+function emailReply(e){
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML=`<div class="modal"><h3>↩ Reply — ${esc(e.from)}</h3>
+    <div class="note" style="margin-bottom:6px">${esc(e.subject)}</div>
+    <textarea class="inp" id="er_msg" placeholder="Your reply…"></textarea>
+    <div class="note">Sends from your Gmail in the same thread (agent picks it up within 15 min).</div>
+    <div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" data-ok>Send</button></div></div>`;
+  bd.addEventListener('click',ev=>{if(ev.target===bd)bd.remove();});
+  bd.querySelector('[data-x]').onclick=()=>bd.remove();
+  bd.querySelector('[data-ok]').onclick=async()=>{ const v=bd.querySelector('#er_msg').value.trim(); if(!v)return; bd.remove();
+    await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+OUTBOX_TABLE,{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
+      body:JSON.stringify({fields:{To:e.from,Handle:'',Channel:'email',Message:v,TaskName:e.subject,Status:'Approved'},typecast:true})});
+    toast('↩ Reply queued — sends shortly'); clearEmail(e.id); };
+  document.body.appendChild(bd); bd.querySelector('#er_msg').focus();
+}
+async function emailToTask(e){
+  const t=await atCreate(e.subject.replace(/^(re|fwd?):\s*/i,''));
+  if(!t) return;
+  A(t.id).section='incoming'; t.sectionRemote='incoming'; saveAug();
+  atPatch(t.id,{Section:'incoming',Source:'Email',NextStep:'Reply to '+e.from+(e.link?' — '+e.link:'')});
+  toast('➕ Task created in Incoming'); clearEmail(e.id);
+}
 function emailsPanel(){
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='emails';
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls('emails','✉️ Emails',null)+`<span class="count">${emails.length}</span>`;
@@ -1289,6 +1314,8 @@ function emailsPanel(){
     const row=document.createElement('div');row.className='row';
     if(e.link){const a=document.createElement('a');a.className='mini';a.textContent='⚡ Open';a.title='Open in Superhuman';a.href=shLink(e.link);row.appendChild(a);
       d.style.cursor='pointer'; d.onclick=ev=>{ if(!ev.target.closest('button,a')) location.href=shLink(e.link); };}
+    row.appendChild(btn('↩ Reply','mini','Reply — queues to your send agent',()=>emailReply(e)));
+    row.appendChild(btn('➕ Task','mini','Turn into a task in Incoming',()=>emailToTask(e)));
     row.appendChild(btn('✓ Clear','mini',' ',()=>clearEmail(e.id)));
     d.appendChild(row); body.appendChild(d);});
   p.appendChild(body);
