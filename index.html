@@ -89,12 +89,13 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .madd{display:flex;gap:6px;margin-bottom:10px}
 .madd input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:12px;font-size:16px}
 .madd button{background:var(--accent);border:none;color:#14110f;border-radius:11px;padding:0 18px;font-weight:800;font-size:15px}
-.mrow{position:relative;overflow:hidden;background:var(--panel2);border:1px solid var(--line);border-radius:11px;margin-bottom:6px}
-.mrow-inner{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--panel2);position:relative;z-index:1;transition:transform .18s ease}
-.mrow-actions{position:absolute;right:0;top:0;height:100%;display:flex;align-items:center;gap:4px;padding:0 6px;z-index:0}
-.trayb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:8px 9px;font-size:14px;font-weight:800;line-height:1}
+.mrow2{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:4px 8px;margin-bottom:4px}
+.mrow2-top{display:flex;align-items:center;gap:8px}
+.mrow-acts{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.trayb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:5px 9px;font-size:13px;font-weight:800;line-height:1}
 .trayb.on{background:var(--accent);border-color:var(--accent);color:#14110f}
 .mrow-name{flex:1;font-weight:600;font-size:15px}
+.dp-sort{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:7px;font-size:11px;padding:2px 4px}
 .mnum{font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
 .mcall{background:var(--green);color:#fff;border:none;border-radius:10px;padding:9px 15px;font-size:18px;text-decoration:none;display:inline-block}
 .mcall.add{background:var(--panel);color:var(--muted);border:1px solid var(--line);font-size:14px}
@@ -208,7 +209,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-21 07:28';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-21 20:38';   // replaced with deploy date/time by deploy.sh
 /* ============================================================
    Task Dashboard — single-file, no build step.
    Data: Airtable (paste token in ⚙︎ Settings, stored locally).
@@ -235,6 +236,18 @@ let outbox = [];         // queued follow-ups awaiting your approval (Outbox tab
 let lastFetchAt = 0;     // when data was last refreshed (for the counter)
 let blinkOff = null;     // which current-meeting the user silenced (resets on refresh / new meeting)
 let flashBulb = false;   // flash a bulb panel when opened from a filter chip
+let bulbSort = '';       // how the opened bulb/list is sorted
+function sortItems(items,mode){
+  const a=[...items];
+  if(mode==='days') a.sort((x,y)=>daysOpen(y)-daysOpen(x));
+  else if(mode==='priority') a.sort((x,y)=>((y.priorityRemote||priorityScore(y))-(x.priorityRemote||priorityScore(x))));
+  else if(mode==='project') a.sort((x,y)=>(x.project||'~').localeCompare(y.project||'~'));
+  else if(mode==='lead') a.sort((x,y)=>(x.lead||'~').localeCompare(y.lead||'~'));
+  else if(mode==='sub') a.sort((x,y)=>(x.sub||'~').localeCompare(y.sub||'~'));
+  else if(mode==='old') a.sort((x,y)=>new Date(x.createdTime||0)-new Date(y.createdTime||0));
+  else if(mode==='new') a.sort((x,y)=>new Date(y.createdTime||0)-new Date(x.createdTime||0));
+  return a;
+}
 const IMPROV_TABLE = 'tblRU8tV4IrV64dth';
 const CAL_TABLE = 'tblTL2OeN8b1k2J8W';
 let emails = [];         // emails needing attention (Emails table), populated by the agent
@@ -700,14 +713,19 @@ function bulbPanel(){
   const {dim,val,label}=activeBulb;
   const isCat = dim==='category'; const isAdded = dim==='added';
   const fmap={project:'Project',lead:'SBLead',sub:'Sub'};
-  const items = isAdded ? tasks.filter(t=>inAddedRange(t,val)).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0))
+  let items = isAdded ? tasks.filter(t=>inAddedRange(t,val)).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0))
               : isCat ? (val==='stillopen'?stillOpenItems():val==='priority'?priorityList():val==='today'?todayPlan():val==='yestboard'?yesterdayBoard():tasks.filter(t=>t.status==='Open'&&sectionOf(t)===val))
               : tasks.filter(t=>t.status==='Open'&&t[dim]===val);
+  if(bulbSort) items=sortItems(items,bulbSort);
   const title = isAdded ? ('🗓 Added: '+label) : isCat ? label : '🔎 '+val;
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='bulb';
   meta.width=meta.width||{}; p.style.gridColumn='span '+(meta.width.bulb||1);
   const head=document.createElement('div'); head.className='panel-head';
-  head.innerHTML=`<button class="phead-ctrl" data-prev title="Previous">◀</button><h3>${esc(title)}</h3><button class="phead-ctrl" data-next title="Next">▶</button><button class="mini send-list" title="Send this list">⤴</button><span class="count">${items.length}</span><button class="phead-ctrl" data-close title="Close">✕</button>`;
+  const sortOpts=[['','Sort'],['new','Newest'],['old','Oldest'],['days','Days open'],['priority','Priority'],['project','Project'],['lead','Lead'],['sub','Sub']];
+  head.innerHTML=`<button class="phead-ctrl" data-prev title="Previous">◀</button><h3>${esc(title)}</h3><button class="phead-ctrl" data-next title="Next">▶</button>`+
+    `<select class="dp-sort" title="Sort by">${sortOpts.map(o=>`<option value="${o[0]}"${bulbSort===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select>`+
+    `<button class="mini send-list" title="Send this list">⤴</button><span class="count">${items.length}</span><button class="phead-ctrl" data-close title="Close">✕</button>`;
+  head.querySelector('.dp-sort').onchange=e=>{ bulbSort=e.target.value; render(); };
   head.querySelector('.send-list').onclick=()=>sendList(isCat?label:(dim+': '+val),items);
   head.querySelector('[data-close]').onclick=()=>{activeBulb=null;render();};
   const cycle=delta=>{
@@ -762,6 +780,7 @@ function renderMobile(board){
   [['project','📁 Project'],['lead','👤 Lead'],['sub','🏷 Sub'],['category','🗂 Category']].forEach(([dim,lbl])=>{
     const b=document.createElement('button'); b.className='mfbtn'; b.textContent=lbl; b.onclick=()=>openPicker(dim); fb.appendChild(b);
   });
+  board.appendChild(mobileMeetings());   // Today's meetings first — top of screen
   board.appendChild(fb);
   // quick-add incoming
   const qa=document.createElement('div'); qa.className='madd';
@@ -771,12 +790,10 @@ function renderMobile(board){
   board.appendChild(qa);
   // drilled-in bulb (from a picker) shows here
   if(activeBulb) board.appendChild(bulbPanel());
-  // always-visible bubbles: Incoming + Calls + Morning/Afternoon calls + Meetings
   board.appendChild(mobileIncoming());
   board.appendChild(mobileCalls());
   board.appendChild(mobileSlotPanel('🌅 Morning call','morning'));
   board.appendChild(mobileSlotPanel('☀️ Afternoon call','afternoon'));
-  board.appendChild(mobileMeetings());
 }
 // 📥 Incoming on the phone — same rule as desktop (today's items only), so what
 // you drop into Incoming on the Mac shows up here (Section syncs via Airtable).
@@ -792,38 +809,39 @@ function mobileIncoming(){
   if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'incoming',label:'📥 Incoming'};render();};body.appendChild(m);}
   p.appendChild(body); return p;
 }
-// One mobile task row: tap name to open, tap-to-call/done, and SWIPE LEFT for M / A / C / S / 📅.
-function mobileRow(t,opts){
-  opts=opts||{};
+// One mobile task row — compact, with ALL action buttons visible directly on it.
+function mobileRow(t){
   const ph=phoneFor(t);
-  const row=document.createElement('div'); row.className='mrow';
-  const inner=document.createElement('div'); inner.className='mrow-inner';
-  const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t);
-  if(ph&&opts.showNumber){ const s=document.createElement('div'); s.className='mnum'; s.textContent=ph; nm.appendChild(s); }
-  inner.appendChild(nm);
-  if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; inner.appendChild(c); }
-  else if(opts.addNumber){ const b=document.createElement('button'); b.className='mcall add'; b.textContent='＋#'; b.onclick=()=>askPhone(t); inner.appendChild(b); }
-  const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); inner.appendChild(done);
-  row.appendChild(inner);
-
-  const tray=document.createElement('div'); tray.className='mrow-actions';
-  const mkT=(label,title,fn,on)=>{const b=document.createElement('button');b.className='trayb'+(on?' on':'');b.textContent=label;b.title=title;
-    b.onclick=e=>{e.stopPropagation();fn();};return b;};
-  tray.appendChild(mkT('M','Morning call',()=>setSlot(t.id,'morning'), sectionOf(t)==='morning'));
-  tray.appendChild(mkT('A','Afternoon call',()=>setSlot(t.id,'afternoon'), sectionOf(t)==='afternoon'));
-  tray.appendChild(mkT('C','Move to Calls',()=>setCall(t.id), sectionOf(t)==='calls'));
-  tray.appendChild(mkT('S','Snooze 10 days',()=>snoozeTask(t.id)));
-  tray.appendChild(mkT('📅','Schedule',()=>openDatePicker(t)));
-  row.appendChild(tray);
-
-  const TRAY=196; let sx=0,sy=0,dx=0,open=false,active=false;
-  row.addEventListener('touchstart',e=>{const p=e.touches[0];sx=p.clientX;sy=p.clientY;dx=open?-TRAY:0;active=true;},{passive:true});
-  row.addEventListener('touchmove',e=>{ if(!active)return; const p=e.touches[0], mx=p.clientX-sx, my=p.clientY-sy;
-    if(Math.abs(my)>Math.abs(mx)){ active=false; return; }
-    dx=Math.max(-TRAY,Math.min(0,(open?-TRAY:0)+mx)); inner.style.transform='translateX('+dx+'px)'; },{passive:true});
-  row.addEventListener('touchend',()=>{ if(!active)return; active=false; open=dx<-TRAY/3;
-    inner.style.transform='translateX('+(open?-TRAY:0)+'px)'; });
+  const row=document.createElement('div'); row.className='mrow2';
+  const top=document.createElement('div'); top.className='mrow2-top';
+  const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t); top.appendChild(nm);
+  if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; top.appendChild(c); }
+  const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=()=>markDone(t); top.appendChild(done);
+  row.appendChild(top);
+  if(ph){ const s=document.createElement('div'); s.className='mnum'; s.textContent=ph; row.appendChild(s); }
+  const acts=document.createElement('div'); acts.className='mrow-acts';
+  const b=(l,ti,fn,on)=>{const x=document.createElement('button');x.className='trayb'+(on?' on':'');x.textContent=l;x.title=ti;x.onclick=e=>{e.stopPropagation();fn();};return x;};
+  acts.appendChild(b('M','Morning call',()=>setSlot(t.id,'morning'), sectionOf(t)==='morning'));
+  acts.appendChild(b('A','Afternoon call',()=>setSlot(t.id,'afternoon'), sectionOf(t)==='afternoon'));
+  acts.appendChild(b('C','Move to Calls',()=>setCall(t.id), sectionOf(t)==='calls'));
+  acts.appendChild(b('S','Snooze 10 days',()=>snoozeTask(t.id)));
+  acts.appendChild(b('📅','Schedule',()=>openDatePicker(t)));
+  acts.appendChild(b('📂','Move to section…',()=>moveSectionPicker(t)));
+  if(!ph) acts.appendChild(b('＋#','Add number',()=>askPhone(t)));
+  row.appendChild(acts);
   return row;
+}
+// Move a task to any section (iPhone section-to-section).
+function moveSectionPicker(t){
+  const opts=[['incoming','📥 Incoming'],['calls','📞 Calls'],['morning','🌅 Morning'],['afternoon','☀️ Afternoon'],['bigticket','🏔 Big Ticket'],['nextup','⏭ Next Up'],['focus','🎯 Now/Focus'],['dontcare','🚫 Don\'t care']];
+  const bd=document.createElement('div'); bd.className='backdrop';
+  const box=document.createElement('div'); box.className='modal'; box.innerHTML='<h3>Move "'+esc(cleanName(t))+'" to…</h3>';
+  const list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px';
+  opts.forEach(([id,label])=>{const x=document.createElement('button');x.className='btn';x.style.textAlign='left';x.textContent=label+(sectionOf(t)===id?'  ✓':'');
+    x.onclick=()=>{ if(id==='calls')setCall(t.id); else if(id==='morning'||id==='afternoon')setSlot(t.id,id); else setSection(t.id,id); bd.remove(); render(); }; list.appendChild(x);});
+  box.appendChild(list);
+  const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
+  bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
 }
 function mobileSlotPanel(title,slot){
   const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)===slot).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
