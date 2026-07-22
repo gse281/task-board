@@ -96,6 +96,8 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .trayb.on{background:var(--accent);border-color:var(--accent);color:#14110f}
 .mrow-name{flex:1;font-weight:600;font-size:15px}
 .dp-sort{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:7px;font-size:11px;padding:2px 4px}
+#ptr{position:fixed;top:-56px;left:50%;transform:translateX(-50%);z-index:60;background:var(--panel);border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:7px 16px;font-size:13px;font-weight:700;transition:top .15s ease}
+.mfold{text-align:center;color:var(--muted);font-size:12px;margin:12px 0 6px;border-top:1px dashed var(--line);padding-top:8px}
 .mnum{font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
 .mcall{background:var(--green);color:#fff;border:none;border-radius:10px;padding:9px 15px;font-size:18px;text-decoration:none;display:inline-block}
 .mcall.add{background:var(--panel);color:var(--muted);border:1px solid var(--line);font-size:14px}
@@ -209,7 +211,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-21 20:38';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-21 21:18';   // replaced with deploy date/time by deploy.sh
 /* ============================================================
    Task Dashboard — single-file, no build step.
    Data: Airtable (paste token in ⚙︎ Settings, stored locally).
@@ -345,11 +347,13 @@ function inAddedRange(t,key){
   const startToday=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();
   if(key==='today') return c>=startToday;
   if(key==='yest') return c>=startToday-86400000 && c<startToday;
-  if(key==='2') return c>=now-2*86400000;
-  if(key==='7') return c>=now-7*86400000;
-  if(key==='30') return c>=now-30*86400000;
+  // ranges EXCLUDE today (no day-zero items) — end at start of today
+  if(key==='2') return c>=startToday-2*86400000 && c<startToday;
+  if(key==='7') return c>=startToday-7*86400000 && c<startToday;
+  if(key==='30') return c>=startToday-30*86400000 && c<startToday;
   return false;
 }
+function notSnoozed(t){ return !(A(t.id).snoozeUntil>Date.now()); }
 // Priority score: importance from age + how you've flagged/handled it.
 function priorityScore(t){
   const a=A(t.id); let s=daysOpen(t);
@@ -716,6 +720,7 @@ function bulbPanel(){
   let items = isAdded ? tasks.filter(t=>inAddedRange(t,val)).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0))
               : isCat ? (val==='stillopen'?stillOpenItems():val==='priority'?priorityList():val==='today'?todayPlan():val==='yestboard'?yesterdayBoard():tasks.filter(t=>t.status==='Open'&&sectionOf(t)===val))
               : tasks.filter(t=>t.status==='Open'&&t[dim]===val);
+  items=items.filter(notSnoozed);
   if(bulbSort) items=sortItems(items,bulbSort);
   const title = isAdded ? ('🗓 Added: '+label) : isCat ? label : '🔎 '+val;
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='bulb';
@@ -780,35 +785,38 @@ function renderMobile(board){
   [['project','📁 Project'],['lead','👤 Lead'],['sub','🏷 Sub'],['category','🗂 Category']].forEach(([dim,lbl])=>{
     const b=document.createElement('button'); b.className='mfbtn'; b.textContent=lbl; b.onclick=()=>openPicker(dim); fb.appendChild(b);
   });
-  board.appendChild(mobileMeetings());   // Today's meetings first — top of screen
+  // ── Initial view (top): meetings + main task bubbles ──
+  board.appendChild(mobileMeetings());
+  if(activeBulb) board.appendChild(bulbPanel());
+  board.appendChild(mobileCalls());
+  board.appendChild(mobileSlotPanel('🌅 Morning call','morning'));
+  board.appendChild(mobileSlotPanel('☀️ Afternoon call','afternoon'));
+  // ── Below the fold (scroll down): filters, quick-add, Incoming ──
+  const sep=document.createElement('div'); sep.className='mfold'; sep.textContent='⌄ filters & incoming'; board.appendChild(sep);
   board.appendChild(fb);
-  // quick-add incoming
   const qa=document.createElement('div'); qa.className='madd';
   qa.innerHTML='<input placeholder="➕ Add incoming…"><button>Add</button>';
   const go=async()=>{const inp=qa.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section='incoming';saveAug();render();qa.querySelector('input').focus();}};
   qa.querySelector('button').onclick=go; qa.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
   board.appendChild(qa);
-  // drilled-in bulb (from a picker) shows here
-  if(activeBulb) board.appendChild(bulbPanel());
   board.appendChild(mobileIncoming());
-  board.appendChild(mobileCalls());
-  board.appendChild(mobileSlotPanel('🌅 Morning call','morning'));
-  board.appendChild(mobileSlotPanel('☀️ Afternoon call','afternoon'));
 }
 // 📥 Incoming on the phone — same rule as desktop (today's items only), so what
 // you drop into Incoming on the Mac shows up here (Section syncs via Airtable).
 function mobileIncoming(){
-  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)==='incoming'&&daysOpen(t)===0)
+  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)==='incoming'&&daysOpen(t)===0&&notSnoozed(t))
                    .sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
   const p=document.createElement('div'); p.className='panel';
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>📥 Incoming</h3><span class="count">'+items.length+'</span>';
-  p.appendChild(head);
+  p.appendChild(head); mobileTitleTap(head,{dim:'category',val:'incoming',label:'📥 Incoming'});
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length) body.innerHTML='<div class="empty">Nothing new today.</div>';
   items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t)));
   if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'incoming',label:'📥 Incoming'};render();};body.appendChild(m);}
   p.appendChild(body); return p;
 }
+// Tap a panel title on mobile to open the FULL list for that section.
+function mobileTitleTap(head,bulb){ const h=head.querySelector('h3'); if(h){ h.style.cursor='pointer'; h.title='See all'; h.onclick=()=>{ activeBulb=bulb; flashBulb=true; render(); }; } }
 // One mobile task row — compact, with ALL action buttons visible directly on it.
 function mobileRow(t){
   const ph=phoneFor(t);
@@ -827,9 +835,17 @@ function mobileRow(t){
   acts.appendChild(b('S','Snooze 10 days',()=>snoozeTask(t.id)));
   acts.appendChild(b('📅','Schedule',()=>openDatePicker(t)));
   acts.appendChild(b('📂','Move to section…',()=>moveSectionPicker(t)));
-  if(!ph) acts.appendChild(b('＋#','Add number',()=>askPhone(t)));
+  if(!ph) acts.appendChild(b('🔍#','Look up number',()=>lookupNumber(t)));
   row.appendChild(acts);
   return row;
+}
+// Look up a phone number: re-check the roster + pull the latest from Airtable
+// (the task-assistant agent fills numbers from your Contacts each morning).
+async function lookupNumber(t){
+  let ph=phoneFor(t);
+  if(!ph){ toast('Looking up '+(t.lead||cleanName(t))+'…'); await atFetch(); ph=phoneFor(tasks.find(x=>x.id===t.id)||t); }
+  if(ph){ toast('📞 '+ph); render(); }
+  else toast('No number on file yet — the assistant looks up Contacts each morning.');
 }
 // Move a task to any section (iPhone section-to-section).
 function moveSectionPicker(t){
@@ -844,15 +860,18 @@ function moveSectionPicker(t){
   bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
 }
 function mobileSlotPanel(title,slot){
-  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)===slot).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
+  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)===slot&&notSnoozed(t)).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
   const p=document.createElement('div'); p.className='panel';
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>'+title+'</h3><span class="count">'+items.length+'</span>';
-  p.appendChild(head);
+  p.appendChild(head); mobileTitleTap(head,{dim:'category',val:slot,label:title});
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length) body.innerHTML='<div class="empty">—</div>';
-  // Morning/Afternoon are call slots — same tap-to-call treatment as 📞 Calls.
-  items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t,{addNumber:true})));
+  items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t)));
   if(items.length>5){const m=document.createElement('button'); m.className='more-btn'; m.textContent='+'+(items.length-5)+' more — tap to see all'; m.onclick=()=>{activeBulb={dim:'category',val:slot,label:title};render();}; body.appendChild(m);}
+  const add=document.createElement('div');add.className='add-inline';add.innerHTML='<input placeholder="Add to '+esc(title)+'…"><button>＋</button>';
+  const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){setSlot(t.id,slot);}};
+  add.querySelector('button').onclick=go;add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+  body.appendChild(add);
   p.appendChild(body); return p;
 }
 function openPicker(dim){
@@ -872,10 +891,10 @@ function openPicker(dim){
   bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
 }
 function mobileCalls(){
-  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)==='calls').sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
+  const items=tasks.filter(t=>t.status==='Open'&&sectionOf(t)==='calls'&&notSnoozed(t)).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
   const p=document.createElement('div'); p.className='panel';
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>📞 Calls</h3><span class="count">'+items.length+'</span>';
-  p.appendChild(head);
+  p.appendChild(head); mobileTitleTap(head,{dim:'category',val:'calls',label:'📞 Calls'});
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length) body.innerHTML='<div class="empty">No calls queued.</div>';
   items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t,{showNumber:true,addNumber:true})));
@@ -1690,10 +1709,18 @@ function minsSince(ms){ return ms?Math.max(0,Math.round((Date.now()-ms)/60000)):
 function buildMs(){ try{ return new Date(BUILD.replace(' ','T')).getTime(); }catch(e){ return 0; } }
 function updateAgo(){ const bt=document.getElementById('buildTag'); if(!bt)return;
   const u=minsSince(buildMs()); const r=lastFetchAt?minsSince(lastFetchAt):null;
-  bt.textContent='🔄 '+(r==null?'—':r+'m')+' · 🔧 '+(u==null?'?':u+'m'); bt.title='Data refreshed '+(r==null?'never':r+'m ago')+' · app updated '+(u==null?'?':u+'m ago'); }
+  bt.textContent='🔧 '+BUILD+'  ·  🔄 '+(r==null?'—':r+'m');
+  bt.title='Build '+BUILD+'  ·  data refreshed '+(r==null?'never':r+'m ago')+'  ·  app updated '+(u==null?'?':u+'m ago'); }
+document.getElementById('buildTag').onclick=()=>toast('🔧 Build '+BUILD+'  ·  refreshed '+(lastFetchAt?minsSince(lastFetchAt)+'m ago':'never'));
 updateAgo(); setInterval(updateAgo,30000);
 setInterval(()=>{ if(cfg.apiKey) atFetch(); }, 30*60*1000);   // auto-refresh data every 30 min
 setInterval(()=>{ if(!document.querySelector('.backdrop')) render(); }, 60000);   // re-check blink snoozes (~1 min)
+// Pull-to-refresh (mobile): pull down at the top of the page to reload.
+(function(){ let sy=0, pulling=false; const ind=document.createElement('div'); ind.id='ptr'; ind.textContent='↓ Pull to refresh'; document.body.appendChild(ind);
+  addEventListener('touchstart',e=>{ pulling = (window.scrollY<=0); sy=e.touches[0].clientY; },{passive:true});
+  addEventListener('touchmove',e=>{ if(!pulling)return; const dy=e.touches[0].clientY-sy; if(dy>0){ ind.style.top=Math.min(50,dy-40)+'px'; ind.textContent=dy>90?'↻ Release to refresh':'↓ Pull to refresh'; } },{passive:true});
+  addEventListener('touchend',e=>{ if(!pulling)return; pulling=false; const dy=e.changedTouches[0].clientY-sy; ind.style.top='-56px'; if(dy>90) location.reload(); });
+})();
 document.getElementById('search').addEventListener('input',e=>{query=e.target.value;renderSearch();});
 document.addEventListener('click',e=>{ if(!e.target.closest('#searchResults')&&e.target.id!=='search'){const b=document.getElementById('searchResults'); if(b)b.classList.add('hidden');} });
 function renderSearch(){
