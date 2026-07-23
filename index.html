@@ -60,7 +60,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .panel.micro .panel-body,.panel.micro .panel-sub{display:none}
 .panel.micro .panel-head{border-bottom:none}
 /* Full-screen review: work a big list (backlog / all open) without the grid */
-.revwrap{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;flex-direction:column}
+.revwrap{position:fixed;right:16px;bottom:16px;width:min(560px,46vw);height:min(520px,54vh);z-index:70;background:var(--panel);
+  border:1px solid var(--accent);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden}
+@media(max-width:640px){.revwrap{left:8px;right:8px;bottom:8px;width:auto;height:70vh}}
 .revhead{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
 .revhead h3{margin:0;font-size:16px;flex:1 1 auto}
 .revbody{flex:1;overflow:auto;padding:10px 14px 40px}
@@ -70,7 +72,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .revtags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
 .revsug{background:rgba(224,164,88,.14);border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;cursor:pointer}
 /* 3-letter P/L/S bubbles under a task name */
-.plstag{display:inline-block;background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:5px;padding:1px 5px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px}
+.plstag{display:inline-block;background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:5px;padding:1px 5px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;line-height:1.5}
+.plstag:hover{border-color:var(--accent);color:var(--ink)}
 .plstag.p{color:var(--accent)} .plstag.l{color:var(--blue)} .plstag.s{color:var(--green)}
 .plsrow{display:flex;gap:3px;flex-wrap:wrap;margin-top:2px}
 /* P/L/S/C quick-assign bubbles beside the ✕ */
@@ -246,7 +249,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-23 17:07';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-23 17:32';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
@@ -533,7 +536,7 @@ async function atCreate(name){
     t.id=rec.id; t.createdTime=rec.createdTime; saveAug();
     // auto-tag only on an exact leading match ("NHP list" → NHP). Weaker hits stay
     // as suggestions in the review screen rather than mis-tagging silently.
-    const g=guessCategory(t,100);
+    const g=guessCategory(t,80);
     if(await applyGuess(t,g)){ toast('🔮 '+[g.project,g.lead,g.sub].filter(Boolean).join(' / ')); render(); }
     return t;
   }catch(e){ toast('Create failed'); tasks=tasks.filter(x=>x!==t); render(); return null; }
@@ -864,10 +867,12 @@ function bulbPanel(){
   const sortOpts=[['','Sort'],['new','Newest'],['old','Oldest'],['days','Days open'],['priority','Priority'],['project','Project'],['lead','Lead'],['sub','Sub']];
   head.innerHTML=`<button class="phead-ctrl" data-prev title="Previous">◀</button><h3>${esc(title)}</h3><button class="phead-ctrl" data-next title="Next">▶</button>`+
     `<select class="dp-sort" title="Sort by">${sortOpts.map(o=>`<option value="${o[0]}"${bulbSort===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select>`+
-    `<button class="phead-ctrl" data-rev title="Review this list full screen">⛶</button>`+
+    `<button class="phead-ctrl" data-rev title="Review this list 10 at a time">⛶</button>`+
+    (isCat&&items.length?`<button class="phead-ctrl" data-clrall title="Clear this category — tasks stay open">⊘</button>`:'')+
     `<button class="mini send-list" title="Send this list">⤴</button><span class="count">${items.length}</span><button class="phead-ctrl" data-close title="Close">✕</button>`;
   head.querySelector('.dp-sort').onchange=e=>{ bulbSort=e.target.value; render(); };
   head.querySelector('[data-rev]').onclick=()=>openReview(title,items);
+  const ca=head.querySelector('[data-clrall]'); if(ca)ca.onclick=()=>clearCategory(val,title,items);
   head.querySelector('.send-list').onclick=()=>sendList(isCat?label:(dim+': '+val),items);
   head.querySelector('[data-close]').onclick=()=>{activeBulb=null;render();};
   const cycle=delta=>{
@@ -1223,6 +1228,7 @@ function renderBanner(){
 
 function headCtrls(id,title,items){
   return `<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>${title}</h3>`+
+    (items&&items.length?`<button class="phead-ctrl" data-clr title="Clear this category — tasks stay open, just unfiled">⊘</button>`:'')+
     (items?`<button class="phead-ctrl" data-m title="Max shown">#${(meta.max&&meta.max[id])||''}</button>`:'')+
     (items?`<button class="mini send-list" title="Send this list">⤴</button>`:'')+
     (items?`<button class="phead-ctrl" data-pop title="Float this out to its own window">⧉</button>`:'')+
@@ -1450,6 +1456,7 @@ function panelEl(sectionId,title,items,isDrop){
   p.appendChild(head); wirePanel(p,head,sectionId);
   head.querySelector('.send-list').onclick=()=>sendList(title,items);
   head.querySelector('[data-m]').onclick=()=>setMax(sectionId);
+  const clr=head.querySelector('[data-clr]'); if(clr)clr.onclick=()=>clearCategory(sectionId,title,items);
   const pb=head.querySelector('[data-pop]'); if(pb)pb.onclick=()=>popOut(sectionId,title);
   if(SECTION_SUB[sectionId]){ const s=document.createElement('div'); s.className='panel-sub'; s.textContent=SECTION_SUB[sectionId]; p.appendChild(s); }
   const body=document.createElement('div'); body.className='panel-body';
@@ -1538,11 +1545,14 @@ function taskEl(t,sectionId){
     if(isMobileView()) openDatePicker(t); else openDatePickerAt(t,datb);
   };
   mas.appendChild(datb);
-  // 3-letter P/L/S bubbles right under the name, so you see its tagging at a glance
-  if(t.project||t.lead||t.sub){
+  // 3-letter P/L/S bubbles under the name — click one to change it, ＋ to add a missing one
+  {
     const pr=document.createElement('div'); pr.className='plsrow';
-    const add=(v,cls,ti)=>{const s=document.createElement('span');s.className='plstag '+cls;s.textContent=v.slice(0,3);s.title=ti+': '+v;pr.appendChild(s);};
-    if(t.project)add(t.project,'p','Project'); if(t.lead)add(t.lead,'l','Lead'); if(t.sub)add(t.sub,'s','Sub');
+    const add=(v,cls,dim,ti)=>{const s=document.createElement('button');s.className='plstag '+cls;
+      s.textContent=v?v.slice(0,3):'＋'+cls.toUpperCase();
+      s.title=v?(ti+': '+v+' — click to change'):('Set '+ti.toLowerCase());
+      s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);}; pr.appendChild(s);};
+    add(t.project,'p','project','Project'); add(t.lead,'l','lead','Lead'); add(t.sub,'s','sub','Sub');
     nm.after(pr);
   }
   const od=doDateOf(t);
@@ -1564,7 +1574,8 @@ function taskEl(t,sectionId){
   row.appendChild(btn('📝','mini','Next step / directive',()=>editNext(t)));
   row.appendChild(btn('✉️','mini','Send as email',()=>sendEmail(t)));
   row.appendChild(btn('💬','mini','Send as text',()=>sendText(t)));
-  row.appendChild(btn('📤','mini','Queue a follow-up for review',()=>queueSend(t)));
+  row.appendChild(btn('📤','mini','Draft a follow-up now (on demand)',()=>queueSend(t)));
+  if(sectionOf(t)&&sectionOf(t)!=='backlog') row.appendChild(btn('⊘','mini','Clear out of this category — stays open',()=>clearFromSection(t)));
   if(!t.project||!t.lead) row.appendChild(btn('🔮','mini','Guess project/lead',()=>openDetail(t,guessCategory(t))));
   if(ph) { const c=document.createElement('a'); c.className='mini'; c.href='tel:'+ph; c.textContent='📞'; c.title='Call '+ph; row.appendChild(c); }
   else row.appendChild(btn('📞','mini','Add number to call',()=>askPhone(t)));
@@ -1587,20 +1598,46 @@ function snoozeTask(id){
   const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   A(id).snoozeUntil=ms; setDoDate(id,iso); saveAug(); toast('😴 Snoozed 10 days'); render();
 }
-// ── Full-screen review: triage a big list (Backlog, All open, Uncategorized) ──
+// ⊘ Clear a whole category: tasks stay OPEN, they just leave this section
+// (they fall to Backlog for re-triage). Undoable.
+function clearCategory(sectionId,title,items){
+  const list=(items||[]).filter(t=>t.status==='Open');
+  if(!list.length){ toast('Nothing to clear'); return; }
+  if(!confirm('Clear '+list.length+' item'+(list.length===1?'':'s')+' out of '+title+'?\nThey stay open — just no longer in this section.')) return;
+  const snap=list.map(t=>({id:t.id,sec:A(t.id).section,secR:t.sectionRemote}));
+  pushUndo('clear '+title,async()=>{ for(const s of snap){ A(s.id).section=s.sec; const t=tasks.find(x=>x.id===s.id); if(t)t.sectionRemote=s.secR; await atPatch(s.id,{Section:s.secR||s.sec||''}); } });
+  for(const t of list){ A(t.id).section=null; t.sectionRemote=''; atPatch(t.id,{Section:''}); }
+  saveAug(); render(); toast('⊘ Cleared '+list.length+' from '+title);
+}
+// Pull ONE task out of its section (stays open, unfiled).
+function clearFromSection(t){
+  const prev={sec:A(t.id).section,secR:t.sectionRemote};
+  pushUndo('unfile: '+cleanName(t),async()=>{ A(t.id).section=prev.sec; t.sectionRemote=prev.secR; await atPatch(t.id,{Section:prev.secR||prev.sec||''}); });
+  A(t.id).section=null; t.sectionRemote=''; saveAug(); atPatch(t.id,{Section:''}); render(); toast('⊘ Removed from section');
+}
+// ── Review: a QUARTER-screen window, 10 at a time, with a reshuffle button ──
+const REV_PAGE=10;   // short attention span: ten at a time, then reshuffle
 function openReview(title,items){
+  document.querySelectorAll('.revwrap').forEach(e=>e.remove());
+  let page=0, done=new Set();
   const w=document.createElement('div'); w.className='revwrap';
   const head=document.createElement('div'); head.className='revhead';
-  head.innerHTML='<h3>'+esc(title)+' <span class="count">'+items.length+'</span></h3>'+
-    '<input class="search" id="rev_q" placeholder="Filter…" style="max-width:220px">'+
-    '<button class="btn" data-guessall>🔮 Guess all</button>'+
+  head.innerHTML='<h3>'+esc(title)+' <span class="count" id="rev_n"></span></h3>'+
+    '<input class="search" id="rev_q" placeholder="Filter…" style="max-width:150px">'+
+    '<button class="btn" data-next title="Show me 10 different ones">🔀 Next 10</button>'+
+    '<button class="btn" data-guessall title="Apply suggested tags to these 10">🔮</button>'+
     '<button class="btn primary" data-close>Done</button>';
   w.appendChild(head);
   const body=document.createElement('div'); body.className='revbody'; w.appendChild(body);
+  const pool=()=>{ const q=(w.querySelector('#rev_q').value||'').toLowerCase();
+    return items.filter(t=>!done.has(t.id) && t.status==='Open' &&
+      (!q||(cleanName(t)+' '+(t.project||'')+' '+(t.lead||'')+' '+(t.sub||'')).toLowerCase().includes(q))); };
   const draw=()=>{
-    const q=(w.querySelector('#rev_q').value||'').toLowerCase();
     body.innerHTML='';
-    const list=items.filter(t=>!q||(cleanName(t)+' '+(t.project||'')+' '+(t.lead||'')+' '+(t.sub||'')).toLowerCase().includes(q));
+    const all=pool();
+    const start=(page*REV_PAGE)%Math.max(1,all.length);
+    const list=all.slice(start,start+REV_PAGE);
+    w.querySelector('#rev_n').textContent=all.length?((start+1)+'–'+Math.min(start+REV_PAGE,all.length)+' of '+all.length):'0';
     list.forEach(t=>{
       const r=document.createElement('div'); r.className='revrow';
       const nm=document.createElement('div'); nm.className='revname';
@@ -1626,19 +1663,22 @@ function openReview(title,items){
       r.appendChild(mk('L','Set lead',()=>pickAssign(t,'lead',draw)));
       r.appendChild(mk('S','Set sub',()=>pickAssign(t,'sub',draw)));
       r.appendChild(mk('→','Move to a section',()=>moveSectionPicker(t)));
+      if(sectionOf(t)&&sectionOf(t)!=='backlog') r.appendChild(mk('⊘','Clear out of its section (stays open)',()=>{clearFromSection(t);draw();}));
       if(A(t.id).snoozeUntil>Date.now()) r.appendChild(mk('⏰','Un-snooze',()=>{delete A(t.id).snoozeUntil;saveAug();draw();}));
       else r.appendChild(mk('💤','Snooze 10 days',()=>{snoozeTask(t.id);draw();}));
-      r.appendChild(mk('✓','Done',()=>{markDone(t);r.classList.add('gone');}));
+      r.appendChild(mk('✓','Done',()=>{markDone(t);done.add(t.id);draw();}));
       body.appendChild(r);
     });
-    if(!list.length) body.innerHTML='<div class="empty">Nothing here.</div>';
+    if(!list.length) body.innerHTML='<div class="empty">All caught up here 🎉</div>';
   };
-  head.querySelector('#rev_q').addEventListener('input',draw);
+  head.querySelector('#rev_q').addEventListener('input',()=>{page=0;draw();});
+  head.querySelector('[data-next]').onclick=()=>{page++;draw();body.scrollTop=0;};
   head.querySelector('[data-close]').onclick=()=>{w.remove();render();};
   head.querySelector('[data-guessall]').onclick=async()=>{
-    if(!confirm('Apply every suggested tag in this list? (Undo per task afterwards.)'))return;
-    let n=0; for(const t of items){ if(t.project&&t.lead) continue; if(await applyGuess(t,guessCategory(t))) n++; }
-    toast(n?('🔮 Filled '+n+' task'+(n===1?'':'s')):'No confident guesses'); draw();
+    const all=pool(); const start=(page*REV_PAGE)%Math.max(1,all.length);
+    const batch=all.slice(start,start+REV_PAGE);          // only the 10 on screen
+    let n=0; for(const t of batch){ if(await applyGuess(t,guessCategory(t))) n++; }
+    toast(n?('🔮 Tagged '+n+' of these '+batch.length):'No confident guesses here'); draw();
   };
   draw(); document.body.appendChild(w); head.querySelector('#rev_q').focus();
 }
@@ -1668,7 +1708,8 @@ function setCall(id){
 // Now/Focus + Next Up always nag: their items blink unless snoozed (snooze lasts 5 min).
 function autoBlinkOn(t,sectionId){ return (sectionId==='focus'||sectionId==='nextup') && !(A(t.id).blinkSnoozeUntil>Date.now()); }
 function cleanName(t){ return (t.name||'').replace(/\s*\(V\d+-\d+\)\s*$/i,'').trim()||'(untitled)'; }
-function displayName(t){ return (t.project?t.project+' - ':'')+cleanName(t); }
+// The P/L/S bubbles under the name carry the project now — no prefix needed.
+function displayName(t){ return cleanName(t); }
 function doDateOf(t){ return t.doDate || A(t.id).doDate || ''; }
 // Desktop: a small visible date popover anchored right under the 📅 button.
 function openDatePickerAt(t,anchor){
