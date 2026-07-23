@@ -69,7 +69,6 @@ button{font:inherit;color:inherit;cursor:pointer}
 .task.blink{animation:blink 1s ease-in-out infinite;border-color:var(--accent)}
 @keyframes blink{0%,100%{box-shadow:0 0 0 0 rgba(224,164,88,.0)}50%{box-shadow:0 0 0 3px rgba(224,164,88,.55)}}
 .task .name{font-weight:600;font-size:13px;line-height:1.25;padding-right:82px}
-@media(min-width:641px){.task .name{padding-right:188px}}
 .topright{position:absolute;top:4px;right:6px;display:flex;flex-direction:row;align-items:center;gap:4px}
 .donex{background:none;border:none;color:var(--green);cursor:pointer;font-size:15px;line-height:1;padding:4px 7px;font-weight:800;border-radius:6px}
 .add-inline .submit-sm{font-size:11px;padding:0 8px}
@@ -233,7 +232,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-22 18:56';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-23 11:54';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
@@ -394,7 +393,9 @@ function priorityScore(t){
   if(a.awaiting) s+=10;
   return s;
 }
-function priorityList(){ return tasks.filter(t=>t.status==='Open').sort((a,b)=>((b.priorityRemote||priorityScore(b))-(a.priorityRemote||priorityScore(a)))).slice(0,25); }
+// Priority only ranks tasks you can actually see — snoozed ones don't count,
+// so the chip count always matches what the bubble shows (never 25 vs 0).
+function priorityList(){ return tasks.filter(t=>t.status==='Open'&&notSnoozed(t)).sort((a,b)=>((b.priorityRemote||priorityScore(b))-(a.priorityRemote||priorityScore(a)))).slice(0,25); }
 // Yesterday's board — what was placed in your sections yesterday (from the reset log).
 function yesterdayBoard(){
   const d=new Date(); d.setDate(d.getDate()-1);
@@ -1419,9 +1420,10 @@ function openImprovement(o){
 function ideasPanel(){
   const useAT=!!cfg.apiKey;
   meta.ideas=meta.ideas||[];
-  const active = useAT ? improvements.filter(i=>i.status!=='Done')
+  const byNewest=(a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0);   // most recent first
+  const active = useAT ? improvements.filter(i=>i.status!=='Done').sort(byNewest)
                        : meta.ideas.map((it,i)=>({id:i,note:it.text}));
-  const doneItems = useAT ? improvements.filter(i=>i.status==='Done') : null;
+  const doneItems = useAT ? improvements.filter(i=>i.status==='Done').sort(byNewest) : null;
   const done   = useAT ? doneItems.map(i=>i.note) : CHANGELOG;
   const numMap={}; const fmtD=iso=>{try{return new Date(iso).toLocaleDateString(undefined,{month:'short',day:'numeric'});}catch(e){return'';}};
   if(useAT)[...improvements].sort((a,b)=>new Date(a.createdTime||0)-new Date(b.createdTime||0)).forEach((i,idx)=>numMap[i.id]=idx+1);
@@ -1545,7 +1547,7 @@ function taskEl(t,sectionId){
   });
   const ph=phoneFor(t);
   el.innerHTML =
-    `<div class="topright"><span class="plsc"><button class="plscb" data-pl="project" title="Set project">P</button><button class="plscb" data-pl="lead" title="Set lead">L</button><button class="plscb" data-pl="sub" title="Set sub">S</button><button class="plscb" data-pl="cat" title="Move to a section">C</button></span><button class="donex" title="Quick done">✕</button><span class="age">${daysOpen(t)}d</span><button class="reveal" title="Details & actions">▸</button></div>`+
+    `<div class="topright"><button class="donex" title="Quick done">✕</button><span class="age">${daysOpen(t)}d</span><button class="reveal" title="Details & actions">▸</button></div>`+
     `<div class="name">${esc(sectionId==='bulb'?cleanName(t):displayName(t))}</div>`+
     (()=>{const ns=a.nextStep||t.nextStepRemote; if(!ns)return''; const done=/^\s*✓/.test(ns); return `<div class="next${done?' ndone':''}">${done?'':'→ '}${esc(ns)}</div>`;})()+
     `<div class="details">`+
@@ -1553,7 +1555,6 @@ function taskEl(t,sectionId){
     `</div>`;
   const nm=el.querySelector('.name'); nm.style.cursor='pointer'; nm.title='Edit';
   nm.onclick=e=>{e.stopPropagation();openDetail(t);};
-  el.querySelectorAll('.plscb').forEach(b=>b.onclick=e=>{e.stopPropagation(); const d=b.dataset.pl; d==='cat'?moveSectionPicker(t):pickAssign(t,d);});
   const mas=document.createElement('div'); mas.className='mas';
   const mk=(ltr,title,fn,on)=>{const b=document.createElement('button');b.className='masb'+(on?' on':'');b.textContent=ltr;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;};
   mas.appendChild(mk('M','Add to morning call',()=>setSlot(t.id,'morning'), sectionOf(t)==='morning'));
@@ -1570,11 +1571,16 @@ function taskEl(t,sectionId){
     if(isMobileView()) openDatePicker(t); else openDatePickerAt(t,datb);
   };
   mas.appendChild(datb);
-  nm.after(mas);
   const od=doDateOf(t);
   if(od){ const db=document.createElement('div'); db.className='dobadge'+(od<=todayISO()?' due':''); db.textContent='📅 '+(od===todayISO()?'Today':od<todayISO()?('Overdue '+od):od); nm.after(db); }
   const nx=el.querySelector('.next'); if(nx){ nx.style.cursor='pointer'; nx.title='Open task / next-step status'; nx.onclick=e=>{e.stopPropagation();openDetail(t);}; }
   const details=el.querySelector('.details');
+  // P/L/S/C + the M/A/C/S/📌/🔔/📅 strip live under the ▸ dropdown, so the task text runs full width
+  const plsc=document.createElement('div'); plsc.className='mas';
+  [['P','Set project',()=>pickAssign(t,'project')],['L','Set lead',()=>pickAssign(t,'lead')],['S','Set sub',()=>pickAssign(t,'sub')],['C','Move to a section',()=>moveSectionPicker(t)]]
+    .forEach(([ltr,ti,fn])=>{const b=document.createElement('button');b.className='masb';b.textContent=ltr;b.title=ti;b.onclick=e=>{e.stopPropagation();fn();};plsc.appendChild(b);});
+  details.appendChild(plsc);
+  details.appendChild(mas);
   const rev=el.querySelector('.reveal');
   rev.onclick=e=>{e.stopPropagation(); const open=el.classList.toggle('open'); rev.textContent=open?'▾':'▸';};
   const dx=el.querySelector('.donex'); if(dx) dx.onclick=e=>{e.stopPropagation();markDone(t);};
