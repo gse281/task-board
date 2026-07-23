@@ -59,6 +59,20 @@ button{font:inherit;color:inherit;cursor:pointer}
 .panel.micro{height:40px!important;min-height:0;overflow:hidden}
 .panel.micro .panel-body,.panel.micro .panel-sub{display:none}
 .panel.micro .panel-head{border-bottom:none}
+/* Full-screen review: work a big list (backlog / all open) without the grid */
+.revwrap{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;flex-direction:column}
+.revhead{display:flex;gap:8px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.revhead h3{margin:0;font-size:16px;flex:1 1 auto}
+.revbody{flex:1;overflow:auto;padding:10px 14px 40px}
+.revrow{display:flex;gap:8px;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 10px;margin-bottom:5px}
+.revrow.gone{opacity:.35}
+.revname{flex:1;font-size:14px;font-weight:600;cursor:pointer;min-width:0}
+.revtags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
+.revsug{background:rgba(224,164,88,.14);border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;cursor:pointer}
+/* 3-letter P/L/S bubbles under a task name */
+.plstag{display:inline-block;background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:5px;padding:1px 5px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px}
+.plstag.p{color:var(--accent)} .plstag.l{color:var(--blue)} .plstag.s{color:var(--green)}
+.plsrow{display:flex;gap:3px;flex-wrap:wrap;margin-top:2px}
 /* P/L/S/C quick-assign bubbles beside the ✕ */
 .plscb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:5px;font-size:9px;font-weight:800;padding:2px 4px;line-height:1;cursor:pointer}
 .plscb:hover{color:var(--ink);border-color:var(--accent)}
@@ -232,7 +246,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-23 13:15';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-23 17:07';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
@@ -356,6 +370,9 @@ const SECTION_SUB = {
 };
 // 4th filter line: quick categories that aren't project/lead/sub (map to sections).
 const CATEGORIES = [
+  {id:'backlog',name:'🗂 Backlog'},
+  {id:'allopen',name:'📚 All open'},
+  {id:'uncat',name:'❔ Uncategorized'},
   {id:'today',name:'📆 To do today'},
   {id:'priority',name:'🔥 Priority'},
   {id:'incoming',name:'📥 Incoming'},
@@ -514,6 +531,10 @@ async function atCreate(name){
     const rec=await r.json();
     if(aug[t.id]){ aug[rec.id]=aug[t.id]; delete aug[t.id]; }   // carry any placement set on the temp id
     t.id=rec.id; t.createdTime=rec.createdTime; saveAug();
+    // auto-tag only on an exact leading match ("NHP list" → NHP). Weaker hits stay
+    // as suggestions in the review screen rather than mis-tagging silently.
+    const g=guessCategory(t,100);
+    if(await applyGuess(t,g)){ toast('🔮 '+[g.project,g.lead,g.sub].filter(Boolean).join(' / ')); render(); }
     return t;
   }catch(e){ toast('Create failed'); tasks=tasks.filter(x=>x!==t); render(); return null; }
 }
@@ -627,9 +648,18 @@ function outboxPanel(){
       if(tt)openDetail(tt); else toast('Task not found: '+o.task); }));
     row.appendChild(btn('✕ Discard','mini',' ',()=>deleteOutbox(o.id)));
     d.appendChild(row); body.appendChild(d);});
-  approved.forEach(o=>{const d=document.createElement('div');d.className='txt-item';d.style.opacity='.6';
-    d.innerHTML='<div class="txt-from">'+esc(o.to||o.handle)+' <span class="txt-when">⏳ sending…</span></div><div class="txt-prev">'+esc(o.message)+'</div>';
-    body.appendChild(d);});
+  // Approved (green) — still cancellable / editable until the sender picks it up
+  approved.forEach(o=>{const d=document.createElement('div');d.className='txt-item';
+    d.style.borderColor='var(--green)'; d.style.background='rgba(58,143,95,.08)';
+    d.innerHTML='<div class="txt-from">'+esc(o.to||o.handle)+' <span class="txt-when" style="color:var(--green)">⏳ approved — sending shortly</span></div><div class="txt-prev">'+esc(o.message)+'</div>';
+    const row=document.createElement('div');row.className='row';
+    row.appendChild(btn('⏸ Hold','mini','Pull it back to Draft — stops the send',()=>setOutboxStatus(o.id,'Draft')));
+    row.appendChild(btn('💬 Comment','mini','Add a note to the message',()=>editOutbox(o)));
+    row.appendChild(btn('✕ Cancel send','mini','Delete it — nothing goes out',()=>{ if(confirm('Cancel this send?')) deleteOutbox(o.id); }));
+    if(o.task&&o.task!=='Reply') row.appendChild(btn('🔎 Task','mini','Open the task this is about',()=>{
+      const tt=tasks.find(x=>cleanName(x)===o.task)||tasks.find(x=>cleanName(x).toLowerCase().includes(o.task.toLowerCase()));
+      if(tt)openDetail(tt); else toast('Task not found: '+o.task); }));
+    d.appendChild(row); body.appendChild(d);});
   p.appendChild(body);
   p.addEventListener('drop',e=>{e.preventDefault();const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'tosend');});
   return p;
@@ -656,7 +686,10 @@ async function dailyKick(){
   const today=todayISO();
   if(meta.lastKick===today || demo) return;
   let kicked=0,sorted=0;
-  for(const t of stillOpenItems()){ A(t.id).snoozeUntil=Date.now()+10*86400000; kicked++; }
+  // Kick the 10 OLDEST stale items only. (A mass-snooze once hid ~180 tasks and
+  // emptied the Sub/Lead chips — never hide the whole backlog again.)
+  for(const t of stillOpenItems().sort((a,b)=>lastTouch(a)-lastTouch(b)).slice(0,10)){
+    A(t.id).snoozeUntil=Date.now()+10*86400000; kicked++; }
   for(const t of tasks){
     if(t.status!=='Open'||t.project||t.lead||A(t.id).pin) continue;
     const g=guessCategory(t); if(!g.project&&!g.lead) continue;
@@ -816,9 +849,14 @@ function bulbPanel(){
   const isCat = dim==='category'; const isAdded = dim==='added';
   const fmap={project:'Project',lead:'SBLead',sub:'Sub'};
   let items = isAdded ? tasks.filter(t=>inAddedRange(t,val)).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0))
-              : isCat ? (val==='stillopen'?stillOpenItems():val==='priority'?priorityList():val==='today'?todayPlan():val==='yestboard'?yesterdayBoard():tasks.filter(t=>t.status==='Open'&&sectionOf(t)===val))
+              : isCat ? (val==='stillopen'?stillOpenItems():val==='priority'?priorityList():val==='today'?todayPlan():val==='yestboard'?yesterdayBoard()
+                        :val==='allopen'?tasks.filter(t=>t.status==='Open')
+                        :val==='uncat'?tasks.filter(t=>t.status==='Open'&&!t.project&&!t.lead&&!t.sub)
+                        :tasks.filter(t=>t.status==='Open'&&sectionOf(t)===val))
               : tasks.filter(t=>t.status==='Open'&&t[dim]===val);
-  items=items.filter(notSnoozed);
+  // review views deliberately show EVERYTHING, snoozed included
+  const showAll = isCat && ['allopen','backlog','uncat','stillopen'].includes(val);
+  if(!showAll) items=items.filter(notSnoozed);
   if(bulbSort) items=sortItems(items,bulbSort);
   const title = isAdded ? ('🗓 Added: '+label) : isCat ? label : '🔎 '+val;
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='bulb';
@@ -826,8 +864,10 @@ function bulbPanel(){
   const sortOpts=[['','Sort'],['new','Newest'],['old','Oldest'],['days','Days open'],['priority','Priority'],['project','Project'],['lead','Lead'],['sub','Sub']];
   head.innerHTML=`<button class="phead-ctrl" data-prev title="Previous">◀</button><h3>${esc(title)}</h3><button class="phead-ctrl" data-next title="Next">▶</button>`+
     `<select class="dp-sort" title="Sort by">${sortOpts.map(o=>`<option value="${o[0]}"${bulbSort===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select>`+
+    `<button class="phead-ctrl" data-rev title="Review this list full screen">⛶</button>`+
     `<button class="mini send-list" title="Send this list">⤴</button><span class="count">${items.length}</span><button class="phead-ctrl" data-close title="Close">✕</button>`;
   head.querySelector('.dp-sort').onchange=e=>{ bulbSort=e.target.value; render(); };
+  head.querySelector('[data-rev]').onclick=()=>openReview(title,items);
   head.querySelector('.send-list').onclick=()=>sendList(isCat?label:(dim+': '+val),items);
   head.querySelector('[data-close]').onclick=()=>{activeBulb=null;render();};
   const cycle=delta=>{
@@ -1498,9 +1538,16 @@ function taskEl(t,sectionId){
     if(isMobileView()) openDatePicker(t); else openDatePickerAt(t,datb);
   };
   mas.appendChild(datb);
+  // 3-letter P/L/S bubbles right under the name, so you see its tagging at a glance
+  if(t.project||t.lead||t.sub){
+    const pr=document.createElement('div'); pr.className='plsrow';
+    const add=(v,cls,ti)=>{const s=document.createElement('span');s.className='plstag '+cls;s.textContent=v.slice(0,3);s.title=ti+': '+v;pr.appendChild(s);};
+    if(t.project)add(t.project,'p','Project'); if(t.lead)add(t.lead,'l','Lead'); if(t.sub)add(t.sub,'s','Sub');
+    nm.after(pr);
+  }
   const od=doDateOf(t);
   if(od){ const db=document.createElement('div'); db.className='dobadge'+(od<=todayISO()?' due':''); db.textContent='📅 '+(od===todayISO()?'Today':od<todayISO()?('Overdue '+od):od); nm.after(db); }
-  const nx=el.querySelector('.next'); if(nx){ nx.style.cursor='pointer'; nx.title='Open task / next-step status'; nx.onclick=e=>{e.stopPropagation();openDetail(t);}; }
+  const nx=el.querySelector('.next'); if(nx){ nx.style.cursor='pointer'; nx.title='Click to edit / comment on this next step'; nx.onclick=e=>{e.stopPropagation();editNext(t);}; }
   const details=el.querySelector('.details');
   // P/L/S/C + the M/A/C/S/📌/🔔/📅 strip live under the ▸ dropdown, so the task text runs full width
   const plsc=document.createElement('div'); plsc.className='mas';
@@ -1540,15 +1587,72 @@ function snoozeTask(id){
   const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   A(id).snoozeUntil=ms; setDoDate(id,iso); saveAug(); toast('😴 Snoozed 10 days'); render();
 }
+// ── Full-screen review: triage a big list (Backlog, All open, Uncategorized) ──
+function openReview(title,items){
+  const w=document.createElement('div'); w.className='revwrap';
+  const head=document.createElement('div'); head.className='revhead';
+  head.innerHTML='<h3>'+esc(title)+' <span class="count">'+items.length+'</span></h3>'+
+    '<input class="search" id="rev_q" placeholder="Filter…" style="max-width:220px">'+
+    '<button class="btn" data-guessall>🔮 Guess all</button>'+
+    '<button class="btn primary" data-close>Done</button>';
+  w.appendChild(head);
+  const body=document.createElement('div'); body.className='revbody'; w.appendChild(body);
+  const draw=()=>{
+    const q=(w.querySelector('#rev_q').value||'').toLowerCase();
+    body.innerHTML='';
+    const list=items.filter(t=>!q||(cleanName(t)+' '+(t.project||'')+' '+(t.lead||'')+' '+(t.sub||'')).toLowerCase().includes(q));
+    list.forEach(t=>{
+      const r=document.createElement('div'); r.className='revrow';
+      const nm=document.createElement('div'); nm.className='revname';
+      nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t);
+      const tags=document.createElement('div'); tags.className='revtags';
+      const tagFor=(v,cls)=>{const s=document.createElement('span');s.className='plstag '+cls;s.textContent=v;return s;};
+      if(t.project)tags.appendChild(tagFor(t.project,'p'));
+      if(t.lead)tags.appendChild(tagFor(t.lead,'l'));
+      if(t.sub)tags.appendChild(tagFor(t.sub,'s'));
+      const age=document.createElement('span'); age.className='plstag'; age.textContent=daysOpen(t)+'d'; tags.appendChild(age);
+      if(A(t.id).snoozeUntil>Date.now()){const z=document.createElement('span');z.className='plstag';z.textContent='💤 snoozed';tags.appendChild(z);}
+      // suggestion chip when something's missing
+      if(!t.project||!t.lead||!t.sub){ const g=guessCategory(t);
+        const miss=['project','lead','sub'].filter(k=>g[k]&&!t[k]);
+        if(miss.length){ const s=document.createElement('button'); s.className='revsug';
+          s.textContent='🔮 '+miss.map(k=>g[k]).join(' / ');
+          s.title='Apply this guess';
+          s.onclick=async()=>{ if(await applyGuess(t,g)){ s.remove(); draw(); } };
+          tags.appendChild(s); } }
+      nm.appendChild(tags); r.appendChild(nm);
+      const mk=(txt,ti,fn)=>{const b=document.createElement('button');b.className='mini';b.textContent=txt;b.title=ti;b.onclick=fn;return b;};
+      r.appendChild(mk('P','Set project',()=>pickAssign(t,'project',draw)));
+      r.appendChild(mk('L','Set lead',()=>pickAssign(t,'lead',draw)));
+      r.appendChild(mk('S','Set sub',()=>pickAssign(t,'sub',draw)));
+      r.appendChild(mk('→','Move to a section',()=>moveSectionPicker(t)));
+      if(A(t.id).snoozeUntil>Date.now()) r.appendChild(mk('⏰','Un-snooze',()=>{delete A(t.id).snoozeUntil;saveAug();draw();}));
+      else r.appendChild(mk('💤','Snooze 10 days',()=>{snoozeTask(t.id);draw();}));
+      r.appendChild(mk('✓','Done',()=>{markDone(t);r.classList.add('gone');}));
+      body.appendChild(r);
+    });
+    if(!list.length) body.innerHTML='<div class="empty">Nothing here.</div>';
+  };
+  head.querySelector('#rev_q').addEventListener('input',draw);
+  head.querySelector('[data-close]').onclick=()=>{w.remove();render();};
+  head.querySelector('[data-guessall]').onclick=async()=>{
+    if(!confirm('Apply every suggested tag in this list? (Undo per task afterwards.)'))return;
+    let n=0; for(const t of items){ if(t.project&&t.lead) continue; if(await applyGuess(t,guessCategory(t))) n++; }
+    toast(n?('🔮 Filled '+n+' task'+(n===1?'':'s')):'No confident guesses'); draw();
+  };
+  draw(); document.body.appendChild(w); head.querySelector('#rev_q').focus();
+}
 // P/L/S quick-assign: pick from existing values (or type a new one).
-function pickAssign(t,dim){
+function pickAssign(t,dim,after){
   const fmap={project:'Project',lead:'SBLead',sub:'Sub'};
   const vals=[...new Set(tasks.map(x=>x[dim]).filter(Boolean))].sort();
   const bd=document.createElement('div'); bd.className='backdrop';
   const box=document.createElement('div'); box.className='modal';
   box.innerHTML='<h3 style="text-transform:capitalize">'+esc(dim)+' → '+esc(cleanName(t))+'</h3>';
   const list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:56vh;overflow:auto';
-  const setv=async v=>{ bd.remove(); t[dim]=v; touch(t.id); saveAug(); render(); toast('Set '+dim+' → '+v); await atPatch(t.id,{[fmap[dim]]:v}); };
+  const setv=async v=>{ bd.remove(); t[dim]=v; touch(t.id); saveAug(); if(after)after(); else render(); toast('Set '+dim+' → '+v); await atPatch(t.id,{[fmap[dim]]:v}); };
+  const g=guessCategory(t)[dim];
+  if(g&&t[dim]!==g){ const s=document.createElement('button'); s.className='btn primary'; s.style.textAlign='left'; s.textContent='🔮 '+g+'  (suggested)'; s.onclick=()=>setv(g); list.appendChild(s); }
   vals.forEach(v=>{const b=document.createElement('button');b.className='btn';b.style.textAlign='left';b.textContent=v+(t[dim]===v?'  ✓':'');b.onclick=()=>setv(v);list.appendChild(b);});
   const nw=document.createElement('button'); nw.className='btn'; nw.style.textAlign='left'; nw.textContent='＋ New '+dim+'…';
   nw.onclick=()=>{ const v=prompt('New '+dim+':'); if(v&&v.trim())setv(v.trim()); };
@@ -1638,9 +1742,19 @@ function renderFilters(){
   const cg=document.createElement('div'); cg.className='filter-group';
   const clbl=document.createElement('span'); clbl.className='lbl'; clbl.textContent='category'; cg.appendChild(clbl);
   CATEGORIES.forEach(c=>{
-    const n=c.id==='stillopen'?stillOpenItems().length:c.id==='priority'?priorityList().length:c.id==='today'?todayPlan().length:c.id==='yestboard'?yesterdayBoard().length:tasks.filter(t=>t.status==='Open'&&notSnoozed(t)&&sectionOf(t)===c.id).length;
+    const n=c.id==='stillopen'?stillOpenItems().length:c.id==='priority'?priorityList().length:c.id==='today'?todayPlan().length:c.id==='yestboard'?yesterdayBoard().length
+      :c.id==='allopen'?tasks.filter(t=>t.status==='Open').length
+      :c.id==='uncat'?tasks.filter(t=>t.status==='Open'&&!t.project&&!t.lead&&!t.sub).length
+      :tasks.filter(t=>t.status==='Open'&&notSnoozed(t)&&sectionOf(t)===c.id).length;
     const b=document.createElement('button'); b.className='chip'; b.innerHTML=esc(c.name)+`<span class="n">${n}</span>`;
-    b.onclick=()=>{ activeBulb={dim:'category',val:c.id,label:c.name}; flashBulb=true; render(); };
+    // big lists open straight into full-screen review; the rest open as a bulb panel
+    const bigRev=['backlog','allopen','uncat','stillopen'].includes(c.id);
+    b.title=bigRev?'Open full-screen review':'Open as a panel';
+    b.onclick=()=>{ if(bigRev){ const items=c.id==='allopen'?tasks.filter(t=>t.status==='Open')
+        :c.id==='uncat'?tasks.filter(t=>t.status==='Open'&&!t.project&&!t.lead&&!t.sub)
+        :c.id==='stillopen'?stillOpenItems():tasks.filter(t=>t.status==='Open'&&sectionOf(t)==='backlog');
+      openReview(c.name,items.sort((x,y)=>new Date(y.createdTime||0)-new Date(x.createdTime||0))); return; }
+      activeBulb={dim:'category',val:c.id,label:c.name}; flashBulb=true; render(); };
     cg.appendChild(b);
   });
   wrap.appendChild(cg);
@@ -1670,18 +1784,42 @@ async function markDone(t){
   const prev={sec:A(t.id).section,secR:t.sectionRemote};
   pushUndo('done: '+cleanName(t),async()=>{ t.status='Open'; A(t.id).section=prev.sec; t.sectionRemote=prev.secR; await atPatch(t.id,{Status:'Open',Section:prev.secR||prev.sec||''}); });
   t.status='Done'; A(t.id).section=null; t.sectionRemote=''; saveAug(); render(); await atPatch(t.id,{Status:'Done',Section:''}); toast('✅ Done'); }
+// Orange next-step: edit it, add a dated comment, mark it done, or clear it.
 function editNext(t){
-  openModal(`Next step for "${t.name}"`, `
-    <label class="field"><span class="lbl">What to do (free text — I'll act on it)</span>
-      <textarea class="inp" id="ns" placeholder="e.g. Text Gary about the quote">${esc(A(t.id).nextStep||'')}</textarea></label>
+  const a=A(t.id); const cur=a.nextStep||t.nextStepRemote||'';
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML=`<div class="modal"><h3>📝 Next step</h3>
+    <div class="note" style="margin-bottom:6px">${esc(cleanName(t))}</div>
+    <label class="field"><span class="lbl">What to do (the agent acts on this)</span>
+      <textarea class="inp" id="ns" placeholder="e.g. Text Gary about the quote">${esc(cur)}</textarea></label>
+    <label class="field"><span class="lbl">Add a comment / note (appended with today's date)</span>
+      <input class="inp" id="nc" placeholder="e.g. left voicemail, waiting on him"></label>
     <label class="field"><span class="lbl">Type</span>
       <select class="inp" id="nt">
         <option value="">—</option><option value="text">Text</option><option value="email">Email</option>
         <option value="call">Call</option><option value="follow">Follow up</option>
       </select></label>
-    <div class="note">Tip: leave a type and it routes to the right button. "Follow up" keeps nagging until you mark it done.</div>`,
-    ()=>{const v=document.getElementById('ns').value.trim();const ty=document.getElementById('nt').value;
-      const a=A(t.id); a.nextStep=v; if(ty)a.type=ty; if(ty==='follow')a.awaiting=true; touch(t.id); saveAug(); render();});
+    <div class="modal-actions">
+      <button class="btn ghost" data-clear>✕ Clear</button>
+      <button class="btn" data-done>✓ Mark step done</button>
+      <button class="btn ghost" data-x>Cancel</button>
+      <button class="btn primary" data-ok>Save</button>
+    </div></div>`;
+  bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();});
+  const save=async v=>{ a.nextStep=v; touch(t.id); saveAug(); bd.remove(); render(); await atPatch(t.id,{NextStep:v}); };
+  bd.querySelector('[data-x]').onclick=()=>bd.remove();
+  bd.querySelector('[data-clear]').onclick=()=>save('');
+  bd.querySelector('[data-done]').onclick=()=>save('✓ '+(bd.querySelector('#ns').value.trim()||cur));
+  bd.querySelector('[data-ok]').onclick=()=>{
+    let v=bd.querySelector('#ns').value.trim();
+    const c=bd.querySelector('#nc').value.trim();
+    if(c){ const d=new Date(); v=(v?v+'\n':'')+'· '+(d.getMonth()+1)+'/'+d.getDate()+': '+c; }
+    const ty=bd.querySelector('#nt').value;
+    if(ty)a.type=ty; if(ty==='follow')a.awaiting=true;
+    save(v);
+  };
+  document.body.appendChild(bd); bd.querySelector('#ns').focus();
+  setTimeout(()=>{const g=guessNext(t); const el=bd.querySelector('#ns'); if(g&&el&&!el.value)el.placeholder='Suggested: '+g;},0);
   // suggestion (tiny "learning" heuristic)
   setTimeout(()=>{const g=guessNext(t); if(g&&!A(t.id).nextStep){const el=document.getElementById('ns'); if(el&&!el.value)el.placeholder='Suggested: '+g;}},0);
 }
@@ -1693,17 +1831,55 @@ function guessNext(t){
   if(t.lead) return 'Follow up with '+t.lead;
   return null;
 }
-// "Learning" v1: guess project/lead for an unsorted task by matching the most
-// similar already-categorized task (shared keywords). Opens for your approval.
-function guessCategory(t){
-  const words=(t.name||'').toLowerCase().split(/[^a-z0-9]+/).filter(w=>w.length>3);
-  let best=null,score=0;
-  for(const o of tasks){
-    if(o.id===t.id || (!o.project&&!o.lead)) continue;
-    const ow=(o.name||'').toLowerCase(); let s=0; words.forEach(w=>{if(ow.includes(w))s++;});
-    if(s>score){score=s;best=o;}
+// ── Fuzzy guess of Project / Lead / Sub ──────────────────────────────────────
+// Roni usually types the project FIRST ("YOSS alumtec shroud gaps"), so a
+// leading-token match on a known value wins outright. Otherwise fall back to
+// fuzzy similarity against every known value, then to keyword overlap with an
+// already-categorized task.
+const norm=s=>(s||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+function editDist(a,b){
+  if(Math.abs(a.length-b.length)>3) return 99;
+  const d=Array.from({length:a.length+1},(_,i)=>[i,...Array(b.length).fill(0)]);
+  for(let j=0;j<=b.length;j++)d[0][j]=j;
+  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
+  return d[a.length][b.length];
+}
+function knownVals(dim){ return [...new Set(tasks.map(x=>x[dim]).filter(Boolean))]; }
+// Score a known value against the task text. Higher = better; 0 = no match.
+function fuzzyPick(text,dim,min){
+  const n=norm(text), toks=n.split(' ');
+  let best=null;
+  for(const v of knownVals(dim)){
+    const nv=norm(v); if(!nv) continue;
+    const vToks=nv.split(' ');
+    let s=0;
+    // Roni types the project FIRST, so only leading matches are trustworthy.
+    // Loose "words appear somewhere" matching tested at 41% — it's excluded.
+    if(n===nv) s=200;
+    else if(n.startsWith(nv+' ')) s=100+nv.length;                                              // leading exact
+    else if(toks.length&&vToks.length&&vToks[0].length>3&&editDist(toks[0],vToks[0])<=1) s=80;  // leading typo
+    if(s&&(!best||s>best.s)) best={v,s};
   }
-  return (best&&score>0)?{project:t.project||best.project,lead:t.lead||best.lead}:{};
+  return best&&best.s>=(min||80)?best.v:null;
+}
+// min 80 = suggest (leading typo OK). min 100 = auto-apply (exact leading word only).
+function guessCategory(t,min){
+  const txt=cleanName(t);
+  const out={};
+  const p=fuzzyPick(txt,'project',min); if(p) out.project=p;
+  const l=fuzzyPick(txt,'lead',min);    if(l) out.lead=l;
+  const s=fuzzyPick(txt,'sub',min);     if(s) out.sub=s;
+  return out;   // no confident leading match → suggest nothing (silence beats a wrong tag)
+}
+// Apply a guess straight to a task (used by review + Incoming auto-guess).
+async function applyGuess(t,g){
+  const f={};
+  if(g.project&&!t.project){t.project=g.project;f.Project=g.project;}
+  if(g.lead&&!t.lead){t.lead=g.lead;f.SBLead=g.lead;}
+  if(g.sub&&!t.sub){t.sub=g.sub;f.Sub=g.sub;}
+  if(!Object.keys(f).length) return false;
+  await atPatch(t.id,f); return true;
 }
 function sendText(t){
   const body=A(t.id).nextStep||t.name; const ph=phoneFor(t);
@@ -1901,16 +2077,20 @@ function openSettings(){
 const val=id=>document.getElementById(id).value.trim();
 
 /* ---------- Reference grid overlay ---------- */
+// Reference overlay = the REAL panel grid: 10 cells wide × 2 tall, drawn over
+// the board area only (not the whole window), so what you see is where panels snap.
 function buildGrid(){
   const g=document.getElementById('grid'); g.innerHTML='';
-  const cw=140, ch=120, cols=Math.ceil(innerWidth/cw), rows=Math.ceil(innerHeight/ch);
-  const letters='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  for(let y=0;y<rows;y++)for(let x=0;x<cols;x++){
-    const c=document.createElement('div'); c.className='gcell';
-    c.style.cssText=`left:${x*cw}px;top:${y*ch}px;width:${cw}px;height:${ch}px`;
+  const board=document.getElementById('board');
+  const n=[...board.children].filter(p=>p.classList.contains('panel')).length;
+  const d=gridDims(n); const top=board.getBoundingClientRect().top, left=board.getBoundingClientRect().left;
+  for(let r=0;r<d.rows;r++)for(let c=0;c<GRID_COLS;c++){
+    const {x,y}=slotXY(r*GRID_COLS+c,d);
+    const cell=document.createElement('div'); cell.className='gcell';
+    cell.style.cssText=`left:${left+x}px;top:${top+y}px;width:${d.cw}px;height:${d.ch}px;border:1px dashed rgba(224,164,88,.35)`;
     const l=document.createElement('div'); l.className='glabel';
-    l.style.cssText=`left:${x*cw+2}px;top:${y*ch+2}px`; l.textContent=letters[x%26]+(y+1);
-    g.appendChild(c); g.appendChild(l);
+    l.style.cssText=`left:${left+x+4}px;top:${top+y+3}px`; l.textContent=(r*GRID_COLS+c+1);
+    g.appendChild(cell); g.appendChild(l);
   }
 }
 
@@ -1979,6 +2159,11 @@ let _rsT; addEventListener('resize',()=>{if(document.getElementById('grid').clas
 // One-time layout migration: v3 = the 10×2 snap grid (drops old pos/width state).
 const LAYOUT_VER=3;
 if(meta.layoutVer!==LAYOUT_VER){ meta.pos={}; meta.slots={}; delete meta.width; delete meta.height; meta.layoutVer=LAYOUT_VER; saveMeta(); }
+// One-time repair: an over-eager daily sweep snoozed most of the backlog, which
+// emptied the Sub/Lead chips. Release every sweep-snooze so the board is whole.
+if(!meta.unsnoozeFix){ let n=0;
+  for(const id of Object.keys(aug)){ if(aug[id].snoozeUntil>Date.now()){ delete aug[id].snoozeUntil; n++; } }
+  meta.unsnoozeFix=1; saveAug(); saveMeta(); if(n) setTimeout(()=>toast('↩ Restored '+n+' hidden tasks'),800); }
 dailyReset();
 if(cfg.apiKey){ render(); atFetch(); }
 else { tasks=demoTasks(); render(); toast('⚠️ DEMO data — paste your Airtable key to load your real tasks'); openSettings(); }
