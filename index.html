@@ -232,7 +232,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-23 11:54';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-23 13:15';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
@@ -621,6 +621,10 @@ function outboxPanel(){
     const row=document.createElement('div');row.className='row';
     row.appendChild(btn('✅ Approve & send','mini on',' ',()=>setOutboxStatus(o.id,'Approved')));
     row.appendChild(btn('✏️ Edit','mini',' ',()=>editOutbox(o)));
+    // jump back to the task this follow-up came from
+    if(o.task&&o.task!=='Reply') row.appendChild(btn('🔎 Task','mini','Open the task this is about',()=>{
+      const tt=tasks.find(x=>cleanName(x)===o.task)||tasks.find(x=>cleanName(x).toLowerCase().includes(o.task.toLowerCase()));
+      if(tt)openDetail(tt); else toast('Task not found: '+o.task); }));
     row.appendChild(btn('✕ Discard','mini',' ',()=>deleteOutbox(o.id)));
     d.appendChild(row); body.appendChild(d);});
   approved.forEach(o=>{const d=document.createElement('div');d.className='txt-item';d.style.opacity='.6';
@@ -731,8 +735,6 @@ function reorderPanels(fromId,toId){
   const i=ord.indexOf(toId); ord.splice(i<0?ord.length:i,0,fromId);
   meta.order=ord; saveMeta(); render();
 }
-function cycleWidth(id){ meta.width=meta.width||{}; meta.width[id]=((meta.width[id]||1)%3)+1; saveMeta(); render(); }
-function cycleHeight(id){ meta.height=meta.height||{}; meta.height[id]=((meta.height[id]||2)%3)+1; saveMeta(); render(); }
 function heightPx(id){ const h=meta.height&&meta.height[id]; return h?({1:'150px',2:'400px',3:'700px'})[h]:null; }
 // Manual within-section task ordering (drag a task onto another to resort).
 function orderRows(items,sec){
@@ -798,7 +800,7 @@ function render(){
     // Opened bulb (project/lead/sub) sits right after Incoming so you can drag between them
     if(id==='incoming' && activeBulb) board.appendChild(bulbPanel());
   });
-  layoutFreeform(board);
+  layoutGrid(board);
   restoreScrolls(scrolls);
 }
 // Email links open in the Superhuman APP (not Gmail) — convert the Gmail
@@ -820,7 +822,6 @@ function bulbPanel(){
   if(bulbSort) items=sortItems(items,bulbSort);
   const title = isAdded ? ('🗓 Added: '+label) : isCat ? label : '🔎 '+val;
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='bulb';
-  meta.width=meta.width||{}; p.style.gridColumn='span '+(meta.width.bulb||1);
   const head=document.createElement('div'); head.className='panel-head';
   const sortOpts=[['','Sort'],['new','Newest'],['old','Oldest'],['days','Days open'],['priority','Priority'],['project','Project'],['lead','Lead'],['sub','Sub']];
   head.innerHTML=`<button class="phead-ctrl" data-prev title="Previous">◀</button><h3>${esc(title)}</h3><button class="phead-ctrl" data-next title="Next">▶</button>`+
@@ -1104,139 +1105,70 @@ function showCriteria(id){
   if(id==='bulb'&&activeBulb) return toast('Filter → '+activeBulb.dim+': '+(activeBulb.label||activeBulb.val));
   toast(SECTION_CRITERIA[id]||('Section: '+id));
 }
-function resetLayout(){ meta.pos={}; meta.layoutMode='fit'; saveMeta(); render(); toast('↺ Layout reset — fitted to screen'); }
-function saveLayout(){ meta.savedLayout=JSON.parse(JSON.stringify(meta.pos||{})); saveMeta(); toast('💾 Layout saved'); }
-function restoreLayout(){ if(!meta.savedLayout){toast('No saved layout yet');return;} meta.pos=JSON.parse(JSON.stringify(meta.savedLayout)); meta.layoutMode='custom'; saveMeta(); render(); toast('↩ Layout restored'); }
-function panelRects(exceptId){ const b=document.getElementById('board'); const out=[];
-  [...b.children].forEach(p=>{ if(!p.classList.contains('panel'))return; const id=p.dataset.section; if(id===exceptId)return;
-    out.push({x:parseInt(p.style.left)||0,y:parseInt(p.style.top)||0,w:p.offsetWidth,h:p.offsetHeight}); }); return out; }
-function rectsOverlap(a,b){ return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y; }
-// Snap the dragged panel to the column grid — it STAYS where you dropped it;
-// anything it lands on gets relocated instead (see resolveAllOverlaps).
-function snapAndResolve(p,id){
-  const COL=252,GAP=12;
-  let x=parseInt(p.style.left)||0, y=parseInt(p.style.top)||0, w=p.offsetWidth;
-  x=Math.max(GAP, Math.round((x-GAP)/(COL+GAP))*(COL+GAP)+GAP);
-  y=Math.max(8, Math.round(y/16)*16);
-  p.style.left=x+'px'; p.style.top=y+'px';
-  return {x,y,w};
+function resetLayout(){ meta.slots={}; saveMeta(); render(); toast('↺ Grid reset'); }
+// ── 10×2 snap grid: every panel lives in a numbered cell. Drag a panel and it
+//    snaps into the cell you drop it on; whatever was there moves to the first
+//    free cell. Predictable, no overlaps, nothing off screen. ──
+const GRID_COLS=10, GRID_ROWS=2;
+function gridDims(nPanels){
+  const board=document.getElementById('board'); const GAP=8;
+  const rows=Math.max(GRID_ROWS, Math.ceil((nPanels||GRID_COLS*GRID_ROWS)/GRID_COLS));
+  const W=board.clientWidth;
+  const H=Math.max(300, window.innerHeight - board.getBoundingClientRect().top - 12);
+  return {GAP, rows, cw:Math.floor((W-GAP*(GRID_COLS+1))/GRID_COLS), ch:Math.floor((H-GAP*(rows+1))/rows)};
 }
-// Find the nearest free spot for a panel — prefer ABOVE the fold, near where it was.
-function boardViewH(){ const b=document.getElementById('board'); return Math.max(300, window.innerHeight - b.getBoundingClientRect().top - 16); }
-function findSpot(w,h,placed,prefX,prefY,bw){
-  const GAP=12,COL=252, viewH=boardViewH();
-  const cols=Math.max(1,Math.floor((bw-GAP)/(COL+GAP)));
-  let best=null;
-  for(let k=0;k<cols;k++){
-    const x=GAP+k*(COL+GAP); if(x+w>bw-2) continue;
-    let y=8,g=0;
-    while(g++<400){ const r={x,y,w,h}; const hit=placed.find(q=>rectsOverlap(r,q)); if(!hit)break; y=hit.y+hit.h+GAP; }
-    const belowFold=(y+h>viewH)?1:0;
-    const score=belowFold*100000 + Math.abs(x-prefX)*1.5 + Math.abs(y-prefY);
-    if(!best||score<best.score) best={x,y,score};
-  }
-  return best||{x:GAP,y:8};
-}
-// Global guarantee: NO overlaps, nothing off the right edge, and panels stay
-// ON SCREEN whenever there's room — displaced panels find the nearest free
-// column slot instead of being shoved below the fold.
-// priorityId (the panel you just dragged) is placed first and never moved.
-function resolveAllOverlaps(priorityId){
-  const board=document.getElementById('board'); const GAP=12; const bw=board.clientWidth;
-  const arr=[...board.children].filter(p=>p.classList.contains('panel')).map(p=>({p,id:p.dataset.section,x:parseInt(p.style.left)||0,y:parseInt(p.style.top)||0,w:p.offsetWidth,h:p.offsetHeight}));
-  arr.forEach(o=>{ if(o.w>bw-2*GAP)o.w=bw-2*GAP; if(o.x+o.w>bw-GAP)o.x=Math.max(GAP,bw-GAP-o.w); if(o.x<GAP)o.x=GAP; });
-  const placed=[];
-  const put=o=>{ placed.push(o); o.p.style.left=o.x+'px'; o.p.style.top=o.y+'px'; o.p.style.width=o.w+'px';
-    if(o.id){ meta.pos[o.id]=meta.pos[o.id]||{}; meta.pos[o.id].x=o.x; meta.pos[o.id].y=o.y; meta.pos[o.id].w=o.w; } };
-  const pri=priorityId?arr.find(o=>o.id===priorityId):null;
-  if(pri) put(pri);
-  arr.filter(o=>o!==pri).sort((a,b)=>a.y-b.y||a.x-b.x).forEach(o=>{
-    if(placed.some(q=>rectsOverlap(o,q))){ const s=findSpot(o.w,o.h,placed,o.x,o.y,bw); o.x=s.x; o.y=s.y; }
-    put(o);
-  });
-  saveMeta(); adjustBoardHeight();
-}
-// Fit EVERY panel into the visible window as sized cells — the page never scrolls.
-// Content that doesn't fit a cell scrolls inside that panel.
-function fitToScreen(silent){
-  const board=document.getElementById('board'); const GAP=10;
-  const all=[...board.children].filter(p=>p.classList.contains('panel'));
-  if(!all.length) return;
-  // Done / Don't care / Auto-sort collapse to a one-line bottom strip
-  const micro=all.filter(p=>p.classList.contains('micro'));
-  const panels=all.filter(p=>!p.classList.contains('micro'));
-  const n=panels.length;
-  const availW=board.clientWidth-GAP;
-  const MH=micro.length?40+GAP:0;
-  const availH=Math.max(240, window.innerHeight - board.getBoundingClientRect().top - GAP - 6) - MH;
-  // Columns target the ORIGINAL 252px width — score punishes wider cells too.
-  let best={cols:Math.ceil(Math.sqrt(n)),score:-1};
-  for(let cols=1; cols<=Math.min(n,10); cols++){
-    const rows=Math.ceil(n/cols);
-    const cw=availW/cols-GAP, ch=availH/rows-GAP;
-    if(cw<170||ch<105) continue;                            // unusably small
-    const score=Math.min(cw/252,252/cw)*Math.min(ch/250,1); // peak at 252px-wide cells
-    if(score>best.score) best={cols,score};
-  }
-  const cols=best.cols, rows=Math.ceil(n/cols);
-  const cw=Math.min(300, Math.floor(availW/cols)-GAP), ch=Math.floor(availH/rows)-GAP;   // hard cap: never fat
-  panels.forEach((p,i)=>{ const c=i%cols, r=Math.floor(i/cols);
-    const x=GAP+c*(cw+GAP), y=GAP+r*(ch+GAP);
-    p.style.left=x+'px'; p.style.top=y+'px'; p.style.width=cw+'px'; p.style.height=ch+'px';
-    const b=p.querySelector('.panel-body'); if(b){ b.style.maxHeight='none'; b.style.overflowY='auto'; }
-    const id=p.dataset.section; if(id) meta.pos[id]={x,y,w:cw,h:ch}; });
-  if(micro.length){ const mw=Math.floor(availW/micro.length)-GAP, my=GAP+rows*(ch+GAP);
-    micro.forEach((p,i)=>{ const x=GAP+i*(mw+GAP);
-      p.style.left=x+'px'; p.style.top=my+'px'; p.style.width=mw+'px'; p.style.height='40px';
-      const id=p.dataset.section; if(id) meta.pos[id]={x,y:my,w:mw,h:40}; }); }
-  board.style.height=(availH+MH)+'px';
-  meta.layoutMode='fit'; saveMeta();
-  if(!silent) toast('⛶ Fit to screen');
-}
-function adjustBoardHeight(){
-  const board=document.getElementById('board'); let mb=0;
-  [...board.children].forEach(p=>{ if(p.classList.contains('panel')) mb=Math.max(mb,(parseInt(p.style.top)||0)+p.offsetHeight); });
-  board.style.height=(mb+140)+'px';
-}
-function layoutFreeform(board){
-  meta.pos=meta.pos||{};
-  const W=252,GAP=12; const cols=Math.max(1,Math.floor((board.clientWidth-GAP)/(W+GAP)));
+function slotXY(s,d){ const c=s%GRID_COLS, r=Math.floor(s/GRID_COLS); return {x:d.GAP+c*(d.cw+d.GAP), y:d.GAP+r*(d.ch+d.GAP)}; }
+function firstFreeSlot(total){ const used=new Set(Object.values(meta.slots).filter(v=>v!=null)); let f=0; while(used.has(f)&&f<total)f++; return f; }
+// Lay out every panel into its grid cell (assigning free cells to newcomers).
+function layoutGrid(board){
+  meta.slots=meta.slots||{};
   const panels=[...board.children].filter(p=>p.classList.contains('panel'));
-  const wire=(p,id)=>{ p.style.position='absolute'; p.style.resize='horizontal'; p.style.overflow='hidden';
-    const head=p.querySelector('.panel-head'); if(head){ const dh=head.querySelector('.drag-handle'); if(dh)dh.draggable=false; enablePanelDrag(p,head,id); } enablePanelResizeSave(p,id); };
-  let idx=0;
-  panels.forEach(p=>{ const id=p.dataset.section; if(id==='bulb')return;
-    let pos=meta.pos[id]; if(!pos){ const col=idx%cols,row=Math.floor(idx/cols); pos={x:GAP+col*(W+GAP),y:14+row*290,w:W}; meta.pos[id]=pos; }
-    p.style.left=pos.x+'px'; p.style.top=pos.y+'px'; p.style.width=(pos.w||W)+'px';
-    if(pos.h){ p.style.height=pos.h+'px'; const b=p.querySelector('.panel-body'); if(b)b.style.maxHeight='none'; }
-    wire(p,id); idx++; });
-  // the opened bulb: keep it where you last put it, but never let it overlap
-  const bulb=panels.find(p=>p.dataset.section==='bulb');
-  if(bulb){ const pos=meta.pos.bulb||{x:GAP,y:8,w:W}; bulb.style.left=pos.x+'px'; bulb.style.top=pos.y+'px'; bulb.style.width=(pos.w||W)+'px'; wire(bulb,'bulb');
-    if(bulb.classList.contains('flash')) meta.pos.bulb=snapAndResolve(bulb,'bulb'); }   // only re-place when freshly opened
-  // default: everything fits the window (no page scroll). Once you drag a panel, your arrangement wins.
-  if(meta.layoutMode==='custom') resolveAllOverlaps(); else fitToScreen(true);
+  const d=gridDims(panels.length);
+  const total=GRID_COLS*d.rows;
+  // sanitize: drop dupes/out-of-range slots, then hand free cells to newcomers in order
+  const used=new Set();
+  panels.forEach(p=>{ const id=p.dataset.section; let s=meta.slots[id];
+    if(s==null||s<0||s>=total||used.has(s)) s=null;
+    if(s!=null)used.add(s); meta.slots[id]=s; });
+  panels.forEach(p=>{ const id=p.dataset.section; if(meta.slots[id]==null){ const f=firstFreeSlot(total); meta.slots[id]=f; used.add(f); } });
+  panels.forEach(p=>{ const id=p.dataset.section; const {x,y}=slotXY(meta.slots[id],d);
+    p.style.position='absolute'; p.style.left=x+'px'; p.style.top=y+'px';
+    p.style.width=d.cw+'px'; p.style.height=p.classList.contains('micro')?'40px':d.ch+'px';
+    const b=p.querySelector('.panel-body'); if(b){ b.style.maxHeight='none'; b.style.overflowY='auto'; }
+    const head=p.querySelector('.panel-head'); if(head){ const dh=head.querySelector('.drag-handle'); if(dh)dh.draggable=false; enableGridDrag(p,head,id); }
+  });
+  board.style.height=(d.GAP+d.rows*(d.ch+d.GAP))+'px';
+  saveMeta();
 }
-function enablePanelDrag(p,head,id){
+function enableGridDrag(p,head,id){
   head.style.cursor='move';
+  if(p._wired)return; p._wired=true;
   head.addEventListener('pointerdown',e=>{
     if(e.target.closest('button,input,select,a,textarea')) return;   // let header controls work
     e.preventDefault();
     const sx=e.clientX, sy=e.clientY, px=parseInt(p.style.left)||0, py=parseInt(p.style.top)||0; let moved=false;
-    const posBefore=JSON.stringify(meta.pos||{}), modeBefore=meta.layoutMode;
     p.style.zIndex=10;
     const mv=ev=>{ const dx=ev.clientX-sx, dy=ev.clientY-sy; if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
-      p.style.left=Math.max(0,px+dx)+'px'; p.style.top=Math.max(0,py+dy)+'px'; };
+      p.style.left=(px+dx)+'px'; p.style.top=(py+dy)+'px'; };
     const up=()=>{ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); p.style.zIndex='';
-      if(moved){ pushUndo('panel move',async()=>{ meta.pos=JSON.parse(posBefore); meta.layoutMode=modeBefore; saveMeta(); });
-        meta.layoutMode='custom'; snapAndResolve(p,id); resolveAllOverlaps(id); }
-      else showCriteria(id); };
+      if(!moved){ showCriteria(id); return; }
+      const before=JSON.stringify(meta.slots);
+      pushUndo('panel move',async()=>{ meta.slots=JSON.parse(before); saveMeta(); });
+      const board=document.getElementById('board');
+      const n=[...board.children].filter(x=>x.classList.contains('panel')).length;
+      const d=gridDims(n); const total=GRID_COLS*d.rows;
+      // snap to the cell under the panel's center
+      const cx=(parseInt(p.style.left)||0)+d.cw/2, cy=(parseInt(p.style.top)||0)+d.ch/2;
+      const c=Math.min(GRID_COLS-1,Math.max(0,Math.floor((cx-d.GAP/2)/(d.cw+d.GAP))));
+      const r=Math.min(d.rows-1,Math.max(0,Math.floor((cy-d.GAP/2)/(d.ch+d.GAP))));
+      const target=r*GRID_COLS+c;
+      const occupant=Object.keys(meta.slots).find(k=>k!==id&&meta.slots[k]===target);
+      meta.slots[id]=target;
+      if(occupant) meta.slots[occupant]=firstFreeSlot(total);   // displaced box → first open cell
+      saveMeta(); render();
+    };
     document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up);
   });
-}
-function enablePanelResizeSave(p,id){
-  if(p._ro)return;
-  try{ const ro=new ResizeObserver(()=>{ clearTimeout(p._rt); p._rt=setTimeout(()=>{ const o=meta.pos[id]||{}; o.w=p.offsetWidth; o.x=parseInt(p.style.left)||o.x; o.y=parseInt(p.style.top)||o.y; meta.pos[id]=o; resolveAllOverlaps(); },350); }); ro.observe(p); p._ro=ro; }catch(e){}
 }
 
 function renderBanner(){
@@ -1251,17 +1183,12 @@ function renderBanner(){
 
 function headCtrls(id,title,items){
   return `<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>${title}</h3>`+
-    `<button class="phead-ctrl" data-w title="Change width">⇔</button>`+
-    `<button class="phead-ctrl" data-h title="Change height">↕</button>`+
     (items?`<button class="phead-ctrl" data-m title="Max shown">#${(meta.max&&meta.max[id])||''}</button>`:'')+
     (items?`<button class="mini send-list" title="Send this list">⤴</button>`:'')+
     (items?`<button class="phead-ctrl" data-pop title="Float this out to its own window">⧉</button>`:'')+
     (items?`<span class="count">${items.length}</span>`:'');
 }
 function wirePanel(p,head,id){
-  meta.width=meta.width||{}; p.style.gridColumn='span '+(meta.width[id]||1);
-  head.querySelector('[data-w]').onclick=()=>cycleWidth(id);
-  const hb=head.querySelector('[data-h]'); if(hb)hb.onclick=()=>cycleHeight(id);
   const dh=head.querySelector('.drag-handle');
   dh.addEventListener('dragstart',e=>{e.stopPropagation();e.dataTransfer.setData('text/plain','panel:'+id);try{e.dataTransfer.setDragImage(p,20,20);}catch(_){}p.classList.add('dragging');});
   dh.addEventListener('dragend',()=>p.classList.remove('dragging'));
@@ -1670,7 +1597,7 @@ function openDatePicker(t){
   document.body.appendChild(bd);
 }
 function setDoDate(id,dateStr){ const a=A(id); a.doDate=dateStr||''; const t=tasks.find(x=>x.id===id); if(t)t.doDate=dateStr||''; saveAug(); atPatch(id,{DoDate:dateStr||''}); }
-function todayPlan(){ const td=todayISO(); return tasks.filter(t=>t.status==='Open' && doDateOf(t) && doDateOf(t)<=td).sort((a,b)=>doDateOf(a).localeCompare(doDateOf(b))); }
+function todayPlan(){ const td=todayISO(); return tasks.filter(t=>t.status==='Open' && notSnoozed(t) && doDateOf(t) && doDateOf(t)<=td).sort((a,b)=>doDateOf(a).localeCompare(doDateOf(b))); }
 function isCallTask(t){ return t.typeRemote==='call' || t.sectionRemote==='calls' || A(t.id).type==='call' || /^\s*call\b/i.test(t.name||''); }
 // Calls you already handled, so you can look back at previous days' call lists.
 function pastCalls(){ const cut=Date.now()-14*86400000;
@@ -1679,7 +1606,8 @@ function pastCalls(){ const cut=Date.now()-14*86400000;
 
 /* ---------- Filters UI ---------- */
 function countsFor(dim){
-  const counts={}; tasks.filter(t=>t.status==='Open').forEach(t=>{const v=t[dim];if(v)counts[v]=(counts[v]||0)+1;});
+  // counts match what the pane shows: open AND not snoozed
+  const counts={}; tasks.filter(t=>t.status==='Open'&&notSnoozed(t)).forEach(t=>{const v=t[dim];if(v)counts[v]=(counts[v]||0)+1;});
   return counts;
 }
 function orderedVals(dim,counts){
@@ -1710,7 +1638,7 @@ function renderFilters(){
   const cg=document.createElement('div'); cg.className='filter-group';
   const clbl=document.createElement('span'); clbl.className='lbl'; clbl.textContent='category'; cg.appendChild(clbl);
   CATEGORIES.forEach(c=>{
-    const n=c.id==='stillopen'?stillOpenItems().length:c.id==='priority'?priorityList().length:c.id==='today'?todayPlan().length:c.id==='yestboard'?yesterdayBoard().length:tasks.filter(t=>t.status==='Open'&&sectionOf(t)===c.id).length;
+    const n=c.id==='stillopen'?stillOpenItems().length:c.id==='priority'?priorityList().length:c.id==='today'?todayPlan().length:c.id==='yestboard'?yesterdayBoard().length:tasks.filter(t=>t.status==='Open'&&notSnoozed(t)&&sectionOf(t)===c.id).length;
     const b=document.createElement('button'); b.className='chip'; b.innerHTML=esc(c.name)+`<span class="n">${n}</span>`;
     b.onclick=()=>{ activeBulb={dim:'category',val:c.id,label:c.name}; flashBulb=true; render(); };
     cg.appendChild(b);
@@ -1793,15 +1721,16 @@ function openDetail(t,guess){
   const a=A(t.id); guess=guess||{};
   const gp=t.project||guess.project||'', gl=t.lead||guess.lead||'', gs=t.sub||'';
   const uniq=dim=>[...new Set(tasks.map(x=>x[dim]).filter(Boolean))].sort();
-  const dl=(id,dim)=>`<datalist id="${id}">${uniq(dim).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`;
-  const secOpts=BUCKETS.map(b=>`<option value="${b.id}"${sectionOf(t)===b.id?' selected':''}>${b.name}</option>`).join('');
+  // Real dropdowns (datalists rendered empty for some) + a "➕ New…" entry
+  const selOpts=(dim,cur)=>'<option value="">—</option>'+uniq(dim).map(v=>`<option value="${esc(v)}"${cur===v?' selected':''}>${esc(v)}</option>`).join('')+'<option value="__new__">➕ New…</option>';
+  const secOpts='<option value="">— none —</option>'+BUCKETS.map(b=>`<option value="${b.id}"${sectionOf(t)===b.id?' selected':''}>${b.name}</option>`).join('');
   const bd=document.createElement('div'); bd.className='backdrop';
   bd.innerHTML=`<div class="modal"><h3>Edit task</h3>
     <div class="note" style="margin:0 0 8px">ID: ${esc(t.id)}</div>
     <label class="field"><span class="lbl">Task</span><input class="inp" id="d_name" value="${esc(t.name)}"></label>
-    <label class="field"><span class="lbl">Project${guess.project&&!t.project?' · guessed':''}</span><input class="inp" id="d_proj" list="dl_proj" value="${esc(gp)}" placeholder="type or pick…">${dl('dl_proj','project')}</label>
-    <label class="field"><span class="lbl">Lead${guess.lead&&!t.lead?' · guessed':''}</span><input class="inp" id="d_lead" list="dl_lead" value="${esc(gl)}" placeholder="type or pick…">${dl('dl_lead','lead')}</label>
-    <label class="field"><span class="lbl">Sub</span><input class="inp" id="d_sub" list="dl_sub" value="${esc(gs)}" placeholder="type or pick…">${dl('dl_sub','sub')}</label>
+    <label class="field"><span class="lbl">Project${guess.project&&!t.project?' · guessed':''}</span><select class="inp" id="d_proj">${selOpts('project',gp)}</select></label>
+    <label class="field"><span class="lbl">Lead${guess.lead&&!t.lead?' · guessed':''}</span><select class="inp" id="d_lead">${selOpts('lead',gl)}</select></label>
+    <label class="field"><span class="lbl">Sub</span><select class="inp" id="d_sub">${selOpts('sub',gs)}</select></label>
     <label class="field"><span class="lbl">Section</span><select class="inp" id="d_sec">${secOpts}</select></label>
     <label class="field"><span class="lbl">Next step</span><input class="inp" id="d_next" value="${esc(a.nextStep||'')}"></label>
     <div class="field" style="display:flex;gap:6px;flex-wrap:wrap">
@@ -1833,10 +1762,17 @@ function openDetail(t,guess){
       aug[nt.id]=JSON.parse(snap.aug); await atPatch(nt.id,{Project:snap.project||'',SBLead:snap.lead||'',Sub:snap.sub||'',Section:snap.sec||'',NextStep:snap.next||'',Phone:snap.phone||''});
       Object.assign(nt,{project:snap.project,lead:snap.lead,sub:snap.sub,sectionRemote:snap.sec}); });
     tasks=tasks.filter(x=>x.id!==t.id); delete aug[t.id]; saveAug(); render(); await atDelete(t.id); toast('Deleted'); };
+  // "➕ New…" on the P/L/S dropdowns: prompt, add the option, select it
+  ['#d_proj','#d_lead','#d_sub'].forEach(sid=>{ const s=bd.querySelector(sid);
+    s.addEventListener('change',()=>{ if(s.value!=='__new__')return;
+      const v=(prompt('New value:')||'').trim();
+      if(v){ const o=document.createElement('option'); o.value=v; o.textContent=v; o.selected=true; s.insertBefore(o,s.querySelector('[value="__new__"]')); }
+      else s.value=''; }); });
   bd.querySelector('[data-ok]').onclick=async()=>{
     const g=id=>bd.querySelector(id).value.trim();
     t.name=g('#d_name'); t.project=g('#d_proj'); t.lead=g('#d_lead'); t.sub=g('#d_sub');
-    a.section=g('#d_sec'); a.nextStep=g('#d_next'); touch(t.id); saveAug(); bd.remove(); render();
+    setSection(t.id, g('#d_sec'));                      // '' = none → pulls it out of every section
+    a.nextStep=g('#d_next'); touch(t.id); saveAug(); bd.remove(); render();
     await atPatch(t.id,{Task:t.name,Project:t.project,SBLead:t.lead,Sub:t.sub}); toast('Saved');
   };
   document.body.appendChild(bd); bd.querySelector('#d_name').focus();
@@ -1958,8 +1894,8 @@ function openSettings(){
     <label class="field"><span class="lbl">Airtable Base ID</span><input class="inp" id="b" value="${esc(cfg.baseId)}"></label>
     <label class="field"><span class="lbl">Airtable Table ID</span><input class="inp" id="tb" value="${esc(cfg.tableId)}"></label>
     <label class="field"><span class="lbl">Anthropic API key (optional — photo→list)</span><input class="inp" id="an" value="${esc(cfg.anthropicKey||'')}" placeholder="sk-ant-..."></label>
-    <div class="field" style="display:flex;gap:6px;flex-wrap:wrap"><button type="button" class="btn primary" onclick="saveLayout()">💾 Save my layout</button><button type="button" class="btn" onclick="restoreLayout()">↩ Restore saved</button><button type="button" class="btn" onclick="fitToScreen()">⛶ Fit to screen</button><button type="button" class="btn ghost" onclick="resetLayout()">↺ Reset</button></div>
-    <div class="note">Keys are stored only in this browser (localStorage). Scope the Airtable token to just this base. Drag panels by their header; drag the bottom-right corner to resize.</div>`,
+    <div class="field"><button type="button" class="btn ghost" onclick="resetLayout()">↺ Reset grid</button></div>
+    <div class="note">Keys are stored only in this browser (localStorage). Scope the Airtable token to just this base. Drag a panel by its header — it snaps into the 10×2 grid; whatever it lands on moves to the first open cell.</div>`,
    ()=>{cfg.apiKey=val('k');cfg.baseId=val('b');cfg.tableId=val('tb');cfg.anthropicKey=val('an');saveCfg();atFetch();});
 }
 const val=id=>document.getElementById(id).value.trim();
@@ -2040,10 +1976,9 @@ document.getElementById('gridBtn').onclick=()=>{const g=document.getElementById(
 let _rsT; addEventListener('resize',()=>{if(document.getElementById('grid').classList.contains('on'))buildGrid(); clearTimeout(_rsT); _rsT=setTimeout(render,200);});
 
 /* first load: render, then fetch; auto-refresh once/day */
-// One-time layout migration: old builds saved fat panel widths — wipe them so
-// the new 252px fit takes over. (Bump LAYOUT_VER to force a re-fit everywhere.)
-const LAYOUT_VER=2;
-if(meta.layoutVer!==LAYOUT_VER){ meta.pos={}; meta.layoutMode='fit'; meta.layoutVer=LAYOUT_VER; saveMeta(); }
+// One-time layout migration: v3 = the 10×2 snap grid (drops old pos/width state).
+const LAYOUT_VER=3;
+if(meta.layoutVer!==LAYOUT_VER){ meta.pos={}; meta.slots={}; delete meta.width; delete meta.height; meta.layoutVer=LAYOUT_VER; saveMeta(); }
 dailyReset();
 if(cfg.apiKey){ render(); atFetch(); }
 else { tasks=demoTasks(); render(); toast('⚠️ DEMO data — paste your Airtable key to load your real tasks'); openSettings(); }
