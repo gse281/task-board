@@ -261,7 +261,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-24 10:04';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-24 11:56';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-24 · weather', d:'14-day NYC weather strip under the header (Open-Meteo) — day, emoji, rain in mm; heavy-rain days (>2mm) highlight amber. Auto-refreshes with the board.'},
@@ -2149,7 +2149,7 @@ function buildGrid(){
 }
 
 /* ---------- 14-day weather strip (Open-Meteo, NYC) ---------- */
-const WX_URL='https://api.open-meteo.com/v1/forecast?latitude=40.7128&longitude=-74.0060&daily=precipitation_sum,weathercode&timezone=America/New_York&forecast_days=14';
+const WX_URL='https://api.open-meteo.com/v1/forecast?latitude=40.7128&longitude=-74.0060&daily=precipitation_sum,weathercode&timezone=America/New_York&forecast_days=14&precipitation_unit=inch';
 let weather=[];
 // WMO weather codes → one of the six emoji we use.
 function wxEmoji(c){
@@ -2165,7 +2165,7 @@ async function fetchWeather(){
     const r=await fetch(WX_URL); if(!r.ok) throw new Error(r.status);
     const d=await r.json();
     const t=(d.daily&&d.daily.time)||[], p=(d.daily&&d.daily.precipitation_sum)||[], c=(d.daily&&d.daily.weathercode)||[];
-    weather=t.map((day,i)=>({date:day,mm:Number(p[i])||0,code:c[i]}));
+    weather=t.map((day,i)=>({date:day,pr:Number(p[i])||0,code:c[i]}));   // pr = precipitation in INCHES
   }catch(e){ /* offline / API down — just leave the strip as-is */ }
   renderWeather();
 }
@@ -2176,12 +2176,12 @@ function renderWeather(){
   const today=todayISO();
   weather.forEach(w=>{
     const d=document.createElement('div');
-    d.className='wxd'+(w.mm>2?' wet':'')+(w.date===today?' today':'');   // >2mm = amber rain day
+    d.className='wxd'+(w.pr>0.08?' wet':'')+(w.date===today?' today':'');   // >0.08in (~2mm) = amber rain day
     const dt=new Date(w.date+'T12:00:00');
     const nm=w.date===today?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
-    const mm=w.mm>0.5 ? (w.mm>=10?Math.round(w.mm):w.mm.toFixed(1))+'mm' : '&nbsp;';
-    d.innerHTML='<div class="wxday">'+nm+'</div><div class="wxic">'+wxEmoji(w.code)+'</div><div class="wxmm">'+mm+'</div>';
-    d.title=w.date+' · '+w.mm.toFixed(1)+'mm';
+    const amt=w.pr>0.02 ? w.pr.toFixed(2).replace(/^0/,'')+'"' : '&nbsp;';   // show inches when >0.02in, e.g. .09"
+    d.innerHTML='<div class="wxday">'+nm+'</div><div class="wxic">'+wxEmoji(w.code)+'</div><div class="wxmm">'+amt+'</div>';
+    d.title=w.date+' · '+w.pr.toFixed(2)+' in';
     el.appendChild(d);
   });
 }
