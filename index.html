@@ -261,9 +261,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-24 10:03';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-24 10:04';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-07-24 · weather', d:'14-day NYC weather strip under the header (Open-Meteo) — day, emoji, rain in mm; heavy-rain days (>2mm) highlight amber. Auto-refreshes with the board.'},
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
   {v:'2026-07-21 · drawer', d:'Pull-down drawer at top for filters + Incoming (hidden by default). Task rows simplified to 3 actions (📞/🔍, Move, ✓) with bigger text; swipe left = snooze, swipe right = done. Added tasks appear instantly. + button adds straight to Incoming. Incoming auto-sort. New Email + Still Open sections. Bell on Calls. Build hidden from header — tap 🔧 for this log.'},
   {v:'2026-07-21 · 21:18', d:'Wrench tooltip, category-name tap opens full list, date ranges exclude today, add-to-morning/afternoon, snooze hides from lists, pull-to-refresh, below-fold layout.'},
