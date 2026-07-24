@@ -217,6 +217,16 @@ a.tellink{color:var(--green);text-decoration:none}
 .add-inline input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 9px;font-size:13px}
 .add-inline button{background:var(--accent);border:none;color:#14110f;border-radius:8px;padding:0 12px;font-weight:800;font-size:16px}
 .more-btn{background:var(--panel);border:1px dashed var(--line);color:var(--muted);border-radius:8px;padding:6px;font-size:12px;width:100%}
+/* 14-day weather strip — one compact scrollable row under the header */
+.wxstrip{display:flex;gap:4px;overflow-x:auto;padding:4px 12px;border-bottom:1px solid var(--line);scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.wxstrip::-webkit-scrollbar{display:none}
+.wxd{flex:0 0 auto;min-width:46px;text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:2px 4px;line-height:1.2}
+.wxd .wxday{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.wxd .wxic{font-size:14px}
+.wxd .wxmm{font-size:9px;color:var(--blue);font-weight:700}
+.wxd.wet{background:rgba(224,164,88,.14);border-color:var(--accent)}
+.wxd.wet .wxmm{color:var(--accent)}
+.wxd.today{box-shadow:inset 0 0 0 1px var(--accent)}
 .idea{display:flex;gap:6px;align-items:flex-start;font-size:13px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
 .idea button{background:none;border:none;color:var(--muted);cursor:pointer;margin-left:auto}
 </style>
@@ -238,6 +248,8 @@ a.tellink{color:var(--green);text-decoration:none}
   <button class="tb-btn" id="settingsBtn">⚙︎</button>
 </div>
 
+<div class="wxstrip" id="wx"></div>
+
 <div class="filters" id="filters"></div>
 
 <div class="board" id="board"></div>
@@ -249,7 +261,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-23 17:32';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-24 10:03';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
@@ -2135,6 +2147,44 @@ function buildGrid(){
   }
 }
 
+/* ---------- 14-day weather strip (Open-Meteo, NYC) ---------- */
+const WX_URL='https://api.open-meteo.com/v1/forecast?latitude=40.7128&longitude=-74.0060&daily=precipitation_sum,weathercode&timezone=America/New_York&forecast_days=14';
+let weather=[];
+// WMO weather codes → one of the six emoji we use.
+function wxEmoji(c){
+  if(c===0) return '☀️';                                  // clear
+  if(c>=95) return '⛈️';                                  // thunderstorm
+  if((c>=71&&c<=77)||c===85||c===86) return '❄️';         // snow
+  if((c>=61&&c<=67)||c===82) return '🌧️';                 // rain
+  if((c>=51&&c<=57)||c===80||c===81) return '🌦️';         // drizzle / showers
+  return '🌥️';                                            // cloud / fog / everything else
+}
+async function fetchWeather(){
+  try{
+    const r=await fetch(WX_URL); if(!r.ok) throw new Error(r.status);
+    const d=await r.json();
+    const t=(d.daily&&d.daily.time)||[], p=(d.daily&&d.daily.precipitation_sum)||[], c=(d.daily&&d.daily.weathercode)||[];
+    weather=t.map((day,i)=>({date:day,mm:Number(p[i])||0,code:c[i]}));
+  }catch(e){ /* offline / API down — just leave the strip as-is */ }
+  renderWeather();
+}
+function renderWeather(){
+  const el=document.getElementById('wx'); if(!el)return;
+  if(!weather.length){ el.style.display='none'; return; }
+  el.style.display='flex'; el.innerHTML='';
+  const today=todayISO();
+  weather.forEach(w=>{
+    const d=document.createElement('div');
+    d.className='wxd'+(w.mm>2?' wet':'')+(w.date===today?' today':'');   // >2mm = amber rain day
+    const dt=new Date(w.date+'T12:00:00');
+    const nm=w.date===today?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+    const mm=w.mm>0.5 ? (w.mm>=10?Math.round(w.mm):w.mm.toFixed(1))+'mm' : '&nbsp;';
+    d.innerHTML='<div class="wxday">'+nm+'</div><div class="wxic">'+wxEmoji(w.code)+'</div><div class="wxmm">'+mm+'</div>';
+    d.title=w.date+' · '+w.mm.toFixed(1)+'mm';
+    el.appendChild(d);
+  });
+}
+
 /* ---------- Wire up ---------- */
 function minsSince(ms){ return ms?Math.max(0,Math.round((Date.now()-ms)/60000)):null; }
 function buildMs(){ try{ return new Date(BUILD.replace(' ','T')).getTime(); }catch(e){ return 0; } }
@@ -2157,7 +2207,8 @@ function showChangelog(){
 }
 document.getElementById('buildTag').onclick=showChangelog;
 updateAgo(); setInterval(updateAgo,30000);
-setInterval(()=>{ if(cfg.apiKey) atFetch(); }, 30*60*1000);   // auto-refresh data every 30 min
+fetchWeather();                                              // 14-day strip under the header
+setInterval(()=>{ if(cfg.apiKey) atFetch(); fetchWeather(); }, 30*60*1000);   // auto-refresh data every 30 min
 setInterval(()=>{ if(!document.querySelector('.backdrop')) render(); }, 60000);   // re-check blink snoozes (~1 min)
 // Pull down at the top of the page: a SLOW pull reveals the filters/Incoming drawer,
 // a FAST pull (flick) reloads. Velocity = distance / time separates the two.
