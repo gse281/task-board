@@ -19,6 +19,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 /* Top bar */
 .topbar{position:sticky;top:0;z-index:20;display:flex;gap:8px;align-items:center;flex-wrap:wrap;
   padding:10px 12px;background:rgba(20,17,15,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.ctrlrow{display:contents}   /* desktop: children act as normal top-bar items (phone override collapses them to one row) */
 .brand{font-weight:800;letter-spacing:.3px;margin-right:4px}
 .brand .dot{color:var(--accent)}
 .date{color:var(--muted);font-size:13px}
@@ -146,16 +147,15 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .masb.on{background:var(--accent);border-color:var(--accent);color:#14110f}
 @media(max-width:640px){
   #bulkBtn,#meetBtn,#gridBtn,#picBtn,.brand{display:none}
-  /* Compact top bar: date+build on row 1, search+undo+refresh+gear on row 2 */
+  /* Compact top bar: date/build/count on row 1; search + undo + refresh + gear on ONE row below. */
   /* Phone: header is NOT sticky — it sits above Meetings with the weather/filters/Incoming,
      all scrolled off-screen at startup (page opens at Meetings) and revealed by scrolling up. */
-  .topbar{gap:6px 8px;padding:8px 10px;position:static}
-  .topbar .date{order:1;font-size:13px}
-  .topbar .build{order:2;font-size:11px;padding:1px 6px}
-  #taskCount{order:3}
-  .search{order:5;flex:1 1 100%;min-width:0}
-  #undoBtn{order:6} #refreshBtn{order:7;flex:1} #settingsBtn{order:8}
-  .topbar .tb-btn{padding:8px 10px;font-size:13px}
+  .topbar{gap:4px 8px;padding:8px 10px;position:static}
+  .topbar .date{font-size:13px}
+  .topbar .build{font-size:11px;padding:1px 6px}
+  .ctrlrow{display:flex;flex-wrap:nowrap;gap:6px;width:100%;align-items:center;margin-top:2px}
+  .ctrlrow .search{flex:1 1 auto;min-width:0}
+  .ctrlrow .tb-btn{flex:0 0 auto;white-space:nowrap;padding:8px 10px;font-size:13px}
   .board{padding:10px 10px 90px;min-height:0}
   body{font-size:17px}
   .mfbtn{padding:11px 4px;font-size:15px;font-weight:800}
@@ -249,14 +249,17 @@ a.tellink{color:var(--green);text-decoration:none}
   <span class="date" id="date"></span>
   <span class="build" id="buildTag" title="Last update"></span>
   <span class="build" id="taskCount" title="Total open tasks"></span>
-  <input class="search" id="search" placeholder="Search tasks…">
-  <button class="tb-btn" id="bulkBtn" title="Bulk add — paste a list">📋 Bulk</button>
-  <button class="tb-btn" id="meetBtn" title="Today's meetings">📅 Meetings</button>
-  <button class="tb-btn" id="gridBtn" title="Toggle reference grid">▦ Grid</button>
-  <button class="tb-btn" id="picBtn" title="Photo → list">📷</button>
-  <button class="tb-btn" id="undoBtn" title="Undo last action (⌘Z)">↩ Undo</button>
-  <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
-  <button class="tb-btn" id="settingsBtn">⚙︎</button>
+  <!-- ctrlrow: transparent on desktop (display:contents); on phone it collapses to ONE row -->
+  <div class="ctrlrow">
+    <input class="search" id="search" placeholder="Search tasks…">
+    <button class="tb-btn" id="bulkBtn" title="Bulk add — paste a list">📋 Bulk</button>
+    <button class="tb-btn" id="meetBtn" title="Today's meetings">📅 Meetings</button>
+    <button class="tb-btn" id="gridBtn" title="Toggle reference grid">▦ Grid</button>
+    <button class="tb-btn" id="picBtn" title="Photo → list">📷</button>
+    <button class="tb-btn" id="undoBtn" title="Undo last action (⌘Z)">↩ Undo</button>
+    <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
+    <button class="tb-btn" id="settingsBtn">⚙︎</button>
+  </div>
 </div>
 
 <div class="wxstrip" id="wx"></div>
@@ -272,7 +275,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-26 11:45';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-26 11:50';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-26 · hidden header', d:'Phone opens to pure task content — Meetings at top. The whole header (search, refresh, undo, settings, open-count) is no longer sticky; it sits with the weather strip, filters and Incoming in the pull-down area above Meetings. Scroll up to reveal them all. Weather now in inches.'},
