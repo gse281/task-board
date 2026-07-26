@@ -270,7 +270,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-26 11:09';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-26 11:11';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-24 · weather', d:'14-day NYC weather strip under the header (Open-Meteo) — day, emoji, rain in mm; heavy-rain days (>2mm) highlight amber. Auto-refreshes with the board.'},
@@ -306,7 +306,9 @@ let blinkOff = null;     // which current-meeting the user silenced (resets on r
 let flashBulb = false;   // flash a bulb panel when opened from a filter chip
 let bulbSort = '';       // how the opened bulb/list is sorted
 let mobileDrawerOpen = false;   // (legacy; drawer removed)
-let mobileScrolledOnce = false; // jump to Meetings on first mobile render only
+let userScrolled = false;       // stop auto-anchoring to Meetings once the user scrolls
+addEventListener('touchmove',()=>{userScrolled=true;},{passive:true});
+addEventListener('wheel',()=>{userScrolled=true;},{passive:true});
 let incomingSort = localStorage.getItem('incomingSort') || 'new';   // Incoming auto-sort
 function sortItems(items,mode){
   const a=[...items];
@@ -971,8 +973,10 @@ function renderMobile(board){
   board.appendChild(mobileStillOpen());
   // On the first mobile render of the session, jump the view to Meetings so all
   // the top chrome (weather, filters, add, Incoming) sits above, reachable by scrolling up.
-  if(!mobileScrolledOnce){ mobileScrolledOnce=true;
-    requestAnimationFrame(()=>{ const a=document.getElementById('mMeetAnchor'); if(a) window.scrollTo(0, window.scrollY + a.getBoundingClientRect().top - 6); }); }
+  // Anchor to Meetings on load; keep anchoring through the demo→data re-render
+  // until the user scrolls (each render rebuilds the board and resets scroll).
+  if(!userScrolled){ const jump=()=>{ if(userScrolled)return; const a=document.getElementById('mMeetAnchor'); if(a) window.scrollTo(0, window.scrollY + a.getBoundingClientRect().top - 6); };
+    requestAnimationFrame(jump); setTimeout(jump,120); }
 }
 // Email section for the phone (below the main sections).
 function mobileEmails(){
