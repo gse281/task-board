@@ -147,7 +147,9 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 @media(max-width:640px){
   #bulkBtn,#meetBtn,#gridBtn,#picBtn,.brand{display:none}
   /* Compact top bar: date+build on row 1, search+undo+refresh+gear on row 2 */
-  .topbar{gap:6px 8px;padding:8px 10px}
+  /* Phone: header is NOT sticky — it sits above Meetings with the weather/filters/Incoming,
+     all scrolled off-screen at startup (page opens at Meetings) and revealed by scrolling up. */
+  .topbar{gap:6px 8px;padding:8px 10px;position:static}
   .topbar .date{order:1;font-size:13px}
   .topbar .build{order:2;font-size:11px;padding:1px 6px}
   #taskCount{order:3}
@@ -270,10 +272,11 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-26 11:11';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-26 11:45';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
-  {v:'2026-07-24 · weather', d:'14-day NYC weather strip under the header (Open-Meteo) — day, emoji, rain in mm; heavy-rain days (>2mm) highlight amber. Auto-refreshes with the board.'},
+  {v:'2026-07-26 · hidden header', d:'Phone opens to pure task content — Meetings at top. The whole header (search, refresh, undo, settings, open-count) is no longer sticky; it sits with the weather strip, filters and Incoming in the pull-down area above Meetings. Scroll up to reveal them all. Weather now in inches.'},
+  {v:'2026-07-24 · weather', d:'14-day NYC weather strip (Open-Meteo) — day, emoji, rain shown in inches; heavy-rain days highlight amber. Auto-refreshes with the board.'},
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
   {v:'2026-07-21 · drawer', d:'Pull-down drawer at top for filters + Incoming (hidden by default). Task rows simplified to 3 actions (📞/🔍, Move, ✓) with bigger text; swipe left = snooze, swipe right = done. Added tasks appear instantly. + button adds straight to Incoming. Incoming auto-sort. New Email + Still Open sections. Bell on Calls. Build hidden from header — tap 🔧 for this log.'},
   {v:'2026-07-21 · 21:18', d:'Wrench tooltip, category-name tap opens full list, date ranges exclude today, add-to-morning/afternoon, snooze hides from lists, pull-to-refresh, below-fold layout.'},
@@ -833,12 +836,15 @@ function restoreScrolls(s){
 }
 function render(){
   const scrolls=saveScrolls();
+  const preWY=window.scrollY;   // keep the page from snapping back to the (now non-sticky) header on re-render
   document.getElementById('date').textContent = new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
   renderBanner();
   const tc=document.getElementById('taskCount'); if(tc)tc.textContent='📋 '+tasks.filter(t=>t.status==='Open').length+' open';
   const board=document.getElementById('board'); board.innerHTML='';
   const filt=document.getElementById('filters');
-  if(isMobileView()){ filt.style.display='none'; renderMobile(board); restoreScrolls(scrolls); return; }
+  if(isMobileView()){ filt.style.display='none'; renderMobile(board); restoreScrolls(scrolls);
+    if(userScrolled&&preWY>0){ requestAnimationFrame(()=>window.scrollTo(0,preWY)); }   // hold position; only the initial load anchors to Meetings
+    return; }
   filt.style.display=''; renderFilters();
   const notSnoozed=t=>!(A(t.id).snoozeUntil>Date.now());
   const openVisible = tasks.filter(t=>t.status==='Open' && visible(t) && notSnoozed(t));
