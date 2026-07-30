@@ -117,6 +117,16 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .madd input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:12px;font-size:16px}
 .madd button{background:var(--accent);border:none;color:#14110f;border-radius:11px;padding:0 18px;font-weight:800;font-size:15px}
 .mrow2{position:relative;overflow:hidden;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:7px 9px;margin-bottom:4px}
+.mrow2.blink{animation:blink 1s ease-in-out infinite;border-color:var(--accent)}
+.mpane-top{margin-bottom:8px}
+.mpane-top .madd{margin-bottom:6px}
+.bulk-toggle{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px;font-size:14px;font-weight:800}
+.bulk-toggle.on{background:var(--accent);border-color:var(--accent);color:#14110f}
+.mrow2.bsel{background:rgba(224,164,88,.18);border-color:var(--accent)}
+.bchk{font-size:20px;line-height:1;color:var(--accent)}
+.bulkbar{position:fixed;left:8px;right:8px;bottom:8px;z-index:40;display:flex;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:8px 10px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.bulkbar #bulkCount{font-size:12px;font-weight:800;color:var(--muted);margin-right:auto;white-space:nowrap}
+.bbtn{background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:9px 11px;font-size:13px;font-weight:800;white-space:nowrap}
 .mrow2-top{display:flex;align-items:center;gap:8px}
 .mrow-acts{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
 .trayb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:5px 9px;font-size:13px;font-weight:800;line-height:1}
@@ -277,9 +287,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-29 20:57';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-30 10:10';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-07-30 · fixes', d:'Polling no longer interrupts typing. iPhone: add bubble + ☑︎ bulk-select at top of pane; Move is now a 📂 icon; bell/blink shows on rows. Category picker lists None first. Uncategorized auto-sorts at EOD; better lead/sub guessing; "Eli" removed as a lead. Still Open shows a few at a time. Email link opens the exact Gmail message (dropped broken superhuman:// scheme). Priority cards get a ⬇ demote button.'},
   {v:'2026-07-26 · hidden header', d:'Phone opens to pure task content — Meetings at top. The whole header (search, refresh, undo, settings, open-count) is no longer sticky; it sits with the weather strip, filters and Incoming in the pull-down area above Meetings. Scroll up to reveal them all. Weather now in inches.'},
   {v:'2026-07-24 · weather', d:'14-day NYC weather strip (Open-Meteo) — day, emoji, rain shown in inches; heavy-rain days highlight amber. Auto-refreshes with the board.'},
   {v:'2026-07-22 · undo & layout', d:'↩ Undo (⌘Z) for done/move/snooze/delete/panel-drags. Thinner 252px columns. Dragging a panel keeps it where you drop it — others slide to the nearest free slot ON screen, nothing pushed below the fold. Done/Don\'t-care/Auto-sort are one-line bubbles. Build age back in the top bar (hover/click 🔧 for build). Toasts pop mid-screen. Daily sweep: untouched Still-open kicked 10d, uncategorized auto-sorted, stale drafts cleared. 📌 pin = survives daily reset. P/L/S/C bubbles next to ✕ + C-move on desktop. 🔥 Priority, 🎲 Project spotlight, 📡 From-outside panels. Texts open in Messages on click.'},
@@ -721,7 +732,8 @@ function outboxPanel(){
 function dailyReset(){
   const today=todayISO();
   if(meta.lastReset===today) return;
-  const keep=new Set(['bigticket','nextup','focus']);
+  // These sections persist across the daily reset: priorities, Sunday, and any custom category.
+  const keep=new Set(['bigticket','nextup','focus','sunday',...((meta.customCats||[]).map(c=>c.id))]);
   if(meta.lastReset){ // log the day that just ended
     const snap=Object.keys(aug).filter(id=>aug[id].section).map(id=>({id,section:aug[id].section}));
     meta.resetLog=meta.resetLog||{}; meta.resetLog[meta.lastReset]=snap;
@@ -745,9 +757,11 @@ async function dailyKick(){
   for(const t of bareStale){ A(t.id).snoozeUntil=Date.now()+10*86400000; kicked++; }
   for(const t of tasks){
     if(t.status!=='Open'||t.project||t.lead||A(t.id).pin) continue;
-    const g=guessCategory(t); if(!g.project&&!g.lead) continue;
-    if(g.project){t.project=g.project;} if(g.lead){t.lead=g.lead;}
-    atPatch(t.id,{...(g.project?{Project:g.project}:{}),...(g.lead?{SBLead:g.lead}:{})}); sorted++;
+    const g=guessCategory(t); if(!g.project&&!g.lead&&!g.sub) continue;
+    if(g.project){t.project=g.project;} if(g.lead){t.lead=g.lead;} if(g.sub){t.sub=g.sub;}
+    // anything sitting in the Uncategorized bucket that we could tag leaves it
+    if(A(t.id).section==='uncat'){ A(t.id).section=null; if(cfg.apiKey)atPatch(t.id,{Section:''}); }
+    atPatch(t.id,{...(g.project?{Project:g.project}:{}),...(g.lead?{SBLead:g.lead}:{}),...(g.sub?{Sub:g.sub}:{})}); sorted++;
   }
   // stale unapproved drafts (2+ days old) get cleared — if you didn't send it, it wasn't important
   for(const o of outbox.filter(o=>o.status==='Draft' && (Date.now()-new Date(o.createdTime||Date.now()).getTime())>2*86400000)) deleteOutbox(o.id);
@@ -897,8 +911,10 @@ function render(){
 // Email links open in the Superhuman APP (not Gmail) — convert the Gmail
 // thread link to Superhuman's deep-link scheme.
 function shLink(url){
-  const m=(url||'').match(/#[^/]*\/([0-9a-f]{12,})/i);
-  return m ? 'superhuman://mail.superhuman.com/thread/'+m[1] : url;
+  // The stored link is the Gmail permalink (…#inbox/<hexId>). The old superhuman://…/thread/<id>
+  // scheme opened the app but landed on the wrong view, so open the exact Gmail message instead —
+  // that reliably navigates to the right email (and still opens in Superhuman if it handles Gmail links).
+  return url||'';
 }
 
 /* A project/lead/sub "bulb" opened as a live board panel (drag tasks out of it) */
@@ -976,6 +992,7 @@ function bulbPanel(){
 
 // ── Mobile layout: record fast, call fast, recall fast ──
 function isMobileView(){ return window.innerWidth<=640; }
+let bulkMode=false; const bulkSel=new Set();   // iPhone multi-select
 function renderMobile(board){
   // ── Top block (filters + add + Incoming). Always present, but ABOVE the fold:
   //    the page opens scrolled to Meetings; scroll up to reach these. ──
@@ -993,8 +1010,18 @@ function renderMobile(board){
   top.appendChild(qa);
   top.appendChild(mobileIncoming());
   board.appendChild(top);
-  // ── Main view: meetings first (this is where the page opens) ──
-  const meet=mobileMeetings(); meet.id='mMeetAnchor'; board.appendChild(meet);
+  // ── Pane top: quick-add bubble + bulk-select toggle. This is where the page opens. ──
+  const paneTop=document.createElement('div'); paneTop.id='mMeetAnchor'; paneTop.className='mpane-top';
+  const qa2=document.createElement('div'); qa2.className='madd';
+  qa2.innerHTML='<input placeholder="➕ Add task…"><button>Add</button>';
+  const go2=async()=>{const inp=qa2.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section='incoming';saveAug();render();const f=document.querySelector('.mpane-top .madd input');if(f)f.focus();}};
+  qa2.querySelector('button').onclick=go2; qa2.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go2();});
+  const selBtn=document.createElement('button'); selBtn.className='bulk-toggle'+(bulkMode?' on':''); selBtn.textContent=bulkMode?'✕ Done selecting':'☑︎ Select';
+  selBtn.onclick=()=>{ bulkMode=!bulkMode; if(!bulkMode)bulkSel.clear(); userScrolled=true; render(); };
+  paneTop.appendChild(qa2); paneTop.appendChild(selBtn);
+  board.appendChild(paneTop);
+  // ── Main view: meetings first ──
+  const meet=mobileMeetings(); board.appendChild(meet);
   if(activeBulb) board.appendChild(bulbPanel());
   board.appendChild(mobileCalls());
   board.appendChild(mobileSlotPanel('🌅 Morning call','morning'));
@@ -1002,6 +1029,7 @@ function renderMobile(board){
   // ── Bottom sections: Email, then Still Open ──
   board.appendChild(mobileEmails());
   board.appendChild(mobileStillOpen());
+  if(bulkMode) board.appendChild(bulkBar());
   // On the first mobile render of the session, jump the view to Meetings so all
   // the top chrome (weather, filters, add, Incoming) sits above, reachable by scrolling up.
   // Anchor to Meetings on load; keep anchoring through the demo→data re-render
@@ -1039,8 +1067,10 @@ function mobileStillOpen(){
   p.appendChild(head); mobileTitleTap(head,{dim:'category',val:'stillopen',label:'❓ Still open'});
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length) body.innerHTML='<div class="empty">Nothing lingering 🎉</div>';
-  items.slice(0,8).forEach(t=>body.appendChild(mobileRow(t,{stillOpen:true})));
-  if(items.length>8){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-8)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'stillopen',label:'❓ Still open'};render();};body.appendChild(m);}
+  // Show only a handful at a time — as you clear/keep these, the next ones surface (no endless-list fatigue).
+  const STILL_BATCH=4;
+  items.slice(0,STILL_BATCH).forEach(t=>body.appendChild(mobileRow(t,{stillOpen:true})));
+  if(items.length>STILL_BATCH){const n=document.createElement('div');n.className='empty';n.textContent=(items.length-STILL_BATCH)+' more appear as you clear these';body.appendChild(n);}
   p.appendChild(body); return p;
 }
 // 📥 Incoming on the phone — same rule as desktop (today's items only), so what
@@ -1071,6 +1101,33 @@ function mobileIncoming(){
 }
 // Tap a panel title on mobile to open the FULL list for that section.
 function mobileTitleTap(head,bulb){ const h=head.querySelector('h3'); if(h){ h.style.cursor='pointer'; h.title='See all'; h.onclick=()=>{ activeBulb=bulb; flashBulb=true; render(); }; } }
+// ── iPhone bulk-select ──
+function bulkToggle(id,row){ if(bulkSel.has(id))bulkSel.delete(id); else bulkSel.add(id);
+  if(row){ row.classList.toggle('bsel',bulkSel.has(id)); const cb=row.querySelector('.bchk'); if(cb)cb.textContent=bulkSel.has(id)?'☑':'☐'; }
+  const c=document.getElementById('bulkCount'); if(c)c.textContent=bulkSel.size+' selected'; }
+function bulkApply(fn,msg){ const ids=[...bulkSel]; if(!ids.length){toast('Nothing selected');return;} ids.forEach(fn); bulkSel.clear(); bulkMode=false; saveAug(); toast(msg.replace('#',ids.length)); render(); }
+function bulkBar(){
+  const bar=document.createElement('div'); bar.className='bulkbar';
+  const c=document.createElement('span'); c.id='bulkCount'; c.textContent=bulkSel.size+' selected'; bar.appendChild(c);
+  const mk=(txt,fn)=>{const b=document.createElement('button');b.className='bbtn';b.textContent=txt;b.onclick=fn;bar.appendChild(b);};
+  mk('✓ Done',()=>bulkApply(id=>{const t=tasks.find(x=>x.id===id);if(t)markDone(t);},'✓ # done'));
+  mk('💤 Snooze',()=>bulkApply(id=>snoozeTask(id),'💤 # snoozed'));
+  mk('📂 Move',()=>bulkMovePicker());
+  mk('✕',()=>{bulkMode=false;bulkSel.clear();render();});
+  return bar;
+}
+function bulkMovePicker(){
+  if(!bulkSel.size){toast('Nothing selected');return;}
+  const opts=[['','🚫 None (unfile)'],['incoming','📥 Incoming'],['calls','📞 Calls'],['morning','🌅 Morning'],['afternoon','☀️ Afternoon'],['bigticket','🏔 Big Ticket'],['nextup','⏭ Next Up'],['focus','🎯 Now/Focus']];
+  const bd=document.createElement('div'); bd.className='backdrop';
+  const box=document.createElement('div'); box.className='modal'; box.innerHTML='<h3>Move '+bulkSel.size+' tasks to…</h3>';
+  const list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px';
+  opts.forEach(([id,label])=>{const x=document.createElement('button');x.className='btn';x.style.textAlign='left';x.textContent=label;
+    x.onclick=()=>{ bd.remove(); bulkApply(tid=>{ if(id==='calls')setCall(tid); else if(id==='morning'||id==='afternoon')setSlot(tid,id); else setSection(tid,id); },'📂 Moved #'); }; list.appendChild(x);});
+  box.appendChild(list);
+  const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
+  bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
+}
 // One mobile task row — bigger text, 3 actions on one line, and swipe gestures:
 // slide LEFT = snooze 10 days, slide RIGHT = done. (Bell added on Calls rows.)
 function mobileRow(t,opts){
@@ -1078,25 +1135,34 @@ function mobileRow(t,opts){
   const ph=phoneFor(t);
   const row=document.createElement('div'); row.className='mrow2';
   const inner=document.createElement('div'); inner.className='mrow-inner';
-  const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t);
+  // Bulk-select mode: a checkbox + tap-to-toggle, no per-row actions/swipe.
+  if(bulkMode){ const cb=document.createElement('span'); cb.className='bchk'; cb.textContent=bulkSel.has(t.id)?'☑':'☐'; inner.appendChild(cb); }
+  const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t);
+  nm.onclick=()=>{ if(bulkMode) bulkToggle(t.id,row); else openDetail(t); };
   // tappable P/L/S bubbles under the name (＋ when unset) — edit tags right on the phone
   const pr=document.createElement('div'); pr.className='plsrow';
   [['project','p','P'],['lead','l','L'],['sub','s','S']].forEach(([dim,cls,ltr])=>{
     const v=t[dim]; const s=document.createElement('button'); s.className='plstag '+cls; s.textContent=v?v.slice(0,3):'＋'+ltr;
-    s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);}; pr.appendChild(s);});
+    s.onclick=e=>{e.stopPropagation();if(!bulkMode)pickAssign(t,dim);}; pr.appendChild(s);});
   nm.appendChild(pr); inner.appendChild(nm);
+  if(!bulkMode){
   // action 1 — phone: call if we have a number, otherwise look it up
   if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; c.title=ph; c.onclick=e=>e.stopPropagation(); inner.appendChild(c); }
   else { const l=document.createElement('button'); l.className='mcall add'; l.textContent='🔍'; l.title='Look up number'; l.onclick=e=>{e.stopPropagation();lookupNumber(t);}; inner.appendChild(l); }
   // bell on Calls rows — same stop-reminder toggle as Meetings
   if(sectionOf(t)==='calls'){ const on=!!A(t.id).blink; const bell=document.createElement('button'); bell.className='mcall bell'+(on?' on':''); bell.textContent=on?'🔕':'🔔'; bell.title=on?'Stop reminder':'Remind me'; bell.onclick=e=>{e.stopPropagation();const a=A(t.id);a.blink=!a.blink;saveAug();render();}; inner.appendChild(bell); }
   // action 2 — Move To
-  const mv=document.createElement('button'); mv.className='mcall move'; mv.textContent='Move'; mv.onclick=e=>{e.stopPropagation();moveSectionPicker(t);}; inner.appendChild(mv);
+  const mv=document.createElement('button'); mv.className='mcall'; mv.textContent='📂'; mv.title='Move to…'; mv.onclick=e=>{e.stopPropagation();moveSectionPicker(t);}; inner.appendChild(mv);
   // Still Open: "Yes" keeps it open and drops it from this section (bumps last-touched)
   if(opts.stillOpen){ const y=document.createElement('button'); y.className='mcall move'; y.textContent='Yes'; y.title='Keep open — remove from Still Open'; y.onclick=e=>{e.stopPropagation();touch(t.id);toast('Kept open');render();}; inner.appendChild(y); }
   // action 3 — done
   const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=e=>{e.stopPropagation();markDone(t);}; inner.appendChild(done);
+  }
+  if(A(t.id).blink) row.classList.add('blink');   // reflect the bell / important flag visually on the phone
+  if(bulkMode&&bulkSel.has(t.id)) row.classList.add('bsel');
+  if(bulkMode) row.onclick=()=>bulkToggle(t.id,row);
   row.appendChild(inner);
+  if(bulkMode) return row;   // no swipe gestures in select mode
   // swipe: left = snooze, right = done
   let sx=0,sy=0,dx=0,act=false,decided=false;
   row.addEventListener('touchstart',e=>{const p=e.touches[0];sx=p.clientX;sy=p.clientY;dx=0;act=true;decided=false;},{passive:true});
@@ -1119,8 +1185,8 @@ async function lookupNumber(t){
 }
 // Move a task to any section (iPhone section-to-section).
 function moveSectionPicker(t){
-  const opts=[['incoming','📥 Incoming'],['calls','📞 Calls'],['morning','🌅 Morning'],['afternoon','☀️ Afternoon'],['sunday','☀️ Sunday'],['bigticket','🏔 Big Ticket'],['nextup','⏭ Next Up'],['focus','🎯 Now/Focus'],
-    ...((meta.customCats||[]).map(c=>[c.id,c.name])), ['','— none (unfile) —']];
+  const opts=[['','🚫 None (unfile)'],['incoming','📥 Incoming'],['calls','📞 Calls'],['morning','🌅 Morning'],['afternoon','☀️ Afternoon'],['sunday','☀️ Sunday'],['bigticket','🏔 Big Ticket'],['nextup','⏭ Next Up'],['focus','🎯 Now/Focus'],
+    ...((meta.customCats||[]).map(c=>[c.id,c.name]))];
   const bd=document.createElement('div'); bd.className='backdrop';
   const box=document.createElement('div'); box.className='modal'; box.innerHTML='<h3>Move "'+esc(cleanName(t))+'" to…</h3>';
   const list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px';
@@ -1656,6 +1722,11 @@ function taskEl(t,sectionId){
     `<div class="details">`+
       `<div class="meta">${t.project?`<span class="tag">📁 ${esc(t.project)}</span>`:''}${t.lead?`<span class="tag">👤 ${esc(t.lead)}</span>`:''}${t.sub?`<span class="tag">${esc(t.sub)}</span>`:''}</div>`+
     `</div>`;
+  // Priority cards: a visible ⬇ demote button (removes it from Priority) — shows on desktop AND phone.
+  if(sectionId==='priority' || (sectionId==='bulb' && activeBulb && activeBulb.val==='priority')){
+    const tr=el.querySelector('.topright'); if(tr){ const db=document.createElement('button'); db.className='donex'; db.textContent='⬇'; db.title='Demote — remove from Priority';
+      db.onclick=e=>{e.stopPropagation(); const aa=A(t.id); aa.notPriority=true; aa.priAdj=(aa.priAdj||0)-25; aa.blink=false; saveAug(); toast('⬇ Removed from Priority'); render();}; tr.insertBefore(db,tr.firstChild); }
+  }
   const nm=el.querySelector('.name'); nm.style.cursor='pointer'; nm.title='Edit';
   nm.onclick=e=>{e.stopPropagation();openDetail(t);};
   const mas=document.createElement('div'); mas.className='mas';
@@ -1818,7 +1889,7 @@ function openReview(title,items){
 // P/L/S quick-assign: pick from existing values (or type a new one).
 function pickAssign(t,dim,after){
   const fmap={project:'Project',lead:'SBLead',sub:'Sub'};
-  const vals=[...new Set(tasks.map(x=>x[dim]).filter(Boolean))].sort();
+  const vals=[...new Set(tasks.map(x=>x[dim]).filter(Boolean))].filter(v=>!optHidden(dim,v)).sort();
   const bd=document.createElement('div'); bd.className='backdrop';
   const box=document.createElement('div'); box.className='modal';
   box.innerHTML='<h3 style="text-transform:capitalize">'+esc(dim)+' → '+esc(cleanName(t))+'</h3>';
@@ -1885,7 +1956,7 @@ function pastCalls(){ const cut=Date.now()-14*86400000;
 /* ---------- Filters UI ---------- */
 function countsFor(dim){
   // counts match what the pane shows: open AND not snoozed
-  const counts={}; tasks.filter(t=>t.status==='Open'&&notSnoozed(t)).forEach(t=>{const v=t[dim];if(v)counts[v]=(counts[v]||0)+1;});
+  const counts={}; tasks.filter(t=>t.status==='Open'&&notSnoozed(t)).forEach(t=>{const v=t[dim];if(v&&!optHidden(dim,v))counts[v]=(counts[v]||0)+1;});
   return counts;
 }
 function orderedVals(dim,counts){
@@ -2022,7 +2093,10 @@ function editDist(a,b){
     d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));
   return d[a.length][b.length];
 }
-function knownVals(dim){ return [...new Set(tasks.map(x=>x[dim]).filter(Boolean))]; }
+// Leads that are no longer valid — hidden from every picker/guess (existing tags stay visible on their task).
+const LEAD_BLOCK=['eli'];
+function optHidden(dim,v){ return dim==='lead' && LEAD_BLOCK.includes(String(v||'').trim().toLowerCase()); }
+function knownVals(dim){ return [...new Set(tasks.map(x=>x[dim]).filter(Boolean))].filter(v=>!optHidden(dim,v)); }
 // Score a known value against the task text. Higher = better; 0 = no match.
 function fuzzyPick(text,dim,min){
   const n=norm(text), toks=n.split(' ');
@@ -2036,6 +2110,12 @@ function fuzzyPick(text,dim,min){
     if(n===nv) s=200;
     else if(n.startsWith(nv+' ')) s=100+nv.length;                                              // leading exact
     else if(toks.length&&vToks.length&&vToks[0].length>3&&editDist(toks[0],vToks[0])<=1) s=80;  // leading typo
+    // Lead/Sub aren't always typed first — a full known value appearing as a whole word
+    // anywhere in the task text is a reliable signal (project stays leading-only).
+    if(!s && (dim==='lead'||dim==='sub') && nv.length>=5){
+      const re=new RegExp('(^| )'+nv.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'( |$)');
+      if(re.test(n)) s=90+(vToks.length>1?nv.length:0);   // multi-word names score higher (more specific)
+    }
     if(s&&(!best||s>best.s)) best={v,s};
   }
   return best&&best.s>=(min||80)?best.v:null;
@@ -2332,8 +2412,9 @@ function showChangelog(){
 document.getElementById('buildTag').onclick=showChangelog;
 updateAgo(); setInterval(updateAgo,30000);
 fetchWeather();                                              // 14-day strip under the header
-setInterval(()=>{ if(cfg.apiKey) atFetch(); fetchWeather(); }, 30*60*1000);   // auto-refresh data every 30 min
-setInterval(()=>{ if(!document.querySelector('.backdrop')) render(); }, 60000);   // re-check blink snoozes (~1 min)
+function isTyping(){ const a=document.activeElement; return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); }
+setInterval(()=>{ if(isTyping())return; if(cfg.apiKey) atFetch(); fetchWeather(); }, 30*60*1000);   // auto-refresh data every 30 min (never mid-type)
+setInterval(()=>{ if(!document.querySelector('.backdrop') && !isTyping()) render(); }, 60000);   // re-check blink snoozes (~1 min) — skip while typing
 // Pull down at the top of the page: a SLOW pull reveals the filters/Incoming drawer,
 // a FAST pull (flick) reloads. Velocity = distance / time separates the two.
 (function(){ let sy=0, st=0, pulling=false; const ind=document.createElement('div'); ind.id='ptr'; ind.textContent='↓ Pull down'; document.body.appendChild(ind);
