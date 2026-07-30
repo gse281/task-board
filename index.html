@@ -56,10 +56,12 @@ button{font:inherit;color:inherit;cursor:pointer}
 .panel-body{padding:6px;display:flex;flex-direction:column;gap:4px;min-height:0;flex:1;overflow-y:auto;max-height:calc(100vh - 110px)}
 .panel.drop-hover{outline:2px dashed var(--accent);outline-offset:-4px}
 .panel.stub .panel-body{align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:18px}
-/* Done / Don't care / Auto-sort: one-line drop bubbles — header IS the drop zone */
-.panel.micro{height:40px!important;min-height:0;overflow:hidden}
-.panel.micro .panel-body,.panel.micro .panel-sub{display:none}
-.panel.micro .panel-head{border-bottom:none}
+/* Triage: Done / Don't care / Auto-sort as three drop zones in one box */
+.triage-body{gap:6px}
+.tzone{border:1px dashed var(--line);border-radius:8px;padding:10px 8px;text-align:center;flex:1;display:flex;flex-direction:column;justify-content:center;min-height:44px}
+.tzone.tz-hot{border-color:var(--accent);background:rgba(224,164,88,.12)}
+.tz-l{font-size:13px;font-weight:700}
+.tz-h{font-size:10px;color:var(--muted)}
 /* Full-screen review: work a big list (backlog / all open) without the grid */
 .revwrap{position:fixed;right:16px;bottom:16px;width:min(560px,46vw);height:min(520px,54vh);z-index:70;background:var(--panel);
   border:1px solid var(--accent);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden}
@@ -109,7 +111,7 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .txt-when{color:var(--muted);font-size:11px;font-weight:400}
 .txt-prev{color:var(--muted);font-size:12px;margin-top:2px}
 .txt-reply{width:100%;margin-top:6px;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px 9px;font-size:14px}
-.mfilters{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:8px}
+.mfilters{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px}
 .mfbtn{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 4px;font-size:12px;font-weight:700}
 .madd{display:flex;gap:6px;margin-bottom:10px}
 .madd input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:12px;font-size:16px}
@@ -275,7 +277,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-26 11:50';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-29 20:57';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-26 · hidden header', d:'Phone opens to pure task content — Meetings at top. The whole header (search, refresh, undo, settings, open-count) is no longer sticky; it sits with the weather strip, filters and Incoming in the pull-down area above Meetings. Scroll up to reveal them all. Weather now in inches.'},
@@ -386,14 +388,12 @@ const BUCKETS = [
   {id:'incoming', name:'📥 Incoming'},
   {id:'morning',  name:'🌅 Morning Call'},
   {id:'afternoon',name:'☀️ Afternoon Call'},
+  {id:'sunday',   name:'☀️ Sunday'},
   {id:'nextup',   name:'⏭ Next Up'},
   {id:'focus',    name:'🎯 Now / Focus'},
   {id:'bigticket',name:'🏔 Big Ticket'},
   {id:'calls',    name:'📞 Calls'},
   {id:'backlog',  name:'🗂 Backlog'},
-  {id:'done',     name:'✅ Done'},
-  {id:'dontcare', name:"🚫 Don't care"},
-  {id:'autosort', name:'🔮 Auto-sort'},
 ];
 const SECTION_SUB = {
   backlog:'Unsorted open items — nothing scheduled yet',
@@ -403,7 +403,7 @@ const SECTION_SUB = {
   autosort:'Drop here — I guess its project/lead',
 };
 // 4th filter line: quick categories that aren't project/lead/sub (map to sections).
-const CATEGORIES = [
+const CATEGORIES_BUILTIN = [
   {id:'backlog',name:'🗂 Backlog'},
   {id:'allopen',name:'📚 All open'},
   {id:'uncat',name:'❔ Uncategorized'},
@@ -416,9 +416,25 @@ const CATEGORIES = [
   {id:'calls',name:'📞 Calls'},
   {id:'morning',name:'🌅 Morning'},
   {id:'afternoon',name:'☀️ Afternoon'},
+  {id:'sunday',name:'☀️ Sunday'},          // texted to you every Sunday 5am
   {id:'stillopen',name:'❓ Still open'},
   {id:'yestboard',name:'🕘 Yesterday'},
 ];
+// User-added categories live in meta.customCats [{id,name}]; CATEGORIES merges them.
+Object.defineProperty(window,'CATEGORIES',{get(){return [...CATEGORIES_BUILTIN,...((meta&&meta.customCats)||[])];}});
+function addCategory(){
+  const name=(prompt('New category name (e.g. Weekend, Errands):')||'').trim(); if(!name) return;
+  const id=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||('cat'+Date.now());
+  meta.customCats=meta.customCats||[];
+  if(CATEGORIES.some(c=>c.id===id)){ toast('That category already exists'); return; }
+  meta.customCats.push({id,name:'🏷 '+name}); saveMeta(); render(); toast('Added category: '+name);
+}
+function deleteCategory(id){
+  meta.customCats=(meta.customCats||[]).filter(c=>c.id!==id); saveMeta();
+  // orphaned tasks fall back to backlog
+  for(const t of tasks){ if(sectionOf(t)===id){ A(t.id).section=null; t.sectionRemote=''; atPatch(t.id,{Section:''}); } }
+  saveAug(); render();
+}
 // "Added on" browse — tasks by creation date window.
 const ADDED_RANGES=[{key:'today',name:'Today'},{key:'yest',name:'Yesterday'},{key:'2',name:'Last 2 days'},{key:'7',name:'Last week'},{key:'30',name:'Last month'}];
 function inAddedRange(t,key){
@@ -446,7 +462,7 @@ function priorityScore(t){
 }
 // Priority only ranks tasks you can actually see — snoozed ones don't count,
 // so the chip count always matches what the bubble shows (never 25 vs 0).
-function priorityList(){ return tasks.filter(t=>t.status==='Open'&&notSnoozed(t)).sort((a,b)=>((b.priorityRemote||priorityScore(b))-(a.priorityRemote||priorityScore(a)))).slice(0,25); }
+function priorityList(){ const key=t=>((t.priorityRemote||priorityScore(t))+(A(t.id).priAdj||0)); return tasks.filter(t=>t.status==='Open'&&notSnoozed(t)&&!A(t.id).notPriority).sort((a,b)=>key(b)-key(a)).slice(0,25); }
 // Yesterday's board — what was placed in your sections yesterday (from the reset log).
 function yesterdayBoard(){
   const d=new Date(); d.setDate(d.getDate()-1);
@@ -529,6 +545,7 @@ async function atFetch(){
     offset=d.offset;
   }while(offset&&++g<50);
   tasks=out; demo=false; lastFetchAt=Date.now(); blinkOff=null; meta.lastRefresh=todayStr(); saveMeta();
+  try{ localStorage.setItem('tb.tasks', JSON.stringify(out)); }catch(e){}   // cache for instant next open
   // backfill: push this device's local placements up to Airtable so other devices see them
   for(const t of tasks){ const s=A(t.id).section; if(s && t.sectionRemote!==s){ t.sectionRemote=s; atPatch(t.id,{Section:s}); } }
   // Incoming holds only today's items — anything aged out drops to Backlog
@@ -720,10 +737,12 @@ async function dailyKick(){
   const today=todayISO();
   if(meta.lastKick===today || demo) return;
   let kicked=0,sorted=0;
-  // Kick the 10 OLDEST stale items only. (A mass-snooze once hid ~180 tasks and
-  // emptied the Sub/Lead chips — never hide the whole backlog again.)
-  for(const t of stillOpenItems().sort((a,b)=>lastTouch(a)-lastTouch(b)).slice(0,10)){
-    A(t.id).snoozeUntil=Date.now()+10*86400000; kicked++; }
+  // Kick only the 10 oldest stale items that are TRULY bare — no project/lead/sub,
+  // not pinned, no next step. Tagged tasks are meaningful and must never be hidden
+  // (mass-snoozing tagged tasks twice made the Sub/Lead chips vanish).
+  const bareStale=stillOpenItems().filter(t=>!t.project&&!t.lead&&!t.sub&&!A(t.id).pin&&!(A(t.id).nextStep||t.nextStepRemote))
+    .sort((a,b)=>lastTouch(a)-lastTouch(b)).slice(0,10);
+  for(const t of bareStale){ A(t.id).snoozeUntil=Date.now()+10*86400000; kicked++; }
   for(const t of tasks){
     if(t.status!=='Open'||t.project||t.lead||A(t.id).pin) continue;
     const g=guessCategory(t); if(!g.project&&!g.lead) continue;
@@ -791,7 +810,8 @@ function stillOpenItems(){
 const expanded = new Set();   // ephemeral: which capped sections are showing all
 
 function orderedPanels(){
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),'priority','spotlight','external','stillopen','tosend','ideas',...STUBS.map(s=>s.id)];
+  const custom=((meta.customCats||[]).map(c=>c.id));
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'triage','priority','spotlight','external','stillopen','tosend','ideas',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
   return ord.filter(id=>def.includes(id) && id!=='backlog');   // backlog hidden
@@ -862,9 +882,10 @@ function render(){
     else if(id==='untexted') board.appendChild(textsPanel());
     else if(id==='emails') board.appendChild(emailsPanel());
     else if(id==='tosend') board.appendChild(outboxPanel());
+    else if(id==='triage') board.appendChild(triagePanel());
     else if(stub) board.appendChild(stubPanel(stub));
-    else { const b=BUCKETS.find(x=>x.id===id); if(!b)return;
-      let items = (b.id==='done'||b.id==='dontcare'||b.id==='autosort') ? [] : openVisible.filter(t=>sectionOf(t)===b.id);
+    else { const cc=(meta.customCats||[]).find(c=>c.id===id); const b=BUCKETS.find(x=>x.id===id)||cc; if(!b)return;
+      let items = openVisible.filter(t=>sectionOf(t)===b.id);
       if(b.id==='incoming') items=items.filter(t=>daysOpen(t)===0);   // Incoming = today only
       board.appendChild(panelEl(b.id,b.name,items,true)); }
     // Opened bulb (project/lead/sub) sits right after Incoming so you can drag between them
@@ -963,6 +984,7 @@ function renderMobile(board){
   [['project','P'],['lead','L'],['sub','S'],['category','C']].forEach(([dim,lbl])=>{
     const b=document.createElement('button'); b.className='mfbtn'; b.textContent=lbl; b.title=dim; b.onclick=()=>openPicker(dim); fb.appendChild(b);
   });
+  const addcat=document.createElement('button'); addcat.className='mfbtn'; addcat.textContent='＋'; addcat.title='Add a category'; addcat.onclick=addCategory; fb.appendChild(addcat);
   top.appendChild(fb);
   const qa=document.createElement('div'); qa.className='madd';
   qa.innerHTML='<input placeholder="➕ Add incoming…"><button>Add</button>';
@@ -990,7 +1012,11 @@ function renderMobile(board){
 // Email section for the phone (below the main sections).
 function mobileEmails(){
   const p=document.createElement('div'); p.className='panel';
-  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>✉️ Email</h3><span class="count">'+emails.length+'</span>';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>✉️ Email</h3>';
+  const rs=document.createElement('button'); rs.className='joinbtn'; rs.textContent='🔀 Reshuffle'; rs.title='Re-pull & re-sort emails';
+  rs.onclick=async e=>{e.stopPropagation(); if(!cfg.apiKey){toast('Add your Airtable key first');return;} rs.classList.add('spin'); await fetchEmails(); rs.classList.remove('spin'); render(); toast('Emails reshuffled');};
+  head.appendChild(rs);
+  const c=document.createElement('span'); c.className='count'; c.textContent=emails.length; head.appendChild(c);
   p.appendChild(head);
   const body=document.createElement('div'); body.className='panel-body';
   if(!emails.length) body.innerHTML='<div class="empty">Inbox clear 🎉</div>';
@@ -1013,7 +1039,7 @@ function mobileStillOpen(){
   p.appendChild(head); mobileTitleTap(head,{dim:'category',val:'stillopen',label:'❓ Still open'});
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length) body.innerHTML='<div class="empty">Nothing lingering 🎉</div>';
-  items.slice(0,8).forEach(t=>body.appendChild(mobileRow(t)));
+  items.slice(0,8).forEach(t=>body.appendChild(mobileRow(t,{stillOpen:true})));
   if(items.length>8){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-8)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'stillopen',label:'❓ Still open'};render();};body.appendChild(m);}
   p.appendChild(body); return p;
 }
@@ -1047,11 +1073,18 @@ function mobileIncoming(){
 function mobileTitleTap(head,bulb){ const h=head.querySelector('h3'); if(h){ h.style.cursor='pointer'; h.title='See all'; h.onclick=()=>{ activeBulb=bulb; flashBulb=true; render(); }; } }
 // One mobile task row — bigger text, 3 actions on one line, and swipe gestures:
 // slide LEFT = snooze 10 days, slide RIGHT = done. (Bell added on Calls rows.)
-function mobileRow(t){
+function mobileRow(t,opts){
+  opts=opts||{};
   const ph=phoneFor(t);
   const row=document.createElement('div'); row.className='mrow2';
   const inner=document.createElement('div'); inner.className='mrow-inner';
-  const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t); inner.appendChild(nm);
+  const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t); nm.onclick=()=>openDetail(t);
+  // tappable P/L/S bubbles under the name (＋ when unset) — edit tags right on the phone
+  const pr=document.createElement('div'); pr.className='plsrow';
+  [['project','p','P'],['lead','l','L'],['sub','s','S']].forEach(([dim,cls,ltr])=>{
+    const v=t[dim]; const s=document.createElement('button'); s.className='plstag '+cls; s.textContent=v?v.slice(0,3):'＋'+ltr;
+    s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);}; pr.appendChild(s);});
+  nm.appendChild(pr); inner.appendChild(nm);
   // action 1 — phone: call if we have a number, otherwise look it up
   if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; c.title=ph; c.onclick=e=>e.stopPropagation(); inner.appendChild(c); }
   else { const l=document.createElement('button'); l.className='mcall add'; l.textContent='🔍'; l.title='Look up number'; l.onclick=e=>{e.stopPropagation();lookupNumber(t);}; inner.appendChild(l); }
@@ -1059,6 +1092,8 @@ function mobileRow(t){
   if(sectionOf(t)==='calls'){ const on=!!A(t.id).blink; const bell=document.createElement('button'); bell.className='mcall bell'+(on?' on':''); bell.textContent=on?'🔕':'🔔'; bell.title=on?'Stop reminder':'Remind me'; bell.onclick=e=>{e.stopPropagation();const a=A(t.id);a.blink=!a.blink;saveAug();render();}; inner.appendChild(bell); }
   // action 2 — Move To
   const mv=document.createElement('button'); mv.className='mcall move'; mv.textContent='Move'; mv.onclick=e=>{e.stopPropagation();moveSectionPicker(t);}; inner.appendChild(mv);
+  // Still Open: "Yes" keeps it open and drops it from this section (bumps last-touched)
+  if(opts.stillOpen){ const y=document.createElement('button'); y.className='mcall move'; y.textContent='Yes'; y.title='Keep open — remove from Still Open'; y.onclick=e=>{e.stopPropagation();touch(t.id);toast('Kept open');render();}; inner.appendChild(y); }
   // action 3 — done
   const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=e=>{e.stopPropagation();markDone(t);}; inner.appendChild(done);
   row.appendChild(inner);
@@ -1084,12 +1119,15 @@ async function lookupNumber(t){
 }
 // Move a task to any section (iPhone section-to-section).
 function moveSectionPicker(t){
-  const opts=[['incoming','📥 Incoming'],['calls','📞 Calls'],['morning','🌅 Morning'],['afternoon','☀️ Afternoon'],['bigticket','🏔 Big Ticket'],['nextup','⏭ Next Up'],['focus','🎯 Now/Focus'],['dontcare','🚫 Don\'t care']];
+  const opts=[['incoming','📥 Incoming'],['calls','📞 Calls'],['morning','🌅 Morning'],['afternoon','☀️ Afternoon'],['sunday','☀️ Sunday'],['bigticket','🏔 Big Ticket'],['nextup','⏭ Next Up'],['focus','🎯 Now/Focus'],
+    ...((meta.customCats||[]).map(c=>[c.id,c.name])), ['','— none (unfile) —']];
   const bd=document.createElement('div'); bd.className='backdrop';
   const box=document.createElement('div'); box.className='modal'; box.innerHTML='<h3>Move "'+esc(cleanName(t))+'" to…</h3>';
   const list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px';
   opts.forEach(([id,label])=>{const x=document.createElement('button');x.className='btn';x.style.textAlign='left';x.textContent=label+(sectionOf(t)===id?'  ✓':'');
     x.onclick=()=>{ if(id==='calls')setCall(t.id); else if(id==='morning'||id==='afternoon')setSlot(t.id,id); else setSection(t.id,id); bd.remove(); render(); }; list.appendChild(x);});
+  const addc=document.createElement('button'); addc.className='btn'; addc.style.textAlign='left'; addc.textContent='＋ New category…';
+  addc.onclick=()=>{ bd.remove(); addCategory(); }; list.appendChild(addc);
   box.appendChild(list);
   const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
   bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
@@ -1263,13 +1301,42 @@ function renderBanner(){
   } else if(b) b.remove();
 }
 
+// A section id you can actually re-file tasks into (real bucket or custom cat).
+const REAL_SECTIONS=new Set(['incoming','morning','afternoon','sunday','nextup','focus','bigticket','calls','backlog']);
+function isRealSection(id){ return REAL_SECTIONS.has(id) || (meta.customCats||[]).some(c=>c.id===id); }
 function headCtrls(id,title,items){
+  const anyBlink=items&&items.some(t=>A(t.id).blink||autoBlinkOn(t,id));
   return `<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>${title}</h3>`+
+    (anyBlink?`<button class="phead-ctrl" data-blinkoff title="Stop all blinking in this pane">🔕</button>`:'')+
+    (items&&items.length&&isRealSection(id)?`<button class="phead-ctrl" data-bulk title="Move all these to another category">⇄</button>`:'')+
     (items&&items.length?`<button class="phead-ctrl" data-clr title="Clear this category — tasks stay open, just unfiled">⊘</button>`:'')+
     (items?`<button class="phead-ctrl" data-m title="Max shown">#${(meta.max&&meta.max[id])||''}</button>`:'')+
     (items?`<button class="mini send-list" title="Send this list">⤴</button>`:'')+
     (items?`<button class="phead-ctrl" data-pop title="Float this out to its own window">⧉</button>`:'')+
     (items?`<span class="count">${items.length}</span>`:'');
+}
+// Stop every blink in a pane (clears manual blink; snoozes the auto-blink sections 5 min).
+function stopBlinks(items,sectionId){
+  for(const t of (items||[])){ const a=A(t.id); a.blink=false; if(autoBlinkOn(t,sectionId)) a.blinkSnoozeUntil=Date.now()+5*60000; }
+  saveAug(); render(); toast('🔕 Stopped blinking');
+}
+// Move every task in a pane to another section at once.
+function bulkMove(sectionId,title,items){
+  const list=(items||[]).filter(t=>t.status==='Open'); if(!list.length){toast('Nothing to move');return;}
+  const opts=[...BUCKETS.filter(b=>b.id!==sectionId),...((meta.customCats||[]).filter(c=>c.id!==sectionId)),{id:'',name:'— none (unfile) —'}];
+  const bd=document.createElement('div'); bd.className='backdrop';
+  const box=document.createElement('div'); box.className='modal'; box.innerHTML='<h3>Move all '+list.length+' from '+esc(title)+' to…</h3>';
+  const wrap=document.createElement('div'); wrap.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:56vh;overflow:auto';
+  opts.forEach(o=>{const b=document.createElement('button');b.className='btn';b.style.textAlign='left';b.textContent=o.name;
+    b.onclick=()=>{ bd.remove();
+      const snap=list.map(t=>({id:t.id,sec:A(t.id).section,secR:t.sectionRemote}));
+      pushUndo('bulk move from '+title,async()=>{ for(const s of snap){ A(s.id).section=s.sec; const tt=tasks.find(x=>x.id===s.id); if(tt)tt.sectionRemote=s.secR; await atPatch(s.id,{Section:s.secR||s.sec||''}); } });
+      for(const t of list){ A(t.id).section=o.id||null; t.sectionRemote=o.id||''; if(o.id==='calls'){A(t.id).type='call';atPatch(t.id,{Type:'call',Section:'calls'});} else atPatch(t.id,{Section:o.id||''}); }
+      saveAug(); render(); toast('⇄ Moved '+list.length+' → '+o.name); };
+    wrap.appendChild(b);});
+  box.appendChild(wrap);
+  const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
+  bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
 }
 function wirePanel(p,head,id){
   const dh=head.querySelector('.drag-handle');
@@ -1318,6 +1385,9 @@ function emailsPanel(){
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='emails';
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls('emails','✉️ Emails',null)+`<span class="count">${emails.length}</span>`;
   p.appendChild(head); wirePanel(p,head,'emails');
+  const rs=document.createElement('button'); rs.className='joinbtn'; rs.textContent='🔀 Reshuffle'; rs.title='Re-pull & re-sort emails';
+  rs.onclick=async e=>{e.stopPropagation(); if(!cfg.apiKey){toast('Add your Airtable key first');return;} rs.classList.add('spin'); await fetchEmails(); rs.classList.remove('spin'); render(); toast('Emails reshuffled');};
+  head.appendChild(rs);
   const body=document.createElement('div'); body.className='panel-body';
   if(!cfg.apiKey) body.innerHTML='<div class="empty">Add your Airtable key.</div>';
   else if(!emails.length) body.innerHTML='<div class="empty">Inbox clear 🎉<br><span style="font-size:11px">Agent scans Gmail through the day.</span></div>';
@@ -1486,24 +1556,56 @@ function spotlightPanel(){
   }
   return panelEl('spotlight','🎲 '+(name||'Spotlight'),items,false);
 }
-const MICRO=new Set(['done','dontcare','autosort']);
+// One box, three drop zones — Done / Don't care / Auto-sort share a single grid cell.
+function triageDo(zone,d){
+  const t=tasks.find(x=>x.id===d); if(!t)return;
+  if(zone==='done'){ markDone(t); return; }
+  if(zone==='dontcare'){ const pv=A(d).snoozeUntil;
+    pushUndo('snooze month: '+cleanName(t),async()=>{ A(d).snoozeUntil=pv; });
+    A(d).snoozeUntil=Date.now()+30*86400000; touch(d); saveAug(); toast('🚫 Snoozed a month'); render(); return; }
+  if(zone==='autosort'){ const g=guessCategory(t);
+    if(g.project){t.project=g.project;atPatch(t.id,{Project:g.project});}
+    if(g.lead){t.lead=g.lead;atPatch(t.id,{SBLead:g.lead});}
+    A(d).section='backlog'; touch(d); saveAug();
+    toast((g.project||g.lead)?('Sorted → '+[g.project,g.lead].filter(Boolean).join(' / ')):'No confident guess'); render(); }
+}
+function triagePanel(){
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='triage';
+  const head=document.createElement('div'); head.className='panel-head';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>🗑 Triage</h3>';
+  p.appendChild(head); wirePanel(p,head,'triage');
+  const body=document.createElement('div'); body.className='panel-body triage-body';
+  [['done','✅ Done','drop to complete'],['dontcare','🚫 Don\'t care','drop to snooze a month'],['autosort','🔮 Auto-sort','drop to guess P/L']].forEach(([zone,label,hint])=>{
+    const z=document.createElement('div'); z.className='tzone'; z.innerHTML='<div class="tz-l">'+label+'</div><div class="tz-h">'+hint+'</div>';
+    z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('tz-hot');});
+    z.addEventListener('dragleave',()=>z.classList.remove('tz-hot'));
+    z.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();z.classList.remove('tz-hot');
+      const d=e.dataTransfer.getData('text/plain'); if(!d||d==='chip'||d.startsWith('panel:'))return; triageDo(zone,d); });
+    body.appendChild(z);
+  });
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'triage');});
+  return p;
+}
 function panelEl(sectionId,title,items,isDrop){
-  const p=document.createElement('div'); p.className='panel'+(MICRO.has(sectionId)?' micro':''); p.dataset.section=sectionId;
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section=sectionId;
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls(sectionId,title,items);
   p.appendChild(head); wirePanel(p,head,sectionId);
   head.querySelector('.send-list').onclick=()=>sendList(title,items);
   head.querySelector('[data-m]').onclick=()=>setMax(sectionId);
   const clr=head.querySelector('[data-clr]'); if(clr)clr.onclick=()=>clearCategory(sectionId,title,items);
+  const bk=head.querySelector('[data-blinkoff]'); if(bk)bk.onclick=()=>stopBlinks(items,sectionId);
+  const bm=head.querySelector('[data-bulk]'); if(bm)bm.onclick=()=>bulkMove(sectionId,title,items);
   const pb=head.querySelector('[data-pop]'); if(pb)pb.onclick=()=>popOut(sectionId,title);
   if(SECTION_SUB[sectionId]){ const s=document.createElement('div'); s.className='panel-sub'; s.textContent=SECTION_SUB[sectionId]; p.appendChild(s); }
   const body=document.createElement('div'); body.className='panel-body';
-  const hp=heightPx(sectionId)||((sectionId==='done'||sectionId==='dontcare'||sectionId==='autosort')?'70px':null);
+  const hp=heightPx(sectionId);
   if(hp) body.style.maxHeight=hp;   // panels otherwise auto-size to their content (align-items:start)
 
   const list=orderRows(items,sectionId);
   const max=(meta.max&&meta.max[sectionId])||0;
   const shown=(max&&list.length>max&&!expanded.has(sectionId))?list.slice(0,max):list;
-  if(!list.length){ const e=document.createElement('div'); e.className='empty'; e.textContent=sectionId==='done'?'🗑 drop to complete':sectionId==='dontcare'?'🚫 drop to ignore':sectionId==='autosort'?'🔮 drop to auto-sort':'—'; body.appendChild(e); }
+  if(!list.length){ const e=document.createElement('div'); e.className='empty'; e.textContent='—'; body.appendChild(e); }
   shown.forEach(t=>body.appendChild(taskEl(t,sectionId)));
   if(max&&list.length>max){
     const mb=document.createElement('button'); mb.className='more-btn';
@@ -1512,7 +1614,7 @@ function panelEl(sectionId,title,items,isDrop){
     body.appendChild(mb);
   }
 
-  if(isDrop && sectionId!=='done' && sectionId!=='dontcare' && sectionId!=='autosort'){   // add bubble at the BOTTOM of each real section
+  if(isDrop){   // add bubble at the BOTTOM of each real section
     const add=document.createElement('div'); add.className='add-inline';
     add.innerHTML='<input placeholder="Add…"><button>＋</button>';
     const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section=sectionId;if(sectionId==='calls')A(t.id).type='call';saveAug();render(); const n=document.querySelector('.panel[data-section="'+sectionId+'"] .add-inline input'); if(n)n.focus();}};
@@ -1525,16 +1627,6 @@ function panelEl(sectionId,title,items,isDrop){
     const d=e.dataTransfer.getData('text/plain'); if(!d||d==='chip')return;
     if(d.startsWith('panel:')){ reorderPanels(d.slice(6),sectionId); return; }
     if(isDrop){
-      if(sectionId==='done'){ const t=tasks.find(x=>x.id===d); if(t)markDone(t); return; }
-      if(sectionId==='dontcare'){ const pv=A(d).snoozeUntil; const tt=tasks.find(x=>x.id===d);
-        pushUndo('snooze month: '+(tt?cleanName(tt):d),async()=>{ A(d).snoozeUntil=pv; });
-        A(d).snoozeUntil=Date.now()+30*86400000; touch(d); saveAug(); toast('🚫 Snoozed a month'); render(); return; }
-      if(sectionId==='autosort'){ const t=tasks.find(x=>x.id===d); if(t){const g=guessCategory(t);
-        if(g.project){t.project=g.project;atPatch(t.id,{Project:g.project});}
-        if(g.lead){t.lead=g.lead;atPatch(t.id,{SBLead:g.lead});}
-        A(d).section='backlog'; touch(d); saveAug();
-        toast((g.project||g.lead)?('Sorted → '+[g.project,g.lead].filter(Boolean).join(' / ')):'No confident guess'); }
-        render(); return; }
       setSection(d,sectionId); if(sectionId==='calls'){A(d).type='call'; const rt=tasks.find(x=>x.id===d); if(rt)rt.typeRemote='call'; atPatch(d,{Type:'call'});} touch(d); render();
     }
   });
@@ -1617,8 +1709,12 @@ function taskEl(t,sectionId){
   if(ph) { const c=document.createElement('a'); c.className='mini'; c.href='tel:'+ph; c.textContent='📞'; c.title='Call '+ph; row.appendChild(c); }
   else row.appendChild(btn('📞','mini','Add number to call',()=>askPhone(t)));
   if(sectionId==='stillopen'){
-    row.appendChild(btn('Still on it','mini',' ',()=>{touch(t.id);toast('Kept — bumped');render();}));
+    row.appendChild(btn('Yes','mini',' Keep open — remove from Still Open',()=>{touch(t.id);toast('Kept open');render();}));
     row.appendChild(btn('Close','mini',' ',()=>markDone(t)));
+  }
+  if(sectionId==='priority' || (sectionId==='bulb' && activeBulb && activeBulb.val==='priority')){
+    row.appendChild(btn('⬇','mini',' Downgrade — lower priority',()=>{const aa=A(t.id);aa.priAdj=(aa.priAdj||0)-25;aa.blink=false;saveAug();toast('⬇ Downgraded');render();}));
+    row.appendChild(btn('Not a priority','mini',' Remove from Priority',()=>{A(t.id).notPriority=true;saveAug();toast('Removed from Priority');render();}));
   }
   details.appendChild(row);
   return el;
@@ -1833,8 +1929,11 @@ function renderFilters(){
         :c.id==='stillopen'?stillOpenItems():tasks.filter(t=>t.status==='Open'&&sectionOf(t)==='backlog');
       openReview(c.name,items.sort((x,y)=>new Date(y.createdTime||0)-new Date(x.createdTime||0))); return; }
       activeBulb={dim:'category',val:c.id,label:c.name}; flashBulb=true; render(); };
+    // custom categories get a right-click / long-press delete
+    if((meta.customCats||[]).some(x=>x.id===c.id)){ b.oncontextmenu=e=>{e.preventDefault(); if(confirm('Delete category "'+c.name+'"? Tasks in it fall back to Backlog.'))deleteCategory(c.id);}; }
     cg.appendChild(b);
   });
+  const addcat=document.createElement('button'); addcat.className='chip'; addcat.textContent='＋ category'; addcat.title='Add a category'; addcat.onclick=addCategory; cg.appendChild(addcat);
   wrap.appendChild(cg);
   // 5th line: tasks by date added
   const ag=document.createElement('div'); ag.className='filter-group';
@@ -2273,13 +2372,19 @@ let _rsT; addEventListener('resize',()=>{if(document.getElementById('grid').clas
 // One-time layout migration: v3 = the 10×2 snap grid (drops old pos/width state).
 const LAYOUT_VER=3;
 if(meta.layoutVer!==LAYOUT_VER){ meta.pos={}; meta.slots={}; delete meta.width; delete meta.height; meta.layoutVer=LAYOUT_VER; saveMeta(); }
-// One-time repair: an over-eager daily sweep snoozed most of the backlog, which
-// emptied the Sub/Lead chips. Release every sweep-snooze so the board is whole.
-if(!meta.unsnoozeFix){ let n=0;
+// Repair: release sweep-snoozes so hidden (often Sub-tagged) tasks reappear.
+// Bumped to run again after the sweep over-hid tagged tasks a second time.
+if(meta.unsnoozeFix!==2){ let n=0;
   for(const id of Object.keys(aug)){ if(aug[id].snoozeUntil>Date.now()){ delete aug[id].snoozeUntil; n++; } }
-  meta.unsnoozeFix=1; saveAug(); saveMeta(); if(n) setTimeout(()=>toast('↩ Restored '+n+' hidden tasks'),800); }
+  meta.unsnoozeFix=2; saveAug(); saveMeta(); if(n) setTimeout(()=>toast('↩ Restored '+n+' hidden tasks'),800); }
 dailyReset();
-if(cfg.apiKey){ render(); atFetch(); }
+// Instant open: paint last-known tasks from cache immediately, then refresh in the
+// background — no waiting on the network when you tap into the app.
+if(cfg.apiKey){
+  try{ const cached=JSON.parse(localStorage.getItem('tb.tasks')||'null'); if(cached&&cached.length){ tasks=cached; demo=false; } }catch(e){}
+  render();
+  atFetch();
+}
 else { tasks=demoTasks(); render(); toast('⚠️ DEMO data — paste your Airtable key to load your real tasks'); openSettings(); }
 </script>
 </body>
