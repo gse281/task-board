@@ -287,7 +287,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-30 12:07';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-31 10:17';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-30 · fixes', d:'Polling no longer interrupts typing. iPhone: add bubble + ☑︎ bulk-select at top of pane; Move is now a 📂 icon; bell/blink shows on rows. Category picker lists None first. Uncategorized auto-sorts at EOD; better lead/sub guessing; "Eli" removed as a lead. Still Open shows a few at a time. Email link opens the exact Gmail message (dropped broken superhuman:// scheme). Priority cards get a ⬇ demote button.'},
@@ -851,6 +851,14 @@ function reorderTask(sec,fromId,beforeId){
   const i=ids.indexOf(beforeId); ids.splice(i<0?ids.length:i,0,fromId);
   meta.taskOrder[sec]=ids; saveMeta(); touch(fromId); saveAug(); render();
 }
+// Move a task to the TOP of its section's manual order (used when you ring its bell).
+function bumpTop(id){
+  const t=tasks.find(x=>x.id===id); if(!t)return; const sec=sectionOf(t); if(!sec)return;
+  meta.taskOrder=meta.taskOrder||{};
+  let ids=tasks.filter(x=>x.status==='Open'&&sectionOf(x)===sec).map(x=>x.id);
+  const ord=meta.taskOrder[sec]; if(ord){ const inOrd=ord.filter(x=>ids.includes(x)); ids=[...inOrd,...ids.filter(x=>!inOrd.includes(x))]; }
+  ids=[id,...ids.filter(x=>x!==id)]; meta.taskOrder[sec]=ids; saveMeta();
+}
 function setMax(id){
   const cur=(meta.max&&meta.max[id])||'';
   const n=prompt('Max tasks to show in this section (blank = show all):',cur); if(n===null)return;
@@ -998,7 +1006,7 @@ function renderMobile(board){
   //    the page opens scrolled to Meetings; scroll up to reach these. ──
   const top=document.createElement('div'); top.id='mTop';
   const fb=document.createElement('div'); fb.className='mfilters';
-  [['project','P'],['lead','L'],['sub','S'],['category','C']].forEach(([dim,lbl])=>{
+  [['project','P'],['sub','S'],['lead','L'],['category','C']].forEach(([dim,lbl])=>{
     const b=document.createElement('button'); b.className='mfbtn'; b.textContent=lbl; b.title=dim; b.onclick=()=>openPicker(dim); fb.appendChild(b);
   });
   const addcat=document.createElement('button'); addcat.className='mfbtn'; addcat.textContent='＋'; addcat.title='Add a category'; addcat.onclick=addCategory; fb.appendChild(addcat);
@@ -1141,7 +1149,7 @@ function mobileRow(t,opts){
   nm.onclick=()=>{ if(bulkMode) bulkToggle(t.id,row); else openDetail(t); };
   // tappable P/L/S bubbles under the name (＋ when unset) — edit tags right on the phone
   const pr=document.createElement('div'); pr.className='plsrow';
-  [['project','p','P'],['lead','l','L'],['sub','s','S']].forEach(([dim,cls,ltr])=>{
+  [['project','p','P'],['sub','s','S'],['lead','l','L']].forEach(([dim,cls,ltr])=>{
     const v=t[dim]; const s=document.createElement('button'); s.className='plstag '+cls; s.textContent=v?v.slice(0,3):'＋'+ltr;
     s.onclick=e=>{e.stopPropagation();if(!bulkMode)pickAssign(t,dim);}; pr.appendChild(s);});
   nm.appendChild(pr); inner.appendChild(nm);
@@ -1150,7 +1158,7 @@ function mobileRow(t,opts){
   if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; c.title=ph; c.onclick=e=>e.stopPropagation(); inner.appendChild(c); }
   else { const l=document.createElement('button'); l.className='mcall add'; l.textContent='🔍'; l.title='Look up number'; l.onclick=e=>{e.stopPropagation();lookupNumber(t);}; inner.appendChild(l); }
   // bell on Calls rows — same stop-reminder toggle as Meetings
-  if(sectionOf(t)==='calls'){ const on=!!A(t.id).blink; const bell=document.createElement('button'); bell.className='mcall bell'+(on?' on':''); bell.textContent=on?'🔕':'🔔'; bell.title=on?'Stop reminder':'Remind me'; bell.onclick=e=>{e.stopPropagation();const a=A(t.id);a.blink=!a.blink;saveAug();render();}; inner.appendChild(bell); }
+  if(sectionOf(t)==='calls'){ const on=!!A(t.id).blink; const bell=document.createElement('button'); bell.className='mcall bell'+(on?' on':''); bell.textContent=on?'🔕':'🔔'; bell.title=on?'Stop reminder':'Remind me'; bell.onclick=e=>{e.stopPropagation();const a=A(t.id);a.blink=!a.blink;if(a.blink)bumpTop(t.id);saveAug();render();}; inner.appendChild(bell); }
   // action 2 — Move To
   const mv=document.createElement('button'); mv.className='mcall'; mv.textContent='📂'; mv.title='Move to…'; mv.onclick=e=>{e.stopPropagation();moveSectionPicker(t);}; inner.appendChild(mv);
   // Still Open: "Yes" keeps it open and drops it from this section (bumps last-touched)
@@ -1412,13 +1420,26 @@ function wirePanel(p,head,id){
   p.addEventListener('dragleave',e=>{if(!p.contains(e.relatedTarget))p.classList.remove('drop-hover');});
   p.addEventListener('drop',()=>p.classList.remove('drop-hover'));
 }
-// Clickable join link for a calendar event: a URL → "Open", a phone → "Call".
+// Convert a meeting URL to a native-app deep link so it opens the app directly,
+// skipping the browser landing page. Returns '' if it's not a known provider.
+function appJoinURL(url){
+  if(!url) return '';
+  // Zoom → zoommtg:// opens the desktop client straight into the meeting (no Zoom Workplace web page)
+  const zm=url.match(/zoom\.us\/j\/(\d+)/);
+  if(zm){ const pw=(url.match(/[?&]pwd=([^&#]+)/)||[])[1]||''; return 'zoommtg://zoom.us/join?action=join&confno='+zm[1]+(pw?'&pwd='+pw:''); }
+  // Microsoft Teams → msteams:// launches the Teams app on the meetup-join deep link
+  if(/teams\.microsoft\.com\/l\/meetup-join\//i.test(url)) return url.replace(/^https?:\/\//i,'msteams:/l/');
+  // Google Meet → meet:// (Meet app / handler); falls back to web if not installed
+  const gm=url.match(/meet\.google\.com\/([a-z0-9-]+)/i);
+  if(gm) return 'https://meet.google.com/'+gm[1];   // Meet has no reliable desktop scheme; direct room URL
+  return '';
+}
 function meetingLink(e){
   const url=(e.link&&/^https?:/i.test(e.link))?e.link:'';
   if(url){
-    const zm=url.match(/zoom\.us\/j\/(\d+)/);       // open the Zoom APP, skip the web page
-    if(zm){ const pw=(url.match(/[?&]pwd=([^&#]+)/)||[])[1]||''; const deep='zoommtg://zoom.us/join?confno='+zm[1]+(pw?'&pwd='+pw:''); return `<a class="joinbtn" href="${deep}">▶ Join</a>`; }
-    return `<a class="joinbtn" href="${esc(url)}" target="_blank" rel="noopener">Open ↗</a>`;
+    const app=appJoinURL(url);
+    if(app && !/^https/i.test(app)) return `<a class="joinbtn" href="${app}">▶ Join</a>`;   // native app scheme
+    return `<a class="joinbtn" href="${esc(app||url)}" target="_blank" rel="noopener">▶ Join</a>`;
   }
   const digits=(e.location||'').replace(/[^\d]/g,'');
   if(digits.length>=10) return `<a class="joinbtn" href="tel:${digits}">📞 Call</a>`;
@@ -1722,10 +1743,22 @@ function taskEl(t,sectionId){
     `<div class="details">`+
       `<div class="meta">${t.project?`<span class="tag">📁 ${esc(t.project)}</span>`:''}${t.lead?`<span class="tag">👤 ${esc(t.lead)}</span>`:''}${t.sub?`<span class="tag">${esc(t.sub)}</span>`:''}</div>`+
     `</div>`;
-  // Priority cards: a visible ⬇ demote button (removes it from Priority) — shows on desktop AND phone.
-  if(sectionId==='priority' || (sectionId==='bulb' && activeBulb && activeBulb.val==='priority')){
-    const tr=el.querySelector('.topright'); if(tr){ const db=document.createElement('button'); db.className='donex'; db.textContent='⬇'; db.title='Demote — remove from Priority';
-      db.onclick=e=>{e.stopPropagation(); const aa=A(t.id); aa.notPriority=true; aa.priAdj=(aa.priAdj||0)-25; aa.blink=false; saveAug(); toast('⬇ Removed from Priority'); render();}; tr.insertBefore(db,tr.firstChild); }
+  // Visible contextual buttons on the card face (not hidden in the ▸ dropdown).
+  const tr=el.querySelector('.topright');
+  const faceBtn=(txt,title,fn)=>{ if(!tr)return; const b=document.createElement('button'); b.className='donex'; b.textContent=txt; b.title=title;
+    b.onclick=e=>{e.stopPropagation();fn();}; tr.insertBefore(b,tr.firstChild); };
+  const inPriority = sectionId==='priority' || (sectionId==='bulb' && activeBulb && activeBulb.val==='priority');
+  const inStillOpen = sectionId==='stillopen' || (sectionId==='bulb' && activeBulb && activeBulb.val==='stillopen');
+  if(inPriority){
+    faceBtn('⬇','Downgrade — lower priority',()=>{const aa=A(t.id);aa.priAdj=(aa.priAdj||0)-25;aa.blink=false;saveAug();toast('⬇ Downgraded');render();});
+  }
+  if(inStillOpen){
+    faceBtn('👍','Still relevant — keep it (removes from Still Open)',()=>{touch(t.id);toast('👍 Kept');render();});
+  }
+  // Remove-from-section ⊘ visible whenever the card is shown inside a real category pane
+  const inCatPane = isRealSection(sectionId) || (sectionId==='bulb' && activeBulb && isRealSection(activeBulb.val));
+  if(inCatPane && sectionOf(t) && sectionOf(t)!=='backlog'){
+    faceBtn('⊘','Remove from this category (stays open)',()=>clearFromSection(t));
   }
   const nm=el.querySelector('.name'); nm.style.cursor='pointer'; nm.title='Edit';
   nm.onclick=e=>{e.stopPropagation();openDetail(t);};
@@ -1736,9 +1769,9 @@ function taskEl(t,sectionId){
   mas.appendChild(mk('C','Move to Calls',()=>setCall(t.id), sectionOf(t)==='calls'));
   mas.appendChild(mk('S','Snooze 10 days',()=>snoozeTask(t.id)));
   mas.appendChild(mk('📌','Keep here until done — survives the daily reset',()=>{const aa=A(t.id);aa.pin=!aa.pin;saveAug();render();toast(aa.pin?'📌 Pinned — stays put until done':'Unpinned');},a.pin));
-  mas.appendChild(mk('🔔','Important — tap to blink / tap to snooze 5 min',()=>{const aa=A(t.id);
+  mas.appendChild(mk('🔔','Important — tap to blink (jumps to top) / tap to snooze 5 min',()=>{const aa=A(t.id);
     if(aa.blink||autoBlinkOn(t,sectionId)){ if(autoBlinkOn(t,sectionId))aa.blinkSnoozeUntil=Date.now()+5*60000; aa.blink=false; toast('🔕 Snoozed 5 min'); }
-    else { aa.blink=true; }
+    else { aa.blink=true; bumpTop(t.id); }
     saveAug();render();}, a.blink||autoBlinkOn(t,sectionId)));
   const datb=document.createElement('button'); datb.className='masb'+(doDateOf(t)?' on':''); datb.textContent='📅'; datb.title=doDateOf(t)?('Scheduled '+doDateOf(t)):'Schedule for a date';
   datb.onclick=e=>{ e.stopPropagation();
@@ -1752,7 +1785,7 @@ function taskEl(t,sectionId){
       s.textContent=v?v.slice(0,3):'＋'+cls.toUpperCase();
       s.title=v?(ti+': '+v+' — click to change'):('Set '+ti.toLowerCase());
       s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);}; pr.appendChild(s);};
-    add(t.project,'p','project','Project'); add(t.lead,'l','lead','Lead'); add(t.sub,'s','sub','Sub');
+    add(t.project,'p','project','Project'); add(t.sub,'s','sub','Sub'); add(t.lead,'l','lead','Lead');
     nm.after(pr);
   }
   const od=doDateOf(t);
@@ -1761,7 +1794,7 @@ function taskEl(t,sectionId){
   const details=el.querySelector('.details');
   // P/L/S/C + the M/A/C/S/📌/🔔/📅 strip live under the ▸ dropdown, so the task text runs full width
   const plsc=document.createElement('div'); plsc.className='mas';
-  [['P','Set project',()=>pickAssign(t,'project')],['L','Set lead',()=>pickAssign(t,'lead')],['S','Set sub',()=>pickAssign(t,'sub')],['C','Move to a section',()=>moveSectionPicker(t)]]
+  [['P','Set project',()=>pickAssign(t,'project')],['S','Set sub',()=>pickAssign(t,'sub')],['L','Set lead',()=>pickAssign(t,'lead')],['C','Move to a section',()=>moveSectionPicker(t)]]
     .forEach(([ltr,ti,fn])=>{const b=document.createElement('button');b.className='masb';b.textContent=ltr;b.title=ti;b.onclick=e=>{e.stopPropagation();fn();};plsc.appendChild(b);});
   details.appendChild(plsc);
   details.appendChild(mas);
@@ -1770,7 +1803,7 @@ function taskEl(t,sectionId){
   const dx=el.querySelector('.donex'); if(dx) dx.onclick=e=>{e.stopPropagation();markDone(t);};
   const row=document.createElement('div'); row.className='row';
   row.appendChild(btn('✓','mini done','Mark done',()=>markDone(t)));
-  row.appendChild(btn(a.blink?'🔔':'🔕','mini'+(a.blink?' on':''),'Blink/important',()=>{a.blink=!a.blink;saveAug();render();}));
+  row.appendChild(btn(a.blink?'🔔':'🔕','mini'+(a.blink?' on':''),'Blink/important (jumps to top)',()=>{a.blink=!a.blink;if(a.blink)bumpTop(t.id);saveAug();render();}));
   row.appendChild(btn('📝','mini','Next step / directive',()=>editNext(t)));
   row.appendChild(btn('✉️','mini','Send as email',()=>sendEmail(t)));
   row.appendChild(btn('💬','mini','Send as text',()=>sendText(t)));
@@ -1973,7 +2006,7 @@ function reorderChip(dim,from,to){
 }
 function renderFilters(){
   const wrap=document.getElementById('filters'); wrap.innerHTML='';
-  ['project','lead','sub'].forEach(dim=>{                 // each dimension on its own line
+  ['project','sub','lead'].forEach(dim=>{                 // each dimension on its own line (Sub before Lead)
     const g=document.createElement('div'); g.className='filter-group';
     const counts=countsFor(dim);
     const lbl=document.createElement('span'); lbl.className='lbl'; lbl.textContent=dim; g.appendChild(lbl);
