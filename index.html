@@ -287,7 +287,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-31 10:17';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-07-31 10:20';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-30 · fixes', d:'Polling no longer interrupts typing. iPhone: add bubble + ☑︎ bulk-select at top of pane; Move is now a 📂 icon; bell/blink shows on rows. Category picker lists None first. Uncategorized auto-sorts at EOD; better lead/sub guessing; "Eli" removed as a lead. Still Open shows a few at a time. Email link opens the exact Gmail message (dropped broken superhuman:// scheme). Priority cards get a ⬇ demote button.'},
@@ -1428,7 +1428,7 @@ function appJoinURL(url){
   const zm=url.match(/zoom\.us\/j\/(\d+)/);
   if(zm){ const pw=(url.match(/[?&]pwd=([^&#]+)/)||[])[1]||''; return 'zoommtg://zoom.us/join?action=join&confno='+zm[1]+(pw?'&pwd='+pw:''); }
   // Microsoft Teams → msteams:// launches the Teams app on the meetup-join deep link
-  if(/teams\.microsoft\.com\/l\/meetup-join\//i.test(url)) return url.replace(/^https?:\/\//i,'msteams:/l/');
+  if(/teams\.microsoft\.com\/l\/meetup-join\//i.test(url)) return url.replace(/^https?:\/\/teams\.microsoft\.com\//i,'msteams:/');
   // Google Meet → meet:// (Meet app / handler); falls back to web if not installed
   const gm=url.match(/meet\.google\.com\/([a-z0-9-]+)/i);
   if(gm) return 'https://meet.google.com/'+gm[1];   // Meet has no reliable desktop scheme; direct room URL
