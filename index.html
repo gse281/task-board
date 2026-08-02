@@ -295,7 +295,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-02 08:44';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-02 08:55';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-31 · bells & color', d:'Add-task bubble now at the top of the task pane on desktop too. Bell + Pin on every task’s visible face (desktop & iPhone). Phone/lookup icon only shows in the Calls pane. Move icon no longer green. New orange-red highlight + a color picker in ⚙︎ Settings (presets: orange-red / yellow / amber). New Calls tasks are auto-belled. Added a 🎵 Music player category.'},
@@ -439,7 +439,6 @@ const CATEGORIES_BUILTIN = [
   {id:'sunday',name:'☀️ Sunday'},          // texted to you every Sunday 5am
   {id:'stillopen',name:'❓ Still open'},
   {id:'yestboard',name:'🕘 Yesterday'},
-  {id:'musicplayer',name:'🎵 Music player'},
 ];
 // User-added categories live in meta.customCats [{id,name}]; CATEGORIES merges them.
 Object.defineProperty(window,'CATEGORIES',{get(){return [...CATEGORIES_BUILTIN,...((meta&&meta.customCats)||[])];}});
