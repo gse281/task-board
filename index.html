@@ -7,7 +7,7 @@
 <style>
 :root{
   --bg:#14110f; --panel:#1d1916; --panel2:#241f1b; --ink:#f5f3ee; --muted:#a8a29a;
-  --line:#2c2723; --accent:#e0a458; --green:#3a8f5f; --red:#c2553f; --blue:#5b8fb0;
+  --line:#2c2723; --accent:#e8683c; --green:#3a8f5f; --red:#c2553f; --blue:#5b8fb0;
   --radius:14px;
 }
 *{box-sizing:border-box}
@@ -87,7 +87,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .task{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px 7px;cursor:grab;position:relative}
 .task:active{cursor:grabbing}
 .task.blink{animation:blink 1s ease-in-out infinite;border-color:var(--accent)}
-@keyframes blink{0%,100%{box-shadow:0 0 0 0 rgba(224,164,88,.0)}50%{box-shadow:0 0 0 3px rgba(224,164,88,.55)}}
+@keyframes blink{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 3px var(--accent)}}
 .task .name{font-weight:600;font-size:13px;line-height:1.25;padding-right:82px}
 .topright{position:absolute;top:4px;right:6px;display:flex;flex-direction:row;align-items:center;gap:4px}
 .donex{background:none;border:none;color:var(--green);cursor:pointer;font-size:15px;line-height:1;padding:4px 7px;font-weight:800;border-radius:6px}
@@ -142,8 +142,14 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .mrow-inner{display:flex;align-items:center;gap:7px;transition:transform .12s ease}
 .mrow2[data-hint]::after{content:attr(data-hint);position:absolute;top:0;left:14px;height:100%;display:flex;align-items:center;font-size:13px;font-weight:800;color:var(--accent);pointer-events:none}
 .mcall.move{background:var(--panel);color:var(--ink);border:1px solid var(--line);font-size:14px;font-weight:800;padding:9px 12px}
-.mcall.bell{background:var(--panel);color:var(--accent);border:1px solid var(--line);font-size:17px}
+.mcall.bell{background:var(--panel);color:var(--muted);border:1px solid var(--line);font-size:17px}
 .mcall.bell.on{background:var(--accent);color:#14110f;border-color:var(--accent)}
+.desk-add{display:flex;gap:8px;padding:8px 12px 0}
+.desk-add input{flex:1;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:14px}
+.desk-add button{background:var(--accent);border:none;color:#14110f;border-radius:10px;padding:0 18px;font-weight:800;font-size:14px}
+@media(max-width:640px){ .desk-add{display:none} }
+.mcall.move,.mcall.pin{background:var(--panel);color:var(--ink);border:1px solid var(--line)}
+.mcall.pin.on{background:var(--accent);color:#14110f;border-color:var(--accent)}
 .drawer-handle{display:flex;align-items:center;justify-content:center;gap:8px;flex-direction:column;padding:6px 0 4px;color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;user-select:none}
 .drawer-handle .dh-grip{width:38px;height:4px;border-radius:3px;background:var(--line)}
 .drawer-handle.open .dh-label{color:var(--accent)}
@@ -278,6 +284,8 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <div class="filters" id="filters"></div>
 
+<div class="desk-add" id="deskAdd"><input id="deskAddInp" placeholder="➕ Add task…"><button id="deskAddBtn">Add</button></div>
+
 <div class="board" id="board"></div>
 
 <div id="searchResults" class="search-results hidden"></div>
@@ -287,9 +295,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-07-31 10:20';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-02 08:44';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-07-31 · bells & color', d:'Add-task bubble now at the top of the task pane on desktop too. Bell + Pin on every task’s visible face (desktop & iPhone). Phone/lookup icon only shows in the Calls pane. Move icon no longer green. New orange-red highlight + a color picker in ⚙︎ Settings (presets: orange-red / yellow / amber). New Calls tasks are auto-belled. Added a 🎵 Music player category.'},
   {v:'2026-07-30 · fixes', d:'Polling no longer interrupts typing. iPhone: add bubble + ☑︎ bulk-select at top of pane; Move is now a 📂 icon; bell/blink shows on rows. Category picker lists None first. Uncategorized auto-sorts at EOD; better lead/sub guessing; "Eli" removed as a lead. Still Open shows a few at a time. Email link opens the exact Gmail message (dropped broken superhuman:// scheme). Priority cards get a ⬇ demote button.'},
   {v:'2026-07-26 · hidden header', d:'Phone opens to pure task content — Meetings at top. The whole header (search, refresh, undo, settings, open-count) is no longer sticky; it sits with the weather strip, filters and Incoming in the pull-down area above Meetings. Scroll up to reveal them all. Weather now in inches.'},
   {v:'2026-07-24 · weather', d:'14-day NYC weather strip (Open-Meteo) — day, emoji, rain shown in inches; heavy-rain days highlight amber. Auto-refreshes with the board.'},
@@ -430,6 +439,7 @@ const CATEGORIES_BUILTIN = [
   {id:'sunday',name:'☀️ Sunday'},          // texted to you every Sunday 5am
   {id:'stillopen',name:'❓ Still open'},
   {id:'yestboard',name:'🕘 Yesterday'},
+  {id:'musicplayer',name:'🎵 Music player'},
 ];
 // User-added categories live in meta.customCats [{id,name}]; CATEGORIES merges them.
 Object.defineProperty(window,'CATEGORIES',{get(){return [...CATEGORIES_BUILTIN,...((meta&&meta.customCats)||[])];}});
@@ -1154,16 +1164,20 @@ function mobileRow(t,opts){
     s.onclick=e=>{e.stopPropagation();if(!bulkMode)pickAssign(t,dim);}; pr.appendChild(s);});
   nm.appendChild(pr); inner.appendChild(nm);
   if(!bulkMode){
-  // action 1 — phone: call if we have a number, otherwise look it up
-  if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; c.title=ph; c.onclick=e=>e.stopPropagation(); inner.appendChild(c); }
-  else { const l=document.createElement('button'); l.className='mcall add'; l.textContent='🔍'; l.title='Look up number'; l.onclick=e=>{e.stopPropagation();lookupNumber(t);}; inner.appendChild(l); }
-  // bell on Calls rows — same stop-reminder toggle as Meetings
-  if(sectionOf(t)==='calls'){ const on=!!A(t.id).blink; const bell=document.createElement('button'); bell.className='mcall bell'+(on?' on':''); bell.textContent=on?'🔕':'🔔'; bell.title=on?'Stop reminder':'Remind me'; bell.onclick=e=>{e.stopPropagation();const a=A(t.id);a.blink=!a.blink;if(a.blink)bumpTop(t.id);saveAug();render();}; inner.appendChild(bell); }
-  // action 2 — Move To
-  const mv=document.createElement('button'); mv.className='mcall'; mv.textContent='📂'; mv.title='Move to…'; mv.onclick=e=>{e.stopPropagation();moveSectionPicker(t);}; inner.appendChild(mv);
+  // Phone/lookup ONLY for tasks in the Calls pane — hidden everywhere else.
+  if(sectionOf(t)==='calls'||isCallTask(t)){
+    if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; c.title=ph; c.onclick=e=>e.stopPropagation(); inner.appendChild(c); }
+    else { const l=document.createElement('button'); l.className='mcall add'; l.textContent='🔍'; l.title='Look up number'; l.onclick=e=>{e.stopPropagation();lookupNumber(t);}; inner.appendChild(l); }
+  }
+  // Bell — on every row (item: bell on all task bubbles)
+  { const on=!!A(t.id).blink; const bell=document.createElement('button'); bell.className='mcall bell'+(on?' on':''); bell.textContent=on?'🔔':'🔕'; bell.title=on?'Ringing — tap to silence':'Set a bell'; bell.onclick=e=>{e.stopPropagation();const a=A(t.id);a.blink=!a.blink;if(a.blink)bumpTop(t.id);saveAug();render();}; inner.appendChild(bell); }
+  // Pin — on every row
+  { const pon=!!A(t.id).pin; const pin=document.createElement('button'); pin.className='mcall pin'+(pon?' on':''); pin.textContent=pon?'📌':'📍'; pin.title=pon?'Pinned':'Pin — keep until done'; pin.onclick=e=>{e.stopPropagation();const a=A(t.id);a.pin=!a.pin;saveAug();render();toast(a.pin?'📌 Pinned':'Unpinned');}; inner.appendChild(pin); }
+  // Move — neutral (no green)
+  const mv=document.createElement('button'); mv.className='mcall move'; mv.textContent='📂'; mv.title='Move to…'; mv.onclick=e=>{e.stopPropagation();moveSectionPicker(t);}; inner.appendChild(mv);
   // Still Open: "Yes" keeps it open and drops it from this section (bumps last-touched)
   if(opts.stillOpen){ const y=document.createElement('button'); y.className='mcall move'; y.textContent='Yes'; y.title='Keep open — remove from Still Open'; y.onclick=e=>{e.stopPropagation();touch(t.id);toast('Kept open');render();}; inner.appendChild(y); }
-  // action 3 — done
+  // Done
   const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=e=>{e.stopPropagation();markDone(t);}; inner.appendChild(done);
   }
   if(A(t.id).blink) row.classList.add('blink');   // reflect the bell / important flag visually on the phone
@@ -1247,7 +1261,7 @@ function mobileCalls(){
   items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t,{showNumber:true,addNumber:true})));
   if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'calls',label:'📞 Calls'};render();};body.appendChild(m);}
   const add=document.createElement('div');add.className='add-inline';add.innerHTML='<input placeholder="Add a call…"><button>＋</button>';
-  const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).type='call';t.typeRemote='call';saveAug();atPatch(t.id,{Type:'call'});render();}};
+  const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){const a=A(t.id);a.type='call';a.blink=true;t.typeRemote='call';saveAug();atPatch(t.id,{Type:'call'});render();}};
   add.querySelector('button').onclick=go;add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
   body.appendChild(add);
   p.appendChild(body); return p;
@@ -1704,7 +1718,7 @@ function panelEl(sectionId,title,items,isDrop){
   if(isDrop){   // add bubble at the BOTTOM of each real section
     const add=document.createElement('div'); add.className='add-inline';
     add.innerHTML='<input placeholder="Add…"><button>＋</button>';
-    const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section=sectionId;if(sectionId==='calls')A(t.id).type='call';saveAug();render(); const n=document.querySelector('.panel[data-section="'+sectionId+'"] .add-inline input'); if(n)n.focus();}};
+    const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section=sectionId;if(sectionId==='calls'){A(t.id).type='call';A(t.id).blink=true;}saveAug();render(); const n=document.querySelector('.panel[data-section="'+sectionId+'"] .add-inline input'); if(n)n.focus();}};
     add.querySelector('button').onclick=go; add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
     body.appendChild(add);
   }
@@ -1747,6 +1761,9 @@ function taskEl(t,sectionId){
   const tr=el.querySelector('.topright');
   const faceBtn=(txt,title,fn)=>{ if(!tr)return; const b=document.createElement('button'); b.className='donex'; b.textContent=txt; b.title=title;
     b.onclick=e=>{e.stopPropagation();fn();}; tr.insertBefore(b,tr.firstChild); };
+  // Bell + Pin on the visible card face (every task).
+  faceBtn(a.pin?'📌':'📍', a.pin?'Pinned — survives daily reset':'Pin — keep until done', ()=>{const aa=A(t.id);aa.pin=!aa.pin;saveAug();render();toast(aa.pin?'📌 Pinned':'Unpinned');});
+  faceBtn(a.blink?'🔔':'🔕', a.blink?'Ringing — tap to silence':'Set a bell / mark important', ()=>{const aa=A(t.id);aa.blink=!aa.blink;saveAug();render();});
   const inPriority = sectionId==='priority' || (sectionId==='bulb' && activeBulb && activeBulb.val==='priority');
   const inStillOpen = sectionId==='stillopen' || (sectionId==='bulb' && activeBulb && activeBulb.val==='stillopen');
   if(inPriority){
@@ -1810,8 +1827,11 @@ function taskEl(t,sectionId){
   row.appendChild(btn('📤','mini','Draft a follow-up now (on demand)',()=>queueSend(t)));
   if(sectionOf(t)&&sectionOf(t)!=='backlog') row.appendChild(btn('⊘','mini','Clear out of this category — stays open',()=>clearFromSection(t)));
   if(!t.project||!t.lead) row.appendChild(btn('🔮','mini','Guess project/lead',()=>openDetail(t,guessCategory(t))));
-  if(ph) { const c=document.createElement('a'); c.className='mini'; c.href='tel:'+ph; c.textContent='📞'; c.title='Call '+ph; row.appendChild(c); }
-  else row.appendChild(btn('📞','mini','Add number to call',()=>askPhone(t)));
+  // Phone/lookup only for call tasks (Calls pane) — hidden elsewhere.
+  if(isCallTask(t)||sectionOf(t)==='calls'){
+    if(ph) { const c=document.createElement('a'); c.className='mini'; c.href='tel:'+ph; c.textContent='📞'; c.title='Call '+ph; row.appendChild(c); }
+    else row.appendChild(btn('🔍','mini','Look up number',()=>askPhone(t)));
+  }
   if(sectionId==='stillopen'){
     row.appendChild(btn('Yes','mini',' Keep open — remove from Still Open',()=>{touch(t.id);toast('Kept open');render();}));
     row.appendChild(btn('Close','mini',' ',()=>markDone(t)));
@@ -2360,10 +2380,20 @@ function openSettings(){
     <label class="field"><span class="lbl">Airtable Base ID</span><input class="inp" id="b" value="${esc(cfg.baseId)}"></label>
     <label class="field"><span class="lbl">Airtable Table ID</span><input class="inp" id="tb" value="${esc(cfg.tableId)}"></label>
     <label class="field"><span class="lbl">Anthropic API key (optional — photo→list)</span><input class="inp" id="an" value="${esc(cfg.anthropicKey||'')}" placeholder="sk-ant-..."></label>
+    <label class="field"><span class="lbl">Highlight color</span>
+      <input class="inp" id="accentC" type="color" value="${accentNow()}" style="height:44px;padding:4px" oninput="setAccent(this.value)">
+      <div class="note" style="margin-top:4px">Presets:
+        <button type="button" class="btn ghost" onclick="setAccent('#e8683c')">🟧 Orange-red</button>
+        <button type="button" class="btn ghost" onclick="setAccent('#e6c34a')">🟡 Yellow</button>
+        <button type="button" class="btn ghost" onclick="setAccent('#e0a458')">🟠 Amber</button></div></label>
     <div class="field"><button type="button" class="btn ghost" onclick="resetLayout()">↺ Reset grid</button></div>
     <div class="note">Keys are stored only in this browser (localStorage). Scope the Airtable token to just this base. Drag a panel by its header — it snaps into the 10×2 grid; whatever it lands on moves to the first open cell.</div>`,
-   ()=>{cfg.apiKey=val('k');cfg.baseId=val('b');cfg.tableId=val('tb');cfg.anthropicKey=val('an');saveCfg();atFetch();});
+   ()=>{cfg.apiKey=val('k');cfg.baseId=val('b');cfg.tableId=val('tb');cfg.anthropicKey=val('an');setAccent(val('accentC'));saveCfg();atFetch();});
 }
+// Highlight color — user-chosen, persisted, applied over the CSS default.
+function setAccent(c){ if(!c)return; document.documentElement.style.setProperty('--accent',c); localStorage.setItem('accent',c); const inp=document.getElementById('accentC'); if(inp)inp.value=c; }
+function accentNow(){ return localStorage.getItem('accent') || (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()) || '#e8683c'; }
+(function(){ const a=localStorage.getItem('accent'); if(a)document.documentElement.style.setProperty('--accent',a); })();
 const val=id=>document.getElementById(id).value.trim();
 
 /* ---------- Reference grid overlay ---------- */
@@ -2474,6 +2504,11 @@ document.getElementById('undoBtn').onclick=undoLast;
 document.addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='z'&&!e.target.closest('input,textarea,select')){ e.preventDefault(); undoLast(); } });
 document.getElementById('refreshBtn').onclick=()=>location.reload();   // full reload, like the address bar
 document.getElementById('settingsBtn').onclick=openSettings;
+// Desktop add bubble at the top of the task pane → adds to Incoming.
+(function(){ const inp=document.getElementById('deskAddInp'), b=document.getElementById('deskAddBtn'); if(!inp||!b)return;
+  const go=async()=>{ const v=inp.value.trim(); if(!v)return; inp.value=''; const t=await atCreate(v); if(t){A(t.id).section='incoming';saveAug();render();const f=document.getElementById('deskAddInp');if(f)f.focus();} };
+  b.onclick=go; inp.addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+})();
 document.getElementById('addBtn').onclick=addTask;
 document.getElementById('picBtn').onclick=()=>document.getElementById('picInput').click();
 document.getElementById('meetBtn').onclick=meetingsModal;
