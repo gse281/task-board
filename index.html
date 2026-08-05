@@ -88,9 +88,14 @@ button{font:inherit;color:inherit;cursor:pointer}
 .task:active{cursor:grabbing}
 .task.blink{animation:blink 1s ease-in-out infinite;border-color:var(--accent)}
 @keyframes blink{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 3px var(--accent)}}
-.task .name{font-weight:600;font-size:13px;line-height:1.25;padding-right:82px}
-.topright{position:absolute;top:4px;right:6px;display:flex;flex-direction:row;align-items:center;gap:4px}
+.task .name{font-weight:600;font-size:13px;line-height:1.25;padding-right:44px}
+.topright{position:absolute;top:4px;right:6px;display:flex;flex-direction:row;align-items:center;gap:3px}
 .donex{background:none;border:none;color:var(--green);cursor:pointer;font-size:15px;line-height:1;padding:4px 7px;font-weight:800;border-radius:6px}
+/* Visible action row on the card face — left-aligned, tight, below the name/tags */
+.cardacts{display:flex;gap:2px;align-items:center;margin:3px 0 1px;flex-wrap:wrap}
+.cardbtn{background:none;border:1px solid transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:2px 5px;border-radius:6px}
+.cardbtn:hover{border-color:var(--line);color:var(--ink)}
+.cardbtn.done{color:var(--green)} .cardbtn.on{color:var(--accent)}
 .add-inline .submit-sm{font-size:11px;padding:0 8px}
 .details{display:none;margin-top:6px}
 .task.open .details{display:block}
@@ -98,6 +103,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .task .tag{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:0 6px;font-size:10px}
 .task .next{margin-top:5px;font-size:11px;color:var(--accent);background:rgba(224,164,88,.1);border-radius:6px;padding:5px 8px}
 .task .next.ndone{color:var(--green);background:rgba(58,143,95,.12)}
+.task .notepv{margin-top:4px;font-size:11px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 7px;line-height:1.3}
 .task.drop-before{border-top:2px solid var(--accent)}
 textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .cal-ev{background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:7px;padding:4px 8px}
@@ -295,7 +301,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-02 08:55';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-05 17:40';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-07-31 · bells & color', d:'Add-task bubble now at the top of the task pane on desktop too. Bell + Pin on every task’s visible face (desktop & iPhone). Phone/lookup icon only shows in the Calls pane. Move icon no longer green. New orange-red highlight + a color picker in ⚙︎ Settings (presets: orange-red / yellow / amber). New Calls tasks are auto-belled. Added a 🎵 Music player category.'},
@@ -554,7 +560,7 @@ async function atFetch(){
       lead:flat(rec.fields.SBLead), sub:flat(rec.fields.Sub),
       status:flat(rec.fields.Status)||'Open',
       phoneRemote:flat(rec.fields.Phone), nextStepRemote:flat(rec.fields.NextStep),
-      sourceRemote:flat(rec.fields.Source),
+      sourceRemote:flat(rec.fields.Source), notesRemote:flat(rec.fields.Notes),
       typeRemote:(flat(rec.fields.Type)||'').toLowerCase(),
       slotRemote:(flat(rec.fields.MeetingSlot)||'').toLowerCase(),
       sectionRemote:(flat(rec.fields.Section)||'').toLowerCase(),
@@ -928,10 +934,11 @@ function render(){
 // Email links open in the Superhuman APP (not Gmail) — convert the Gmail
 // thread link to Superhuman's deep-link scheme.
 function shLink(url){
-  // The stored link is the Gmail permalink (…#inbox/<hexId>). The old superhuman://…/thread/<id>
-  // scheme opened the app but landed on the wrong view, so open the exact Gmail message instead —
-  // that reliably navigates to the right email (and still opens in Superhuman if it handles Gmail links).
-  return url||'';
+  // Open the Superhuman APP on this thread. Gmail permalinks carry the thread id as a
+  // trailing 12+ hex segment (…#inbox/<hexId>, …#search/…/<hexId>, …#all/<hexId>, or /u/0/<hexId>).
+  if(!url) return '';
+  const m=url.match(/([0-9a-f]{12,})\/?$/i) || url.match(/[#/]([0-9a-f]{12,})(?:[/?#]|$)/i);
+  return m ? 'superhuman://mail.superhuman.com/search/'+m[1] : url;
 }
 
 /* A project/lead/sub "bulb" opened as a live board panel (drag tasks out of it) */
@@ -1702,6 +1709,14 @@ function panelEl(sectionId,title,items,isDrop){
   const hp=heightPx(sectionId);
   if(hp) body.style.maxHeight=hp;   // panels otherwise auto-size to their content (align-items:start)
 
+  if(isDrop){   // add bubble at the TOP of each real section
+    const add=document.createElement('div'); add.className='add-inline';
+    add.innerHTML='<input placeholder="Add…"><button>＋</button>';
+    const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section=sectionId;if(sectionId==='calls'){A(t.id).type='call';A(t.id).blink=true;}saveAug();render(); const n=document.querySelector('.panel[data-section="'+sectionId+'"] .add-inline input'); if(n)n.focus();}};
+    add.querySelector('button').onclick=go; add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
+    body.appendChild(add);
+  }
+
   const list=orderRows(items,sectionId);
   const max=(meta.max&&meta.max[sectionId])||0;
   const shown=(max&&list.length>max&&!expanded.has(sectionId))?list.slice(0,max):list;
@@ -1712,14 +1727,6 @@ function panelEl(sectionId,title,items,isDrop){
     mb.textContent=expanded.has(sectionId)?'Show less':('+'+(list.length-max)+' more');
     mb.onclick=()=>{ expanded.has(sectionId)?expanded.delete(sectionId):expanded.add(sectionId); render(); };
     body.appendChild(mb);
-  }
-
-  if(isDrop){   // add bubble at the BOTTOM of each real section
-    const add=document.createElement('div'); add.className='add-inline';
-    add.innerHTML='<input placeholder="Add…"><button>＋</button>';
-    const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section=sectionId;if(sectionId==='calls'){A(t.id).type='call';A(t.id).blink=true;}saveAug();render(); const n=document.querySelector('.panel[data-section="'+sectionId+'"] .add-inline input'); if(n)n.focus();}};
-    add.querySelector('button').onclick=go; add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
-    body.appendChild(add);
   }
   p.appendChild(body);
 
@@ -1749,35 +1756,30 @@ function taskEl(t,sectionId){
     reorderTask(sectionId,d,t.id);
   });
   const ph=phoneFor(t);
+  // Top-right corner holds ONLY the age + the ▸ expander (no icons over the title).
   el.innerHTML =
-    `<div class="topright"><button class="donex" title="Quick done">✕</button><span class="age">${daysOpen(t)}d</span><button class="reveal" title="Details & actions">▸</button></div>`+
+    `<div class="topright"><span class="age">${daysOpen(t)}d</span><button class="reveal" title="Details & actions">▸</button></div>`+
     `<div class="name">${esc(sectionId==='bulb'?cleanName(t):displayName(t))}</div>`+
     (()=>{const ns=a.nextStep||t.nextStepRemote; if(!ns)return''; const done=/^\s*✓/.test(ns); return `<div class="next${done?' ndone':''}">${done?'':'→ '}${esc(ns)}</div>`;})()+
+    ((a.notes||t.notesRemote)?`<div class="notepv" title="Notes — click to edit">🗒 ${esc((a.notes||t.notesRemote).slice(0,70))}${(a.notes||t.notesRemote).length>70?'…':''}</div>`:'')+
     `<div class="details">`+
       `<div class="meta">${t.project?`<span class="tag">📁 ${esc(t.project)}</span>`:''}${t.lead?`<span class="tag">👤 ${esc(t.lead)}</span>`:''}${t.sub?`<span class="tag">${esc(t.sub)}</span>`:''}</div>`+
     `</div>`;
-  // Visible contextual buttons on the card face (not hidden in the ▸ dropdown).
-  const tr=el.querySelector('.topright');
-  const faceBtn=(txt,title,fn)=>{ if(!tr)return; const b=document.createElement('button'); b.className='donex'; b.textContent=txt; b.title=title;
-    b.onclick=e=>{e.stopPropagation();fn();}; tr.insertBefore(b,tr.firstChild); };
-  // Bell + Pin on the visible card face (every task).
-  faceBtn(a.pin?'📌':'📍', a.pin?'Pinned — survives daily reset':'Pin — keep until done', ()=>{const aa=A(t.id);aa.pin=!aa.pin;saveAug();render();toast(aa.pin?'📌 Pinned':'Unpinned');});
-  faceBtn(a.blink?'🔔':'🔕', a.blink?'Ringing — tap to silence':'Set a bell / mark important', ()=>{const aa=A(t.id);aa.blink=!aa.blink;saveAug();render();});
-  const inPriority = sectionId==='priority' || (sectionId==='bulb' && activeBulb && activeBulb.val==='priority');
-  const inStillOpen = sectionId==='stillopen' || (sectionId==='bulb' && activeBulb && activeBulb.val==='stillopen');
-  if(inPriority){
-    faceBtn('⬇','Downgrade — lower priority',()=>{const aa=A(t.id);aa.priAdj=(aa.priAdj||0)-25;aa.blink=false;saveAug();toast('⬇ Downgraded');render();});
-  }
-  if(inStillOpen){
-    faceBtn('👍','Still relevant — keep it (removes from Still Open)',()=>{touch(t.id);toast('👍 Kept');render();});
-  }
-  // Remove-from-section ⊘ visible whenever the card is shown inside a real category pane
-  const inCatPane = isRealSection(sectionId) || (sectionId==='bulb' && activeBulb && isRealSection(activeBulb.val));
-  if(inCatPane && sectionOf(t) && sectionOf(t)!=='backlog'){
-    faceBtn('⊘','Remove from this category (stays open)',()=>clearFromSection(t));
-  }
   const nm=el.querySelector('.name'); nm.style.cursor='pointer'; nm.title='Edit';
   nm.onclick=e=>{e.stopPropagation();openDetail(t);};
+  const np=el.querySelector('.notepv'); if(np){ np.style.cursor='pointer'; np.onclick=e=>{e.stopPropagation();editNotes(t);}; }
+  // Visible action row on the card FACE — left-aligned, tight, below the name/tags.
+  const acts=document.createElement('div'); acts.className='cardacts';
+  const act=(txt,cls,title,fn)=>{const b=document.createElement('button');b.className='cardbtn'+(cls?' '+cls:'');b.textContent=txt;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};acts.appendChild(b);return b;};
+  act('✓','done','Mark done',()=>markDone(t));
+  act(a.blink?'🔔':'🔕', a.blink?'on':'', a.blink?'Ringing — tap to silence':'Ring bell (jumps to top)', ()=>{const aa=A(t.id); aa.blink=!aa.blink; if(aa.blink)bumpTop(t.id); saveAug(); render();});
+  act('📌', a.pin?'on':'', a.pin?'Pinned — survives daily reset':'Pin — keep until done', ()=>{const aa=A(t.id);aa.pin=!aa.pin;saveAug();render();toast(aa.pin?'📌 Pinned':'Unpinned');});
+  const inPriority = sectionId==='priority' || (sectionId==='bulb' && activeBulb && activeBulb.val==='priority');
+  const inStillOpen = sectionId==='stillopen' || (sectionId==='bulb' && activeBulb && activeBulb.val==='stillopen');
+  if(inPriority) act('⬇','','Downgrade — lower priority',()=>{const aa=A(t.id);aa.priAdj=(aa.priAdj||0)-25;aa.blink=false;saveAug();toast('⬇ Downgraded');render();});
+  if(inStillOpen) act('👍','','Still relevant — keep it',()=>{touch(t.id);toast('👍 Kept');render();});
+  const inCatPane = isRealSection(sectionId) || (sectionId==='bulb' && activeBulb && isRealSection(activeBulb.val));
+  if(inCatPane && sectionOf(t) && sectionOf(t)!=='backlog') act('⊘','','Remove from this category (stays open)',()=>clearFromSection(t));
   const mas=document.createElement('div'); mas.className='mas';
   const mk=(ltr,title,fn,on)=>{const b=document.createElement('button');b.className='masb'+(on?' on':'');b.textContent=ltr;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;};
   mas.appendChild(mk('M','Add to morning call',()=>setSlot(t.id,'morning'), sectionOf(t)==='morning'));
@@ -1803,6 +1805,7 @@ function taskEl(t,sectionId){
       s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);}; pr.appendChild(s);};
     add(t.project,'p','project','Project'); add(t.sub,'s','sub','Sub'); add(t.lead,'l','lead','Lead');
     nm.after(pr);
+    pr.after(acts);   // action row sits under the P/S/L tags
   }
   const od=doDateOf(t);
   if(od){ const db=document.createElement('div'); db.className='dobadge'+(od<=todayISO()?' due':''); db.textContent='📅 '+(od===todayISO()?'Today':od<todayISO()?('Overdue '+od):od); nm.after(db); }
@@ -1816,11 +1819,9 @@ function taskEl(t,sectionId){
   details.appendChild(mas);
   const rev=el.querySelector('.reveal');
   rev.onclick=e=>{e.stopPropagation(); const open=el.classList.toggle('open'); rev.textContent=open?'▾':'▸';};
-  const dx=el.querySelector('.donex'); if(dx) dx.onclick=e=>{e.stopPropagation();markDone(t);};
   const row=document.createElement('div'); row.className='row';
-  row.appendChild(btn('✓','mini done','Mark done',()=>markDone(t)));
-  row.appendChild(btn(a.blink?'🔔':'🔕','mini'+(a.blink?' on':''),'Blink/important (jumps to top)',()=>{a.blink=!a.blink;if(a.blink)bumpTop(t.id);saveAug();render();}));
   row.appendChild(btn('📝','mini','Next step / directive',()=>editNext(t)));
+  row.appendChild(btn('🗒','mini','Notes',()=>editNotes(t)));
   row.appendChild(btn('✉️','mini','Send as email',()=>sendEmail(t)));
   row.appendChild(btn('💬','mini','Send as text',()=>sendText(t)));
   row.appendChild(btn('📤','mini','Draft a follow-up now (on demand)',()=>queueSend(t)));
@@ -2084,6 +2085,20 @@ async function markDone(t){
   const prev={sec:A(t.id).section,secR:t.sectionRemote};
   pushUndo('done: '+cleanName(t),async()=>{ t.status='Open'; A(t.id).section=prev.sec; t.sectionRemote=prev.secR; await atPatch(t.id,{Status:'Open',Section:prev.secR||prev.sec||''}); });
   t.status='Done'; A(t.id).section=null; t.sectionRemote=''; saveAug(); render(); await atPatch(t.id,{Status:'Done',Section:''}); toast('✅ Done'); }
+// Free-form notes on a task (synced to Airtable Notes field, shown as a preview on the card).
+function editNotes(t){
+  const a=A(t.id); const cur=a.notes||t.notesRemote||'';
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML=`<div class="modal"><h3>🗒 Notes</h3>
+    <div class="note" style="margin-bottom:6px">${esc(cleanName(t))}</div>
+    <textarea class="inp" id="tn" style="min-height:160px" placeholder="Anything you want to remember about this task…">${esc(cur)}</textarea>
+    <div class="modal-actions"><button class="btn ghost" data-x>Cancel</button><button class="btn primary" data-ok>Save</button></div></div>`;
+  bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();});
+  bd.querySelector('[data-x]').onclick=()=>bd.remove();
+  bd.querySelector('[data-ok]').onclick=async()=>{ const v=bd.querySelector('#tn').value.trim();
+    a.notes=v; t.notesRemote=v; touch(t.id); saveAug(); bd.remove(); render(); await atPatch(t.id,{Notes:v}); toast('🗒 Notes saved'); };
+  document.body.appendChild(bd); bd.querySelector('#tn').focus();
+}
 // Orange next-step: edit it, add a dated comment, mark it done, or clear it.
 function editNext(t){
   const a=A(t.id); const cur=a.nextStep||t.nextStepRemote||'';
