@@ -310,7 +310,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-06 18:02';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-06 18:23';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-08-06 · row layout', d:'Task name now runs full-width on its own line; the P/S/L tags sit below it with the action buttons (check / bell / pin / move) to their right instead of over the title.'},
@@ -1006,11 +1006,14 @@ function bulbPanel(){
       else { t[dim]=val; await atPatch(t.id,{[fmap[dim]]:val}); }
       render(); const n=document.querySelector('.panel[data-section="bulb"] .add-inline input'); if(n)n.focus();};
     add.querySelector('button').onclick=go; add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
-    body.appendChild(add);
+    body.insertBefore(add, body.firstChild);   // add box at the TOP of the filter pane
   }
   p.appendChild(body);
-  // drop a task here to ASSIGN this project/lead/sub — or move into this category
-  p.addEventListener('dragover',e=>{e.preventDefault();p.classList.add('drop-hover');});
+  // drop a task here to ASSIGN this project/lead/sub — or move into this category.
+  // Listen on the BODY too (cards fill it) so drops anywhere in the pane register.
+  const onOver=e=>{e.preventDefault();p.classList.add('drop-hover');};
+  body.addEventListener('dragover',onOver);
+  p.addEventListener('dragover',onOver);
   p.addEventListener('dragleave',e=>{if(!p.contains(e.relatedTarget))p.classList.remove('drop-hover');});
   p.addEventListener('drop',async e=>{e.preventDefault();p.classList.remove('drop-hover');
     const d=e.dataTransfer.getData('text/plain'); if(!d||d==='chip'||d.startsWith('panel:'))return;
@@ -1776,16 +1779,19 @@ function taskEl(t,sectionId){
   el.className='task'+((a.blink||autoBlinkOn(t,sectionId))?' blink':'')+(sectionOf(t)==='bigticket'?' bigtix':''); el.draggable=true;
   el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',t.id);el.classList.add('dragging');});
   el.addEventListener('dragend',()=>el.classList.remove('dragging'));
-  // drop a task onto this one to resort within the section (or move + place)
-  el.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();el.classList.add('drop-before');});
-  el.addEventListener('dragleave',()=>el.classList.remove('drop-before'));
-  el.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();el.classList.remove('drop-before');
-    const d=e.dataTransfer.getData('text/plain'); if(!d||d==='chip'||d.startsWith('panel:')||d===t.id)return;
-    if(!BUCKETS.find(b=>b.id===sectionId)||sectionId==='done'||sectionId==='dontcare')return;
-    const src=tasks.find(x=>x.id===d); if(!src)return;
-    if(sectionOf(src)!==sectionId){ A(d).section=sectionId; if(sectionId==='calls')A(d).type='call'; }
-    reorderTask(sectionId,d,t.id);
-  });
+  // Card-level reorder ONLY in real bucket sections. In the filter/added pane the
+  // cards must NOT capture drops (no stopPropagation) so a dropped task bubbles up
+  // to the pane, which assigns the filter's project/lead/sub or moves it in.
+  if(BUCKETS.find(b=>b.id===sectionId)&&sectionId!=='done'&&sectionId!=='dontcare'){
+    el.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();el.classList.add('drop-before');});
+    el.addEventListener('dragleave',()=>el.classList.remove('drop-before'));
+    el.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();el.classList.remove('drop-before');
+      const d=e.dataTransfer.getData('text/plain'); if(!d||d==='chip'||d.startsWith('panel:')||d===t.id)return;
+      const src=tasks.find(x=>x.id===d); if(!src)return;
+      if(sectionOf(src)!==sectionId){ A(d).section=sectionId; if(sectionId==='calls')A(d).type='call'; }
+      reorderTask(sectionId,d,t.id);
+    });
+  }
   const ph=phoneFor(t);
   // Top-right corner holds ONLY the age + the ▸ expander (no icons over the title).
   el.innerHTML =
