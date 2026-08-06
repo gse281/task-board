@@ -93,6 +93,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .donex{background:none;border:none;color:var(--green);cursor:pointer;font-size:15px;line-height:1;padding:4px 7px;font-weight:800;border-radius:6px}
 /* Visible action row on the card face — left-aligned, tight, below the name/tags */
 .cardacts{display:flex;gap:2px;align-items:center;margin:3px 0 1px;flex-wrap:wrap}
+.plsline{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px}
+.plsline .plsrow{margin-top:0}
+.plsline .cardacts{margin:0 0 0 auto}
 .cardbtn{background:none;border:1px solid transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:2px 5px;border-radius:6px}
 .cardbtn:hover{border-color:var(--line);color:var(--ink)}
 .cardbtn.done{color:var(--green)} .cardbtn.on{color:var(--accent)}
@@ -137,7 +140,11 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .mrow-acts{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
 .trayb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:5px 9px;font-size:13px;font-weight:800;line-height:1}
 .trayb.on{background:var(--accent);border-color:var(--accent);color:#14110f}
-.mrow-name{flex:1;font-weight:600;font-size:15px}
+.mrow-name{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
+.mrow-nametext{font-weight:600;font-size:15px}
+.mrow-meta{display:flex;align-items:center;gap:6px}
+.mrow-actbar{display:flex;align-items:center;gap:5px;margin-left:auto}
+.mrow-actbar .mcall{font-size:16px;padding:6px 9px}
 .dp-sort{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:7px;font-size:11px;padding:2px 4px}
 #ptr{position:fixed;top:-56px;left:50%;transform:translateX(-50%);z-index:60;background:var(--panel);border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:7px 16px;font-size:13px;font-weight:700;transition:top .15s ease}
 .mfold{text-align:center;color:var(--muted);font-size:12px;margin:12px 0 6px;border-top:1px dashed var(--line);padding-top:8px}
@@ -187,7 +194,8 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
   .donex,.reveal{font-size:19px;padding:7px 11px}
   .masb{font-size:16px;padding:6px 13px}
   .mini{font-size:14px;padding:7px 10px}
-  .mrow-name{font-size:17px}
+  .mrow-nametext{font-size:17px}
+  .mrow-actbar .mcall{font-size:17px;padding:7px 9px}
   .mcall{font-size:18px;padding:8px 11px}
   .mcall.move{font-size:13px;padding:8px 10px}
   .mrow-inner{gap:5px}
@@ -301,9 +309,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-05 17:40';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-06 09:34';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-08-06 · row layout', d:'Task name now runs full-width on its own line; the P/S/L tags sit below it with the action buttons (check / bell / pin / move) to their right instead of over the title.'},
   {v:'2026-07-31 · bells & color', d:'Add-task bubble now at the top of the task pane on desktop too. Bell + Pin on every task’s visible face (desktop & iPhone). Phone/lookup icon only shows in the Calls pane. Move icon no longer green. New orange-red highlight + a color picker in ⚙︎ Settings (presets: orange-red / yellow / amber). New Calls tasks are auto-belled. Added a 🎵 Music player category.'},
   {v:'2026-07-30 · fixes', d:'Polling no longer interrupts typing. iPhone: add bubble + ☑︎ bulk-select at top of pane; Move is now a 📂 icon; bell/blink shows on rows. Category picker lists None first. Uncategorized auto-sorts at EOD; better lead/sub guessing; "Eli" removed as a lead. Still Open shows a few at a time. Email link opens the exact Gmail message (dropped broken superhuman:// scheme). Priority cards get a ⬇ demote button.'},
   {v:'2026-07-26 · hidden header', d:'Phone opens to pure task content — Meetings at top. The whole header (search, refresh, undo, settings, open-count) is no longer sticky; it sits with the weather strip, filters and Incoming in the pull-down area above Meetings. Scroll up to reveal them all. Weather now in inches.'},
@@ -1161,31 +1170,36 @@ function mobileRow(t,opts){
   const inner=document.createElement('div'); inner.className='mrow-inner';
   // Bulk-select mode: a checkbox + tap-to-toggle, no per-row actions/swipe.
   if(bulkMode){ const cb=document.createElement('span'); cb.className='bchk'; cb.textContent=bulkSel.has(t.id)?'☑':'☐'; inner.appendChild(cb); }
-  const nm=document.createElement('div'); nm.className='mrow-name'; nm.textContent=cleanName(t);
-  nm.onclick=()=>{ if(bulkMode) bulkToggle(t.id,row); else openDetail(t); };
-  // tappable P/L/S bubbles under the name (＋ when unset) — edit tags right on the phone
+  const nm=document.createElement('div'); nm.className='mrow-name';
+  const nameLine=document.createElement('div'); nameLine.className='mrow-nametext'; nameLine.textContent=cleanName(t);
+  nameLine.onclick=()=>{ if(bulkMode) bulkToggle(t.id,row); else openDetail(t); };
+  nm.appendChild(nameLine);
+  // Second line: P/S/L tags on the LEFT, action buttons (bell/pin/move/check…) to their RIGHT.
+  const meta=document.createElement('div'); meta.className='mrow-meta';
   const pr=document.createElement('div'); pr.className='plsrow';
   [['project','p','P'],['sub','s','S'],['lead','l','L']].forEach(([dim,cls,ltr])=>{
     const v=t[dim]; const s=document.createElement('button'); s.className='plstag '+cls; s.textContent=v?v.slice(0,3):'＋'+ltr;
     s.onclick=e=>{e.stopPropagation();if(!bulkMode)pickAssign(t,dim);}; pr.appendChild(s);});
-  nm.appendChild(pr); inner.appendChild(nm);
+  meta.appendChild(pr);
+  const acts=document.createElement('div'); acts.className='mrow-actbar';
   if(!bulkMode){
   // Phone/lookup ONLY for tasks in the Calls pane — hidden everywhere else.
   if(sectionOf(t)==='calls'||isCallTask(t)){
-    if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; c.title=ph; c.onclick=e=>e.stopPropagation(); inner.appendChild(c); }
-    else { const l=document.createElement('button'); l.className='mcall add'; l.textContent='🔍'; l.title='Look up number'; l.onclick=e=>{e.stopPropagation();lookupNumber(t);}; inner.appendChild(l); }
+    if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; c.title=ph; c.onclick=e=>e.stopPropagation(); acts.appendChild(c); }
+    else { const l=document.createElement('button'); l.className='mcall add'; l.textContent='🔍'; l.title='Look up number'; l.onclick=e=>{e.stopPropagation();lookupNumber(t);}; acts.appendChild(l); }
   }
-  // Bell — on every row (item: bell on all task bubbles)
-  { const on=!!A(t.id).blink; const bell=document.createElement('button'); bell.className='mcall bell'+(on?' on':''); bell.textContent=on?'🔔':'🔕'; bell.title=on?'Ringing — tap to silence':'Set a bell'; bell.onclick=e=>{e.stopPropagation();const a=A(t.id);a.blink=!a.blink;if(a.blink)bumpTop(t.id);saveAug();render();}; inner.appendChild(bell); }
+  // Bell — on every row
+  { const on=!!A(t.id).blink; const bell=document.createElement('button'); bell.className='mcall bell'+(on?' on':''); bell.textContent=on?'🔔':'🔕'; bell.title=on?'Ringing — tap to silence':'Set a bell'; bell.onclick=e=>{e.stopPropagation();const a=A(t.id);a.blink=!a.blink;if(a.blink)bumpTop(t.id);saveAug();render();}; acts.appendChild(bell); }
   // Pin — on every row
-  { const pon=!!A(t.id).pin; const pin=document.createElement('button'); pin.className='mcall pin'+(pon?' on':''); pin.textContent=pon?'📌':'📍'; pin.title=pon?'Pinned':'Pin — keep until done'; pin.onclick=e=>{e.stopPropagation();const a=A(t.id);a.pin=!a.pin;saveAug();render();toast(a.pin?'📌 Pinned':'Unpinned');}; inner.appendChild(pin); }
+  { const pon=!!A(t.id).pin; const pin=document.createElement('button'); pin.className='mcall pin'+(pon?' on':''); pin.textContent=pon?'📌':'📍'; pin.title=pon?'Pinned':'Pin — keep until done'; pin.onclick=e=>{e.stopPropagation();const a=A(t.id);a.pin=!a.pin;saveAug();render();toast(a.pin?'📌 Pinned':'Unpinned');}; acts.appendChild(pin); }
   // Move — neutral (no green)
-  const mv=document.createElement('button'); mv.className='mcall move'; mv.textContent='📂'; mv.title='Move to…'; mv.onclick=e=>{e.stopPropagation();moveSectionPicker(t);}; inner.appendChild(mv);
+  const mv=document.createElement('button'); mv.className='mcall move'; mv.textContent='📂'; mv.title='Move to…'; mv.onclick=e=>{e.stopPropagation();moveSectionPicker(t);}; acts.appendChild(mv);
   // Still Open: "Yes" keeps it open and drops it from this section (bumps last-touched)
-  if(opts.stillOpen){ const y=document.createElement('button'); y.className='mcall move'; y.textContent='Yes'; y.title='Keep open — remove from Still Open'; y.onclick=e=>{e.stopPropagation();touch(t.id);toast('Kept open');render();}; inner.appendChild(y); }
-  // Done
-  const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=e=>{e.stopPropagation();markDone(t);}; inner.appendChild(done);
+  if(opts.stillOpen){ const y=document.createElement('button'); y.className='mcall move'; y.textContent='Yes'; y.title='Keep open — remove from Still Open'; y.onclick=e=>{e.stopPropagation();touch(t.id);toast('Kept open');render();}; acts.appendChild(y); }
+  // Done / check
+  const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=e=>{e.stopPropagation();markDone(t);}; acts.appendChild(done);
   }
+  meta.appendChild(acts); nm.appendChild(meta); inner.appendChild(nm);
   if(A(t.id).blink) row.classList.add('blink');   // reflect the bell / important flag visually on the phone
   if(bulkMode&&bulkSel.has(t.id)) row.classList.add('bsel');
   if(bulkMode) row.onclick=()=>bulkToggle(t.id,row);
@@ -1804,8 +1818,10 @@ function taskEl(t,sectionId){
       s.title=v?(ti+': '+v+' — click to change'):('Set '+ti.toLowerCase());
       s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);}; pr.appendChild(s);};
     add(t.project,'p','project','Project'); add(t.sub,'s','sub','Sub'); add(t.lead,'l','lead','Lead');
-    nm.after(pr);
-    pr.after(acts);   // action row sits under the P/S/L tags
+    // P/S/L tags on the left, action buttons (check/bell/pin/remove) to their RIGHT, same line.
+    const plsline=document.createElement('div'); plsline.className='plsline';
+    plsline.appendChild(pr); plsline.appendChild(acts);
+    nm.after(plsline);
   }
   const od=doDateOf(t);
   if(od){ const db=document.createElement('div'); db.className='dobadge'+(od<=todayISO()?' due':''); db.textContent='📅 '+(od===todayISO()?'Today':od<todayISO()?('Overdue '+od):od); nm.after(db); }
