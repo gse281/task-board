@@ -23,7 +23,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .brand{font-weight:800;letter-spacing:.3px;margin-right:4px}
 .brand .dot{color:var(--accent)}
 .date{color:var(--muted);font-size:13px}
-.build{color:var(--accent);font-size:11px;border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.build{color:var(--accent);font-size:11px;border:1px solid var(--line);border-radius:6px;padding:1px 6px;cursor:pointer}
+.build:hover{border-color:var(--accent)}
 .search{flex:1;min-width:160px;background:var(--panel);border:1px solid var(--line);color:var(--ink);
   border-radius:10px;padding:9px 12px;font-size:15px}
 .tb-btn{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:14px}
@@ -92,7 +93,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .topright{position:absolute;top:4px;right:6px;display:flex;flex-direction:row;align-items:center;gap:3px}
 .donex{background:none;border:none;color:var(--green);cursor:pointer;font-size:15px;line-height:1;padding:4px 7px;font-weight:800;border-radius:6px}
 /* Visible action row on the card face — left-aligned, tight, below the name/tags */
-.cardacts{display:flex;gap:2px;align-items:center;margin:3px 0 1px;flex-wrap:wrap}
+.cardacts{display:flex;gap:2px;align-items:center;margin:3px 0 1px;flex-wrap:wrap;justify-content:flex-end}
 .plsline{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px}
 .plsline .plsrow{margin-top:0}
 .plsline .cardacts{margin:0 0 0 auto}
@@ -309,7 +310,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-06 09:34';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-06 17:58';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-08-06 · row layout', d:'Task name now runs full-width on its own line; the P/S/L tags sit below it with the action buttons (check / bell / pin / move) to their right instead of over the title.'},
@@ -650,6 +651,7 @@ async function deleteImprovement(id){
 /* ---------- Helpers ---------- */
 function todayStr(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
 function todayISO(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function tomorrowISO(){const d=new Date();d.setDate(d.getDate()+1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 async function fetchTexts(){
   if(!cfg.apiKey) return;
   try{
@@ -1250,9 +1252,9 @@ function mobileSlotPanel(title,slot){
   items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t)));
   if(items.length>5){const m=document.createElement('button'); m.className='more-btn'; m.textContent='+'+(items.length-5)+' more — tap to see all'; m.onclick=()=>{activeBulb={dim:'category',val:slot,label:title};render();}; body.appendChild(m);}
   const add=document.createElement('div');add.className='add-inline';add.innerHTML='<input placeholder="Add to '+esc(title)+'…"><button>＋</button>';
-  const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){setSlot(t.id,slot);}};
+  const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){setSlot(t.id,slot);bumpTop(t.id);render();}};
   add.querySelector('button').onclick=go;add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
-  body.appendChild(add);
+  body.insertBefore(add, body.firstChild);   // add box at the TOP
   p.appendChild(body); return p;
 }
 function openPicker(dim){
@@ -1281,9 +1283,9 @@ function mobileCalls(){
   items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t,{showNumber:true,addNumber:true})));
   if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'calls',label:'📞 Calls'};render();};body.appendChild(m);}
   const add=document.createElement('div');add.className='add-inline';add.innerHTML='<input placeholder="Add a call…"><button>＋</button>';
-  const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){const a=A(t.id);a.type='call';a.blink=true;t.typeRemote='call';saveAug();atPatch(t.id,{Type:'call'});render();}};
+  const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){const a=A(t.id);a.type='call';a.blink=true;t.typeRemote='call';saveAug();atPatch(t.id,{Type:'call'});bumpTop(t.id);render();}};
   add.querySelector('button').onclick=go;add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
-  body.appendChild(add);
+  body.insertBefore(add, body.firstChild);   // add box at the TOP
   p.appendChild(body); return p;
 }
 function mobileMeetings(){
@@ -1301,6 +1303,12 @@ function mobileMeetings(){
       if(isNow && blinkOff!==key){ const stop=document.createElement('button'); stop.className='joinbtn stopblink'; stop.textContent='🔕 Stop'; stop.title='Stop blinking until next refresh'; stop.onclick=ev=>{ev.stopPropagation(); blinkOff=key; render();}; d.appendChild(stop); }
       body.appendChild(d);});
   }
+  // Tomorrow's schedule under today's
+  const tev=calendar.filter(e=>e.date===tomorrowISO()).sort((a,b)=>a.sort-b.sort);
+  if(tev.length){ const h=document.createElement('div'); h.className='ack-h'; h.style.margin='8px 0 4px'; h.textContent='🌙 Tomorrow ('+tev.length+')'; body.appendChild(h);
+    tev.slice(0,6).forEach(e=>{const d=document.createElement('div');d.className='cal-ev';d.style.opacity='.8';
+      d.innerHTML='<div class="cal-when">'+esc(e.when)+'</div><div class="cal-title">'+esc(e.title)+'</div>'+meetingLink(e);
+      body.appendChild(d);}); }
   p.appendChild(body); return p;
 }
 
@@ -1583,6 +1591,13 @@ function calendarPanel(){
         stop.onclick=e=>{e.stopPropagation(); blinkOff=key; render();}; kids[cur].appendChild(stop); }
       setTimeout(()=>{ body.scrollTop=Math.max(0,kids[cur].offsetTop-8); },0); }
   }
+  // Tomorrow's schedule, below today's
+  const tmr=tomorrowISO();
+  const tev=calendar.filter(e=>e.date===tmr).sort((a,b)=>a.sort-b.sort);
+  if(tev.length){ const h=document.createElement('div'); h.className='ack-h'; h.style.margin='8px 0 4px'; h.textContent='🌙 Tomorrow ('+tev.length+')'; body.appendChild(h);
+    tev.forEach(e=>{const d=document.createElement('div');d.className='cal-ev';d.style.opacity='.8';
+      d.innerHTML='<div class="cal-when">'+esc(e.when)+'</div><div class="cal-title">'+esc(e.title)+'</div>'+(e.location?'<div class="cal-loc">📍 '+esc(e.location)+'</div>':'')+meetingLink(e);
+      body.appendChild(d);}); }
   const plan=todayPlan();
   if(plan.length){ const h=document.createElement('div'); h.className='ack-h'; h.style.margin='8px 0 4px'; h.textContent='📋 To do today ('+plan.length+')'; body.appendChild(h);
     plan.forEach(t=>body.appendChild(taskEl(t,'today'))); }
@@ -1726,7 +1741,7 @@ function panelEl(sectionId,title,items,isDrop){
   if(isDrop){   // add bubble at the TOP of each real section
     const add=document.createElement('div'); add.className='add-inline';
     add.innerHTML='<input placeholder="Add…"><button>＋</button>';
-    const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section=sectionId;if(sectionId==='calls'){A(t.id).type='call';A(t.id).blink=true;}saveAug();render(); const n=document.querySelector('.panel[data-section="'+sectionId+'"] .add-inline input'); if(n)n.focus();}};
+    const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section=sectionId;if(sectionId==='calls'){A(t.id).type='call';A(t.id).blink=true;}saveAug();bumpTop(t.id);render(); const n=document.querySelector('.panel[data-section="'+sectionId+'"] .add-inline input'); if(n)n.focus();}};
     add.querySelector('button').onclick=go; add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
     body.appendChild(add);
   }
@@ -2249,6 +2264,7 @@ function openDetail(t,guess){
     <label class="field"><span class="lbl">Sub</span><select class="inp" id="d_sub">${selOpts('sub',gs)}</select></label>
     <label class="field"><span class="lbl">Section</span><select class="inp" id="d_sec">${secOpts}</select></label>
     <label class="field"><span class="lbl">Next step</span><input class="inp" id="d_next" value="${esc(a.nextStep||'')}"></label>
+    <label class="field"><span class="lbl">🗒 Notes</span><textarea class="inp" id="d_notes" style="min-height:110px" placeholder="Notes about this task…">${esc(a.notes||t.notesRemote||'')}</textarea></label>
     <div class="field" style="display:flex;gap:6px;flex-wrap:wrap">
       <button type="button" class="btn" data-snooze>😴 Snooze 10d</button>
       <button type="button" class="btn" data-calls>📞 To Calls</button>
@@ -2288,8 +2304,8 @@ function openDetail(t,guess){
     const g=id=>bd.querySelector(id).value.trim();
     t.name=g('#d_name'); t.project=g('#d_proj'); t.lead=g('#d_lead'); t.sub=g('#d_sub');
     setSection(t.id, g('#d_sec'));                      // '' = none → pulls it out of every section
-    a.nextStep=g('#d_next'); touch(t.id); saveAug(); bd.remove(); render();
-    await atPatch(t.id,{Task:t.name,Project:t.project,SBLead:t.lead,Sub:t.sub}); toast('Saved');
+    a.nextStep=g('#d_next'); a.notes=g('#d_notes'); t.notesRemote=a.notes; touch(t.id); saveAug(); bd.remove(); render();
+    await atPatch(t.id,{Task:t.name,Project:t.project,SBLead:t.lead,Sub:t.sub,Notes:a.notes}); toast('Saved');
   };
   document.body.appendChild(bd); bd.querySelector('#d_name').focus();
 }
