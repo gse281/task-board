@@ -63,6 +63,10 @@ button{font:inherit;color:inherit;cursor:pointer}
 .tzone.tz-hot{border-color:var(--accent);background:rgba(224,164,88,.12)}
 .tz-l{font-size:13px;font-weight:700}
 .tz-h{font-size:10px;color:var(--muted)}
+.trisub{border-top:1px solid var(--line);margin-top:6px;padding-top:4px}
+.trisub>summary{cursor:pointer;font-size:12px;font-weight:800;color:var(--muted);padding:4px 2px;list-style:none}
+.trisub>summary::-webkit-details-marker{display:none}
+.trisub[open]>summary{color:var(--ink)}
 /* Full-screen review: work a big list (backlog / all open) without the grid */
 .revwrap{position:fixed;right:16px;bottom:16px;width:min(560px,46vw);height:min(520px,54vh);z-index:70;background:var(--panel);
   border:1px solid var(--accent);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.6);display:flex;flex-direction:column;overflow:hidden}
@@ -287,6 +291,8 @@ a.tellink{color:var(--green);text-decoration:none}
 .ack-h{font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px}
 .ack-i{font-size:12px;color:var(--muted);line-height:1.5}
 .add-inline{display:flex;gap:6px;margin-bottom:8px}
+/* Keep the Add box pinned at the top of a pane while its list scrolls under it */
+.panel-body>.add-inline:first-child{position:sticky;top:0;z-index:3;background:var(--panel);margin:-2px 0 6px;padding-bottom:4px}
 .add-inline input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 9px;font-size:13px}
 .add-inline button{background:var(--accent);border:none;color:#14110f;border-radius:8px;padding:0 12px;font-weight:800;font-size:16px}
 .more-btn{background:var(--panel);border:1px dashed var(--line);color:var(--muted);border-radius:8px;padding:6px;font-size:12px;width:100%}
@@ -340,7 +346,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-07 08:06';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-07 17:29';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-08-07 · ambient still-open (desktop)', d:'The calm one-card Still Open view now works on desktop too (was phone-only): one lingering task, soft 15s cross-fade to a random other, act with ✓ Done / 💤 Snooze / 📂 Move / 👍 Keep and the next fades in.'},
@@ -845,7 +851,10 @@ async function clearEmail(id){
 async function fetchCalendar(){
   if(!cfg.apiKey) return;
   try{
+    // Only today + tomorrow — filter server-side so a bloated table never buries
+    // today's rows on page 2 (that made meetings "disappear").
     const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CAL_TABLE); u.searchParams.set('pageSize','100');
+    u.searchParams.set('filterByFormula','OR({Date}="'+todayISO()+'",{Date}="'+tomorrowISO()+'")');
     const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return;
     const d=await r.json();
     calendar=(d.records||[]).map(rec=>({title:flat(rec.fields.Title),when:flat(rec.fields.When),date:flat(rec.fields.Date),sort:+flat(rec.fields.Sort)||0,location:flat(rec.fields.Location),link:flat(rec.fields.Link)}));
@@ -868,9 +877,9 @@ async function undoLast(){
 
 /* ---------- Filtering ---------- */
 function visible(t){
-  if(filters.project && t.project!==filters.project) return false;
-  if(filters.lead && t.lead!==filters.lead) return false;
-  if(filters.sub && t.sub!==filters.sub) return false;
+  if(filters.project && !hasVal(t,'project',filters.project)) return false;
+  if(filters.lead && !hasVal(t,'lead',filters.lead)) return false;
+  if(filters.sub && !hasVal(t,'sub',filters.sub)) return false;
   return true;
 }
 
@@ -885,7 +894,8 @@ const expanded = new Set();   // ephemeral: which capped sections are showing al
 
 function orderedPanels(){
   const custom=((meta.customCats||[]).map(c=>c.id));
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'triage','priority','spotlight','external','stillopen','tosend','ideas',...STUBS.map(s=>s.id)];
+  // to-send / from-outside / improvements are now folded INTO the Triage pane.
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'triage','priority','spotlight','stillopen','scratch',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
   return ord.filter(id=>def.includes(id) && id!=='backlog');   // backlog hidden
@@ -965,6 +975,7 @@ function render(){
     else if(id==='emails') board.appendChild(emailsPanel());
     else if(id==='tosend') board.appendChild(outboxPanel());
     else if(id==='triage') board.appendChild(triagePanel());
+    else if(id==='scratch') board.appendChild(scratchPanel());
     else if(stub) board.appendChild(stubPanel(stub));
     else { const cc=(meta.customCats||[]).find(c=>c.id===id); const b=BUCKETS.find(x=>x.id===id)||cc; if(!b)return;
       let items = openVisible.filter(t=>sectionOf(t)===b.id);
@@ -1103,7 +1114,7 @@ function bulbPanel(){
                         :val==='allopen'?tasks.filter(t=>t.status==='Open')
                         :val==='uncat'?tasks.filter(t=>t.status==='Open'&&!t.project&&!t.lead&&!t.sub)
                         :tasks.filter(t=>t.status==='Open'&&sectionOf(t)===val))
-              : tasks.filter(t=>t.status==='Open'&&t[dim]===val);
+              : tasks.filter(t=>t.status==='Open'&&hasVal(t,dim,val));
   // review views deliberately show EVERYTHING, snoozed included
   const showAll = isCat && ['allopen','backlog','uncat','stillopen'].includes(val);
   if(!showAll) items=items.filter(notSnoozed);
@@ -1161,8 +1172,9 @@ function bulbPanel(){
     if(isAdded)return;
     const t=tasks.find(x=>x.id===d); if(!t)return;
     if(isCat){ setSection(d,val); if(val==='calls'){A(d).type='call'; atPatch(d,{Type:'call'});} touch(d); toast('Moved → '+label); render(); return; }
-    t[dim]=val; touch(d); saveAug(); toast('Set '+dim+' → '+val); render();
-    await atPatch(t.id,{[fmap[dim]]:val});
+    if(!hasVal(t,dim,val)) t[dim]=toggleVal(t,dim,val);   // ADD this value (multi-value allowed)
+    touch(d); saveAug(); toast('Added '+dim+' → '+val); render();
+    await atPatch(t.id,{[fmap[dim]]:t[dim]});
   });
   p.classList.add('bulbhalo');
   if(flashBulb){ p.classList.add('flash'); flashBulb=false; }
@@ -1268,24 +1280,50 @@ function mobileStillOpen(){
   p.appendChild(body); return p;
 }
 // Desktop: same ambient one-card view, in a normal draggable board panel.
+let stillHover=false;   // pause the ambient rotation while you're looking at a card
+// Step the wheel to the prev/next lingering item (manual back/forward).
+function stepStill(delta){
+  const pool=stillPool(); if(pool.length<2) return;
+  let i=pool.findIndex(t=>t.id===stillCurrentId); if(i<0)i=0;
+  i=(i+delta+pool.length)%pool.length; stillCurrentId=pool[i].id;
+  const stage=document.querySelector('.soStage'); if(!stage) return;
+  const old=stage.querySelector('.soCard:not(.soLeaving)');
+  const nc=stillCard(pool[i]); nc.classList.add('soEnter'); stage.appendChild(nc);
+  stillShownId=pool[i].id;
+  if(old){ old.classList.add('soLeaving'); setTimeout(()=>{ if(old.parentNode)old.remove(); },400); }
+  requestAnimationFrame(()=>nc.classList.remove('soEnter'));
+}
 function stillOpenPanel(){
   const pool=stillPool();
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='stillopen';
   const head=document.createElement('div'); head.className='panel-head';
-  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>❓ Still open</h3><span class="count">'+pool.length+'</span>';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>❓ Still open</h3>'+
+    '<button class="phead-ctrl" data-so-prev title="Previous">◀</button><button class="phead-ctrl" data-so-next title="Next">▶</button>'+
+    '<span class="count">'+pool.length+'</span>';
   p.appendChild(head); wirePanel(p,head,'stillopen');
+  head.querySelector('[data-so-prev]').onclick=e=>{e.stopPropagation();stepStill(-1);};
+  head.querySelector('[data-so-next]').onclick=e=>{e.stopPropagation();stepStill(1);};
   const body=document.createElement('div'); body.className='panel-body';
   fillStillBody(body);
   p.appendChild(body);
+  // stop auto-rotating while hovered
+  p.addEventListener('mouseenter',()=>{stillHover=true;});
+  p.addEventListener('mouseleave',()=>{stillHover=false;});
   p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'stillopen');});
   return p;
 }
 // One ambient card with the name, tags, age, and the ✓ / snooze / move actions.
 function stillCard(t){
   const card=document.createElement('div'); card.className='soCard';
+  card.draggable=true;   // draggable out of Still Open again
+  card.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',t.id);card.classList.add('dragging');});
+  card.addEventListener('dragend',()=>card.classList.remove('dragging'));
   const name=document.createElement('div'); name.className='soName'; name.textContent=cleanName(t); name.onclick=()=>openDetail(t); card.appendChild(name);
   const meta=document.createElement('div'); meta.className='soMeta';
-  [['project','p'],['sub','s'],['lead','l']].forEach(([dim,cls])=>{ if(t[dim]){ const s=document.createElement('span'); s.className='plstag '+cls; s.textContent=String(t[dim]).slice(0,3); meta.appendChild(s); } });
+  // clickable P/S/L (＋ when unset) so you can re-tag right here
+  [['project','p','P'],['sub','s','S'],['lead','l','L']].forEach(([dim,cls,ltr])=>{
+    const s=document.createElement('button'); s.className='plstag '+cls; s.textContent=t[dim]?String(t[dim]).slice(0,3):'＋'+ltr;
+    s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);}; meta.appendChild(s); });
   const age=document.createElement('span'); age.className='soAge'; age.textContent=daysOpen(t)+'d open'; meta.appendChild(age);
   card.appendChild(meta);
   const acts=document.createElement('div'); acts.className='soActs';
@@ -1301,6 +1339,7 @@ function stillCard(t){
 function soLeaveThen(fn){ const c=document.querySelector('.soCard'); if(c){ c.classList.add('soLeaving'); setTimeout(fn,190); } else fn(); }
 // Ambient tick: softly cross-fade to a different random lingering task.
 function rotateStill(){
+  if(stillHover) return;                             // paused while you're looking
   if(document.querySelector('.backdrop')) return;   // don't interrupt a modal/picker (desktop + phone)
   const stage=document.querySelector('.soStage'); if(!stage) return;
   const pool=stillPool(); if(pool.length<2) return;
@@ -1887,15 +1926,28 @@ function ideasPanel(){
 }
 
 // 🎲 A different project every day — seeded by the date so it's stable all day.
+// 🎲 Spotlight: a random project that auto-rotates every 15 min; click the die
+// to jump to another one immediately. Stored so it survives re-renders.
+let spotlightProj = localStorage.getItem('tb.spot')||'';
+let spotlightAt = +localStorage.getItem('tb.spotAt')||0;
+function spotlightProjects(){ return [...new Set(tasks.filter(t=>t.status==='Open'&&t.project).map(t=>t.project))]; }
+function rollSpotlight(force){
+  const projs=spotlightProjects(); if(!projs.length){ spotlightProj=''; return; }
+  if(!force && spotlightProj && projs.includes(spotlightProj) && (Date.now()-spotlightAt)<15*60000) return;  // still fresh
+  let pick=spotlightProj;
+  for(let i=0;i<8 && pick===spotlightProj;i++) pick=projs[Math.floor(Math.random()*projs.length)];
+  spotlightProj=pick; spotlightAt=Date.now();
+  localStorage.setItem('tb.spot',spotlightProj); localStorage.setItem('tb.spotAt',String(spotlightAt));
+}
 function spotlightPanel(){
-  const projs=[...new Set(tasks.filter(t=>t.status==='Open'&&t.project).map(t=>t.project))].sort();
-  let name='', items=[];
-  if(projs.length){
-    const seed=[...todayISO()].reduce((a,c)=>a*31+c.charCodeAt(0),7)>>>0;
-    name=projs[seed%projs.length];
-    items=tasks.filter(t=>t.status==='Open'&&t.project===name&&notSnoozed(t));
-  }
-  return panelEl('spotlight','🎲 '+(name||'Spotlight'),items,false);
+  rollSpotlight(false);
+  const name=spotlightProj;
+  const items=name?tasks.filter(t=>t.status==='Open'&&t.project===name&&notSnoozed(t)):[];
+  const p=panelEl('spotlight','🎲 '+(name||'Spotlight'),items,false);
+  const h=p.querySelector('.panel-head h3');
+  if(h){ h.style.cursor='pointer'; h.title='Roll a different project (auto-rotates every 15 min)';
+    h.onclick=e=>{e.stopPropagation(); rollSpotlight(true); render(); toast('🎲 '+(spotlightProj||'—')); }; }
+  return p;
 }
 // One box, three drop zones — Done / Don't care / Auto-sort share a single grid cell.
 function triageDo(zone,d){
@@ -1924,8 +1976,35 @@ function triagePanel(){
       const d=e.dataTransfer.getData('text/plain'); if(!d||d==='chip'||d.startsWith('panel:'))return; triageDo(zone,d); });
     body.appendChild(z);
   });
+  // Folded-in sub-sections: To send, From outside, Improvements — each a collapsible
+  // block reusing its existing panel's body (so all the logic/buttons carry over).
+  const sub=(title,srcPanel,openDefault)=>{
+    const det=document.createElement('details'); det.className='trisub'; if(openDefault)det.open=true;
+    const sm=document.createElement('summary'); const cnt=srcPanel.querySelector('.count');
+    sm.textContent=title+(cnt?(' ('+cnt.textContent+')'):'' ); det.appendChild(sm);
+    const b=srcPanel.querySelector('.panel-body'); if(b) det.appendChild(b); body.appendChild(det);
+  };
+  const openV=tasks.filter(t=>t.status==='Open'&&visible(t)&&notSnoozed(t));
+  sub('📤 To send', outboxPanel());
+  sub('📡 From outside', panelEl('external','📡 From outside', openV.filter(t=>t.sourceRemote), false));
+  sub('💡 Improvements', ideasPanel(), false);
   p.appendChild(body);
   p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'triage');});
+  return p;
+}
+// A quick scratchpad pane — jot anything; autosaves to this browser.
+function scratchPanel(){
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='scratch';
+  const head=document.createElement('div'); head.className='panel-head';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>🗒 Notes</h3>';
+  p.appendChild(head); wirePanel(p,head,'scratch');
+  const body=document.createElement('div'); body.className='panel-body';
+  const ta=document.createElement('textarea'); ta.className='inp'; ta.style.cssText='min-height:100%;height:100%;resize:none';
+  ta.placeholder='Jot anything here…'; ta.value=meta.scratch||'';
+  ta.addEventListener('input',()=>{ meta.scratch=ta.value; clearTimeout(ta._t); ta._t=setTimeout(saveMeta,400); });
+  ta.addEventListener('pointerdown',e=>e.stopPropagation());   // don't start a panel drag when clicking into notes
+  body.appendChild(ta); p.appendChild(body);
+  p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'scratch');});
   return p;
 }
 function panelEl(sectionId,title,items,isDrop){
@@ -2036,11 +2115,11 @@ function taskEl(t,sectionId){
   // 3-letter P/L/S bubbles under the name — click one to change it, ＋ to add a missing one
   {
     const pr=document.createElement('div'); pr.className='plsrow';
-    const add=(v,cls,dim,ti)=>{const s=document.createElement('button');s.className='plstag '+cls;
-      s.textContent=v?v.slice(0,3):'＋'+cls.toUpperCase();
-      s.title=v?(ti+': '+v+' — click to change'):('Set '+ti.toLowerCase());
-      s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);}; pr.appendChild(s);};
-    add(t.project,'p','project','Project'); add(t.sub,'s','sub','Sub'); add(t.lead,'l','lead','Lead');
+    // one tag per value (multiple allowed); ＋ shown when a dimension is empty
+    const add=(cls,dim,ti)=>{const vs=valsOf(t,dim);
+      if(vs.length){ vs.forEach(v=>{const s=document.createElement('button');s.className='plstag '+cls;s.textContent=v.slice(0,3);s.title=ti+': '+v+' — click to edit';s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);};pr.appendChild(s);}); }
+      else { const s=document.createElement('button');s.className='plstag '+cls;s.textContent='＋'+cls.toUpperCase();s.title='Set '+ti.toLowerCase();s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);};pr.appendChild(s); } };
+    add('p','project','Project'); add('s','sub','Sub'); add('l','lead','Lead');
     // P/S/L tags on the left, action buttons (check/bell/pin/remove) to their RIGHT, same line.
     const plsline=document.createElement('div'); plsline.className='plsline';
     plsline.appendChild(pr); plsline.appendChild(acts);
@@ -2179,21 +2258,29 @@ function openReview(title,items){
   draw(); document.body.appendChild(w); head.querySelector('#rev_q').focus();
 }
 // P/L/S quick-assign: pick from existing values (or type a new one).
+// Multi-select: tap values to toggle them on/off (a task can have several). Stays
+// open so you can pick more than one; changes save as you go.
 function pickAssign(t,dim,after){
   const fmap={project:'Project',lead:'SBLead',sub:'Sub'};
-  const vals=[...new Set(tasks.map(x=>x[dim]).filter(Boolean))].filter(v=>!optHidden(dim,v)).sort();
   const bd=document.createElement('div'); bd.className='backdrop';
   const box=document.createElement('div'); box.className='modal';
-  box.innerHTML='<h3 style="text-transform:capitalize">'+esc(dim)+' → '+esc(cleanName(t))+'</h3>';
-  const list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:56vh;overflow:auto';
-  const setv=async v=>{ bd.remove(); t[dim]=v; touch(t.id); saveAug(); if(after)after(); else render(); toast('Set '+dim+' → '+v); await atPatch(t.id,{[fmap[dim]]:v}); };
-  const g=guessCategory(t)[dim];
-  if(g&&t[dim]!==g){ const s=document.createElement('button'); s.className='btn primary'; s.style.textAlign='left'; s.textContent='🔮 '+g+'  (suggested)'; s.onclick=()=>setv(g); list.appendChild(s); }
-  vals.forEach(v=>{const b=document.createElement('button');b.className='btn';b.style.textAlign='left';b.textContent=v+(t[dim]===v?'  ✓':'');b.onclick=()=>setv(v);list.appendChild(b);});
-  const nw=document.createElement('button'); nw.className='btn'; nw.style.textAlign='left'; nw.textContent='＋ New '+dim+'…';
-  nw.onclick=()=>{ const v=prompt('New '+dim+':'); if(v&&v.trim())setv(v.trim()); };
-  list.appendChild(nw); box.appendChild(list);
-  const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
+  box.innerHTML='<h3 style="text-transform:capitalize">'+esc(dim)+' → '+esc(cleanName(t))+'</h3><div class="note" style="margin-bottom:4px">Tap to add / remove — you can pick several.</div>';
+  const list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:4px;max-height:56vh;overflow:auto';
+  const save=async()=>{ touch(t.id); saveAug(); if(after)after(); else render(); await atPatch(t.id,{[fmap[dim]]:t[dim]||''}); };
+  const draw=()=>{
+    list.innerHTML='';
+    const g=guessCategory(t)[dim];
+    if(g&&!hasVal(t,dim,g)){ const s=document.createElement('button'); s.className='btn primary'; s.style.textAlign='left'; s.textContent='🔮 '+g+'  (suggested)'; s.onclick=()=>{t[dim]=toggleVal(t,dim,g);save();draw();}; list.appendChild(s); }
+    allVals(dim).filter(v=>typeof optHidden!=='function'||!optHidden(dim,v)).sort().forEach(v=>{
+      const on=hasVal(t,dim,v);
+      const b=document.createElement('button'); b.className='btn'+(on?' primary':''); b.style.textAlign='left'; b.textContent=(on?'✓ ':'')+v;
+      b.onclick=()=>{ t[dim]=toggleVal(t,dim,v); save(); draw(); }; list.appendChild(b); });
+    const nw=document.createElement('button'); nw.className='btn'; nw.style.textAlign='left'; nw.textContent='＋ New '+dim+'…';
+    nw.onclick=()=>{ const v=(prompt('New '+dim+':')||'').trim(); if(v){ if(!hasVal(t,dim,v))t[dim]=toggleVal(t,dim,v); save(); draw(); } };
+    list.appendChild(nw);
+  };
+  draw(); box.appendChild(list);
+  const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Done</button>'; act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
   bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
 }
 // "C" — move a task into Calls (syncs via Type + Section).
@@ -2204,6 +2291,12 @@ function setCall(id){
 // Now/Focus + Next Up always nag: their items blink unless snoozed (snooze lasts 5 min).
 function autoBlinkOn(t,sectionId){ return (sectionId==='focus'||sectionId==='nextup') && !(A(t.id).blinkSnoozeUntil>Date.now()); }
 function cleanName(t){ return (t.name||'').replace(/\s*\(V\d+-\d+\)\s*$/i,'').trim()||'(untitled)'; }
+// A task can carry MULTIPLE project/lead/sub values, stored comma-joined in the field.
+function valsOf(t,dim){ return String(t[dim]||'').split(',').map(s=>s.trim()).filter(Boolean); }
+function hasVal(t,dim,v){ return valsOf(t,dim).includes(v); }
+function toggleVal(t,dim,v){ const cur=valsOf(t,dim); const i=cur.indexOf(v); if(i>=0)cur.splice(i,1); else cur.push(v); return cur.join(', '); }
+// Every distinct individual value across all tasks (splits multi-value fields).
+function allVals(dim){ const s=new Set(); tasks.forEach(t=>valsOf(t,dim).forEach(v=>s.add(v))); return [...s]; }
 // The P/L/S bubbles under the name carry the project now — no prefix needed.
 function displayName(t){ return cleanName(t); }
 function doDateOf(t){ return t.doDate || A(t.id).doDate || ''; }
@@ -2248,7 +2341,7 @@ function pastCalls(){ const cut=Date.now()-14*86400000;
 /* ---------- Filters UI ---------- */
 function countsFor(dim){
   // counts match what the pane shows: open AND not snoozed
-  const counts={}; tasks.filter(t=>t.status==='Open'&&notSnoozed(t)).forEach(t=>{const v=t[dim];if(v&&!optHidden(dim,v))counts[v]=(counts[v]||0)+1;});
+  const counts={}; tasks.filter(t=>t.status==='Open'&&notSnoozed(t)).forEach(t=>valsOf(t,dim).forEach(v=>{if(!optHidden(dim,v))counts[v]=(counts[v]||0)+1;}));
   return counts;
 }
 function orderedVals(dim,counts){
@@ -2761,7 +2854,7 @@ function showChangelog(){
   const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
   bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
 }
-document.getElementById('buildTag').onclick=showChangelog;
+document.getElementById('buildTag').onclick=()=>{ toast('🔧 Build '+BUILD); showChangelog(); };
 updateAgo(); setInterval(updateAgo,30000);
 fetchWeather();                                              // 14-day strip under the header
 function isTyping(){ const a=document.activeElement; return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); }
@@ -2795,7 +2888,7 @@ document.getElementById('refreshBtn').onclick=()=>location.reload();   // full r
 document.getElementById('settingsBtn').onclick=openSettings;
 { const cb=document.getElementById('contactsBtn'); if(cb)cb.onclick=()=>openContacts(); }
 loadContacts();   // warm the on-device contacts cache
-setInterval(rotateStill, 15000);   // Still Open: quietly rotate the ambient card every 15s
+setInterval(rotateStill, 30000);   // Still Open: quietly rotate the ambient card every 30s (paused on hover)
 // Desktop add bubble at the top of the task pane → adds to Incoming.
 (function(){ const inp=document.getElementById('deskAddInp'), b=document.getElementById('deskAddBtn'); if(!inp||!b)return;
   const go=async()=>{ const v=inp.value.trim(); if(!v)return; inp.value=''; const t=await atCreate(v); if(t){A(t.id).section='incoming';saveAug();render();const f=document.getElementById('deskAddInp');if(f)f.focus();} };
