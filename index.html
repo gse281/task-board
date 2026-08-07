@@ -340,9 +340,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-07 08:01';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-07 08:06';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-08-07 · ambient still-open (desktop)', d:'The calm one-card Still Open view now works on desktop too (was phone-only): one lingering task, soft 15s cross-fade to a random other, act with ✓ Done / 💤 Snooze / 📂 Move / 👍 Keep and the next fades in.'},
   {v:'2026-08-06 · ambient still-open', d:'Still Open is now a calm one-card view: it shows a single lingering task and softly cross-fades to a random other one every 15s. Act on it (✓ Done / 💤 Snooze / 📂 Move / 👍 Keep) and the next fades in immediately. No more endless list.'},
   {v:'2026-08-06 · find + contacts', d:'Live find bar over the Project/Sub/Lead bubbles — type and matches light up, the rest dim (desktop filters + phone drawer). New 📇 Contacts search built into the app: search by name / number / company, tap a number to copy, 💬 to text, 📞 to call. Contacts live only on this device (localStorage) — Import a .json or .vcf export. The 🔍 lookup on Call tasks now opens Contacts prefilled.'},
   {v:'2026-08-06 · row layout', d:'Task name now runs full-width on its own line; the P/S/L tags sit below it with the action buttons (check / bell / pin / move) to their right instead of over the title.'},
@@ -954,7 +955,7 @@ function render(){
   const openVisible = tasks.filter(t=>t.status==='Open' && visible(t) && notSnoozed(t));
   orderedPanels().forEach(id=>{
     const stub=STUBS.find(s=>s.id===id);
-    if(id==='stillopen') board.appendChild(panelEl('stillopen','❓ Still open?', stillOpenItems(), false));
+    if(id==='stillopen') board.appendChild(stillOpenPanel());
     else if(id==='priority') board.appendChild(panelEl('priority','🔥 Priority', priorityList().filter(t=>visible(t)&&notSnoozed(t)).slice(0,10), false));
     else if(id==='spotlight') board.appendChild(spotlightPanel());
     else if(id==='external') board.appendChild(panelEl('external','📡 From outside', openVisible.filter(t=>t.sourceRemote), false));
@@ -1245,13 +1246,10 @@ function mobileEmails(){
 //    task every 15s; acting on one advances immediately. (Rotation timer lives in wire-up.) ──
 let stillCurrentId=null, stillShownId=null;
 function stillPool(){ return stillOpenItems(); }
-function mobileStillOpen(){
+// Shared: put the current ambient card (or empty state) into a panel body. Used by phone + desktop.
+function fillStillBody(body){
   const pool=stillPool();
-  const p=document.createElement('div'); p.className='panel';
-  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>❓ Still Open</h3><span class="count">'+pool.length+'</span>';
-  p.appendChild(head); mobileTitleTap(head,{dim:'category',val:'stillopen',label:'❓ Still open'});
-  const body=document.createElement('div'); body.className='panel-body';
-  if(!pool.length){ body.innerHTML='<div class="empty">Nothing lingering 🎉</div>'; stillCurrentId=null; p.appendChild(body); return p; }
+  if(!pool.length){ body.innerHTML='<div class="empty">Nothing lingering 🎉</div>'; stillCurrentId=null; return; }
   const stage=document.createElement('div'); stage.className='soStage';
   let cur = pool.find(t=>t.id===stillCurrentId) || pool[Math.floor(Math.random()*pool.length)];
   stillCurrentId=cur.id;
@@ -1259,7 +1257,28 @@ function mobileStillOpen(){
   if(cur.id!==stillShownId){ card.classList.add('soEnter'); requestAnimationFrame(()=>card.classList.remove('soEnter')); }
   stillShownId=cur.id;
   stage.appendChild(card); body.appendChild(stage);
+}
+function mobileStillOpen(){
+  const pool=stillPool();
+  const p=document.createElement('div'); p.className='panel';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>❓ Still Open</h3><span class="count">'+pool.length+'</span>';
+  p.appendChild(head); mobileTitleTap(head,{dim:'category',val:'stillopen',label:'❓ Still open'});
+  const body=document.createElement('div'); body.className='panel-body';
+  fillStillBody(body);
   p.appendChild(body); return p;
+}
+// Desktop: same ambient one-card view, in a normal draggable board panel.
+function stillOpenPanel(){
+  const pool=stillPool();
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='stillopen';
+  const head=document.createElement('div'); head.className='panel-head';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>❓ Still open</h3><span class="count">'+pool.length+'</span>';
+  p.appendChild(head); wirePanel(p,head,'stillopen');
+  const body=document.createElement('div'); body.className='panel-body';
+  fillStillBody(body);
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'stillopen');});
+  return p;
 }
 // One ambient card with the name, tags, age, and the ✓ / snooze / move actions.
 function stillCard(t){
@@ -1282,8 +1301,7 @@ function stillCard(t){
 function soLeaveThen(fn){ const c=document.querySelector('.soCard'); if(c){ c.classList.add('soLeaving'); setTimeout(fn,190); } else fn(); }
 // Ambient tick: softly cross-fade to a different random lingering task.
 function rotateStill(){
-  if(!isMobileView()) return;
-  if(document.querySelector('.backdrop')) return;   // don't interrupt a modal/picker
+  if(document.querySelector('.backdrop')) return;   // don't interrupt a modal/picker (desktop + phone)
   const stage=document.querySelector('.soStage'); if(!stage) return;
   const pool=stillPool(); if(pool.length<2) return;
   const others=pool.filter(t=>t.id!==stillCurrentId); if(!others.length) return;
