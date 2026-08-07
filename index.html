@@ -122,6 +122,24 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .txt-prev{color:var(--muted);font-size:12px;margin-top:2px}
 .txt-reply{width:100%;margin-top:6px;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:7px 9px;font-size:14px}
 .mfilters{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:8px}
+.findwrap{margin-bottom:10px}
+.findbar{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px 12px;font-size:14px;margin-bottom:7px;-webkit-appearance:none}
+.findbubbles{display:flex;flex-wrap:wrap;gap:5px;max-height:34vh;overflow:auto}
+.fbub{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:700;transition:opacity .12s,box-shadow .12s}
+.fbub .n{color:var(--muted);font-size:10px;margin-left:5px}
+.fbub.p{border-left:3px solid var(--accent)} .fbub.l{border-left:3px solid var(--blue)} .fbub.s{border-left:3px solid var(--green)}
+.chip.lit,.fbub.lit{box-shadow:0 0 0 2px var(--accent);background:rgba(232,104,60,.16);opacity:1}
+.chip.dimmed,.fbub.dimmed{opacity:.3}
+.contacts-modal{max-width:460px;width:94vw}
+.contacts-results{max-height:60vh;overflow:auto;margin-top:6px}
+.contact-row{border-top:1px solid var(--line);padding:8px 0}
+.contact-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.contact-name{font-weight:800;font-size:15px}
+.contact-org{color:var(--muted);font-size:12px}
+.contact-num{display:flex;gap:6px;align-items:center;margin:3px 0}
+.num-copy{flex:1;text-align:left;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;font-size:14px;font-variant-numeric:tabular-nums}
+.num-act{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 11px;font-size:16px;text-decoration:none;color:var(--ink)}
+@media(max-width:640px){ #contactsBtn{display:none} }
 .mfbtn{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 4px;font-size:12px;font-weight:700}
 .madd{display:flex;gap:6px;margin-bottom:10px}
 .madd input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:12px;font-size:16px}
@@ -290,6 +308,7 @@ a.tellink{color:var(--green);text-decoration:none}
     <button class="tb-btn" id="gridBtn" title="Toggle reference grid">▦ Grid</button>
     <button class="tb-btn" id="picBtn" title="Photo → list">📷</button>
     <button class="tb-btn" id="undoBtn" title="Undo last action (⌘Z)">↩ Undo</button>
+    <button class="tb-btn" id="contactsBtn" title="Contacts search">📇</button>
     <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
     <button class="tb-btn" id="settingsBtn">⚙︎</button>
   </div>
@@ -310,9 +329,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-06 18:23';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-06 22:09';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-08-06 · find + contacts', d:'Live find bar over the Project/Sub/Lead bubbles — type and matches light up, the rest dim (desktop filters + phone drawer). New 📇 Contacts search built into the app: search by name / number / company, tap a number to copy, 💬 to text, 📞 to call. Contacts live only on this device (localStorage) — Import a .json or .vcf export. The 🔍 lookup on Call tasks now opens Contacts prefilled.'},
   {v:'2026-08-06 · row layout', d:'Task name now runs full-width on its own line; the P/S/L tags sit below it with the action buttons (check / bell / pin / move) to their right instead of over the title.'},
   {v:'2026-07-31 · bells & color', d:'Add-task bubble now at the top of the task pane on desktop too. Bell + Pin on every task’s visible face (desktop & iPhone). Phone/lookup icon only shows in the Calls pane. Move icon no longer green. New orange-red highlight + a color picker in ⚙︎ Settings (presets: orange-red / yellow / amber). New Calls tasks are auto-belled. Added a 🎵 Music player category.'},
   {v:'2026-07-30 · fixes', d:'Polling no longer interrupts typing. iPhone: add bubble + ☑︎ bulk-select at top of pane; Move is now a 📂 icon; bell/blink shows on rows. Category picker lists None first. Uncategorized auto-sorts at EOD; better lead/sub guessing; "Eli" removed as a lead. Still Open shows a few at a time. Email link opens the exact Gmail message (dropped broken superhuman:// scheme). Priority cards get a ⬇ demote button.'},
@@ -354,6 +374,7 @@ let userScrolled = false;       // stop auto-anchoring to Meetings once the user
 addEventListener('touchmove',()=>{userScrolled=true;},{passive:true});
 addEventListener('wheel',()=>{userScrolled=true;},{passive:true});
 let incomingSort = localStorage.getItem('incomingSort') || 'new';   // Incoming auto-sort
+let psFind = '';   // live find text for the Project/Sub/Lead bubbles
 function sortItems(items,mode){
   const a=[...items];
   if(mode==='days') a.sort((x,y)=>daysOpen(y)-daysOpen(x));
@@ -916,7 +937,7 @@ function render(){
   if(isMobileView()){ filt.style.display='none'; renderMobile(board); restoreScrolls(scrolls);
     if(userScrolled&&preWY>0){ requestAnimationFrame(()=>window.scrollTo(0,preWY)); }   // hold position; only the initial load anchors to Meetings
     return; }
-  filt.style.display=''; renderFilters();
+  filt.style.display=''; renderFilters(); applyFindHighlight(psFind);
   const notSnoozed=t=>!(A(t.id).snoozeUntil>Date.now());
   const openVisible = tasks.filter(t=>t.status==='Open' && visible(t) && notSnoozed(t));
   orderedPanels().forEach(id=>{
@@ -950,6 +971,113 @@ function shLink(url){
   if(!url) return '';
   const m=url.match(/([0-9a-f]{12,})\/?$/i) || url.match(/[#/]([0-9a-f]{12,})(?:[/?#]|$)/i);
   return m ? 'superhuman://mail.superhuman.com/search/'+m[1] : url;
+}
+
+/* ---------- Contacts search (built into the PWA) ----------
+   Data lives ONLY on-device (localStorage) — never in the public repo or Airtable.
+   Each contact: {n:name, o:company, p:[numbers]}. Import a JSON or vCard export to load. */
+let contacts=[];
+try{ contacts=JSON.parse(localStorage.getItem('contacts')||'[]'); }catch(e){ contacts=[]; }
+function loadContacts(){
+  if(contacts.length) return Promise.resolve(contacts);
+  // Local dev / colocated file only (NOT deployed) — otherwise the user imports a file.
+  return fetch('contacts.json').then(r=>r.ok?r.json():null).then(d=>{
+    if(d&&d.length){ contacts=d; try{localStorage.setItem('contacts',JSON.stringify(d));}catch(e){} }
+    return contacts;
+  }).catch(()=>contacts);
+}
+const onlyDigits=s=>(''+(s||'')).replace(/\D/g,'');
+function searchContacts(q){
+  q=(q||'').trim().toLowerCase(); if(!q) return [];
+  const dq=onlyDigits(q);
+  const out=[];
+  for(const c of contacts){
+    const name=(c.n||'').toLowerCase(), org=(c.o||'').toLowerCase();
+    let hit = name.includes(q) || (org&&org.includes(q));
+    if(!hit && dq.length>=3){ for(const ph of (c.p||[])){ if(onlyDigits(ph).includes(dq)){ hit=true; break; } } }
+    if(hit){ out.push(c); if(out.length>=60) break; }
+  }
+  return out;
+}
+function copyNum(num){
+  const clean=num;
+  const done=()=>toast('📋 Copied '+clean);
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(clean).then(done).catch(()=>fallbackCopy(clean,done)); }
+  else fallbackCopy(clean,done);
+}
+function fallbackCopy(text,cb){ const ta=document.createElement('textarea'); ta.value=text; ta.style.cssText='position:fixed;opacity:0'; document.body.appendChild(ta); ta.select(); try{document.execCommand('copy');}catch(e){} ta.remove(); cb&&cb(); }
+function textNum(num){ location.href='sms:'+num.replace(/[^\d+]/g,''); }
+// Minimal vCard parser (FN/N, ORG, TEL). Handles most Contacts.app / iOS exports.
+function parseVCard(text){
+  const out=[]; const cards=text.split(/END:VCARD/i);
+  for(const card of cards){
+    if(!/BEGIN:VCARD/i.test(card)) continue;
+    let name='',org=''; const phones=[];
+    card.split(/\r?\n/).forEach(line=>{
+      const L=line.trim();
+      if(/^FN[;:]/i.test(L)){ name=L.replace(/^FN[^:]*:/i,'').trim(); }
+      else if(!name&&/^N[;:]/i.test(L)){ const parts=L.replace(/^N[^:]*:/i,'').split(';'); name=((parts[1]||'')+' '+(parts[0]||'')).trim(); }
+      else if(/^ORG[;:]/i.test(L)){ org=L.replace(/^ORG[^:]*:/i,'').replace(/;+$/,'').replace(/;/g,' ').trim(); }
+      else if(/^TEL[;:]/i.test(L)){ const v=L.replace(/^TEL[^:]*:/i,'').trim(); if(v)phones.push(v); }
+    });
+    if(name&&phones.length) out.push({n:name,o:org,p:phones});
+  }
+  return out;
+}
+function importContactsFile(file){
+  const r=new FileReader();
+  r.onload=()=>{ let data=[];
+    const txt=r.result;
+    try{
+      if(/^\s*\[/.test(txt)){ data=JSON.parse(txt); }
+      else if(/BEGIN:VCARD/i.test(txt)){ data=parseVCard(txt); }
+      else { data=JSON.parse(txt); }
+    }catch(e){ toast('Could not read that file'); return; }
+    if(!Array.isArray(data)||!data.length){ toast('No contacts found in file'); return; }
+    // normalize {name/n, org/o/company, p/phones}
+    contacts=data.map(c=>({ n:c.n||c.name||c.fullName||'', o:c.o||c.org||c.company||'', p:c.p||c.phones||(c.phone?[c.phone]:[]) })).filter(c=>c.n&&c.p&&c.p.length);
+    try{ localStorage.setItem('contacts',JSON.stringify(contacts)); }catch(e){ toast('Too big for storage'); }
+    toast('📇 Imported '+contacts.length+' contacts'); openContacts();
+  };
+  r.readAsText(file);
+}
+function openContacts(prefill){
+  const bd=document.createElement('div'); bd.className='backdrop';
+  const box=document.createElement('div'); box.className='modal contacts-modal';
+  box.innerHTML='<h3>📇 Contacts</h3>';
+  const bar=document.createElement('div'); bar.style.cssText='display:flex;gap:6px;margin:6px 0 4px';
+  const inp=document.createElement('input'); inp.className='inp'; inp.type='search'; inp.placeholder='Search name, number, or company…'; inp.value=prefill||''; inp.style.flex='1';
+  const imp=document.createElement('button'); imp.className='btn'; imp.textContent='Import'; imp.title='Load a Contacts export (.json or .vcf)';
+  const fileInp=document.createElement('input'); fileInp.type='file'; fileInp.accept='.json,.vcf,text/vcard,application/json'; fileInp.style.display='none';
+  imp.onclick=()=>fileInp.click(); fileInp.onchange=e=>{ if(e.target.files[0]) importContactsFile(e.target.files[0]); };
+  bar.appendChild(inp); bar.appendChild(imp); bar.appendChild(fileInp); box.appendChild(bar);
+  const results=document.createElement('div'); results.className='contacts-results'; box.appendChild(results);
+  const draw=()=>{
+    const q=inp.value.trim();
+    results.innerHTML='';
+    if(!contacts.length){ results.innerHTML='<div class="empty">No contacts yet — tap <b>Import</b> and pick your Contacts export (.json or .vcf). Stays on this device.</div>'; return; }
+    if(!q){ results.innerHTML='<div class="empty">'+contacts.length+' contacts loaded. Start typing to search.</div>'; return; }
+    const hits=searchContacts(q);
+    if(!hits.length){ results.innerHTML='<div class="empty">No matches.</div>'; return; }
+    hits.forEach(c=>{
+      const row=document.createElement('div'); row.className='contact-row';
+      const h=document.createElement('div'); h.className='contact-head'; h.innerHTML='<span class="contact-name">'+esc(c.n)+'</span>'+(c.o?'<span class="contact-org">'+esc(c.o)+'</span>':'');
+      row.appendChild(h);
+      (c.p||[]).forEach(num=>{
+        const pr=document.createElement('div'); pr.className='contact-num';
+        const nb=document.createElement('button'); nb.className='num-copy'; nb.textContent=num; nb.title='Copy number'; nb.onclick=()=>copyNum(num); pr.appendChild(nb);
+        const tb=document.createElement('button'); tb.className='num-act'; tb.textContent='💬'; tb.title='Text'; tb.onclick=()=>textNum(num); pr.appendChild(tb);
+        const cb=document.createElement('a'); cb.className='num-act'; cb.textContent='📞'; cb.title='Call'; cb.href='tel:'+num.replace(/[^\d+]/g,''); pr.appendChild(cb);
+        row.appendChild(pr);
+      });
+      results.appendChild(row);
+    });
+  };
+  inp.addEventListener('input',draw);
+  const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
+  bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
+  loadContacts().then(draw); draw();
+  setTimeout(()=>inp.focus(),40);
 }
 
 /* A project/lead/sub "bulb" opened as a live board panel (drag tasks out of it) */
@@ -1041,6 +1169,7 @@ function renderMobile(board){
   });
   const addcat=document.createElement('button'); addcat.className='mfbtn'; addcat.textContent='＋'; addcat.title='Add a category'; addcat.onclick=addCategory; fb.appendChild(addcat);
   top.appendChild(fb);
+  top.appendChild(findBubbles());   // inline find bar + P/S/L bubbles that light up as you type
   const qa=document.createElement('div'); qa.className='madd';
   qa.innerHTML='<input placeholder="➕ Add incoming…"><button>Add</button>';
   const go=async()=>{const inp=qa.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){A(t.id).section='incoming';saveAug();render();const f=document.querySelector('.madd input');if(f)f.focus();}};
@@ -1056,7 +1185,8 @@ function renderMobile(board){
   qa2.querySelector('button').onclick=go2; qa2.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go2();});
   const selBtn=document.createElement('button'); selBtn.className='bulk-toggle'+(bulkMode?' on':''); selBtn.textContent=bulkMode?'✕ Done selecting':'☑︎ Select';
   selBtn.onclick=()=>{ bulkMode=!bulkMode; if(!bulkMode)bulkSel.clear(); userScrolled=true; render(); };
-  paneTop.appendChild(qa2); paneTop.appendChild(selBtn);
+  const contBtn=document.createElement('button'); contBtn.className='bulk-toggle'; contBtn.textContent='📇 Contacts'; contBtn.onclick=()=>openContacts();
+  paneTop.appendChild(qa2); const bp=document.createElement('div'); bp.style.cssText='display:flex;gap:6px'; selBtn.style.flex='1'; contBtn.style.flex='1'; bp.appendChild(selBtn); bp.appendChild(contBtn); paneTop.appendChild(bp);
   board.appendChild(paneTop);
   // ── Main view: meetings first ──
   const meet=mobileMeetings(); board.appendChild(meet);
@@ -1192,7 +1322,7 @@ function mobileRow(t,opts){
   // Phone/lookup ONLY for tasks in the Calls pane — hidden everywhere else.
   if(sectionOf(t)==='calls'||isCallTask(t)){
     if(ph){ const c=document.createElement('a'); c.className='mcall'; c.href='tel:'+ph.replace(/[^\d+]/g,''); c.textContent='📞'; c.title=ph; c.onclick=e=>e.stopPropagation(); acts.appendChild(c); }
-    else { const l=document.createElement('button'); l.className='mcall add'; l.textContent='🔍'; l.title='Look up number'; l.onclick=e=>{e.stopPropagation();lookupNumber(t);}; acts.appendChild(l); }
+    else { const l=document.createElement('button'); l.className='mcall add'; l.textContent='🔍'; l.title='Find in Contacts'; l.onclick=e=>{e.stopPropagation();openContacts(t.lead||cleanName(t));}; acts.appendChild(l); }
   }
   // Bell — on every row
   { const on=!!A(t.id).blink; const bell=document.createElement('button'); bell.className='mcall bell'+(on?' on':''); bell.textContent=on?'🔔':'🔕'; bell.title=on?'Ringing — tap to silence':'Set a bell'; bell.onclick=e=>{e.stopPropagation();const a=A(t.id);a.blink=!a.blink;if(a.blink)bumpTop(t.id);saveAug();render();}; acts.appendChild(bell); }
@@ -1869,7 +1999,7 @@ function taskEl(t,sectionId){
   // Phone/lookup only for call tasks (Calls pane) — hidden elsewhere.
   if(isCallTask(t)||sectionOf(t)==='calls'){
     if(ph) { const c=document.createElement('a'); c.className='mini'; c.href='tel:'+ph; c.textContent='📞'; c.title='Call '+ph; row.appendChild(c); }
-    else row.appendChild(btn('🔍','mini','Look up number',()=>askPhone(t)));
+    else row.appendChild(btn('🔍','mini','Find in Contacts',()=>openContacts(t.lead||cleanName(t))));
   }
   if(sectionId==='stillopen'){
     row.appendChild(btn('Yes','mini',' Keep open — remove from Still Open',()=>{touch(t.id);toast('Kept open');render();}));
@@ -2065,6 +2195,11 @@ function reorderChip(dim,from,to){
 }
 function renderFilters(){
   const wrap=document.getElementById('filters'); wrap.innerHTML='';
+  // Live find bar — type to light up matching Project/Sub/Lead chips.
+  { const fr=document.createElement('div'); fr.className='filter-group';
+    const fi=document.createElement('input'); fi.className='findbar'; fi.type='search'; fi.placeholder='🔍 Find project / lead / sub…'; fi.value=psFind; fi.style.maxWidth='320px';
+    fi.addEventListener('input',()=>{ psFind=fi.value; applyFindHighlight(psFind); });
+    fr.appendChild(fi); wrap.appendChild(fr); }
   ['project','sub','lead'].forEach(dim=>{                 // each dimension on its own line (Sub before Lead)
     const g=document.createElement('div'); g.className='filter-group';
     const counts=countsFor(dim);
@@ -2109,8 +2244,38 @@ function renderFilters(){
   });
   wrap.appendChild(ag);
 }
+// Live find over the P/S/L bubbles: type → matches light up, the rest dim. Purely visual,
+// no re-render, so the input keeps focus while you type. Tapping a lit bubble still selects it.
+function applyFindHighlight(q){
+  q=(q||'').trim().toLowerCase();
+  document.querySelectorAll('.fbub,#filters .chip[data-val]').forEach(b=>{
+    if(!q){ b.classList.remove('lit','dimmed'); return; }
+    const hit=(b.dataset.val||'').includes(q);
+    b.classList.toggle('lit',hit); b.classList.toggle('dimmed',!hit);
+  });
+}
+// Inline find bar + Project/Sub/Lead value bubbles (mobile drawer). No modal.
+function findBubbles(){
+  const box=document.createElement('div'); box.className='findwrap';
+  const inp=document.createElement('input'); inp.className='findbar'; inp.type='search'; inp.placeholder='🔍 Find project / lead / sub…'; inp.value=psFind;
+  box.appendChild(inp);
+  const bubs=document.createElement('div'); bubs.className='findbubbles';
+  [['project','p'],['sub','s'],['lead','l']].forEach(([dim,cls])=>{
+    const counts=countsFor(dim);
+    orderedVals(dim,counts).forEach(v=>{
+      const b=document.createElement('button'); b.className='fbub '+cls; b.dataset.val=String(v).toLowerCase(); b.dataset.dim=dim;
+      b.innerHTML=esc(v)+'<span class="n">'+counts[v]+'</span>';
+      b.onclick=()=>{ activeBulb={dim,val:v,label:v}; flashBulb=true; render(); };
+      bubs.appendChild(b);
+    });
+  });
+  box.appendChild(bubs);
+  inp.addEventListener('input',()=>{ psFind=inp.value; applyFindHighlight(psFind); });
+  setTimeout(()=>applyFindHighlight(psFind),0);
+  return box;
+}
 function filterChip(dim,val,n){
-  const c=document.createElement('button'); c.className='chip'; c.draggable=true;
+  const c=document.createElement('button'); c.className='chip'; c.draggable=true; c.dataset.val=String(val).toLowerCase();
   c.innerHTML=esc(val)+`<span class="n">${n}</span>`;
   c.onclick=()=>{ activeBulb={dim,val}; flashBulb=true; render(); };   // opens as a board panel next to Incoming
   c.addEventListener('dragstart',e=>{dragChip={dim,val};e.dataTransfer.setData('text/plain','chip');e.stopPropagation();});
@@ -2558,6 +2723,8 @@ document.getElementById('undoBtn').onclick=undoLast;
 document.addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='z'&&!e.target.closest('input,textarea,select')){ e.preventDefault(); undoLast(); } });
 document.getElementById('refreshBtn').onclick=()=>location.reload();   // full reload, like the address bar
 document.getElementById('settingsBtn').onclick=openSettings;
+{ const cb=document.getElementById('contactsBtn'); if(cb)cb.onclick=()=>openContacts(); }
+loadContacts();   // warm the on-device contacts cache
 // Desktop add bubble at the top of the task pane → adds to Incoming.
 (function(){ const inp=document.getElementById('deskAddInp'), b=document.getElementById('deskAddBtn'); if(!inp||!b)return;
   const go=async()=>{ const v=inp.value.trim(); if(!v)return; inp.value=''; const t=await atCreate(v); if(t){A(t.id).section='incoming';saveAug();render();const f=document.getElementById('deskAddInp');if(f)f.focus();} };
