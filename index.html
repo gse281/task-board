@@ -301,7 +301,8 @@ a.tellink{color:var(--green);text-decoration:none}
 .wxstrip::-webkit-scrollbar{display:none}
 .wxd{flex:0 0 auto;min-width:46px;text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:2px 4px;line-height:1.2}
 .wxd .wxday{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
-.wxd .wxic{font-size:14px}
+.wxd .wxic{font-size:14px;white-space:nowrap}
+.wxd .wxt{font-size:10px;font-weight:800;color:var(--ink);margin-left:2px;vertical-align:middle}
 .wxd .wxmm{font-size:9px;color:var(--blue);font-weight:700}
 .wxd.wet{background:rgba(224,164,88,.14);border-color:var(--accent)}
 .wxd.wet .wxmm{color:var(--accent)}
@@ -346,9 +347,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-07 17:29';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-11 14:31';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-08-11 · weather temp', d:'Weather strip now shows the daily high (°F) inline next to each day’s emoji — same compact single-row height, rain still shown below.'},
   {v:'2026-08-07 · ambient still-open (desktop)', d:'The calm one-card Still Open view now works on desktop too (was phone-only): one lingering task, soft 15s cross-fade to a random other, act with ✓ Done / 💤 Snooze / 📂 Move / 👍 Keep and the next fades in.'},
   {v:'2026-08-06 · ambient still-open', d:'Still Open is now a calm one-card view: it shows a single lingering task and softly cross-fades to a random other one every 15s. Act on it (✓ Done / 💤 Snooze / 📂 Move / 👍 Keep) and the next fades in immediately. No more endless list.'},
   {v:'2026-08-06 · find + contacts', d:'Live find bar over the Project/Sub/Lead bubbles — type and matches light up, the rest dim (desktop filters + phone drawer). New 📇 Contacts search built into the app: search by name / number / company, tap a number to copy, 💬 to text, 📞 to call. Contacts live only on this device (localStorage) — Import a .json or .vcf export. The 🔍 lookup on Call tasks now opens Contacts prefilled.'},
@@ -2797,7 +2799,7 @@ function buildGrid(){
 }
 
 /* ---------- 14-day weather strip (Open-Meteo, NYC) ---------- */
-const WX_URL='https://api.open-meteo.com/v1/forecast?latitude=40.7128&longitude=-74.0060&daily=precipitation_sum,weathercode&timezone=America/New_York&forecast_days=14&precipitation_unit=inch';
+const WX_URL='https://api.open-meteo.com/v1/forecast?latitude=40.7128&longitude=-74.0060&daily=precipitation_sum,weathercode,temperature_2m_max&timezone=America/New_York&forecast_days=14&precipitation_unit=inch&temperature_unit=fahrenheit';
 let weather=[];
 // WMO weather codes → one of the six emoji we use.
 function wxEmoji(c){
@@ -2812,8 +2814,8 @@ async function fetchWeather(){
   try{
     const r=await fetch(WX_URL); if(!r.ok) throw new Error(r.status);
     const d=await r.json();
-    const t=(d.daily&&d.daily.time)||[], p=(d.daily&&d.daily.precipitation_sum)||[], c=(d.daily&&d.daily.weathercode)||[];
-    weather=t.map((day,i)=>({date:day,pr:Number(p[i])||0,code:c[i]}));   // pr = precipitation in INCHES
+    const t=(d.daily&&d.daily.time)||[], p=(d.daily&&d.daily.precipitation_sum)||[], c=(d.daily&&d.daily.weathercode)||[], hi=(d.daily&&d.daily.temperature_2m_max)||[];
+    weather=t.map((day,i)=>({date:day,pr:Number(p[i])||0,code:c[i],hi:(hi[i]==null?null:Math.round(hi[i]))}));   // pr=inches, hi=°F
   }catch(e){ /* offline / API down — just leave the strip as-is */ }
   renderWeather();
 }
@@ -2828,8 +2830,9 @@ function renderWeather(){
     const dt=new Date(w.date+'T12:00:00');
     const nm=w.date===today?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
     const amt=w.pr>0.02 ? w.pr.toFixed(2).replace(/^0/,'')+'"' : '&nbsp;';   // show inches when >0.02in, e.g. .09"
-    d.innerHTML='<div class="wxday">'+nm+'</div><div class="wxic">'+wxEmoji(w.code)+'</div><div class="wxmm">'+amt+'</div>';
-    d.title=w.date+' · '+w.pr.toFixed(2)+' in';
+    const temp=(w.hi!=null)?'<span class="wxt">'+w.hi+'°</span>':'';   // high temp inline with the emoji — no extra line
+    d.innerHTML='<div class="wxday">'+nm+'</div><div class="wxic">'+wxEmoji(w.code)+temp+'</div><div class="wxmm">'+amt+'</div>';
+    d.title=w.date+(w.hi!=null?' · '+w.hi+'°F':'')+' · '+w.pr.toFixed(2)+' in';
     el.appendChild(d);
   });
 }
