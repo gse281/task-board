@@ -303,6 +303,10 @@ a.tellink{color:var(--green);text-decoration:none}
 .wxd .wxday{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
 .wxd .wxic{font-size:14px;white-space:nowrap}
 .wxd .wxt{font-size:10px;font-weight:800;color:var(--ink);margin-left:2px;vertical-align:middle}
+.wxd .wxt.hot{color:#ff7a4d}
+.wxd .wxt.cold{color:#6fb2d6}
+.wxd .wxt.xhot{color:#fff;background:#e8683c;border-radius:5px;padding:0 3px}
+.wxd .wxt.xcold{color:#0b1a24;background:#8fd3ee;border-radius:5px;padding:0 3px}
 .wxd .wxmm{font-size:9px;color:var(--blue);font-weight:700}
 .wxd.wet{background:rgba(224,164,88,.14);border-color:var(--accent)}
 .wxd.wet .wxmm{color:var(--accent)}
@@ -347,9 +351,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-11 14:31';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-12 12:33';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-08-12 · extreme temps', d:'Weather highs now flag extremes: ≥90° warm (orange) and ≥95° hot (filled chip); ≤32° cold (blue) and ≤20° freezing (filled chip). Same compact strip.'},
   {v:'2026-08-11 · weather temp', d:'Weather strip now shows the daily high (°F) inline next to each day’s emoji — same compact single-row height, rain still shown below.'},
   {v:'2026-08-07 · ambient still-open (desktop)', d:'The calm one-card Still Open view now works on desktop too (was phone-only): one lingering task, soft 15s cross-fade to a random other, act with ✓ Done / 💤 Snooze / 📂 Move / 👍 Keep and the next fades in.'},
   {v:'2026-08-06 · ambient still-open', d:'Still Open is now a calm one-card view: it shows a single lingering task and softly cross-fades to a random other one every 15s. Act on it (✓ Done / 💤 Snooze / 📂 Move / 👍 Keep) and the next fades in immediately. No more endless list.'},
@@ -2830,7 +2835,9 @@ function renderWeather(){
     const dt=new Date(w.date+'T12:00:00');
     const nm=w.date===today?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
     const amt=w.pr>0.02 ? w.pr.toFixed(2).replace(/^0/,'')+'"' : '&nbsp;';   // show inches when >0.02in, e.g. .09"
-    const temp=(w.hi!=null)?'<span class="wxt">'+w.hi+'°</span>':'';   // high temp inline with the emoji — no extra line
+    // Highlight extreme highs/lows: ≥90 warm, ≥95 hot; ≤32 cold, ≤20 freezing.
+    const tcls=(w.hi==null)?'':(w.hi>=95?' xhot':w.hi>=90?' hot':w.hi<=20?' xcold':w.hi<=32?' cold':'');
+    const temp=(w.hi!=null)?'<span class="wxt'+tcls+'">'+w.hi+'°</span>':'';   // high temp inline with the emoji — no extra line
     d.innerHTML='<div class="wxday">'+nm+'</div><div class="wxic">'+wxEmoji(w.code)+temp+'</div><div class="wxmm">'+amt+'</div>';
     d.title=w.date+(w.hi!=null?' · '+w.hi+'°F':'')+' · '+w.pr.toFixed(2)+' in';
     el.appendChild(d);
