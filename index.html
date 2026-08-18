@@ -351,9 +351,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-12 12:33';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-18 09:55';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-08-12 · fewer API calls', d:'Big cut to Airtable API usage (was maxing the free monthly limit): no polling while the tab is hidden; auto-refresh stretched to ~2.5h + refresh-on-return; secondary panels (Emails/Texts/Outbox/Improvements) cached and refetched at most every 4h instead of every load; placement backfill writes batched 10/call; ↻ Refresh still forces a full pull.'},
   {v:'2026-08-12 · extreme temps', d:'Weather highs now flag extremes: ≥90° warm (orange) and ≥95° hot (filled chip); ≤32° cold (blue) and ≤20° freezing (filled chip). Same compact strip.'},
   {v:'2026-08-11 · weather temp', d:'Weather strip now shows the daily high (°F) inline next to each day’s emoji — same compact single-row height, rain still shown below.'},
   {v:'2026-08-07 · ambient still-open (desktop)', d:'The calm one-card Still Open view now works on desktop too (was phone-only): one lingering task, soft 15s cross-fade to a random other, act with ✓ Done / 💤 Snooze / 📂 Move / 👍 Keep and the next fades in.'},
@@ -629,16 +630,32 @@ async function atFetch(){
   }while(offset&&++g<50);
   tasks=out; demo=false; lastFetchAt=Date.now(); blinkOff=null; meta.lastRefresh=todayStr(); saveMeta();
   try{ localStorage.setItem('tb.tasks', JSON.stringify(out)); }catch(e){}   // cache for instant next open
-  // backfill: push this device's local placements up to Airtable so other devices see them
-  for(const t of tasks){ const s=A(t.id).section; if(s && t.sectionRemote!==s){ t.sectionRemote=s; atPatch(t.id,{Section:s}); } }
-  // Incoming holds only today's items — anything aged out drops to Backlog
-  for(const t of tasks){ if((A(t.id).section==='incoming'||t.sectionRemote==='incoming') && daysOpen(t)>0){ A(t.id).section=null; t.sectionRemote=''; atPatch(t.id,{Section:''}); } }
-  saveAug(); await fetchImprovements(); await fetchCalendar();
-  await fetchTexts(); await fetchOutbox(); await fetchEmails();
-  const doneN=improvements.filter(i=>i.status==='Done').length;
-  if(doneN>(meta.ackSeen||0)) toast('✓ '+(doneN-(meta.ackSeen||0))+' improvement'+(doneN-(meta.ackSeen||0)===1?'':'s')+' addressed — open Improvements');
+  // backfill: push this device's local placements up to Airtable — BATCHED (10 records/request) to save API calls
+  const upMap=new Map();
+  for(const t of tasks){ const s=A(t.id).section; if(s && t.sectionRemote!==s){ t.sectionRemote=s; upMap.set(t.id,{Section:s}); } }
+  for(const t of tasks){ if((A(t.id).section==='incoming'||t.sectionRemote==='incoming') && daysOpen(t)>0){ A(t.id).section=null; t.sectionRemote=''; upMap.set(t.id,{Section:''}); } }
+  saveAug();
+  if(upMap.size) atPatchMany([...upMap].map(([id,fields])=>({id,fields})));
+  await fetchCalendar();            // cheap (today+tomorrow only) — Meetings sits up top
+  await atFetchSecondary(false);    // Improvements/Texts/Outbox/Emails: reuse cache, refetch at most every 4h
   await dailyKick();
   render();
+}
+// Batch writes: one PATCH per 10 records instead of one call per record.
+async function atPatchMany(ups){
+  if(demo||!cfg.apiKey||!ups.length) return;
+  for(let i=0;i<ups.length;i+=10){
+    try{ await fetch(atUrl(),{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({records:ups.slice(i,i+10),typecast:true})}); }catch(e){}
+  }
+}
+// Secondary tables refresh at most every 4h (or when forced) — big cut vs pulling them every refresh.
+async function atFetchSecondary(force){
+  if(!cfg.apiKey) return;
+  if(!force && (Date.now()-(meta.lastSecondary||0)) < 4*3600*1000) return;   // within 4h → use cache
+  await fetchImprovements(); await fetchTexts(); await fetchOutbox(); await fetchEmails();
+  meta.lastSecondary=Date.now(); saveMeta();
+  const doneN=improvements.filter(i=>i.status==='Done').length;
+  if(doneN>(meta.ackSeen||0)) toast('✓ '+(doneN-(meta.ackSeen||0))+' improvement'+(doneN-(meta.ackSeen||0)===1?'':'s')+' addressed — open Improvements');
 }
 async function atPatch(id,fields){
   if(demo||!cfg.apiKey) return;               // demo mode: local only
@@ -683,6 +700,7 @@ async function fetchImprovements(){
     if(!r.ok) return;
     const d=await r.json();
     improvements=(d.records||[]).map(rec=>({id:rec.id,createdTime:rec.createdTime,note:flat(rec.fields.Note),status:flat(rec.fields.Status)||'New'}));
+    try{localStorage.setItem('tb.improvements',JSON.stringify(improvements));}catch(e){}
   }catch(e){}
 }
 async function createImprovement(text){
@@ -706,6 +724,7 @@ async function fetchTexts(){
     const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return;
     const d=await r.json();
     texts=(d.records||[]).filter(rec=>flat(rec.fields.Status)!=='Cleared').map(rec=>({id:rec.id,from:flat(rec.fields.From),preview:flat(rec.fields.Preview),received:flat(rec.fields.Received),handle:flat(rec.fields.Handle)}));
+    try{localStorage.setItem('tb.texts',JSON.stringify(texts));}catch(e){}
   }catch(e){}
 }
 async function clearText(id){
@@ -720,6 +739,7 @@ async function fetchOutbox(){
     const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return;
     const d=await r.json();
     outbox=(d.records||[]).map(rec=>({id:rec.id,createdTime:rec.createdTime,to:flat(rec.fields.To),handle:flat(rec.fields.Handle),channel:flat(rec.fields.Channel),message:flat(rec.fields.Message),task:flat(rec.fields.TaskName),status:flat(rec.fields.Status)||'Draft'}));
+    try{localStorage.setItem('tb.outbox',JSON.stringify(outbox));}catch(e){}
   }catch(e){}
 }
 async function setOutboxStatus(id,st){
@@ -849,6 +869,7 @@ async function fetchEmails(){
     const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return;
     const d=await r.json();
     emails=(d.records||[]).filter(rec=>flat(rec.fields.Status)!=='Cleared').map(rec=>({id:rec.id,subject:flat(rec.fields.Subject),from:flat(rec.fields.From),preview:flat(rec.fields.Preview),received:flat(rec.fields.Received),link:flat(rec.fields.Link)}));
+    try{localStorage.setItem('tb.emails',JSON.stringify(emails));}catch(e){}
   }catch(e){}
 }
 async function clearEmail(id){
@@ -865,6 +886,7 @@ async function fetchCalendar(){
     const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return;
     const d=await r.json();
     calendar=(d.records||[]).map(rec=>({title:flat(rec.fields.Title),when:flat(rec.fields.When),date:flat(rec.fields.Date),sort:+flat(rec.fields.Sort)||0,location:flat(rec.fields.Location),link:flat(rec.fields.Link)}));
+    try{localStorage.setItem('tb.calendar',JSON.stringify(calendar));}catch(e){}
   }catch(e){}
 }
 function daysOpen(t){ if(!t.createdTime)return 0; return Math.floor((Date.now()-new Date(t.createdTime))/86400000);}
@@ -2868,7 +2890,9 @@ document.getElementById('buildTag').onclick=()=>{ toast('🔧 Build '+BUILD); sh
 updateAgo(); setInterval(updateAgo,30000);
 fetchWeather();                                              // 14-day strip under the header
 function isTyping(){ const a=document.activeElement; return !!(a&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)); }
-setInterval(()=>{ if(isTyping())return; if(cfg.apiKey) atFetch(); fetchWeather(); }, 30*60*1000);   // auto-refresh data every 30 min (never mid-type)
+setInterval(()=>{ if(isTyping()||document.hidden)return; if(cfg.apiKey) atFetch(); fetchWeather(); }, 150*60*1000);   // auto-refresh ~2.5h, and NEVER while the tab is hidden/backgrounded (saves Airtable API calls)
+// Refresh when you come BACK to the tab (if data is >30min stale) — fresh when you look, silent when you don't.
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && cfg.apiKey && (Date.now()-(lastFetchAt||0))>30*60000){ atFetch(); } });
 setInterval(()=>{ if(!document.querySelector('.backdrop') && !isTyping()) render(); }, 60000);   // re-check blink snoozes (~1 min) — skip while typing
 // Pull down at the top of the page: a SLOW pull reveals the filters/Incoming drawer,
 // a FAST pull (flick) reloads. Velocity = distance / time separates the two.
@@ -2894,7 +2918,7 @@ function renderSearch(){
 }
 document.getElementById('undoBtn').onclick=undoLast;
 document.addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='z'&&!e.target.closest('input,textarea,select')){ e.preventDefault(); undoLast(); } });
-document.getElementById('refreshBtn').onclick=()=>location.reload();   // full reload, like the address bar
+document.getElementById('refreshBtn').onclick=()=>{ meta.lastSecondary=0; saveMeta(); location.reload(); };   // manual refresh = force a FULL pull (incl. Emails/Texts/Outbox/Improvements)
 document.getElementById('settingsBtn').onclick=openSettings;
 { const cb=document.getElementById('contactsBtn'); if(cb)cb.onclick=()=>openContacts(); }
 loadContacts();   // warm the on-device contacts cache
@@ -2926,6 +2950,12 @@ dailyReset();
 // background — no waiting on the network when you tap into the app.
 if(cfg.apiKey){
   try{ const cached=JSON.parse(localStorage.getItem('tb.tasks')||'null'); if(cached&&cached.length){ tasks=cached; demo=false; } }catch(e){}
+  // Paint the secondary panels from cache too, so they don't need a fetch on every open.
+  try{ improvements=JSON.parse(localStorage.getItem('tb.improvements')||'[]'); }catch(e){}
+  try{ calendar=JSON.parse(localStorage.getItem('tb.calendar')||'[]'); }catch(e){}
+  try{ texts=JSON.parse(localStorage.getItem('tb.texts')||'[]'); }catch(e){}
+  try{ outbox=JSON.parse(localStorage.getItem('tb.outbox')||'[]'); }catch(e){}
+  try{ emails=JSON.parse(localStorage.getItem('tb.emails')||'[]'); }catch(e){}
   render();
   atFetch();
 }
