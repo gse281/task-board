@@ -155,6 +155,13 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .soActs{display:flex;gap:7px;flex-wrap:wrap}
 .soBtn{flex:1;min-width:70px;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:11px 8px;font-size:14px;font-weight:700}
 .soBtn.done{color:var(--green)} .soBtn.snooze{color:var(--blue)}
+/* Respond cards */
+.resp-item{border-top:1px solid var(--line);padding:9px 0}
+.resp-item .txt-from{font-size:12px;color:var(--muted)}
+.resp-item .txt-prev{font-size:13px;margin:2px 0 4px}
+.resp-next{font-size:12px;color:var(--accent);background:rgba(232,104,60,.1);border-radius:6px;padding:4px 7px;margin-bottom:6px}
+.resp-draft{width:100%;min-height:72px;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 9px;font-size:13px;line-height:1.4;resize:vertical;margin-bottom:6px}
+.resp-draft:focus{border-color:var(--accent);outline:none}
 .mfbtn{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 4px;font-size:12px;font-weight:700}
 .madd{display:flex;gap:6px;margin-bottom:10px}
 .madd input{flex:1;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:12px;font-size:16px}
@@ -351,9 +358,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-18 09:55';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-08-24 11:10';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-08-24 · Respond pane', d:'New ✍️ Respond section: your Superhuman AI/Respond emails with a Claude-drafted reply + suggested next steps. Edit the draft inline, then ✅ Approve & send (goes out in-thread via your approved-outbox — never auto-sends), or Make a task / open in Superhuman / Skip. An agent drafts ~15 recent unread Respond emails 3×/day.'},
   {v:'2026-08-12 · fewer API calls', d:'Big cut to Airtable API usage (was maxing the free monthly limit): no polling while the tab is hidden; auto-refresh stretched to ~2.5h + refresh-on-return; secondary panels (Emails/Texts/Outbox/Improvements) cached and refetched at most every 4h instead of every load; placement backfill writes batched 10/call; ↻ Refresh still forces a full pull.'},
   {v:'2026-08-12 · extreme temps', d:'Weather highs now flag extremes: ≥90° warm (orange) and ≥95° hot (filled chip); ≤32° cold (blue) and ≤20° freezing (filled chip). Same compact strip.'},
   {v:'2026-08-11 · weather temp', d:'Weather strip now shows the daily high (°F) inline next to each day’s emoji — same compact single-row height, rain still shown below.'},
@@ -419,6 +427,8 @@ let emails = [];         // emails needing attention (Emails table), populated b
 const TEXTS_TABLE = 'tblra9OCiZ4IyLfuI';
 const OUTBOX_TABLE = 'tbldBWbf32EkmkovK';
 const EMAILS_TABLE = 'tblvMTXGiw9seQnKd';
+const RESPOND_TABLE = 'tblcpvr8BdkjSutU2';
+let respond = [];        // Respond emails with a Claude-drafted reply (Respond table)
 let filters = { project:null, lead:null, sub:null };
 let query = '';
 
@@ -573,6 +583,7 @@ const CHANGELOG = [
 const STUBS = [
   {id:'untexted', name:'💬 Unanswered texts', msg:'Will list texts you haven’t replied to (needs iMessage connection). Not wired yet.'},
   {id:'emails',   name:'✉️ Emails (Gmail)', msg:'Connect Gmail to pull emails that need your attention. Not wired yet — tell Claude to connect it.'},
+  {id:'respond',  name:'✍️ Respond', msg:'Drafted replies for your Superhuman AI/Respond emails.'},
   {id:'calendar', name:'📅 Calendar',        msg:'Connect Google Calendar to show today’s schedule here (Superhuman-style). Not wired yet.'},
 ];
 function defaultSection(t){
@@ -652,7 +663,7 @@ async function atPatchMany(ups){
 async function atFetchSecondary(force){
   if(!cfg.apiKey) return;
   if(!force && (Date.now()-(meta.lastSecondary||0)) < 4*3600*1000) return;   // within 4h → use cache
-  await fetchImprovements(); await fetchTexts(); await fetchOutbox(); await fetchEmails();
+  await fetchImprovements(); await fetchTexts(); await fetchOutbox(); await fetchEmails(); await fetchRespond();
   meta.lastSecondary=Date.now(); saveMeta();
   const doneN=improvements.filter(i=>i.status==='Done').length;
   if(doneN>(meta.ackSeen||0)) toast('✓ '+(doneN-(meta.ackSeen||0))+' improvement'+(doneN-(meta.ackSeen||0)===1?'':'s')+' addressed — open Improvements');
@@ -872,6 +883,30 @@ async function fetchEmails(){
     try{localStorage.setItem('tb.emails',JSON.stringify(emails));}catch(e){}
   }catch(e){}
 }
+// Respond emails with a drafted reply (agent-populated). Show New ones; approve → sends in-thread.
+async function fetchRespond(){
+  if(!cfg.apiKey) return;
+  try{
+    const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+RESPOND_TABLE); u.searchParams.set('pageSize','100');
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return;
+    const d=await r.json();
+    respond=(d.records||[]).filter(rec=>flat(rec.fields.Status)!=='Done').map(rec=>({id:rec.id,subject:flat(rec.fields.Subject),from:flat(rec.fields.From),fromEmail:flat(rec.fields.FromEmail),preview:flat(rec.fields.Preview),link:flat(rec.fields.Link),threadId:flat(rec.fields.ThreadId),draft:flat(rec.fields.Draft),nextStep:flat(rec.fields.NextStep),received:flat(rec.fields.Received)}));
+    try{localStorage.setItem('tb.respond',JSON.stringify(respond));}catch(e){}
+  }catch(e){}
+}
+// Approve a drafted reply: queue it to the Outbox (in-thread email) as Approved, mark the Respond row Done.
+async function respondApprove(rObj,draftText){
+  const t=respond.find(x=>x.id===rObj.id); if(!t)return;
+  respond=respond.filter(x=>x.id!==rObj.id); render();   // optimistic
+  try{
+    await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+OUTBOX_TABLE,{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
+      body:JSON.stringify({fields:{To:rObj.from,Handle:rObj.fromEmail,Channel:'email',Message:draftText,TaskName:rObj.subject,ThreadId:rObj.threadId,Status:'Approved'},typecast:true})});
+    await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+RESPOND_TABLE+'/'+rObj.id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Done'},typecast:true})});
+    toast('✅ Approved — reply will send shortly');
+  }catch(e){ toast('Approve failed'); }
+}
+async function respondClear(id){ respond=respond.filter(x=>x.id!==id); render();
+  try{ await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+RESPOND_TABLE+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Done'}})}); }catch(e){} }
 async function clearEmail(id){
   emails=emails.filter(x=>x.id!==id); render();
   await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+EMAILS_TABLE+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:{Status:'Cleared'},typecast:true})});
@@ -1002,6 +1037,7 @@ function render(){
     else if(id==='calendar') board.appendChild(calendarPanel());
     else if(id==='untexted') board.appendChild(textsPanel());
     else if(id==='emails') board.appendChild(emailsPanel());
+    else if(id==='respond') board.appendChild(respondPanel());
     else if(id==='tosend') board.appendChild(outboxPanel());
     else if(id==='triage') board.appendChild(triagePanel());
     else if(id==='scratch') board.appendChild(scratchPanel());
@@ -1249,6 +1285,7 @@ function renderMobile(board){
   board.appendChild(mobileSlotPanel('🌅 Morning call','morning'));
   board.appendChild(mobileSlotPanel('☀️ Afternoon call','afternoon'));
   // ── Bottom sections: Email, then Still Open ──
+  board.appendChild(mobileRespond());
   board.appendChild(mobileEmails());
   board.appendChild(mobileStillOpen());
   if(bulkMode) board.appendChild(bulkBar());
@@ -1280,6 +1317,43 @@ function mobileEmails(){
     const cl=document.createElement('button');cl.className='mini';cl.textContent='✓ Clear';cl.onclick=()=>clearEmail(e.id);row.appendChild(cl);
     d.appendChild(row); body.appendChild(d);});
   if(emails.length>6){const m=document.createElement('div');m.className='empty';m.textContent='+'+(emails.length-6)+' more';body.appendChild(m);}
+  p.appendChild(body); return p;
+}
+// ── Respond: an email + its drafted reply. Edit inline, then Approve to send in-thread. ──
+function respondCard(r){
+  const d=document.createElement('div'); d.className='resp-item';
+  d.innerHTML='<div class="txt-from">'+esc(r.from||r.fromEmail)+(r.received?' <span class="txt-when">'+esc(r.received)+'</span>':'')+'</div>'+
+    '<div class="txt-prev"><b>'+esc(r.subject)+'</b>'+(r.preview?' — '+esc(r.preview):'')+'</div>'+
+    (r.nextStep?'<div class="resp-next">→ '+esc(r.nextStep)+'</div>':'');
+  const ta=document.createElement('textarea'); ta.className='resp-draft'; ta.value=r.draft||''; ta.placeholder='Draft reply…'; d.appendChild(ta);
+  const row=document.createElement('div'); row.className='row';
+  const ap=document.createElement('button'); ap.className='mini on'; ap.textContent='✅ Approve & send'; ap.title='Send this reply in-thread'; ap.onclick=()=>{ const v=ta.value.trim(); if(!v){toast('Draft is empty');return;} respondApprove(r,v); }; row.appendChild(ap);
+  row.appendChild(btn('➕','mini','Make a task',()=>{atCreate('Reply: '+cleanName({name:r.subject}));toast('Task added');}));
+  if(r.link){ const a=document.createElement('a'); a.className='mini'; a.textContent='⚡'; a.title='Open in Superhuman'; a.href=shLink(r.link); row.appendChild(a);
+    const g=document.createElement('a'); g.className='mini'; g.textContent='✉️'; g.title='Open in Gmail'; g.href=r.link; g.target='_blank'; g.rel='noopener'; row.appendChild(g); }
+  row.appendChild(btn('✓ Skip','mini','Remove without sending',()=>respondClear(r.id)));
+  d.appendChild(row);
+  return d;
+}
+function respondPanel(){
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='respond';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>✍️ Respond</h3><span class="count">'+respond.length+'</span>';
+  p.appendChild(head); wirePanel(p,head,'respond');
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!respond.length) body.innerHTML='<div class="empty">No drafts — the agent drafts replies for your Superhuman Respond emails a few times a day.</div>';
+  else respond.forEach(r=>body.appendChild(respondCard(r)));
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{const dd=e.dataTransfer.getData('text/plain');if(dd&&dd.startsWith('panel:'))reorderPanels(dd.slice(6),'respond');});
+  return p;
+}
+function mobileRespond(){
+  const p=document.createElement('div'); p.className='panel';
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<h3>✍️ Respond</h3><span class="count">'+respond.length+'</span>';
+  p.appendChild(head);
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!respond.length) body.innerHTML='<div class="empty">No drafts yet.</div>';
+  else respond.slice(0,8).forEach(r=>body.appendChild(respondCard(r)));
+  if(respond.length>8){const m=document.createElement('div');m.className='empty';m.textContent='+'+(respond.length-8)+' more';body.appendChild(m);}
   p.appendChild(body); return p;
 }
 // Still Open section for the phone (under Email) — open 10+ days, untouched.
@@ -2956,6 +3030,7 @@ if(cfg.apiKey){
   try{ texts=JSON.parse(localStorage.getItem('tb.texts')||'[]'); }catch(e){}
   try{ outbox=JSON.parse(localStorage.getItem('tb.outbox')||'[]'); }catch(e){}
   try{ emails=JSON.parse(localStorage.getItem('tb.emails')||'[]'); }catch(e){}
+  try{ respond=JSON.parse(localStorage.getItem('tb.respond')||'[]'); }catch(e){}
   render();
   atFetch();
 }
