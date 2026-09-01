@@ -129,6 +129,7 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .findwrap{margin-bottom:10px}
 .findbar{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px 12px;font-size:14px;margin-bottom:7px;-webkit-appearance:none}
 .findbubbles{display:flex;flex-wrap:wrap;gap:5px;max-height:34vh;overflow:auto}
+.findbubbles.fb-collapsed{display:none}
 .fbub{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:700;transition:opacity .12s,box-shadow .12s}
 .fbub .n{color:var(--muted);font-size:10px;margin-left:5px}
 .fbub.p{border-left:3px solid var(--accent)} .fbub.l{border-left:3px solid var(--blue)} .fbub.s{border-left:3px solid var(--green)}
@@ -358,9 +359,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-08-24 11:10';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-01 08:55';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-08-25 · tidier UI', d:'P/S/L find bubbles are hidden until you tap the 🔍 Find bar (hide again when you tap away). Meetings "🌙 Tomorrow" group is collapsed by default — tap the header to expand; today stays open.'},
   {v:'2026-08-24 · Respond pane', d:'New ✍️ Respond section: your Superhuman AI/Respond emails with a Claude-drafted reply + suggested next steps. Edit the draft inline, then ✅ Approve & send (goes out in-thread via your approved-outbox — never auto-sends), or Make a task / open in Superhuman / Skip. An agent drafts ~15 recent unread Respond emails 3×/day.'},
   {v:'2026-08-12 · fewer API calls', d:'Big cut to Airtable API usage (was maxing the free monthly limit): no polling while the tab is hidden; auto-refresh stretched to ~2.5h + refresh-on-return; secondary panels (Emails/Texts/Outbox/Improvements) cached and refetched at most every 4h instead of every load; placement backfill writes batched 10/call; ↻ Refresh still forces a full pull.'},
   {v:'2026-08-12 · extreme temps', d:'Weather highs now flag extremes: ≥90° warm (orange) and ≥95° hot (filled chip); ≤32° cold (blue) and ≤20° freezing (filled chip). Same compact strip.'},
@@ -410,6 +412,7 @@ addEventListener('touchmove',()=>{userScrolled=true;},{passive:true});
 addEventListener('wheel',()=>{userScrolled=true;},{passive:true});
 let incomingSort = localStorage.getItem('incomingSort') || 'new';   // Incoming auto-sort
 let psFind = '';   // live find text for the Project/Sub/Lead bubbles
+let tmrOpen = false;   // Meetings "🌙 Tomorrow" group — collapsed by default
 function sortItems(items,mode){
   const a=[...items];
   if(mode==='days') a.sort((x,y)=>daysOpen(y)-daysOpen(x));
@@ -1649,12 +1652,14 @@ function mobileMeetings(){
       if(isNow && blinkOff!==key){ const stop=document.createElement('button'); stop.className='joinbtn stopblink'; stop.textContent='🔕 Stop'; stop.title='Stop blinking until next refresh'; stop.onclick=ev=>{ev.stopPropagation(); blinkOff=key; render();}; d.appendChild(stop); }
       body.appendChild(d);});
   }
-  // Tomorrow's schedule under today's
+  // Tomorrow's schedule under today's — COLLAPSED by default; tap the header to expand.
   const tev=calendar.filter(e=>e.date===tomorrowISO()).sort((a,b)=>a.sort-b.sort);
-  if(tev.length){ const h=document.createElement('div'); h.className='ack-h'; h.style.margin='8px 0 4px'; h.textContent='🌙 Tomorrow ('+tev.length+')'; body.appendChild(h);
+  if(tev.length){ const h=document.createElement('div'); h.className='ack-h tmr-head'; h.style.cssText='margin:8px 0 4px;cursor:pointer;user-select:none'; h.textContent=(tmrOpen?'▾':'▸')+' 🌙 Tomorrow ('+tev.length+')'; body.appendChild(h);
+    const list=document.createElement('div'); if(!tmrOpen)list.style.display='none';
     tev.slice(0,6).forEach(e=>{const d=document.createElement('div');d.className='cal-ev';d.style.opacity='.8';
       d.innerHTML='<div class="cal-when">'+esc(e.when)+'</div><div class="cal-title">'+esc(e.title)+'</div>'+meetingLink(e);
-      body.appendChild(d);}); }
+      list.appendChild(d);}); body.appendChild(list);
+    h.onclick=()=>{ tmrOpen=!tmrOpen; list.style.display=tmrOpen?'':'none'; h.textContent=(tmrOpen?'▾':'▸')+' 🌙 Tomorrow ('+tev.length+')'; }; }
   p.appendChild(body); return p;
 }
 
@@ -1941,10 +1946,12 @@ function calendarPanel(){
   // Tomorrow's schedule, below today's
   const tmr=tomorrowISO();
   const tev=calendar.filter(e=>e.date===tmr).sort((a,b)=>a.sort-b.sort);
-  if(tev.length){ const h=document.createElement('div'); h.className='ack-h'; h.style.margin='8px 0 4px'; h.textContent='🌙 Tomorrow ('+tev.length+')'; body.appendChild(h);
+  if(tev.length){ const h=document.createElement('div'); h.className='ack-h tmr-head'; h.style.cssText='margin:8px 0 4px;cursor:pointer;user-select:none'; h.textContent=(tmrOpen?'▾':'▸')+' 🌙 Tomorrow ('+tev.length+')'; body.appendChild(h);
+    const list=document.createElement('div'); if(!tmrOpen)list.style.display='none';
     tev.forEach(e=>{const d=document.createElement('div');d.className='cal-ev';d.style.opacity='.8';
       d.innerHTML='<div class="cal-when">'+esc(e.when)+'</div><div class="cal-title">'+esc(e.title)+'</div>'+(e.location?'<div class="cal-loc">📍 '+esc(e.location)+'</div>':'')+meetingLink(e);
-      body.appendChild(d);}); }
+      list.appendChild(d);}); body.appendChild(list);
+    h.onclick=()=>{ tmrOpen=!tmrOpen; list.style.display=tmrOpen?'':'none'; h.textContent=(tmrOpen?'▾':'▸')+' 🌙 Tomorrow ('+tev.length+')'; }; }
   const plan=todayPlan();
   if(plan.length){ const h=document.createElement('div'); h.className='ack-h'; h.style.margin='8px 0 4px'; h.textContent='📋 To do today ('+plan.length+')'; body.appendChild(h);
     plan.forEach(t=>body.appendChild(taskEl(t,'today'))); }
@@ -2525,7 +2532,8 @@ function findBubbles(){
   const box=document.createElement('div'); box.className='findwrap';
   const inp=document.createElement('input'); inp.className='findbar'; inp.type='search'; inp.placeholder='🔍 Find project / lead / sub…'; inp.value=psFind;
   box.appendChild(inp);
-  const bubs=document.createElement('div'); bubs.className='findbubbles';
+  // Bubbles are HIDDEN until you tap the search bar (focus). Tapping away hides them again.
+  const bubs=document.createElement('div'); bubs.className='findbubbles fb-collapsed';
   [['project','p'],['sub','s'],['lead','l']].forEach(([dim,cls])=>{
     const counts=countsFor(dim);
     orderedVals(dim,counts).forEach(v=>{
@@ -2536,6 +2544,8 @@ function findBubbles(){
     });
   });
   box.appendChild(bubs);
+  inp.addEventListener('focus',()=>bubs.classList.remove('fb-collapsed'));
+  inp.addEventListener('blur',()=>setTimeout(()=>{ if(document.activeElement!==inp) bubs.classList.add('fb-collapsed'); },170));   // delay so a bubble tap registers first
   inp.addEventListener('input',()=>{ psFind=inp.value; applyFindHighlight(psFind); });
   setTimeout(()=>applyFindHighlight(psFind),0);
   return box;
