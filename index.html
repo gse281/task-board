@@ -183,7 +183,10 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .trayb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:5px 9px;font-size:13px;font-weight:800;line-height:1}
 .trayb.on{background:var(--accent);border-color:var(--accent);color:#14110f}
 .mrow-name{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px}
-.mrow-nametext{font-weight:600;font-size:15px}
+.mrow-nametext{font-weight:600;font-size:15px;display:flex;align-items:baseline;flex-wrap:wrap;gap:5px}
+.projbadge{flex:0 0 auto;background:var(--panel);border:1px solid var(--line);color:var(--accent);border-radius:6px;padding:1px 6px;font-size:11px;font-weight:800;line-height:1.5;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:middle}
+.projbadge.empty{color:var(--muted);opacity:.6;font-weight:700}
+.name .projbadge{margin-right:6px}
 .mrow-meta{display:flex;align-items:center;gap:6px}
 .mrow-actbar{display:flex;align-items:center;gap:5px;margin-left:auto}
 .mrow-actbar .mcall{font-size:16px;padding:6px 9px}
@@ -359,9 +362,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-01 08:55';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-15 12:26';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-09-15 · cleaner titles', d:'Project ID now shows as a badge to the LEFT of the task description (moved off the tag line). Project-name prefixes are stripped from titles — on new adds ("DOMI - X" → files under DOMI, title becomes "X"), and a one-time pass cleans existing tasks (only when the name starts with its own project + a : / - space separator).'},
   {v:'2026-08-25 · tidier UI', d:'P/S/L find bubbles are hidden until you tap the 🔍 Find bar (hide again when you tap away). Meetings "🌙 Tomorrow" group is collapsed by default — tap the header to expand; today stays open.'},
   {v:'2026-08-24 · Respond pane', d:'New ✍️ Respond section: your Superhuman AI/Respond emails with a Claude-drafted reply + suggested next steps. Edit the draft inline, then ✅ Approve & send (goes out in-thread via your approved-outbox — never auto-sends), or Make a task / open in Superhuman / Skip. An agent drafts ~15 recent unread Respond emails 3×/day.'},
   {v:'2026-08-12 · fewer API calls', d:'Big cut to Airtable API usage (was maxing the free monthly limit): no polling while the tab is hidden; auto-refresh stretched to ~2.5h + refresh-on-return; secondary panels (Emails/Texts/Outbox/Improvements) cached and refetched at most every 4h instead of every load; placement backfill writes batched 10/call; ↻ Refresh still forces a full pull.'},
@@ -643,6 +647,7 @@ async function atFetch(){
     offset=d.offset;
   }while(offset&&++g<50);
   tasks=out; demo=false; lastFetchAt=Date.now(); blinkOff=null; meta.lastRefresh=todayStr(); saveMeta();
+  if(!meta.projScrub){ scrubExistingPrefixes(); meta.projScrub=1; saveMeta(); }   // one-time: strip project-name prefixes from task names
   try{ localStorage.setItem('tb.tasks', JSON.stringify(out)); }catch(e){}   // cache for instant next open
   // backfill: push this device's local placements up to Airtable — BATCHED (10 records/request) to save API calls
   const upMap=new Map();
@@ -661,6 +666,16 @@ async function atPatchMany(ups){
   for(let i=0;i<ups.length;i+=10){
     try{ await fetch(atUrl(),{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({records:ups.slice(i,i+10),typecast:true})}); }catch(e){}
   }
+}
+// One-time: for every task whose Name starts with its own Project name (+ a separator), strip that prefix.
+function scrubExistingPrefixes(){
+  const ups=[];
+  for(const t of tasks){
+    if(!t.project||!t.name) continue;
+    const clean=stripProjPrefix(t.name,t.project);
+    if(clean && clean!==t.name){ t.name=clean; ups.push({id:t.id,fields:{Task:clean}}); }
+  }
+  if(ups.length){ atPatchMany(ups); toast('🧹 Cleaned '+ups.length+' task name'+(ups.length===1?'':'s')); }
 }
 // Secondary tables refresh at most every 4h (or when forced) — big cut vs pulling them every refresh.
 async function atFetchSecondary(force){
@@ -681,17 +696,31 @@ async function atDelete(id){
   if(demo||!cfg.apiKey) return;
   await fetch(atUrl()+'/'+id,{method:'DELETE',headers:{Authorization:'Bearer '+cfg.apiKey}});
 }
+// Strip a leading "<Project><sep>" from a name when it matches the project (case-insensitive).
+// sep = any run of spaces / : / - / /  (e.g. "DOMI - ", "SE: ", "Cove ", "YOSS/").
+function stripProjPrefix(name,proj){
+  if(!name||!proj) return name||'';
+  const esc=String(proj).trim().replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); if(!esc) return name;
+  const out=name.replace(new RegExp('^\\s*'+esc+'[\\s:/\\-]+','i'),'').trim();
+  return out||name;   // never blank the whole name
+}
+// On add: if the typed name starts with a KNOWN project, strip that prefix and file it under that project.
+function detectProjectPrefix(name){
+  for(const pv of knownVals('project')){ const s=stripProjPrefix(name,pv); if(s!==name) return {project:pv,name:s}; }
+  return null;
+}
 async function atCreate(name){
+  const det=detectProjectPrefix(name); const detProj=det?det.project:''; if(det) name=det.name;
   if(demo||!cfg.apiKey){
-    const t={id:'local'+Date.now(),createdTime:new Date().toISOString(),name,project:'',lead:'',sub:'',status:'Open'};
+    const t={id:'local'+Date.now(),createdTime:new Date().toISOString(),name,project:detProj,lead:'',sub:'',status:'Open'};
     A(t.id).section='incoming'; tasks.unshift(t); saveAug(); return t;
   }
   // Optimistic: show the task instantly, then confirm with Airtable and swap the id in place.
-  const t={id:'tmp'+Date.now(),createdTime:new Date().toISOString(),name,project:'',lead:'',sub:'',status:'Open'};
+  const t={id:'tmp'+Date.now(),createdTime:new Date().toISOString(),name,project:detProj,lead:'',sub:'',status:'Open'};
   tasks.unshift(t); render();
   try{
     const r=await fetch(atUrl(),{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
-      body:JSON.stringify({fields:{Task:name,Status:'Open'},typecast:true})});
+      body:JSON.stringify({fields:detProj?{Task:name,Project:detProj,Status:'Open'}:{Task:name,Status:'Open'},typecast:true})});
     if(!r.ok){ toast('Create failed '+r.status); tasks=tasks.filter(x=>x!==t); render(); return null; }
     const rec=await r.json();
     if(aug[t.id]){ aug[rec.id]=aug[t.id]; delete aug[t.id]; }   // carry any placement set on the temp id
@@ -1522,13 +1551,18 @@ function mobileRow(t,opts){
   // Bulk-select mode: a checkbox + tap-to-toggle, no per-row actions/swipe.
   if(bulkMode){ const cb=document.createElement('span'); cb.className='bchk'; cb.textContent=bulkSel.has(t.id)?'☑':'☐'; inner.appendChild(cb); }
   const nm=document.createElement('div'); nm.className='mrow-name';
-  const nameLine=document.createElement('div'); nameLine.className='mrow-nametext'; nameLine.textContent=cleanName(t);
-  nameLine.onclick=()=>{ if(bulkMode) bulkToggle(t.id,row); else openDetail(t); };
+  const nameLine=document.createElement('div'); nameLine.className='mrow-nametext';
+  // Project ID badge to the LEFT of the description text.
+  { const pb=document.createElement('button'); pb.className='projbadge'+(t.project?'':' empty'); pb.textContent=t.project||'＋P';
+    pb.title=t.project?('Project: '+t.project+' — tap to change'):'Set project';
+    pb.onclick=e=>{e.stopPropagation(); if(!bulkMode)pickAssign(t,'project');}; nameLine.appendChild(pb); }
+  const nmtxt=document.createElement('span'); nmtxt.className='nmtxt'; nmtxt.textContent=cleanName(t);
+  nmtxt.onclick=()=>{ if(bulkMode) bulkToggle(t.id,row); else openDetail(t); }; nameLine.appendChild(nmtxt);
   nm.appendChild(nameLine);
-  // Second line: P/S/L tags on the LEFT, action buttons (bell/pin/move/check…) to their RIGHT.
+  // Second line: Sub/Lead tags on the LEFT, action buttons (bell/pin/move/check…) to their RIGHT.
   const meta=document.createElement('div'); meta.className='mrow-meta';
   const pr=document.createElement('div'); pr.className='plsrow';
-  [['project','p','P'],['sub','s','S'],['lead','l','L']].forEach(([dim,cls,ltr])=>{
+  [['sub','s','S'],['lead','l','L']].forEach(([dim,cls,ltr])=>{
     const v=t[dim]; const s=document.createElement('button'); s.className='plstag '+cls; s.textContent=v?v.slice(0,3):'＋'+ltr;
     s.onclick=e=>{e.stopPropagation();if(!bulkMode)pickAssign(t,dim);}; pr.appendChild(s);});
   meta.appendChild(pr);
@@ -2193,6 +2227,10 @@ function taskEl(t,sectionId){
     `</div>`;
   const nm=el.querySelector('.name'); nm.style.cursor='pointer'; nm.title='Edit';
   nm.onclick=e=>{e.stopPropagation();openDetail(t);};
+  // Project ID badge to the LEFT of the description text.
+  if(sectionId!=='bulb'){ const pb=document.createElement('button'); pb.className='projbadge'+(t.project?'':' empty'); pb.textContent=t.project||'＋P';
+    pb.title=t.project?('Project: '+t.project+' — click to change'):'Set project';
+    pb.onclick=e=>{e.stopPropagation();pickAssign(t,'project');}; nm.insertBefore(pb, nm.firstChild); }
   const np=el.querySelector('.notepv'); if(np){ np.style.cursor='pointer'; np.onclick=e=>{e.stopPropagation();editNotes(t);}; }
   // Visible action row on the card FACE — left-aligned, tight, below the name/tags.
   const acts=document.createElement('div'); acts.className='cardacts';
@@ -2229,7 +2267,7 @@ function taskEl(t,sectionId){
     const add=(cls,dim,ti)=>{const vs=valsOf(t,dim);
       if(vs.length){ vs.forEach(v=>{const s=document.createElement('button');s.className='plstag '+cls;s.textContent=v.slice(0,3);s.title=ti+': '+v+' — click to edit';s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);};pr.appendChild(s);}); }
       else { const s=document.createElement('button');s.className='plstag '+cls;s.textContent='＋'+cls.toUpperCase();s.title='Set '+ti.toLowerCase();s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);};pr.appendChild(s); } };
-    add('p','project','Project'); add('s','sub','Sub'); add('l','lead','Lead');
+    add('s','sub','Sub'); add('l','lead','Lead');   // project now shown as a badge left of the title
     // P/S/L tags on the left, action buttons (check/bell/pin/remove) to their RIGHT, same line.
     const plsline=document.createElement('div'); plsline.className='plsline';
     plsline.appendChild(pr); plsline.appendChild(acts);
