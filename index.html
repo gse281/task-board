@@ -362,9 +362,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-15 12:26';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-18 09:12';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-09-18 · tap-to-jump', d:'iPhone: tapping a project/sub (in the 🔍 find bubbles or the P/S/L picker) now smoothly scrolls the view to the filtered results panel, instead of leaving you stuck up in the drawer.'},
   {v:'2026-09-15 · cleaner titles', d:'Project ID now shows as a badge to the LEFT of the task description (moved off the tag line). Project-name prefixes are stripped from titles — on new adds ("DOMI - X" → files under DOMI, title becomes "X"), and a one-time pass cleans existing tasks (only when the name starts with its own project + a : / - space separator).'},
   {v:'2026-08-25 · tidier UI', d:'P/S/L find bubbles are hidden until you tap the 🔍 Find bar (hide again when you tap away). Meetings "🌙 Tomorrow" group is collapsed by default — tap the header to expand; today stays open.'},
   {v:'2026-08-24 · Respond pane', d:'New ✍️ Respond section: your Superhuman AI/Respond emails with a Claude-drafted reply + suggested next steps. Edit the draft inline, then ✅ Approve & send (goes out in-thread via your approved-outbox — never auto-sends), or Make a task / open in Superhuman / Skip. An agent drafts ~15 recent unread Respond emails 3×/day.'},
@@ -409,6 +410,7 @@ let outbox = [];         // queued follow-ups awaiting your approval (Outbox tab
 let lastFetchAt = 0;     // when data was last refreshed (for the counter)
 let blinkOff = null;     // which current-meeting the user silenced (resets on refresh / new meeting)
 let flashBulb = false;   // flash a bulb panel when opened from a filter chip
+let scrollBulb = false;  // iPhone: after tapping a project/sub, scroll the view to the filtered results
 let bulbSort = '';       // how the opened bulb/list is sorted
 let mobileDrawerOpen = false;   // (legacy; drawer removed)
 let userScrolled = false;       // stop auto-anchoring to Meetings once the user scrolls
@@ -1054,7 +1056,8 @@ function render(){
   const board=document.getElementById('board'); board.innerHTML='';
   const filt=document.getElementById('filters');
   if(isMobileView()){ filt.style.display='none'; renderMobile(board); restoreScrolls(scrolls);
-    if(userScrolled&&preWY>0){ requestAnimationFrame(()=>window.scrollTo(0,preWY)); }   // hold position; only the initial load anchors to Meetings
+    if(scrollBulb){ scrollBulb=false; userScrolled=true; requestAnimationFrame(()=>{ const a=document.getElementById('mBulbAnchor'); if(a) a.scrollIntoView({behavior:'smooth',block:'start'}); }); }   // jump to the filtered results
+    else if(userScrolled&&preWY>0){ requestAnimationFrame(()=>window.scrollTo(0,preWY)); }   // hold position; only the initial load anchors to Meetings
     return; }
   filt.style.display=''; renderFilters(); applyFindHighlight(psFind);
   const notSnoozed=t=>!(A(t.id).snoozeUntil>Date.now());
@@ -1312,7 +1315,7 @@ function renderMobile(board){
   board.appendChild(paneTop);
   // ── Main view: meetings first ──
   const meet=mobileMeetings(); board.appendChild(meet);
-  if(activeBulb) board.appendChild(bulbPanel());
+  if(activeBulb){ const bp2=bulbPanel(); bp2.id='mBulbAnchor'; board.appendChild(bp2); }
   board.appendChild(mobileCalls());
   board.appendChild(mobileSlotPanel('🌅 Morning call','morning'));
   board.appendChild(mobileSlotPanel('☀️ Afternoon call','afternoon'));
@@ -1650,7 +1653,7 @@ function openPicker(dim){
   const list=document.createElement('div'); list.style.cssText='display:flex;flex-direction:column;gap:6px;margin-top:8px;max-height:62vh;overflow:auto';
   if(!entries.length){const e=document.createElement('div');e.className='empty';e.textContent='None yet';list.appendChild(e);}
   entries.forEach(e=>{const b=document.createElement('button');b.className='btn';b.style.textAlign='left';b.textContent=e.name;
-    b.onclick=()=>{ activeBulb={dim,val:e.val,label:e.label}; bd.remove(); render(); }; list.appendChild(b);});
+    b.onclick=()=>{ activeBulb={dim,val:e.val,label:e.label}; scrollBulb=true; bd.remove(); render(); }; list.appendChild(b);});
   box.appendChild(list);
   const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>';
   act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
@@ -2577,7 +2580,7 @@ function findBubbles(){
     orderedVals(dim,counts).forEach(v=>{
       const b=document.createElement('button'); b.className='fbub '+cls; b.dataset.val=String(v).toLowerCase(); b.dataset.dim=dim;
       b.innerHTML=esc(v)+'<span class="n">'+counts[v]+'</span>';
-      b.onclick=()=>{ activeBulb={dim,val:v,label:v}; flashBulb=true; render(); };
+      b.onclick=()=>{ activeBulb={dim,val:v,label:v}; flashBulb=true; scrollBulb=true; render(); };
       bubs.appendChild(b);
     });
   });
