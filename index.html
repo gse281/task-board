@@ -341,7 +341,7 @@ a.tellink{color:var(--green);text-decoration:none}
     <button class="tb-btn" id="gridBtn" title="Toggle reference grid">▦ Grid</button>
     <button class="tb-btn" id="picBtn" title="Photo → list">📷</button>
     <button class="tb-btn" id="undoBtn" title="Undo last action (⌘Z)">↩ Undo</button>
-    <button class="tb-btn" id="contactsBtn" title="Contacts search">📇</button>
+    <button class="tb-btn" id="contactsBtn" title="Contacts search">👤</button>
     <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
     <button class="tb-btn" id="settingsBtn">⚙︎</button>
   </div>
@@ -365,7 +365,7 @@ a.tellink{color:var(--green);text-decoration:none}
 const BUILD='2026-09-18 10:05';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
-  {v:'2026-09-18 · contacts sync', d:'📇 Contacts now syncs through Airtable (works on iPhone + Mac automatically — no more manual file import). A daily job pushes your Mac/iCloud address book (~4,800 contacts) into a ContactsData table; the app reads it, cached locally and refreshed every 12h.'},
+  {v:'2026-09-18 · contacts sync', d:'👤 Contacts now syncs through Airtable (works on iPhone + Mac automatically — no more manual file import). A daily job pushes your Mac/iCloud address book (~4,800 contacts) into a ContactsData table; the app reads it, cached locally and refreshed every 12h.'},
   {v:'2026-09-18 · tap-to-jump', d:'iPhone: tapping a project/sub (in the 🔍 find bubbles or the P/S/L picker) now smoothly scrolls the view to the filtered results panel, instead of leaving you stuck up in the drawer.'},
   {v:'2026-09-15 · cleaner titles', d:'Project ID now shows as a badge to the LEFT of the task description (moved off the tag line). Project-name prefixes are stripped from titles — on new adds ("DOMI - X" → files under DOMI, title becomes "X"), and a one-time pass cleans existing tasks (only when the name starts with its own project + a : / - space separator).'},
   {v:'2026-08-25 · tidier UI', d:'P/S/L find bubbles are hidden until you tap the 🔍 Find bar (hide again when you tap away). Meetings "🌙 Tomorrow" group is collapsed by default — tap the header to expand; today stays open.'},
@@ -375,7 +375,7 @@ const CHANGES=[
   {v:'2026-08-11 · weather temp', d:'Weather strip now shows the daily high (°F) inline next to each day’s emoji — same compact single-row height, rain still shown below.'},
   {v:'2026-08-07 · ambient still-open (desktop)', d:'The calm one-card Still Open view now works on desktop too (was phone-only): one lingering task, soft 15s cross-fade to a random other, act with ✓ Done / 💤 Snooze / 📂 Move / 👍 Keep and the next fades in.'},
   {v:'2026-08-06 · ambient still-open', d:'Still Open is now a calm one-card view: it shows a single lingering task and softly cross-fades to a random other one every 15s. Act on it (✓ Done / 💤 Snooze / 📂 Move / 👍 Keep) and the next fades in immediately. No more endless list.'},
-  {v:'2026-08-06 · find + contacts', d:'Live find bar over the Project/Sub/Lead bubbles — type and matches light up, the rest dim (desktop filters + phone drawer). New 📇 Contacts search built into the app: search by name / number / company, tap a number to copy, 💬 to text, 📞 to call. Contacts live only on this device (localStorage) — Import a .json or .vcf export. The 🔍 lookup on Call tasks now opens Contacts prefilled.'},
+  {v:'2026-08-06 · find + contacts', d:'Live find bar over the Project/Sub/Lead bubbles — type and matches light up, the rest dim (desktop filters + phone drawer). New 👤 Contacts search built into the app: search by name / number / company, tap a number to copy, 💬 to text, 📞 to call. Contacts live only on this device (localStorage) — Import a .json or .vcf export. The 🔍 lookup on Call tasks now opens Contacts prefilled.'},
   {v:'2026-08-06 · row layout', d:'Task name now runs full-width on its own line; the P/S/L tags sit below it with the action buttons (check / bell / pin / move) to their right instead of over the title.'},
   {v:'2026-07-31 · bells & color', d:'Add-task bubble now at the top of the task pane on desktop too. Bell + Pin on every task’s visible face (desktop & iPhone). Phone/lookup icon only shows in the Calls pane. Move icon no longer green. New orange-red highlight + a color picker in ⚙︎ Settings (presets: orange-red / yellow / amber). New Calls tasks are auto-belled. Added a 🎵 Music player category.'},
   {v:'2026-07-30 · fixes', d:'Polling no longer interrupts typing. iPhone: add bubble + ☑︎ bulk-select at top of pane; Move is now a 📂 icon; bell/blink shows on rows. Category picker lists None first. Uncategorized auto-sorts at EOD; better lead/sub guessing; "Eli" removed as a lead. Still Open shows a few at a time. Email link opens the exact Gmail message (dropped broken superhuman:// scheme). Priority cards get a ⬇ demote button.'},
@@ -1183,7 +1183,7 @@ function importContactsFile(file){
 function openContacts(prefill){
   const bd=document.createElement('div'); bd.className='backdrop';
   const box=document.createElement('div'); box.className='modal contacts-modal';
-  box.innerHTML='<h3>📇 Contacts</h3>';
+  box.innerHTML='<h3>👤 Contacts</h3>';
   const bar=document.createElement('div'); bar.style.cssText='display:flex;gap:6px;margin:6px 0 4px';
   const inp=document.createElement('input'); inp.className='inp'; inp.type='search'; inp.placeholder='Search name, number, or company…'; inp.value=prefill||''; inp.style.flex='1';
   const imp=document.createElement('button'); imp.className='btn'; imp.textContent='Import'; imp.title='Load a Contacts export (.json or .vcf)';
@@ -1325,7 +1325,7 @@ function renderMobile(board){
   qa2.querySelector('button').onclick=go2; qa2.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go2();});
   const selBtn=document.createElement('button'); selBtn.className='bulk-toggle'+(bulkMode?' on':''); selBtn.textContent=bulkMode?'✕ Done selecting':'☑︎ Select';
   selBtn.onclick=()=>{ bulkMode=!bulkMode; if(!bulkMode)bulkSel.clear(); userScrolled=true; render(); };
-  const contBtn=document.createElement('button'); contBtn.className='bulk-toggle'; contBtn.textContent='📇 Contacts'; contBtn.onclick=()=>openContacts();
+  const contBtn=document.createElement('button'); contBtn.className='bulk-toggle'; contBtn.textContent='👤 Contacts'; contBtn.onclick=()=>openContacts();
   paneTop.appendChild(qa2); const bp=document.createElement('div'); bp.style.cssText='display:flex;gap:6px'; selBtn.style.flex='1'; contBtn.style.flex='1'; bp.appendChild(selBtn); bp.appendChild(contBtn); paneTop.appendChild(bp);
   board.appendChild(paneTop);
   // ── Main view: meetings first ──
