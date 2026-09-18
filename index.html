@@ -362,7 +362,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-18 10:05';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-18 10:19';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-09-18 · contacts sync', d:'👤 Contacts now syncs through Airtable (works on iPhone + Mac automatically — no more manual file import). A daily job pushes your Mac/iCloud address book (~4,800 contacts) into a ContactsData table; the app reads it, cached locally and refreshed every 12h.'},
@@ -1186,15 +1186,12 @@ function openContacts(prefill){
   box.innerHTML='<h3>👤 Contacts</h3>';
   const bar=document.createElement('div'); bar.style.cssText='display:flex;gap:6px;margin:6px 0 4px';
   const inp=document.createElement('input'); inp.className='inp'; inp.type='search'; inp.placeholder='Search name, number, or company…'; inp.value=prefill||''; inp.style.flex='1';
-  const imp=document.createElement('button'); imp.className='btn'; imp.textContent='Import'; imp.title='Load a Contacts export (.json or .vcf)';
-  const fileInp=document.createElement('input'); fileInp.type='file'; fileInp.accept='.json,.vcf,text/vcard,application/json'; fileInp.style.display='none';
-  imp.onclick=()=>fileInp.click(); fileInp.onchange=e=>{ if(e.target.files[0]) importContactsFile(e.target.files[0]); };
-  bar.appendChild(inp); bar.appendChild(imp); bar.appendChild(fileInp); box.appendChild(bar);
+  bar.appendChild(inp); box.appendChild(bar);
   const results=document.createElement('div'); results.className='contacts-results'; box.appendChild(results);
   const draw=()=>{
     const q=inp.value.trim();
     results.innerHTML='';
-    if(!contacts.length){ results.innerHTML='<div class="empty">No contacts yet — tap <b>Import</b> and pick your Contacts export (.json or .vcf). Stays on this device.</div>'; return; }
+    if(!contacts.length){ results.innerHTML='<div class="empty">No contacts loaded yet — they sync from your Mac automatically. Open ⚙︎ and check your Airtable key if this stays empty.</div>'; return; }
     if(!q){ results.innerHTML='<div class="empty">'+contacts.length+' contacts loaded. Start typing to search.</div>'; return; }
     const hits=searchContacts(q);
     if(!hits.length){ results.innerHTML='<div class="empty">No matches.</div>'; return; }
@@ -1205,6 +1202,7 @@ function openContacts(prefill){
       (c.p||[]).forEach(num=>{
         const pr=document.createElement('div'); pr.className='contact-num';
         const nb=document.createElement('button'); nb.className='num-copy'; nb.textContent=num; nb.title='Copy number'; nb.onclick=()=>copyNum(num); pr.appendChild(nb);
+        const cp=document.createElement('button'); cp.className='num-act'; cp.textContent='📋'; cp.title='Copy number'; cp.onclick=()=>copyNum(num); pr.appendChild(cp);
         const tb=document.createElement('button'); tb.className='num-act'; tb.textContent='💬'; tb.title='Text'; tb.onclick=()=>textNum(num); pr.appendChild(tb);
         const cb=document.createElement('a'); cb.className='num-act'; cb.textContent='📞'; cb.title='Call'; cb.href='tel:'+num.replace(/[^\d+]/g,''); pr.appendChild(cb);
         row.appendChild(pr);
