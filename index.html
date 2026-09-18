@@ -362,9 +362,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-18 09:12';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-18 10:05';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-09-18 · contacts sync', d:'📇 Contacts now syncs through Airtable (works on iPhone + Mac automatically — no more manual file import). A daily job pushes your Mac/iCloud address book (~4,800 contacts) into a ContactsData table; the app reads it, cached locally and refreshed every 12h.'},
   {v:'2026-09-18 · tap-to-jump', d:'iPhone: tapping a project/sub (in the 🔍 find bubbles or the P/S/L picker) now smoothly scrolls the view to the filtered results panel, instead of leaving you stuck up in the drawer.'},
   {v:'2026-09-15 · cleaner titles', d:'Project ID now shows as a badge to the LEFT of the task description (moved off the tag line). Project-name prefixes are stripped from titles — on new adds ("DOMI - X" → files under DOMI, title becomes "X"), and a one-time pass cleans existing tasks (only when the name starts with its own project + a : / - space separator).'},
   {v:'2026-08-25 · tidier UI', d:'P/S/L find bubbles are hidden until you tap the 🔍 Find bar (hide again when you tap away). Meetings "🌙 Tomorrow" group is collapsed by default — tap the header to expand; today stays open.'},
@@ -1100,11 +1101,25 @@ function shLink(url){
 /* ---------- Contacts search (built into the PWA) ----------
    Data lives ONLY on-device (localStorage) — never in the public repo or Airtable.
    Each contact: {n:name, o:company, p:[numbers]}. Import a JSON or vCard export to load. */
+const CONTACTS_TABLE='tbla8W2IjHCJMXgY5';   // ContactsData — JSON chunks synced from the Mac by contacts-sync.py
 let contacts=[];
 try{ contacts=JSON.parse(localStorage.getItem('contacts')||'[]'); }catch(e){ contacts=[]; }
-function loadContacts(){
+// Load contacts: paint from local cache instantly, then refresh from Airtable (works on every device).
+function loadContacts(force){
+  const fresh=(Date.now()-(+localStorage.getItem('tb.contacts.ts')||0)) < 12*3600*1000;   // refetch at most every 12h
+  if(contacts.length && fresh && !force) return Promise.resolve(contacts);
+  if(cfg.apiKey){
+    const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CONTACTS_TABLE); u.searchParams.set('pageSize','100');
+    return fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{
+      if(d&&d.records&&d.records.length){
+        const rows=d.records.map(r=>({idx:+flat(r.fields.Idx)||0,data:flat(r.fields.Data)||''})).sort((a,b)=>a.idx-b.idx);
+        try{ const arr=JSON.parse(rows.map(r=>r.data).join('')); if(arr&&arr.length){ contacts=arr; localStorage.setItem('contacts',JSON.stringify(arr)); localStorage.setItem('tb.contacts.ts',String(Date.now())); } }catch(e){}
+      }
+      return contacts;
+    }).catch(()=>contacts);
+  }
   if(contacts.length) return Promise.resolve(contacts);
-  // Local dev / colocated file only (NOT deployed) — otherwise the user imports a file.
+  // no key: local dev file / manual import fallback
   return fetch('contacts.json').then(r=>r.ok?r.json():null).then(d=>{
     if(d&&d.length){ contacts=d; try{localStorage.setItem('contacts',JSON.stringify(d));}catch(e){} }
     return contacts;
