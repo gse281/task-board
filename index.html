@@ -362,9 +362,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-18 10:19';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-20 12:10';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-09-20 · add a contact', d:'👤 Contacts panel has a ➕ button: paste someone’s email signature, tap Parse, and it pulls out name / company / phone(s) / email into editable fields — save and it’s searchable everywhere (stored in a new ContactsAdded table, so the nightly Mac sync never wipes it).'},
   {v:'2026-09-18 · contacts sync', d:'👤 Contacts now syncs through Airtable (works on iPhone + Mac automatically — no more manual file import). A daily job pushes your Mac/iCloud address book (~4,800 contacts) into a ContactsData table; the app reads it, cached locally and refreshed every 12h.'},
   {v:'2026-09-18 · tap-to-jump', d:'iPhone: tapping a project/sub (in the 🔍 find bubbles or the P/S/L picker) now smoothly scrolls the view to the filtered results panel, instead of leaving you stuck up in the drawer.'},
   {v:'2026-09-15 · cleaner titles', d:'Project ID now shows as a badge to the LEFT of the task description (moved off the tag line). Project-name prefixes are stripped from titles — on new adds ("DOMI - X" → files under DOMI, title becomes "X"), and a one-time pass cleans existing tasks (only when the name starts with its own project + a : / - space separator).'},
@@ -1102,8 +1103,11 @@ function shLink(url){
    Data lives ONLY on-device (localStorage) — never in the public repo or Airtable.
    Each contact: {n:name, o:company, p:[numbers]}. Import a JSON or vCard export to load. */
 const CONTACTS_TABLE='tbla8W2IjHCJMXgY5';   // ContactsData — JSON chunks synced from the Mac by contacts-sync.py
+const CONTACTS_ADD_TABLE='tblMz61uZtH5DeDl1'; // ContactsAdded — manual adds (pasted signatures); merged in, never overwritten by the nightly sync
 let contacts=[];
 try{ contacts=JSON.parse(localStorage.getItem('contacts')||'[]'); }catch(e){ contacts=[]; }
+let added=[];
+try{ added=JSON.parse(localStorage.getItem('contactsAdded')||'[]'); }catch(e){ added=[]; }
 // Load contacts: paint from local cache instantly, then refresh from Airtable (works on every device).
 function loadContacts(force){
   const fresh=(Date.now()-(+localStorage.getItem('tb.contacts.ts')||0)) < 12*3600*1000;   // refetch at most every 12h
@@ -1125,12 +1129,26 @@ function loadContacts(force){
     return contacts;
   }).catch(()=>contacts);
 }
+// Manually-added contacts (from pasted signatures). Tiny table — refetch each time the panel opens.
+function loadAdded(){
+  if(!cfg.apiKey) return Promise.resolve(added);
+  const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CONTACTS_ADD_TABLE); u.searchParams.set('pageSize','100');
+  return fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{
+    if(d&&d.records){
+      added=d.records.map(r=>({ n:flat(r.fields.Name)||'', o:flat(r.fields.Org)||'',
+        p:(flat(r.fields.Phones)||'').split(/[,\n]/).map(s=>s.trim()).filter(Boolean),
+        email:flat(r.fields.Email)||'', _rid:r.id })).filter(c=>c.n);
+      try{ localStorage.setItem('contactsAdded',JSON.stringify(added)); }catch(e){}
+    }
+    return added;
+  }).catch(()=>added);
+}
 const onlyDigits=s=>(''+(s||'')).replace(/\D/g,'');
 function searchContacts(q){
   q=(q||'').trim().toLowerCase(); if(!q) return [];
   const dq=onlyDigits(q);
   const out=[];
-  for(const c of contacts){
+  for(const c of added.concat(contacts)){
     const name=(c.n||'').toLowerCase(), org=(c.o||'').toLowerCase();
     let hit = name.includes(q) || (org&&org.includes(q));
     if(!hit && dq.length>=3){ for(const ph of (c.p||[])){ if(onlyDigits(ph).includes(dq)){ hit=true; break; } } }
@@ -1180,19 +1198,97 @@ function importContactsFile(file){
   };
   r.readAsText(file);
 }
+// Normalize a phone into (AAA) BBB-CCCC when it's a clean US number, else leave as typed.
+function fmtPhone(raw){
+  const d=onlyDigits(raw);
+  if(d.length===10) return '('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6);
+  if(d.length===11&&d[0]==='1') return '1 ('+d.slice(1,4)+') '+d.slice(4,7)+'-'+d.slice(7);
+  return (raw||'').trim();
+}
+// Parse a pasted email signature (or any name/phone/email block) into {n,o,p:[],email}.
+function parseSignature(text){
+  const lines=(text||'').replace(/ /g,' ').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const emailRe=/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i;
+  const urlRe=/^(https?:\/\/|www\.)|\.(com|net|org|io|co|us|biz|info)(\/|$)/i;
+  const phoneRe=/(\+?\d[\d\s().\-]{7,}\d)/;
+  const coRe=/\b(LLC|L\.L\.C|Inc|Incorporated|Corp|Corporation|Company|Co|Ltd|LLP|L\.P|LP|Holdings|Capital|Partners|Group|Ventures|Advisors|Advisers|Management|Mgmt|Realty|Properties|Associates|Bank|Trust|Fund|Equity|Enterprises|Solutions|Development)\b/i;
+  let email=''; const phones=[]; const textLines=[];
+  for(const L of lines){
+    const em=L.match(emailRe);
+    if(em && !email) email=em[0];
+    // a line that is essentially just an email/url isn't name/company text
+    if(em && L.replace(emailRe,'').replace(/[<>()|·•,\s]/g,'').length<2) continue;
+    const ph=L.match(phoneRe);
+    if(ph && onlyDigits(ph[1]).length>=10){ if(!/\bfax\b/i.test(L)) phones.push(fmtPhone(ph[1])); continue; }
+    if(!em && urlRe.test(L)) continue;             // website line
+    if(!em) textLines.push(L);
+  }
+  let name='',org='';
+  if(textLines.length){
+    name=textLines[0];
+    const rest=textLines.slice(1);
+    org=rest.find(l=>coRe.test(l)) || rest[rest.length-1] || '';
+  }
+  if(!name && email) name=email.split('@')[0].replace(/[._\-]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  return { n:name, o:org, p:phones, email:email };
+}
+function saveNewContact(c){
+  added.unshift(c);
+  try{ localStorage.setItem('contactsAdded',JSON.stringify(added)); }catch(e){}
+  if(!cfg.apiKey) return Promise.resolve(c);
+  const body={records:[{fields:{Name:c.n,Org:c.o||'',Phones:(c.p||[]).join(', '),Email:c.email||'',Added:new Date().toISOString()}}],typecast:true};
+  return fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+CONTACTS_ADD_TABLE,{method:'POST',
+    headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(r=>r.ok?r.json():null).then(d=>{ if(d&&d.records&&d.records[0]) c._rid=d.records[0].id; return c; }).catch(()=>c);
+}
+// Paste-a-signature → parse → edit → save flow.
+function openAddContact(onSaved){
+  const bd=document.createElement('div'); bd.className='backdrop';
+  const box=document.createElement('div'); box.className='modal';
+  box.innerHTML='<h3>➕ Add contact</h3><div style="font-size:12px;color:var(--muted);margin:2px 0 6px">Paste an email signature (name, company, phones, email) and tap Parse. You can fix anything before saving.</div>';
+  const ta=document.createElement('textarea'); ta.className='inp';
+  ta.rows=6; ta.style.cssText='width:100%;box-sizing:border-box;resize:vertical;font-family:inherit;margin-bottom:8px';
+  ta.placeholder='Sam Sparks\nTavros Holdings LLC\nssparks@tavroscapital.com\nO: (212) 518-4942\nC: (973) 207-2488';
+  box.appendChild(ta);
+  const fields=document.createElement('div'); fields.style.display='none'; box.appendChild(fields);
+  const mk=(lbl,ph)=>{ const w=document.createElement('label'); w.style.cssText='display:block;font-size:11px;color:var(--muted);margin:6px 0 2px';
+    w.textContent=lbl; const i=document.createElement('input'); i.className='inp'; i.placeholder=ph||''; i.style.cssText='width:100%;box-sizing:border-box';
+    fields.appendChild(w); fields.appendChild(i); return i; };
+  const nameI=mk('Name'), orgI=mk('Company'), phoneI=mk('Phone(s) — comma separated'), emailI=mk('Email');
+  const act=document.createElement('div'); act.className='modal-actions';
+  const parseB=document.createElement('button'); parseB.className='btn primary'; parseB.textContent='Parse ↓';
+  const saveB=document.createElement('button'); saveB.className='btn primary'; saveB.textContent='Save contact'; saveB.style.display='none';
+  const cancelB=document.createElement('button'); cancelB.className='btn'; cancelB.textContent='Cancel';
+  act.appendChild(parseB); act.appendChild(saveB); act.appendChild(cancelB); box.appendChild(act);
+  const showFields=c=>{ nameI.value=c.n||''; orgI.value=c.o||''; phoneI.value=(c.p||[]).join(', '); emailI.value=c.email||'';
+    fields.style.display='block'; saveB.style.display=''; parseB.textContent='Re-parse ↻'; setTimeout(()=>nameI.focus(),30); };
+  parseB.onclick=()=>{ if(!ta.value.trim()){ toast('Paste a signature first'); return; } showFields(parseSignature(ta.value)); };
+  saveB.onclick=()=>{ const c={ n:nameI.value.trim(), o:orgI.value.trim(),
+      p:phoneI.value.split(/[,\n]/).map(s=>fmtPhone(s)).filter(Boolean), email:emailI.value.trim() };
+    if(!c.n){ toast('Needs a name'); nameI.focus(); return; }
+    saveB.disabled=true;
+    saveNewContact(c).then(()=>{ toast('✅ Added '+c.n); bd.remove(); onSaved&&onSaved(c); });
+  };
+  cancelB.onclick=()=>bd.remove();
+  bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
+  setTimeout(()=>ta.focus(),40);
+}
 function openContacts(prefill){
   const bd=document.createElement('div'); bd.className='backdrop';
   const box=document.createElement('div'); box.className='modal contacts-modal';
   box.innerHTML='<h3>👤 Contacts</h3>';
   const bar=document.createElement('div'); bar.style.cssText='display:flex;gap:6px;margin:6px 0 4px';
   const inp=document.createElement('input'); inp.className='inp'; inp.type='search'; inp.placeholder='Search name, number, or company…'; inp.value=prefill||''; inp.style.flex='1';
-  bar.appendChild(inp); box.appendChild(bar);
+  bar.appendChild(inp);
+  const addBtn=document.createElement('button'); addBtn.className='num-act'; addBtn.textContent='➕'; addBtn.title='Add a contact (paste a signature)'; addBtn.style.flex='0 0 auto';
+  addBtn.onclick=()=>openAddContact(c=>{ inp.value=c.n; draw(); });
+  bar.appendChild(addBtn); box.appendChild(bar);
   const results=document.createElement('div'); results.className='contacts-results'; box.appendChild(results);
   const draw=()=>{
     const q=inp.value.trim();
     results.innerHTML='';
-    if(!contacts.length){ results.innerHTML='<div class="empty">No contacts loaded yet — they sync from your Mac automatically. Open ⚙︎ and check your Airtable key if this stays empty.</div>'; return; }
-    if(!q){ results.innerHTML='<div class="empty">'+contacts.length+' contacts loaded. Start typing to search.</div>'; return; }
+    if(!contacts.length&&!added.length){ results.innerHTML='<div class="empty">No contacts loaded yet — they sync from your Mac automatically. Open ⚙︎ and check your Airtable key if this stays empty.</div>'; return; }
+    if(!q){ results.innerHTML='<div class="empty">'+(contacts.length+added.length)+' contacts loaded. Start typing to search, or tap ➕ to add one.</div>'; return; }
     const hits=searchContacts(q);
     if(!hits.length){ results.innerHTML='<div class="empty">No matches.</div>'; return; }
     hits.forEach(c=>{
@@ -1213,7 +1309,7 @@ function openContacts(prefill){
   inp.addEventListener('input',draw);
   const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
   bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
-  loadContacts().then(draw); draw();
+  loadContacts().then(draw); loadAdded().then(draw); draw();
   setTimeout(()=>inp.focus(),40);
 }
 
