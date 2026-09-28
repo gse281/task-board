@@ -362,9 +362,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-20 12:10';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-28 15:44';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-09-28 · call order', d:'🌅/☀️ Morning & Afternoon call lists now always sort newest-first — oldest task sits at the bottom — on the main panel, the tap-in "see all" view, and desktop.'},
   {v:'2026-09-20 · add a contact', d:'👤 Contacts panel has a ➕ button: paste someone’s email signature, tap Parse, and it pulls out name / company / phone(s) / email into editable fields — save and it’s searchable everywhere (stored in a new ContactsAdded table, so the nightly Mac sync never wipes it).'},
   {v:'2026-09-18 · contacts sync', d:'👤 Contacts now syncs through Airtable (works on iPhone + Mac automatically — no more manual file import). A daily job pushes your Mac/iCloud address book (~4,800 contacts) into a ContactsData table; the app reads it, cached locally and refreshed every 12h.'},
   {v:'2026-09-18 · tap-to-jump', d:'iPhone: tapping a project/sub (in the 🔍 find bubbles or the P/S/L picker) now smoothly scrolls the view to the filtered results panel, instead of leaving you stuck up in the drawer.'},
@@ -1082,6 +1083,7 @@ function render(){
     else { const cc=(meta.customCats||[]).find(c=>c.id===id); const b=BUCKETS.find(x=>x.id===id)||cc; if(!b)return;
       let items = openVisible.filter(t=>sectionOf(t)===b.id);
       if(b.id==='incoming') items=items.filter(t=>daysOpen(t)===0);   // Incoming = today only
+      if(b.id==='morning'||b.id==='afternoon') items=items.slice().sort((x,y)=>new Date(y.createdTime||0)-new Date(x.createdTime||0));   // newest first, oldest at the bottom
       board.appendChild(panelEl(b.id,b.name,items,true)); }
     // Opened bulb (project/lead/sub) sits right after Incoming so you can drag between them
     if(id==='incoming' && activeBulb) board.appendChild(bulbPanel());
@@ -1327,6 +1329,8 @@ function bulbPanel(){
   // review views deliberately show EVERYTHING, snoozed included
   const showAll = isCat && ['allopen','backlog','uncat','stillopen'].includes(val);
   if(!showAll) items=items.filter(notSnoozed);
+  // Morning/Afternoon call lists default to newest-first (oldest at the bottom), matching the on-screen panels.
+  if(isCat && (val==='morning'||val==='afternoon') && !bulbSort) items=items.slice().sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
   if(bulbSort) items=sortItems(items,bulbSort);
   const title = isAdded ? ('🗓 Added: '+label) : isCat ? label : '🔎 '+val;
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='bulb';
