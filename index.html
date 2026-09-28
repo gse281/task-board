@@ -362,7 +362,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-28 15:44';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-28 16:02';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-09-28 · call order', d:'🌅/☀️ Morning & Afternoon call lists now always sort newest-first — oldest task sits at the bottom — on the main panel, the tap-in "see all" view, and desktop.'},
@@ -1471,8 +1471,7 @@ function mobileEmails(){
 function respondCard(r){
   const d=document.createElement('div'); d.className='resp-item';
   d.innerHTML='<div class="txt-from">'+esc(r.from||r.fromEmail)+(r.received?' <span class="txt-when">'+esc(r.received)+'</span>':'')+'</div>'+
-    '<div class="txt-prev"><b>'+esc(r.subject)+'</b>'+(r.preview?' — '+esc(r.preview):'')+'</div>'+
-    (r.nextStep?'<div class="resp-next">→ '+esc(r.nextStep)+'</div>':'');
+    '<div class="txt-prev"><b>'+esc(r.subject)+'</b>'+(r.preview?' — '+esc(r.preview):'')+'</div>';
   const ta=document.createElement('textarea'); ta.className='resp-draft'; ta.value=r.draft||''; ta.placeholder='Draft reply…'; d.appendChild(ta);
   const row=document.createElement('div'); row.className='row';
   const ap=document.createElement('button'); ap.className='mini on'; ap.textContent='✅ Approve & send'; ap.title='Send this reply in-thread'; ap.onclick=()=>{ const v=ta.value.trim(); if(!v){toast('Draft is empty');return;} respondApprove(r,v); }; row.appendChild(ap);
