@@ -362,9 +362,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-28 16:24';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-28 17:19';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-09-28 · desktop tidy', d:'Desktop: removed the 🗑 Triage panel. The P/S/L/Category/Added filters now stay hidden until you tap the 🔍 Find bar (like the iPhone) — cleaner top. And clicking a filter opens its results as a FULL-height column instead of a half cell.'},
   {v:'2026-09-28 · focus resets', d:'🎯 Now/Focus now clears every morning — start each day with a clean focus list. Anything left in it at the day’s turnover is pushed to the top of 🔥 Priority (not lost). 📌 Pinned focus items stay put. Also: the ⧉ floated-out window got an add bubble so you can add tasks straight into that section.'},
   {v:'2026-09-28 · call order', d:'🌅/☀️ Morning & Afternoon call lists now always sort newest-first — oldest task sits at the bottom — on the main panel, the tap-in "see all" view, and desktop.'},
   {v:'2026-09-20 · add a contact', d:'👤 Contacts panel has a ➕ button: paste someone’s email signature, tap Parse, and it pulls out name / company / phone(s) / email into editable fields — save and it’s searchable everywhere (stored in a new ContactsAdded table, so the nightly Mac sync never wipes it).'},
@@ -1010,7 +1011,7 @@ const expanded = new Set();   // ephemeral: which capped sections are showing al
 function orderedPanels(){
   const custom=((meta.customCats||[]).map(c=>c.id));
   // to-send / from-outside / improvements are now folded INTO the Triage pane.
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'triage','priority','spotlight','stillopen','scratch',...STUBS.map(s=>s.id)];
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','scratch',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
   return ord.filter(id=>def.includes(id) && id!=='backlog');   // backlog hidden
@@ -1091,7 +1092,6 @@ function render(){
     else if(id==='emails') board.appendChild(emailsPanel());
     else if(id==='respond') board.appendChild(respondPanel());
     else if(id==='tosend') board.appendChild(outboxPanel());
-    else if(id==='triage') board.appendChild(triagePanel());
     else if(id==='scratch') board.appendChild(scratchPanel());
     else if(stub) board.appendChild(stubPanel(stub));
     else { const cc=(meta.customCats||[]).find(c=>c.id===id); const b=BUCKETS.find(x=>x.id===id)||cc; if(!b)return;
@@ -1870,24 +1870,42 @@ function gridDims(nPanels){
 function slotXY(s,d){ const c=s%GRID_COLS, r=Math.floor(s/GRID_COLS); return {x:d.GAP+c*(d.cw+d.GAP), y:d.GAP+r*(d.ch+d.GAP)}; }
 function firstFreeSlot(total){ const used=new Set(Object.values(meta.slots).filter(v=>v!=null)); let f=0; while(used.has(f)&&f<total)f++; return f; }
 // Lay out every panel into its grid cell (assigning free cells to newcomers).
+// An opened result (the "bulb" from clicking a P/S/L/Category) takes a WHOLE column at
+// full page height instead of a single half-height cell.
 function layoutGrid(board){
   meta.slots=meta.slots||{};
-  const panels=[...board.children].filter(p=>p.classList.contains('panel'));
-  const d=gridDims(panels.length);
-  const total=GRID_COLS*d.rows;
-  // sanitize: drop dupes/out-of-range slots, then hand free cells to newcomers in order
-  const used=new Set();
+  const allPanels=[...board.children].filter(p=>p.classList.contains('panel'));
+  const bulb=allPanels.find(p=>p.dataset.section==='bulb');
+  const panels=allPanels.filter(p=>p!==bulb);
+  // Rows: enough for the ordinary panels; when a full-height result column is reserved,
+  // make sure the remaining (GRID_COLS-1) columns still fit everything.
+  let rows=Math.max(GRID_ROWS, Math.ceil((panels.length||GRID_COLS*GRID_ROWS)/GRID_COLS));
+  if(bulb){ while((GRID_COLS-1)*rows < panels.length && rows<8) rows++; }
+  const GAP=8, W=board.clientWidth,
+        H=Math.max(300, window.innerHeight - board.getBoundingClientRect().top - 12),
+        cw=Math.floor((W-GAP*(GRID_COLS+1))/GRID_COLS), ch=Math.floor((H-GAP*(rows+1))/rows);
+  const d={GAP,rows,cw,ch}; const total=GRID_COLS*rows;
+  // Reserve the bulb's column (keep whichever column it already sits in) for its full height.
+  let bcol=-1; const reserved=new Set();
+  if(bulb){ const s=meta.slots['bulb']; bcol=(s!=null)?(s%GRID_COLS):0; for(let r=0;r<rows;r++) reserved.add(r*GRID_COLS+bcol); }
+  const used=new Set(reserved);
   panels.forEach(p=>{ const id=p.dataset.section; let s=meta.slots[id];
     if(s==null||s<0||s>=total||used.has(s)) s=null;
     if(s!=null)used.add(s); meta.slots[id]=s; });
-  panels.forEach(p=>{ const id=p.dataset.section; if(meta.slots[id]==null){ const f=firstFreeSlot(total); meta.slots[id]=f; used.add(f); } });
+  panels.forEach(p=>{ const id=p.dataset.section; if(meta.slots[id]==null){ let f=0; while(used.has(f)&&f<total)f++; meta.slots[id]=(f<total?f:0); used.add(meta.slots[id]); } });
   panels.forEach(p=>{ const id=p.dataset.section; const {x,y}=slotXY(meta.slots[id],d);
     p.style.position='absolute'; p.style.left=x+'px'; p.style.top=y+'px';
     p.style.width=d.cw+'px'; p.style.height=p.classList.contains('micro')?'40px':d.ch+'px';
     const b=p.querySelector('.panel-body'); if(b){ b.style.maxHeight='none'; b.style.overflowY='auto'; }
     const head=p.querySelector('.panel-head'); if(head){ const dh=head.querySelector('.drag-handle'); if(dh)dh.draggable=false; enableGridDrag(p,head,id); }
   });
-  board.style.height=(d.GAP+d.rows*(d.ch+d.GAP))+'px';
+  if(bulb){ meta.slots['bulb']=bcol; const {x,y}=slotXY(bcol,d); const fullH=rows*d.ch+(rows-1)*d.GAP;
+    bulb.style.position='absolute'; bulb.style.left=x+'px'; bulb.style.top=y+'px';
+    bulb.style.width=d.cw+'px'; bulb.style.height=fullH+'px'; bulb.style.zIndex='4';
+    const b=bulb.querySelector('.panel-body'); if(b){ b.style.maxHeight='none'; b.style.overflowY='auto'; }
+    const head=bulb.querySelector('.panel-head'); if(head){ const dh=head.querySelector('.drag-handle'); if(dh)dh.draggable=false; enableGridDrag(bulb,head,'bulb'); }
+  }
+  board.style.height=(d.GAP+rows*(d.ch+d.GAP))+'px';
   saveMeta();
 }
 function enableGridDrag(p,head,id){
@@ -2220,49 +2238,6 @@ function spotlightPanel(){
   const h=p.querySelector('.panel-head h3');
   if(h){ h.style.cursor='pointer'; h.title='Roll a different project (auto-rotates every 15 min)';
     h.onclick=e=>{e.stopPropagation(); rollSpotlight(true); render(); toast('🎲 '+(spotlightProj||'—')); }; }
-  return p;
-}
-// One box, three drop zones — Done / Don't care / Auto-sort share a single grid cell.
-function triageDo(zone,d){
-  const t=tasks.find(x=>x.id===d); if(!t)return;
-  if(zone==='done'){ markDone(t); return; }
-  if(zone==='dontcare'){ const pv=A(d).snoozeUntil;
-    pushUndo('snooze month: '+cleanName(t),async()=>{ A(d).snoozeUntil=pv; });
-    A(d).snoozeUntil=Date.now()+30*86400000; touch(d); saveAug(); toast('🚫 Snoozed a month'); render(); return; }
-  if(zone==='autosort'){ const g=guessCategory(t);
-    if(g.project){t.project=g.project;atPatch(t.id,{Project:g.project});}
-    if(g.lead){t.lead=g.lead;atPatch(t.id,{SBLead:g.lead});}
-    A(d).section='backlog'; touch(d); saveAug();
-    toast((g.project||g.lead)?('Sorted → '+[g.project,g.lead].filter(Boolean).join(' / ')):'No confident guess'); render(); }
-}
-function triagePanel(){
-  const p=document.createElement('div'); p.className='panel'; p.dataset.section='triage';
-  const head=document.createElement('div'); head.className='panel-head';
-  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>🗑 Triage</h3>';
-  p.appendChild(head); wirePanel(p,head,'triage');
-  const body=document.createElement('div'); body.className='panel-body triage-body';
-  [['done','✅ Done','drop to complete'],['dontcare','🚫 Don\'t care','drop to snooze a month'],['autosort','🔮 Auto-sort','drop to guess P/L']].forEach(([zone,label,hint])=>{
-    const z=document.createElement('div'); z.className='tzone'; z.innerHTML='<div class="tz-l">'+label+'</div><div class="tz-h">'+hint+'</div>';
-    z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('tz-hot');});
-    z.addEventListener('dragleave',()=>z.classList.remove('tz-hot'));
-    z.addEventListener('drop',e=>{e.preventDefault();e.stopPropagation();z.classList.remove('tz-hot');
-      const d=e.dataTransfer.getData('text/plain'); if(!d||d==='chip'||d.startsWith('panel:'))return; triageDo(zone,d); });
-    body.appendChild(z);
-  });
-  // Folded-in sub-sections: To send, From outside, Improvements — each a collapsible
-  // block reusing its existing panel's body (so all the logic/buttons carry over).
-  const sub=(title,srcPanel,openDefault)=>{
-    const det=document.createElement('details'); det.className='trisub'; if(openDefault)det.open=true;
-    const sm=document.createElement('summary'); const cnt=srcPanel.querySelector('.count');
-    sm.textContent=title+(cnt?(' ('+cnt.textContent+')'):'' ); det.appendChild(sm);
-    const b=srcPanel.querySelector('.panel-body'); if(b) det.appendChild(b); body.appendChild(det);
-  };
-  const openV=tasks.filter(t=>t.status==='Open'&&visible(t)&&notSnoozed(t));
-  sub('📤 To send', outboxPanel());
-  sub('📡 From outside', panelEl('external','📡 From outside', openV.filter(t=>t.sourceRemote), false));
-  sub('💡 Improvements', ideasPanel(), false);
-  p.appendChild(body);
-  p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'triage');});
   return p;
 }
 // A quick scratchpad pane — jot anything; autosaves to this browser.
@@ -2635,10 +2610,15 @@ function reorderChip(dim,from,to){
 }
 function renderFilters(){
   const wrap=document.getElementById('filters'); wrap.innerHTML='';
+  // Bubbles stay hidden until you tap the 🔍 find bar (like the iPhone) — declutters the top.
+  const groups=document.createElement('div'); groups.className='filter-collapse';
+  groups.style.cssText='display:'+(psFind?'flex':'none')+';flex-direction:column;gap:6px';
   // Live find bar — type to light up matching Project/Sub/Lead chips.
   { const fr=document.createElement('div'); fr.className='filter-group';
     const fi=document.createElement('input'); fi.className='findbar'; fi.type='search'; fi.placeholder='🔍 Find project / lead / sub…'; fi.value=psFind; fi.style.maxWidth='320px';
     fi.addEventListener('input',()=>{ psFind=fi.value; applyFindHighlight(psFind); });
+    fi.addEventListener('focus',()=>{ groups.style.display='flex'; });
+    fi.addEventListener('blur',()=>setTimeout(()=>{ if(document.activeElement!==fi && !groups.contains(document.activeElement)) groups.style.display='none'; },170));
     fr.appendChild(fi); wrap.appendChild(fr); }
   ['project','sub','lead'].forEach(dim=>{                 // each dimension on its own line (Sub before Lead)
     const g=document.createElement('div'); g.className='filter-group';
@@ -2648,7 +2628,7 @@ function renderFilters(){
     const addc=document.createElement('button'); addc.className='chip'; addc.textContent='＋'; addc.title='New '+dim;
     addc.onclick=()=>{ const v=prompt('New '+dim+' name:'); if(v&&v.trim()){ activeBulb={dim,val:v.trim(),label:v.trim()}; flashBulb=true; render(); } };
     g.appendChild(addc);
-    wrap.appendChild(g);
+    groups.appendChild(g);
   });
   // 4th line: categories (Big Ticket, Calls, etc.) — not project/lead/sub
   const cg=document.createElement('div'); cg.className='filter-group';
@@ -2672,7 +2652,7 @@ function renderFilters(){
     cg.appendChild(b);
   });
   const addcat=document.createElement('button'); addcat.className='chip'; addcat.textContent='＋ category'; addcat.title='Add a category'; addcat.onclick=addCategory; cg.appendChild(addcat);
-  wrap.appendChild(cg);
+  groups.appendChild(cg);
   // 5th line: tasks by date added
   const ag=document.createElement('div'); ag.className='filter-group';
   const albl=document.createElement('span'); albl.className='lbl'; albl.textContent='added'; ag.appendChild(albl);
@@ -2682,7 +2662,8 @@ function renderFilters(){
     b.onclick=()=>{ activeBulb={dim:'added',val:r.key,label:r.name}; flashBulb=true; render(); };
     ag.appendChild(b);
   });
-  wrap.appendChild(ag);
+  groups.appendChild(ag);
+  wrap.appendChild(groups);
 }
 // Live find over the P/S/L bubbles: type → matches light up, the rest dim. Purely visual,
 // no re-render, so the input keeps focus while you type. Tapping a lit bubble still selects it.
