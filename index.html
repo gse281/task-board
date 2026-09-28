@@ -310,6 +310,10 @@ a.tellink{color:var(--green);text-decoration:none}
 /* 14-day weather strip — one compact scrollable row under the header */
 .wxstrip{display:flex;gap:4px;overflow-x:auto;padding:4px 12px;border-bottom:1px solid var(--line);scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .wxstrip::-webkit-scrollbar{display:none}
+/* Weather now lives IN the top bar, in the slot search used to hold; search moves to the right. */
+.ctrlrow>#wx{flex:1;min-width:0;border-bottom:0;padding:4px 6px;align-self:center}
+.ctrlrow>#search{flex:0 0 210px;min-width:130px}
+@media(max-width:640px){ .ctrlrow>#search{flex:1 1 auto;min-width:0} .ctrlrow>#wx{flex:1 1 100%;order:20} }
 .wxd{flex:0 0 auto;min-width:46px;text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:2px 4px;line-height:1.2}
 .wxd .wxday{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.3px}
 .wxd .wxic{font-size:14px;white-space:nowrap}
@@ -335,7 +339,7 @@ a.tellink{color:var(--green);text-decoration:none}
   <span class="build" id="taskCount" title="Total open tasks"></span>
   <!-- ctrlrow: transparent on desktop (display:contents); on phone it collapses to ONE row -->
   <div class="ctrlrow">
-    <input class="search" id="search" placeholder="Search tasks…">
+    <div class="wxstrip" id="wx"></div>
     <button class="tb-btn" id="bulkBtn" title="Bulk add — paste a list">📋 Bulk</button>
     <button class="tb-btn" id="meetBtn" title="Today's meetings">📅 Meetings</button>
     <button class="tb-btn" id="gridBtn" title="Toggle reference grid">▦ Grid</button>
@@ -343,11 +347,10 @@ a.tellink{color:var(--green);text-decoration:none}
     <button class="tb-btn" id="undoBtn" title="Undo last action (⌘Z)">↩ Undo</button>
     <button class="tb-btn" id="contactsBtn" title="Contacts search">👤</button>
     <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
+    <input class="search" id="search" placeholder="Search tasks…">
     <button class="tb-btn" id="settingsBtn">⚙︎</button>
   </div>
 </div>
-
-<div class="wxstrip" id="wx"></div>
 
 <div class="filters" id="filters"></div>
 
@@ -362,7 +365,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-28 17:19';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-28 17:22';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-09-28 · desktop tidy', d:'Desktop: removed the 🗑 Triage panel. The P/S/L/Category/Added filters now stay hidden until you tap the 🔍 Find bar (like the iPhone) — cleaner top. And clicking a filter opens its results as a FULL-height column instead of a half cell.'},
