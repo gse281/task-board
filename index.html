@@ -362,9 +362,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-28 16:21';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-28 16:24';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-09-28 · focus resets', d:'🎯 Now/Focus now clears every morning — start each day with a clean focus list. Anything left in it at the day’s turnover is pushed to the top of 🔥 Priority (not lost). 📌 Pinned focus items stay put. Also: the ⧉ floated-out window got an add bubble so you can add tasks straight into that section.'},
   {v:'2026-09-28 · call order', d:'🌅/☀️ Morning & Afternoon call lists now always sort newest-first — oldest task sits at the bottom — on the main panel, the tap-in "see all" view, and desktop.'},
   {v:'2026-09-20 · add a contact', d:'👤 Contacts panel has a ➕ button: paste someone’s email signature, tap Parse, and it pulls out name / company / phone(s) / email into editable fields — save and it’s searchable everywhere (stored in a new ContactsAdded table, so the nightly Mac sync never wipes it).'},
   {v:'2026-09-18 · contacts sync', d:'👤 Contacts now syncs through Airtable (works on iPhone + Mac automatically — no more manual file import). A daily job pushes your Mac/iCloud address book (~4,800 contacts) into a ContactsData table; the app reads it, cached locally and refreshed every 12h.'},
@@ -874,11 +875,24 @@ function dailyReset(){
   const today=todayISO();
   if(meta.lastReset===today) return;
   // These sections persist across the daily reset: priorities, Sunday, and any custom category.
-  const keep=new Set(['bigticket','nextup','focus','sunday',...((meta.customCats||[]).map(c=>c.id))]);
+  // Now/Focus is deliberately NOT kept — it blanks every morning (see below).
+  const keep=new Set(['bigticket','nextup','sunday',...((meta.customCats||[]).map(c=>c.id))]);
   if(meta.lastReset){ // log the day that just ended
     const snap=Object.keys(aug).filter(id=>aug[id].section).map(id=>({id,section:aug[id].section}));
     meta.resetLog=meta.resetLog||{}; meta.resetLog[meta.lastReset]=snap;
     const ks=Object.keys(meta.resetLog).sort(); while(ks.length>14) delete meta.resetLog[ks.shift()];
+  }
+  // 🎯 Now/Focus empties every morning; whatever was left in it is shifted to the top of 🔥 Priority so it isn't lost.
+  { const focusIds=new Set();
+    for(const id of Object.keys(aug)){ if(aug[id].section==='focus') focusIds.add(id); }
+    for(const t of tasks){ if(t.sectionRemote==='focus') focusIds.add(t.id); }
+    for(const id of focusIds){ if(aug[id]&&aug[id].pin) continue;   // 📌 pinned focus stays put
+      const t=tasks.find(x=>x.id===id); const a=A(id);
+      a.priAdj=Math.max(a.priAdj||0,500);                 // jump to the top of Priority (stays until done/demoted)
+      if(t) t.priorityRemote=Math.max(t.priorityRemote||0,900);
+      a.section=null; if(t) t.sectionRemote='';
+      if(cfg.apiKey) atPatch(id,{Section:'',Priority:900});
+    }
   }
   // 📌 pinned tasks stay wherever you put them until done
   for(const id of Object.keys(aug)){ const s=aug[id].section; if(s && !keep.has(s) && !aug[id].pin){ aug[id].section=null; if(cfg.apiKey)atPatch(id,{Section:''}); } }
