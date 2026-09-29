@@ -365,7 +365,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-28 17:22';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-29 15:06';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-09-28 · desktop tidy', d:'Desktop: removed the 🗑 Triage panel. The P/S/L/Category/Added filters now stay hidden until you tap the 🔍 Find bar (like the iPhone) — cleaner top. And clicking a filter opens its results as a FULL-height column instead of a half cell.'},
@@ -3228,6 +3228,17 @@ if(cfg.apiKey){
   atFetch();
 }
 else { tasks=demoTasks(); render(); toast('⚠️ DEMO data — paste your Airtable key to load your real tasks'); openSettings(); }
+</script>
+<script>
+/* iPhone only: small pill linking to the native-style phone app at ./m/ (desktop never sees it; ✕ hides it for good). */
+(function(){ try{
+  if(innerWidth>640 || localStorage.getItem('tb.mPill')==='off') return;
+  const p=document.createElement('div');
+  p.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));z-index:9999;display:flex;align-items:center;gap:4px;background:#e8683c;color:#1a0e07;border-radius:22px;font-weight:700;font-size:15px;box-shadow:0 8px 24px rgba(0,0,0,.4)';
+  p.innerHTML='<a href="m/" style="color:inherit;text-decoration:none;padding:10px 4px 10px 16px">📱 Open iPhone app</a><button style="border:0;background:none;color:inherit;font-size:16px;padding:10px 14px 10px 8px">✕</button>';
+  p.querySelector('button').onclick=()=>{ localStorage.setItem('tb.mPill','off'); p.remove(); };
+  document.body.appendChild(p);
+}catch(e){} })();
 </script>
 </body>
 </html>

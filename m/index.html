@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Tasks</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Tasks">
+<meta name="theme-color" content="#14110f">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+/* ============================================================
+   Tasks — iPhone app for the Task Board (same Airtable data).
+   Lives at /task-board/m/ ; the desktop dashboard is untouched.
+   ============================================================ */
+:root{
+  --bg:#14110f; --panel:#1d1916; --panel2:#262019; --ink:#f5f3ee; --muted:#a8a29a; --dim:#6f6861;
+  --line:#2c2723; --accent:#e8683c; --gold:#e0a458; --green:#3a8f5f; --red:#c2553f; --blue:#5b8fb0;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+  --ease:cubic-bezier(.2,.8,.2,1);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+::-webkit-scrollbar{display:none} *{scrollbar-width:none}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;
+  font:17px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-user-select:none;user-select:none;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-select:text}
+.hidden{display:none!important}
+
+/* ---------- screens (iOS push navigation) ---------- */
+#stack{position:fixed;inset:0;overflow:hidden}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg);
+  transition:transform .34s var(--ease), opacity .34s var(--ease);will-change:transform}
+.screen.enter{transform:translateX(100%)}
+.screen.under{transform:translateX(-28%);opacity:.5}
+.screen.leave{transform:translateX(100%)}
+.scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 16px calc(28px + var(--sab))}
+
+/* nav bar */
+.nav{padding:calc(var(--sat) + 6px) 8px 6px;display:flex;align-items:center;min-height:calc(var(--sat) + 50px);gap:4px;flex:none}
+.nav .back{display:flex;align-items:center;gap:2px;color:var(--accent);font-size:17px;padding:8px 8px;min-height:44px}
+.nav .back svg{width:13px;height:21px}
+.nav .ttl{flex:1;text-align:center;font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
+.nav .icon{min-width:44px;height:44px;display:grid;place-items:center;color:var(--accent);font-size:22px;border-radius:12px}
+.nav .icon:active{background:var(--panel)}
+.big{font-size:34px;font-weight:800;letter-spacing:-.5px;margin:2px 4px 2px}
+.sub{color:var(--muted);font-size:15px;margin:0 4px 16px}
+
+/* ---------- home ---------- */
+.calls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:26px}
+.call{position:relative;border-radius:22px;padding:16px 16px 14px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;
+  text-align:left;overflow:hidden;transition:transform .12s}
+.call:active{transform:scale(.97)}
+.call.am{background:linear-gradient(150deg,#f0a35c 0%,#e8683c 55%,#b8452a 100%);color:#1a0e07}
+.call.pm{background:linear-gradient(150deg,#f3d27a 0%,#e0a458 55%,#a8742f 100%);color:#1a1207}
+.call .em{font-size:30px;line-height:1}
+.call .lbl{font-weight:800;font-size:19px;letter-spacing:-.2px}
+.call .n{font-size:44px;font-weight:800;line-height:1;letter-spacing:-1px}
+.call .hint{font-size:13px;font-weight:600;opacity:.72}
+.call.now::after{content:'NOW';position:absolute;top:14px;right:14px;font-size:11px;font-weight:800;letter-spacing:.8px;
+  background:rgba(0,0,0,.78);color:#fff;border-radius:8px;padding:3px 7px}
+.sect{color:var(--muted);font-size:13px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;margin:0 4px 10px}
+.views{display:flex;flex-direction:column;gap:12px;margin-bottom:26px}
+.view{display:flex;align-items:center;gap:16px;background:var(--panel);border:1px solid var(--line);border-radius:20px;
+  padding:18px 18px;min-height:84px;text-align:left;transition:transform .12s, background .12s}
+.view:active{transform:scale(.98);background:var(--panel2)}
+.view .vi{width:52px;height:52px;border-radius:15px;display:grid;place-items:center;font-size:27px;flex:none}
+.view .vt{flex:1;min-width:0}
+.view .vn{font-size:21px;font-weight:700;letter-spacing:-.2px}
+.view .vs{color:var(--muted);font-size:14px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chev{color:var(--dim);font-size:22px;flex:none}
+.minirow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mini{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 14px;text-align:left;min-height:64px}
+.mini:active{background:var(--panel2)}
+.mini b{display:block;font-size:22px}
+.mini span{color:var(--muted);font-size:13px}
+.foot{color:var(--dim);font-size:12px;text-align:center;margin-top:24px}
+.foot a{color:var(--muted)}
+
+/* ---------- group list ---------- */
+.searchbox{position:sticky;top:0;z-index:2;background:var(--bg);padding:2px 0 10px}
+.search{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 14px;font-size:17px;outline:none}
+.search::placeholder{color:var(--dim)}
+.glist{background:var(--panel);border-radius:16px;overflow:hidden;border:1px solid var(--line)}
+.grow{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:58px;width:100%;text-align:left;border-bottom:1px solid var(--line)}
+.grow:last-child{border-bottom:0}
+.grow:active{background:var(--panel2)}
+.grow .gn{flex:1;font-size:18px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grow .gn.none{color:var(--muted);font-weight:500;font-style:italic}
+.grow .gc{min-width:34px;text-align:center;font-weight:700;font-size:15px;background:var(--panel2);border-radius:10px;padding:4px 9px;color:var(--gold)}
+.grow .gc.hot{background:var(--accent);color:#1a0e07}
+
+/* ---------- deck (one task at a time) ---------- */
+.deckwrap{flex:1;position:relative;padding:4px 16px 0;display:flex;flex-direction:column;min-height:0}
+.progress{display:flex;align-items:center;gap:10px;margin:0 4px 12px;color:var(--muted);font-size:14px;font-weight:600}
+.bar{flex:1;height:5px;background:var(--panel2);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .3s var(--ease)}
+.cardzone{flex:1;position:relative;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+.tcard{position:relative;min-height:min(46vh,380px);max-height:100%;background:#fbfaf7;color:#1b1714;border-radius:26px;padding:22px 22px 18px;
+  display:flex;flex-direction:column;box-shadow:0 18px 50px rgba(0,0,0,.45);touch-action:none;will-change:transform}
+.tcard.back{transform:scale(.94) translateY(14px);opacity:.55;filter:brightness(.8)}
+.tcard .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.chip{font-size:13px;font-weight:700;border-radius:9px;padding:5px 10px;background:#efe9df;color:#5d5146;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.chip.p{background:#1b1714;color:#fbfaf7}
+.chip.slot{background:#fde3d4;color:#9c3d17}
+.chip.old{background:#f6d9d2;color:#9b3b28}
+.tcard .tname{font-size:29px;line-height:1.16;font-weight:800;letter-spacing:-.5px;word-break:break-word}
+.tcard .meta{color:#7b7067;font-size:14px;margin-top:10px}
+.tcard .bodyx{flex:1;overflow:auto;margin-top:14px;min-height:0}
+.upnext{margin:18px 4px 0}
+.upnext .h{color:var(--muted);font-size:13px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;margin:0 2px 8px}
+.upnext button{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:12px 14px;min-height:52px;background:var(--panel);border:1px solid var(--line);border-radius:14px;margin-bottom:8px}
+.upnext button:active{background:var(--panel2)}
+.upnext .un{flex:1;min-width:0;font-weight:600;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.upnext .ud{color:var(--dim);font-size:13px;flex:none}
+.tcard .ns{background:#f3eee6;border-radius:14px;padding:12px 14px;font-size:16px;line-height:1.4;margin-bottom:10px}
+.tcard .ns b{display:block;font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:#9a8e83;margin-bottom:3px}
+.tcard .quick{display:flex;gap:8px;margin-top:12px}
+.qbtn{flex:1;white-space:nowrap;padding:0 6px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:14px;min-height:50px;font-weight:700;font-size:16px;background:#efe9df;color:#3b322b;text-decoration:none}
+.qbtn:active{filter:brightness(.92)}
+.qbtn.call{background:#2f7a52;color:#fff}
+.stamp{position:absolute;top:26px;font-size:24px;font-weight:900;letter-spacing:1px;padding:6px 14px;border-radius:12px;border:4px solid;opacity:0;pointer-events:none;transform:rotate(-12deg)}
+.stamp.done{left:22px;color:var(--green);border-color:var(--green)}
+.stamp.snz{right:22px;color:#b07a1c;border-color:#b07a1c;transform:rotate(12deg)}
+.stamp.skip{left:50%;top:auto;bottom:90px;transform:translateX(-50%);color:#5b8fb0;border-color:#5b8fb0}
+.actions{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:10px;padding:14px 16px calc(12px + var(--sab));flex:none}
+.act{min-height:64px;border-radius:20px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-weight:700;font-size:14px;transition:transform .1s}
+.act:active{transform:scale(.95)}
+.act .ai{font-size:24px;line-height:1}
+.act.snz{background:var(--panel2);color:var(--gold)}
+.act.nxt{background:var(--panel2);color:#9cc3dc}
+.act.dn{background:var(--green);color:#fff;font-size:16px}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;color:var(--muted);padding:30px}
+.empty .big2{font-size:64px}
+.empty h2{margin:0;color:var(--ink);font-size:26px}
+.pill{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 22px;font-weight:700;color:var(--ink);min-height:50px}
+.pill.acc{background:var(--accent);border-color:var(--accent);color:#1a0e07}
+
+/* agenda (list) view inside a deck */
+.agenda .row{display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:60px;border-bottom:1px solid var(--line);width:100%;text-align:left}
+.agenda .row:last-child{border-bottom:0}
+.agenda .row:active{background:var(--panel2)}
+.agenda .num{width:26px;height:26px;border-radius:13px;background:var(--panel2);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--muted);flex:none}
+.agenda .rt{flex:1;min-width:0}
+.agenda .rn{font-weight:600;font-size:16px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.agenda .rm{color:var(--muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.agenda .ck{width:44px;height:44px;border-radius:22px;border:2px solid var(--dim);flex:none;display:grid;place-items:center;color:transparent;font-size:20px}
+.agenda .ck:active{border-color:var(--green);background:var(--green);color:#fff}
+
+/* ---------- review board: one project, all subs ---------- */
+.review{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border-radius:22px;padding:16px 18px;min-height:86px;margin-bottom:26px;
+  background:linear-gradient(135deg,#2a2320,#1d1916);border:1px solid #3a2f28;position:relative;overflow:hidden;transition:transform .12s}
+.review:active{transform:scale(.98)}
+.review .ri{width:52px;height:52px;border-radius:16px;background:var(--accent);display:grid;place-items:center;font-size:26px;color:#1a0e07;flex:none}
+.review .rn{font-size:21px;font-weight:800;letter-spacing:-.2px}
+.review .rs{color:var(--muted);font-size:14px;margin-top:2px}
+.ring{position:relative;width:44px;height:44px;flex:none}
+.ring svg{transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:14px;font-weight:800;color:var(--ink)}
+.chips2{display:flex;gap:8px;overflow-x:auto;padding:0 16px 10px;flex:none;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
+.pchip{flex:none;display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-weight:700;font-size:14px;white-space:nowrap;scroll-snap-align:center;transition:all .2s}
+.pchip i{font-style:normal;color:var(--gold);font-size:12px}
+.pchip.on{background:var(--accent);border-color:var(--accent);color:#1a0e07}
+.pchip.on i{color:#1a0e07}
+.pchip.clear{opacity:.45;text-decoration:line-through}
+.bhead{padding:4px 20px 12px;flex:none}
+.bhead .bt{font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bhead .bs{color:var(--muted);font-size:14px;margin-top:4px;display:flex;gap:10px;flex-wrap:wrap}
+.bhead .bs span b{color:var(--ink)}
+.bscroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 12px 18px}
+.bpage{animation:none}
+.bpage.inL{animation:inL .28s var(--ease)} .bpage.inR{animation:inR .28s var(--ease)}
+@keyframes inL{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes inR{from{transform:translateX(-40px);opacity:0}to{transform:none;opacity:1}}
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:18px;margin-bottom:10px;overflow:hidden}
+.sech{display:flex;align-items:center;gap:10px;width:100%;padding:0 14px;min-height:52px;text-align:left}
+.sech:active{background:var(--panel2)}
+.sech .cv{color:var(--dim);font-size:13px;transition:transform .22s var(--ease);width:14px}
+.sec.shut .sech .cv{transform:rotate(-90deg)}
+.sech .sn{flex:1;font-weight:800;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sech .sn.none{color:var(--muted);font-style:italic;font-weight:600}
+.sech .sc{font-weight:800;font-size:13px;color:var(--gold);background:var(--panel2);border-radius:9px;padding:3px 9px}
+.sech .sall{font-size:12px;font-weight:700;color:var(--green);border:1px solid #2c4d3a;border-radius:9px;padding:5px 9px}
+.secb{display:grid;grid-template-rows:1fr;transition:grid-template-rows .26s var(--ease)}
+.sec.shut .secb{grid-template-rows:0fr}
+.secb>div{overflow:hidden;min-height:0}
+.rw{position:relative;border-top:1px solid var(--line);overflow:hidden;transition:max-height .3s var(--ease),opacity .25s;max-height:400px}
+.rw .bgL,.rw .bgR{position:absolute;left:0;right:0;top:0;height:100%;opacity:0;display:flex;align-items:center;padding:0 22px;font-weight:800;font-size:15px}
+.rw .bgL{background:var(--green);color:#fff}
+.rw .bgR{background:#b07a1c;color:#fff;justify-content:flex-end}
+.row3{position:relative;display:flex;align-items:center;gap:10px;padding:8px 8px 8px 10px;min-height:60px;background:var(--panel);touch-action:pan-y;will-change:transform}
+.tick{width:40px;height:40px;border-radius:20px;border:2.5px solid #5a524b;flex:none;display:grid;place-items:center;color:transparent;font-size:19px;font-weight:900;transition:all .18s}
+.tick:active{transform:scale(.88)}
+.rw.gone .tick{background:var(--green);border-color:var(--green);color:#fff;transform:scale(1.12)}
+.rw.gone .tn{text-decoration:line-through;color:var(--muted)}
+.rw.gone{max-height:0!important;opacity:0;transition-delay:.25s}
+.rw.snzd{max-height:0!important;opacity:0}
+.tt{flex:1;min-width:0}
+.tn{font-weight:600;font-size:16px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.tm{color:var(--muted);font-size:12.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tm .o{color:#d9826d}
+.tsnz{width:44px;height:44px;border-radius:14px;flex:none;display:grid;place-items:center;font-size:19px;background:var(--panel2)}
+.tsnz:active{transform:scale(.9)}
+.tx{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s var(--ease);background:#171412}
+.rw.open .tx{grid-template-rows:1fr}
+.tx>div{overflow:hidden;min-height:0}
+.txi{padding:10px 12px 12px 60px;font-size:14px;color:#d8d2ca}
+.txi .nx{margin-bottom:8px;line-height:1.4}
+.txi .nx b{color:var(--muted);font-size:11px;letter-spacing:.6px;text-transform:uppercase;display:block}
+.txb{display:flex;flex-wrap:wrap;gap:6px}
+.txb button,.txb a{min-height:38px;padding:0 12px;border-radius:11px;background:var(--panel2);font-weight:700;font-size:13.5px;display:inline-flex;align-items:center;gap:5px;color:var(--ink);text-decoration:none}
+.txb .on{outline:2px solid var(--accent)}
+.bbar{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:10px;padding:10px 16px calc(12px + var(--sab));flex:none;border-top:1px solid var(--line);background:rgba(20,17,15,.96)}
+.bbar button{min-height:54px;border-radius:17px;font-weight:800;font-size:15px;background:var(--panel2)}
+.bbar button:active{transform:scale(.96)}
+.bbar .fm{background:var(--accent);color:#1a0e07}
+.bbar button:disabled{opacity:.35}
+.cleared{text-align:center;padding:40px 20px;color:var(--muted)}
+.cleared div{font-size:54px}
+/* celebration */
+.burst{position:fixed;z-index:80;pointer-events:none;font-size:22px;animation:fly .9s ease-out forwards}
+@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
+.pop{animation:popk .35s var(--ease)} @keyframes popk{40%{transform:scale(1.18)}}
+
+/* ---------- sheets / toast ---------- */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;opacity:0;transition:opacity .25s}
+.scrim.on{opacity:1}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;background:#1f1a17;border-radius:22px 22px 0 0;padding:8px 16px calc(16px + var(--sab));
+  transform:translateY(100%);transition:transform .32s var(--ease);max-height:88vh;overflow:auto}
+.sheet.on{transform:none}
+.grab{width:38px;height:5px;border-radius:3px;background:#4a423c;margin:0 auto 12px}
+.sheet h3{margin:4px 4px 12px;font-size:20px}
+.sbtn{display:flex;align-items:center;gap:14px;width:100%;min-height:58px;padding:0 16px;background:var(--panel2);border-radius:14px;margin-bottom:8px;font-size:17px;font-weight:600;text-align:left;text-decoration:none;color:var(--ink)}
+.sbtn:active{filter:brightness(1.2)}
+.sbtn .si{font-size:22px;width:28px;text-align:center}
+.sbtn.on{outline:2px solid var(--accent)}
+.sbtn.cancel{justify-content:center;background:var(--panel);color:var(--accent);margin-top:6px}
+.field{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:14px;font-size:17px;outline:none;margin-bottom:10px;resize:none}
+.row2{display:flex;gap:8px}
+.row2 .pill{flex:1}
+.lbl2{color:var(--muted);font-size:13px;margin:4px 4px 6px}
+#toast{position:fixed;left:16px;right:16px;bottom:calc(96px + var(--sab));z-index:60;display:flex;align-items:center;gap:12px;
+  background:#2b2521;border:1px solid #3a322c;border-radius:16px;padding:12px 14px 12px 16px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.4);
+  transform:translateY(20px);opacity:0;pointer-events:none;transition:all .25s var(--ease)}
+#toast.on{transform:none;opacity:1;pointer-events:auto}
+#toast .tm{flex:1}
+#toast button{color:var(--accent);font-weight:800;padding:8px 10px;min-height:40px}
+.ptr{height:0;overflow:hidden;text-align:center;color:var(--muted);font-size:13px;transition:height .2s}
+.sync{display:inline-block;width:8px;height:8px;border-radius:4px;background:var(--green);margin-right:6px;vertical-align:1px}
+.sync.off{background:var(--dim)} .sync.busy{background:var(--gold);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+</style>
+</head>
+<body>
+<div id="stack"></div>
+<div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
+
+<script>
+const BUILD='2026-09-29 15:06';   // stamped by deploy.sh
+/* ============================================================
+   Data model — shares the desktop dashboard's conventions:
+   Items table: Task, Project, SBLead (lead), Sub (sub-category),
+   MeetingSlot (morning/afternoon), Section, Status, DoDate,
+   Phone, NextStep, Notes, Priority.
+   ============================================================ */
+const LS_CFG='tb.cfg', LS_AUG='tb.aug', LS_CACHE='m.tasks', LS_TS='m.ts';
+const cfg=load(LS_CFG,{}); cfg.baseId=cfg.baseId||'appdDTNBbVrp6hVOv'; cfg.tableId=cfg.tableId||'tblLpOdHqxoP3siYk';
+let aug=load(LS_AUG,{});
+let tasks=load(LS_CACHE,[]);
+let lastSync=+localStorage.getItem(LS_TS)||0;
+let syncing=false, demo=false;
+
+function load(k,d){ try{ const v=JSON.parse(localStorage.getItem(k)||'null'); return v==null?d:v; }catch(e){ return d; } }
+function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+const A=id=>(aug[id]=aug[id]||{});
+const saveAug=()=>save(LS_AUG,aug);
+const flat=v=>{ if(v==null)return''; if(Array.isArray(v))return v.map(x=>x&&typeof x==='object'?(x.name||''):x).filter(Boolean).join(', '); if(typeof v==='object')return v.name||''; return String(v); };
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cleanName=t=>(t.name||'').replace(/\s*\(V\d+-\d+\)\s*$/i,'').trim()||'(untitled)';
+const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const isoIn=days=>{const d=new Date(Date.now()+days*864e5);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const daysOpen=t=>t.createdTime?Math.floor((Date.now()-new Date(t.createdTime))/864e5):0;
+
+function isOpen(t){ return (t.status||'Open')==='Open'; }
+// Snoozed = snoozed on this phone, or scheduled for a later day (desktop snooze pushes DoDate out too).
+function snoozed(t){ const a=A(t.id); if(a.snoozeUntil>Date.now()) return true; const dd=t.doDate||''; return !!dd && dd>todayISO(); }
+function live(t){ return isOpen(t) && !snoozed(t); }
+// Call lists only hide what was explicitly snoozed, so a future DoDate never drops an item off a call.
+function liveCall(t){ return isOpen(t) && !(A(t.id).snoozeUntil>Date.now()); }
+// Same rule the desktop uses: Section wins, then MeetingSlot.
+function slotOf(t){ const s=(A(t.id).section||t.sectionRemote||'').toLowerCase(); if(s==='morning'||s==='afternoon') return s; if(s) return ''; return t.slotRemote==='morning'||t.slotRemote==='afternoon'?t.slotRemote:''; }
+function score(t){ return (t.priorityRemote||0)*100 + daysOpen(t); }
+
+const DIMS={
+  project:{label:'Project', plural:'Projects', field:'Project', icon:'🏗', tint:'#3a2a1f'},
+  lead:   {label:'Lead',    plural:'Leads',    field:'SBLead',  icon:'👤', tint:'#1f2a33'},
+  sub:    {label:'Sub-category', plural:'Sub-categories', field:'Sub', icon:'🏷', tint:'#23301f'},
+};
+const SLOTS={ morning:{label:'Morning call', em:'🌅'}, afternoon:{label:'Afternoon call', em:'☀️'} };
+
+/* ---------- Airtable ---------- */
+const atUrl=()=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+encodeURIComponent(cfg.tableId);
+const FIELDS=['Task','Project','SBLead','Sub','Status','MeetingSlot','Section','DoDate','Phone','NextStep','Notes','Priority','Type'];
+async function fetchAll(){
+  if(!cfg.apiKey){ if(!tasks.length){ tasks=demoTasks(); demo=true; } render(); return; }
+  if(syncing) return; syncing=true; paintSync();
+  try{
+    let offset, out=[], guard=0;
+    do{
+      const u=new URL(atUrl()); u.searchParams.set('pageSize','100');
+      u.searchParams.set('filterByFormula',"OR({Status}='Open',{Status}=BLANK())");
+      FIELDS.forEach(f=>u.searchParams.append('fields[]',f));
+      if(offset) u.searchParams.set('offset',offset);
+      const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}});
+      if(!r.ok){ toast('Airtable error '+r.status+(r.status===401?' — check token in ⚙︎':'')); break; }
+      const d=await r.json();
+      out=out.concat((d.records||[]).map(rec=>{ const f=rec.fields; return {
+        id:rec.id, createdTime:rec.createdTime, name:flat(f.Task), project:flat(f.Project).trim(), lead:flat(f.SBLead).trim(), sub:flat(f.Sub).trim(),
+        status:flat(f.Status)||'Open', slotRemote:flat(f.MeetingSlot).toLowerCase(), sectionRemote:flat(f.Section).toLowerCase(),
+        doDate:flat(f.DoDate).slice(0,10), phone:flat(f.Phone), next:flat(f.NextStep), notes:flat(f.Notes),
+        priorityRemote:+flat(f.Priority)||0, type:flat(f.Type).toLowerCase() }; }));
+      offset=d.offset;
+      if(!offset){ tasks=out; demo=false; lastSync=Date.now(); save(LS_CACHE,tasks); localStorage.setItem(LS_TS,lastSync); }
+    }while(offset && ++guard<60);
+  }catch(e){ toast('Offline — showing saved list'); }
+  syncing=false; render();
+}
+async function patch(id,fields){
+  if(demo||!cfg.apiKey||String(id).startsWith('tmp')) return true;
+  try{ const r=await fetch(atUrl()+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields,typecast:true})});
+    if(!r.ok){ toast('Save failed '+r.status); return false; } return true; }catch(e){ toast('Offline — not saved'); return false; }
+}
+async function create(fields){
+  const t={id:'tmp'+Date.now(),createdTime:new Date().toISOString(),name:fields.Task,project:fields.Project||'',lead:fields.SBLead||'',sub:fields.Sub||'',
+    status:'Open',slotRemote:fields.MeetingSlot||'',sectionRemote:fields.Section||'',doDate:'',phone:'',next:'',notes:'',priorityRemote:0};
+  tasks.unshift(t); save(LS_CACHE,tasks);
+  if(demo||!cfg.apiKey) return t;
+  try{ const r=await fetch(atUrl(),{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:{...fields,Status:'Open'},typecast:true})});
+    if(r.ok){ const d=await r.json(); t.id=d.id; t.createdTime=d.createdTime; save(LS_CACHE,tasks); } else toast('Create failed '+r.status);
+  }catch(e){ toast('Offline — not saved'); }
+  return t;
+}
+
+/* ---------- feel: haptics, done-today counter, celebration ---------- */
+const buzz=(ms)=>{ try{ navigator.vibrate&&navigator.vibrate(ms||10); }catch(e){} };
+function doneToday(d){ const log=load('m.doneLog',{}); const k=todayISO(); if(d){ log[k]=Math.max(0,(log[k]||0)+d); for(const x of Object.keys(log)) if(x<isoIn(-14)) delete log[x]; save('m.doneLog',log); } return log[k]||0; }
+function celebrate(x,y,n){ const em=['✨','✅','🎉','⭐','🟠']; for(let i=0;i<(n||14);i++){ const b=document.createElement('div'); b.className='burst'; b.textContent=em[i%em.length];
+  b.style.left=(x||innerWidth/2)+'px'; b.style.top=(y||innerHeight/2)+'px'; b.style.setProperty('--dx',(Math.random()*260-130)+'px'); b.style.setProperty('--dy',(Math.random()*-260-40)+'px'); b.style.setProperty('--r',(Math.random()*360)+'deg');
+  document.body.appendChild(b); setTimeout(()=>b.remove(),950); } buzz([10,40,10]); }
+function ring(n,goal){ const g=goal||10, p=Math.min(1,n/g), R=19, C=2*Math.PI*R;
+  return `<div class="ring"><svg width="44" height="44"><circle cx="22" cy="22" r="${R}" stroke="#2c2723" stroke-width="5" fill="none"/><circle cx="22" cy="22" r="${R}" stroke="#3a8f5f" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-p)}"/></svg><b>${n}</b></div>`; }
+
+/* ---------- actions (all undoable) ---------- */
+let undoFn=null;
+function done(t){
+  buzz(12); doneToday(1);
+  const prev=t.status; t.status='Done'; save(LS_CACHE,tasks);
+  patch(t.id,{Status:'Done',Section:''});
+  toast('✅ Done', async()=>{ doneToday(-1); t.status=prev||'Open'; save(LS_CACHE,tasks); await patch(t.id,{Status:'Open',Section:t.sectionRemote||''}); });
+}
+function snooze(t,days){
+  buzz(8); days=days||10; const a=A(t.id); const prev={s:a.snoozeUntil,d:t.doDate};
+  a.snoozeUntil=Date.now()+days*864e5; a.doDate=isoIn(days); t.doDate=a.doDate; saveAug(); save(LS_CACHE,tasks);
+  patch(t.id,{DoDate:t.doDate});
+  toast('😴 Snoozed '+(days===1?'to tomorrow':days+' days'), async()=>{ a.snoozeUntil=prev.s; a.doDate=prev.d||''; t.doDate=prev.d||''; saveAug(); save(LS_CACHE,tasks); await patch(t.id,{DoDate:prev.d||''}); });
+}
+function setSlot(t,slot){
+  const prev={s:A(t.id).section, sr:t.sectionRemote, m:t.slotRemote};
+  const nv=slotOf(t)===slot?'':slot;
+  A(t.id).section=nv||null; t.sectionRemote=nv; t.slotRemote=nv; saveAug(); save(LS_CACHE,tasks);
+  patch(t.id,{MeetingSlot:nv,Section:nv});
+  toast(nv?(SLOTS[nv].em+' Added to '+SLOTS[nv].label.toLowerCase()):'Removed from '+SLOTS[slot].label.toLowerCase(), async()=>{
+    A(t.id).section=prev.s; t.sectionRemote=prev.sr; t.slotRemote=prev.m; saveAug(); save(LS_CACHE,tasks); await patch(t.id,{MeetingSlot:prev.m||'',Section:prev.sr||''}); });
+}
+
+/* ---------- queries ---------- */
+function slotTasks(slot){ return tasks.filter(t=>liveCall(t)&&slotOf(t)===slot).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0)); } // newest first (matches desktop)
+function groups(dim){
+  const m=new Map();
+  for(const t of tasks){ if(!live(t)) continue; const k=t[dim]||''; m.set(k,(m.get(k)||0)+1); }
+  return [...m].map(([k,n])=>({k,n})).sort((a,b)=> (a.k===''?1:0)-(b.k===''?1:0) || b.n-a.n || a.k.localeCompare(b.k));
+}
+function groupTasks(dim,val){ return tasks.filter(t=>live(t)&&(t[dim]||'')===val).sort((a,b)=>score(b)-score(a)); }
+function todayTasks(){ const td=todayISO(); return tasks.filter(t=>isOpen(t)&&t.doDate&&t.doDate<=td&&!(A(t.id).snoozeUntil>Date.now())).sort((a,b)=>a.doDate.localeCompare(b.doDate)); }
+function allLive(){ return tasks.filter(live).sort((a,b)=>score(b)-score(a)); }
+function currentSlot(){ const h=new Date().getHours(); return h<12?'morning':(h<18?'afternoon':''); }
+
+/* ---------- navigation stack ---------- */
+const stack=[]; const $stack=document.getElementById('stack');
+function push(route){
+  const el=document.createElement('div'); el.className=stack.length?'screen enter':'screen'; $stack.appendChild(el);
+  const top=stack[stack.length-1]; stack.push({route,el});
+  paint(stack[stack.length-1]);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.classList.remove('enter'); if(top) top.el.classList.add('under'); }));
+  edgeSwipe(el);
+}
+function pop(){
+  if(stack.length<2) return; const cur=stack.pop(); const top=stack[stack.length-1];
+  cur.el.classList.add('leave'); top.el.classList.remove('under'); paint(top);
+  setTimeout(()=>cur.el.remove(),360);
+}
+function goHome(){ while(stack.length>1){ const s=stack.pop(); s.el.remove(); } stack[0].el.classList.remove('under'); paint(stack[0]); }
+function render(){ stack.forEach(paint); }
+function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); }
+// iOS-style swipe from the left edge to go back
+function edgeSwipe(el){
+  let sx=null,sy=0,dx=0;
+  el.addEventListener('touchstart',e=>{ const x=e.touches[0].clientX; if(x<24&&stack.length>1&&stack[stack.length-1].el===el){ sx=x; sy=e.touches[0].clientY; dx=0; el.style.transition='none'; } },{passive:true});
+  el.addEventListener('touchmove',e=>{ if(sx==null) return; dx=Math.max(0,e.touches[0].clientX-sx); el.style.transform='translateX('+dx+'px)'; },{passive:true});
+  el.addEventListener('touchend',()=>{ if(sx==null) return; el.style.transition=''; el.style.transform=''; if(dx>innerWidth*.3) pop(); sx=null; });
+}
+const backBtn=label=>`<button class="back" data-back><svg viewBox="0 0 13 21"><path d="M11 2 3 10.5 11 19" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>${esc(label||'Back')}</button>`;
+function wire(el){
+  el.querySelectorAll('[data-back]').forEach(b=>b.onclick=pop);
+}
+
+/* ---------- HOME ---------- */
+function paintHome(s){
+  const el=s.el, am=slotTasks('morning').length, pm=slotTasks('afternoon').length, now=currentSlot();
+  const d=new Date(); const dateStr=d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  const gc=k=>groups(k).filter(g=>g.k).length;
+  const td=todayTasks().length, all=allLive().length;
+  const keep=el.querySelector('.scroll'); const st=keep?keep.scrollTop:0;
+  el.innerHTML=`
+    <div class="nav"><div style="flex:1;padding-left:10px;color:var(--muted);font-size:13px"><span class="sync ${syncing?'busy':(cfg.apiKey?'':'off')}"></span>${syncing?'Syncing…':(demo?'Demo data':(lastSync?'Updated '+ago(lastSync):'Not synced'))}</div>
+      <button class="icon" data-add aria-label="Add task">＋</button><button class="icon" data-cfg aria-label="Settings">⚙︎</button></div>
+    <div class="scroll">
+      <div class="ptr"></div>
+      <div class="big">Tasks</div><div class="sub">${esc(dateStr)}</div>
+      <div class="calls">
+        <button class="call am ${now==='morning'?'now':''}" data-slot="morning"><span class="em">🌅</span><span><div class="n">${am}</div><div class="lbl">Morning call</div><div class="hint">Tap to run it</div></span></button>
+        <button class="call pm ${now==='afternoon'?'now':''}" data-slot="afternoon"><span class="em">☀️</span><span><div class="n">${pm}</div><div class="lbl">Afternoon call</div><div class="hint">Tap to run it</div></span></button>
+      </div>
+      <button class="review" data-review><span class="ri">▶</span><span style="flex:1;min-width:0"><div class="rn">Review projects</div>
+        <div class="rs">${gc('project')} projects · all subs on one screen · ✓ ${doneToday()} done today</div></span>${ring(doneToday(),10)}</button>
+      <div class="sect">View tasks by</div>
+      <div class="views">
+        ${Object.entries(DIMS).map(([k,v])=>`<button class="view" data-dim="${k}"><span class="vi" style="background:${v.tint}">${v.icon}</span>
+          <span class="vt"><div class="vn">${v.label}</div><div class="vs">${gc(k)} ${v.plural.toLowerCase()} · ${topNames(k)}</div></span><span class="chev">›</span></button>`).join('')}
+      </div>
+      <div class="minirow">
+        <button class="mini" data-q="today"><b>${td}</b><span>📆 Due today</span></button>
+        <button class="mini" data-q="all"><b>${all}</b><span>📚 All open</span></button>
+      </div>
+      <div class="foot">Build ${esc(BUILD)} · <a href="../">Desktop dashboard</a></div>
+    </div>`;
+  el.querySelector('.scroll').scrollTop=st;
+  el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>{ const sl=b.dataset.slot; push({type:'deck',kind:'slot',slot:sl,title:SLOTS[sl].label}); });
+  el.querySelectorAll('[data-dim]').forEach(b=>b.onclick=()=>push({type:'groups',dim:b.dataset.dim}));
+  el.querySelector('[data-review]').onclick=()=>{ const l=groups('project').map(g=>g.k); push({type:'board',dim:'project',list:l,idx:0}); };
+  el.querySelector('[data-q="today"]').onclick=()=>push({type:'deck',kind:'today',title:'Due today'});
+  el.querySelector('[data-q="all"]').onclick=()=>push({type:'deck',kind:'all',title:'All open'});
+  el.querySelector('[data-add]').onclick=()=>addSheet({});
+  el.querySelector('[data-cfg]').onclick=settingsSheet;
+  pullToRefresh(el.querySelector('.scroll'));
+}
+function topNames(dim){ return groups(dim).filter(g=>g.k).slice(0,3).map(g=>g.k).join(', ')||'—'; }
+function ago(ts){ const m=Math.round((Date.now()-ts)/6e4); return m<1?'just now':m<60?m+'m ago':Math.round(m/60)+'h ago'; }
+function pullToRefresh(sc){
+  const ptr=sc.querySelector('.ptr'); let y0=null,dy=0;
+  sc.addEventListener('touchstart',e=>{ if(sc.scrollTop<=0){ y0=e.touches[0].clientY; dy=0; } },{passive:true});
+  sc.addEventListener('touchmove',e=>{ if(y0==null) return; dy=e.touches[0].clientY-y0; if(dy>0){ ptr.style.height=Math.min(60,dy/2.2)+'px'; ptr.textContent=dy>120?'Release to refresh':'Pull to refresh'; } },{passive:true});
+  sc.addEventListener('touchend',()=>{ if(y0==null) return; ptr.style.height='0'; if(dy>120) fetchAll(); y0=null; });
+}
+
+/* ---------- GROUP LIST ---------- */
+function paintGroups(s){
+  const el=s.el, dim=s.route.dim, D=DIMS[dim];
+  if(!el.dataset.built){
+    el.dataset.built=1;
+    el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl"></div><div style="min-width:60px"></div></div>
+      <div class="scroll"><div class="big">${D.plural}</div><div class="searchbox"><input class="search" type="search" placeholder="Find a ${D.label.toLowerCase()}…" autocomplete="off"></div><div class="glist"></div></div>`;
+    wire(el); el.querySelector('.search').oninput=()=>paintGroups(s);
+  }
+  const q=el.querySelector('.search').value.trim().toLowerCase();
+  const gs=groups(dim).filter(g=>!q||(g.k||'none').toLowerCase().includes(q));
+  const list=el.querySelector('.glist');
+  list.innerHTML=gs.length?gs.map(g=>`<button class="grow" data-k="${esc(g.k)}"><span class="gn ${g.k?'':'none'}">${g.k?esc(g.k):'No '+D.label.toLowerCase()}</span><span class="gc ${g.n>=10?'hot':''}">${g.n}</span><span class="chev">›</span></button>`).join('')
+    :`<div style="padding:22px;color:var(--muted);text-align:center">Nothing matches</div>`;
+  list.querySelectorAll('.grow').forEach(b=>b.onclick=()=>{ const k=b.dataset.k; const l=gs.map(g=>g.k); push({type:'board',dim,list:l,idx:Math.max(0,l.indexOf(k))}); });
+}
+
+/* ---------- DECK: one task at a time ---------- */
+function deckItems(r){
+  if(r.kind==='slot') return slotTasks(r.slot);
+  if(r.kind==='group') return groupTasks(r.dim,r.val);
+  if(r.kind==='today') return todayTasks();
+  return allLive();
+}
+function paintDeck(s){
+  const r=s.route, el=s.el;
+  // Keep a stable queue for this session: tasks leave when handled, "Next" rotates to the back.
+  const fresh=deckItems(r); const ids=new Set(fresh.map(t=>t.id));
+  if(!s.queue) s.queue=fresh.map(t=>t.id); else { s.queue=s.queue.filter(id=>ids.has(id)); fresh.forEach(t=>{ if(!s.queue.includes(t.id)) s.queue.push(t.id); }); }
+  s.total=Math.max(s.total||0, s.queue.length+(s.handled||0));
+  const byId=new Map(tasks.map(t=>[t.id,t]));
+  const q=s.queue.map(id=>byId.get(id)).filter(Boolean);
+  const isSlot=r.kind==='slot';
+  const titleEm=isSlot?SLOTS[r.slot].em+' ':'';
+  el.innerHTML=`<div class="nav">${backBtn(stack.length>2&&stack[stack.length-2].route.type==='groups'?DIMS[stack[stack.length-2].route.dim].plural:'Tasks')}
+      <div class="ttl">${titleEm}${esc(r.title)}</div>
+      <button class="icon" data-list aria-label="List">${s.list?'▭':'☰'}</button><button class="icon" data-add aria-label="Add">＋</button></div>`;
+  wire(el);
+  el.querySelector('[data-add]').onclick=()=>addSheet(r.kind==='slot'?{slot:r.slot}:r.kind==='group'?{[r.dim]:r.val}:{} , ()=>paintDeck(s));
+  el.querySelector('[data-list]').onclick=()=>{ s.list=!s.list; paintDeck(s); };
+
+  if(!q.length){
+    el.insertAdjacentHTML('beforeend',`<div class="empty"><div class="big2">${isSlot?'🎉':'✨'}</div><h2>${isSlot?'Call list clear':'All clear'}</h2>
+      <div>${s.handled?('You handled '+s.handled+' just now.'):'Nothing open here.'}</div><div style="height:10px"></div>
+      <div class="row2" style="width:100%;max-width:320px"><button class="pill" data-back2>Back</button><button class="pill acc" data-home>Home</button></div></div>`);
+    el.querySelector('[data-back2]').onclick=pop; el.querySelector('[data-home]').onclick=goHome;
+    if(s.handled&&!s.cheered){ s.cheered=1; setTimeout(()=>celebrate(innerWidth/2,innerHeight/2.4,22),60); } return;
+  }
+  if(s.list){ paintAgenda(s,q); return; }
+
+  const t=q[0];
+  const pct=Math.round(((s.handled||0))/Math.max(1,s.total)*100);
+  el.insertAdjacentHTML('beforeend',`<div class="deckwrap">
+      <div class="progress"><span>${q.length} left</span><div class="bar"><i style="width:${pct}%"></i></div><span>${s.handled||0} done</span></div>
+      <div class="cardzone"><div class="tcard" id="top">${cardInner(t,r)}
+        <div class="stamp done">DONE</div><div class="stamp snz">SNOOZE</div><div class="stamp skip">NEXT</div></div>
+        ${q.length>1?`<div class="upnext"><div class="h">Up next</div>${q.slice(1,5).map(x=>`<button data-jump="${x.id}"><span class="un">${esc(cleanName(x))}</span><span class="ud">${esc(r.kind==='group'&&r.dim==='project'?(x.lead||x.sub||''):(x.project||x.lead||''))}</span></button>`).join('')}</div>`:''}</div>
+    </div>
+    <div class="actions">
+      <button class="act snz" data-a="snooze"><span class="ai">😴</span>Snooze</button>
+      <button class="act nxt" data-a="next"><span class="ai">↷</span>Next</button>
+      <button class="act dn" data-a="done"><span class="ai">✓</span>Done</button>
+    </div>`);
+  const top=el.querySelector('#top');
+  const act=(kind)=>handle(s,t,kind,top);
+  el.querySelector('[data-a="snooze"]').onclick=()=>act('snooze');
+  el.querySelector('[data-a="next"]').onclick=()=>act('next');
+  el.querySelector('[data-a="done"]').onclick=()=>act('done');
+  el.querySelector('[data-a="snooze"]').oncontextmenu=e=>{e.preventDefault(); snoozeSheet(s,t,top);};
+  el.querySelectorAll('[data-jump]').forEach(b=>b.onclick=()=>{ const id=b.dataset.jump; s.queue=[id,...s.queue.filter(x=>x!==id)]; paintDeck(s); });
+  top.querySelectorAll('[data-note]').forEach(b=>b.onclick=e=>{e.stopPropagation(); noteSheet(s,t);});
+  top.querySelectorAll('[data-more]').forEach(b=>b.onclick=e=>{e.stopPropagation(); moreSheet(s,t);});
+  top.querySelectorAll('[data-slotbtn]').forEach(b=>b.onclick=e=>{e.stopPropagation(); setSlot(t,b.dataset.slotbtn); paintDeck(s);});
+  swipe(top,kind=>act(kind));
+  // long-press Snooze = choose how long
+  let lp; const sb=el.querySelector('[data-a="snooze"]');
+  sb.addEventListener('touchstart',()=>{ lp=setTimeout(()=>{ lp='fired'; snoozeSheet(s,t,top); },480); },{passive:true});
+  sb.addEventListener('touchend',e=>{ if(lp==='fired'){ e.preventDefault(); } clearTimeout(lp); lp=null; });
+}
+function cardInner(t,r){
+  const d=daysOpen(t), sl=slotOf(t), ph=t.phone;
+  const chips=[];
+  if(t.project && !(r.kind==='group'&&r.dim==='project')) chips.push(`<span class="chip p">${esc(t.project)}</span>`);
+  if(t.lead && !(r.kind==='group'&&r.dim==='lead')) chips.push(`<span class="chip">👤 ${esc(t.lead)}</span>`);
+  if(t.sub && !(r.kind==='group'&&r.dim==='sub')) chips.push(`<span class="chip">🏷 ${esc(t.sub)}</span>`);
+  if(sl && r.kind!=='slot') chips.push(`<span class="chip slot">${SLOTS[sl].em} ${sl}</span>`);
+  if(d>=14) chips.push(`<span class="chip old">${d}d old</span>`);
+  const meta=[d===0?'Added today':d===1?'Added yesterday':'Open '+d+' days', t.doDate?('Due '+t.doDate.slice(5)):'' ].filter(Boolean).join(' · ');
+  const isSlotDeck=r.kind==='slot';
+  return `<div class="chips">${chips.join('')}</div>
+    <div class="tname">${esc(cleanName(t))}</div>
+    <div class="meta">${esc(meta)}</div>
+    <div class="bodyx">${t.next?`<div class="ns"><b>Next step</b>${esc(t.next)}</div>`:''}${t.notes?`<div class="ns"><b>Notes</b>${esc(t.notes)}</div>`:''}</div>
+    <div class="quick">
+      ${ph?`<a class="qbtn call" href="tel:${esc(ph)}" onclick="event.stopPropagation()">📞 Call</a><a class="qbtn" href="sms:${esc(ph)}" onclick="event.stopPropagation()">💬</a>`:''}
+      ${isSlotDeck?'':`<button class="qbtn" data-slotbtn="morning" style="${sl==='morning'?'outline:2px solid #e8683c':''}">🌅</button><button class="qbtn" data-slotbtn="afternoon" style="${sl==='afternoon'?'outline:2px solid #e0a458':''}">☀️</button>`}
+      <button class="qbtn" data-note>📝 Note</button>
+      <button class="qbtn" data-more>•••</button>
+    </div>`;
+}
+function handle(s,t,kind,top){
+  const fly={done:'translateX(130%) rotate(18deg)',snooze:'translateX(-130%) rotate(-18deg)',next:'translateY(-120%) scale(.9)'}[kind] || 'translateX(-130%) rotate(-18deg)';
+  if(top){ top.style.transition='transform .28s ease-in, opacity .28s'; top.style.transform=fly; top.style.opacity='0'; }
+  setTimeout(()=>{
+    if(kind==='done'){ done(t); s.queue=s.queue.filter(id=>id!==t.id); s.handled=(s.handled||0)+1; }
+    else if(kind==='snooze'||typeof kind==='number'){ snooze(t,typeof kind==='number'?kind:10); s.queue=s.queue.filter(id=>id!==t.id); s.handled=(s.handled||0)+1; }
+    else if(kind==='next'){ s.queue.push(s.queue.shift()); }
+    paintDeck(s); if(stack[0]) paintHome(stack[0]);
+  }, top?200:0);
+}
+// Card swipe: → done, ← snooze, ↑ next
+function swipe(card,cb){
+  let x0,y0,dx=0,dy=0,on=false; const st=k=>card.querySelector('.stamp.'+k);
+  card.addEventListener('pointerdown',e=>{ if(e.target.closest('a,button')) return; on=true; x0=e.clientX; y0=e.clientY; dx=dy=0; card.setPointerCapture(e.pointerId); card.style.transition='none'; });
+  card.addEventListener('pointermove',e=>{ if(!on) return; dx=e.clientX-x0; dy=e.clientY-y0;
+    card.style.transform=`translate(${dx}px,${Math.min(dy,40)}px) rotate(${dx/18}deg)`;
+    st('done').style.opacity=Math.max(0,Math.min(1,dx/90)); st('snz').style.opacity=Math.max(0,Math.min(1,-dx/90));
+    st('skip').style.opacity=Math.abs(dx)<60?Math.max(0,Math.min(1,-dy/90)):0; });
+  const end=()=>{ if(!on) return; on=false; card.style.transition='transform .25s var(--ease)';
+    if(dx>100) cb('done'); else if(dx<-100) cb('snooze'); else if(dy<-100&&Math.abs(dx)<80) cb('next');
+    else { card.style.transform=''; card.querySelectorAll('.stamp').forEach(x=>x.style.opacity=0); } };
+  card.addEventListener('pointerup',end); card.addEventListener('pointercancel',end);
+}
+function paintAgenda(s,q){
+  const el=s.el, r=s.route;
+  el.insertAdjacentHTML('beforeend',`<div class="scroll agenda"><div class="sub" style="margin-top:6px">${q.length} open · tap a row to focus it, tap ○ to finish</div>
+    <div class="glist">${q.map((t,i)=>`<div class="row" data-id="${t.id}"><span class="num">${i+1}</span><span class="rt"><div class="rn">${esc(cleanName(t))}</div>
+      <div class="rm">${esc([t.project,t.lead,t.sub].filter(Boolean).join(' · ')||('Open '+daysOpen(t)+'d'))}</div></span><button class="ck" data-ck="${t.id}">✓</button></div>`).join('')}</div></div>`);
+  el.querySelectorAll('[data-ck]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const t=tasks.find(x=>x.id===b.dataset.ck); if(!t) return;
+    done(t); s.queue=s.queue.filter(id=>id!==t.id); s.handled=(s.handled||0)+1; const row=b.closest('.row'); row.style.transition='opacity .2s'; row.style.opacity='0';
+    setTimeout(()=>{ paintDeck(s); paintHome(stack[0]); },200); });
+  el.querySelectorAll('.row').forEach(row=>row.onclick=()=>{ const id=row.dataset.id; s.queue=[id,...s.queue.filter(x=>x!==id)]; s.list=false; paintDeck(s); });
+}
+
+/* ---------- BOARD: one project (or lead / sub) with ALL its groups on one screen ----------
+   Project → grouped by Sub · Lead → grouped by Project · Sub → grouped by Project.
+   Tap ○ = done · 😴 = snooze · swipe row → done / ← snooze · tap row = details · ‹ › = prev/next project. */
+const BY={project:'sub',lead:'project',sub:'project'};
+function paintBoard(s,dir){
+  const r=s.route, el=s.el, dim=r.dim, by=BY[dim], D=DIMS[dim], B=DIMS[by];
+  const val=r.list[r.idx]; const items=groupTasks(dim,val);
+  const counts=new Map(r.list.map(k=>[k,groupTasks(dim,k).length]));
+  // group into sections
+  const secMap=new Map(); for(const t of items){ const k=t[by]||''; if(!secMap.has(k)) secMap.set(k,[]); secMap.get(k).push(t); }
+  const secs=[...secMap].sort((a,b)=>(a[0]===''?1:0)-(b[0]===''?1:0)||b[1].length-a[1].length||a[0].localeCompare(b[0]));
+  const shutAll=load('m.shut',{}); const shut=new Set(shutAll[dim+':'+val]||[]);
+  const onCalls=items.filter(t=>slotOf(t)).length, oldest=items.reduce((m,t)=>Math.max(m,daysOpen(t)),0);
+  const prevScroll=(!dir&&el.querySelector('.bscroll'))?el.querySelector('.bscroll').scrollTop:0;
+  const chipScroll=el.querySelector('.chips2')?el.querySelector('.chips2').scrollLeft:null;
+  const title=val||('No '+D.label.toLowerCase());
+  el.innerHTML=`<div class="nav">${backBtn(stack.length>2?D.plural:'Tasks')}<div class="ttl">${r.idx+1} of ${r.list.length}</div>
+      <button class="icon" data-tog aria-label="Collapse all">${shut.size>=secs.length&&secs.length?'⊞':'⊟'}</button><button class="icon" data-add aria-label="Add">＋</button></div>
+    <div class="chips2">${r.list.map((k,i)=>`<button class="pchip ${i===r.idx?'on':''} ${counts.get(k)?'':'clear'}" data-i="${i}">${esc(k||'None')} <i>${counts.get(k)}</i></button>`).join('')}</div>
+    <div class="bhead bpage ${dir>0?'inL':dir<0?'inR':''}"><div class="bt">${esc(title)}</div>
+      <div class="bs"><span><b>${items.length}</b> open</span><span><b>${secs.length}</b> ${esc(B.plural.toLowerCase())}</span>${onCalls?`<span>📞 <b>${onCalls}</b> on calls</span>`:''}${oldest?`<span>oldest <b>${oldest}d</b></span>`:''}</div></div>
+    <div class="bscroll bpage ${dir>0?'inL':dir<0?'inR':''}">
+      ${items.length?secs.map(([k,list])=>`<div class="sec ${shut.has(k)?'shut':''}" data-k="${esc(k)}">
+        <button class="sech"><span class="cv">▼</span><span class="sn ${k?'':'none'}">${k?esc(k):'No '+esc(B.label.toLowerCase())}</span><span class="sc">${list.length}</span></button>
+        <div class="secb"><div>${list.map(t=>rowHTML(t,dim,s.open)).join('')}</div></div></div>`).join('')
+      :`<div class="cleared"><div>🎉</div><h2 style="color:var(--ink);margin:8px 0 4px">${esc(title)} is clear</h2>Tap Next ›</div>`}
+    </div>
+    <div class="bbar"><button data-prev ${r.idx<=0?'disabled':''}>‹ Prev</button><button class="fm" data-focus ${items.length?'':'disabled'}>Focus ▶</button><button data-next ${r.idx>=r.list.length-1?'disabled':''}>Next ›</button></div>`;
+  wire(el);
+  const cs=el.querySelector('.chips2'); const on=cs.querySelector('.on');
+  if(chipScroll!=null&&!dir) cs.scrollLeft=chipScroll; else if(on) cs.scrollLeft=on.offsetLeft-cs.clientWidth/2+on.offsetWidth/2;
+  el.querySelector('.bscroll').scrollTop=prevScroll;
+  const go=i=>{ if(i<0||i>=r.list.length||i===r.idx) return; const d=i>r.idx?1:-1; r.idx=i; buzz(6); paintBoard(s,d); };
+  el.querySelectorAll('.pchip').forEach(b=>b.onclick=()=>go(+b.dataset.i));
+  el.querySelector('[data-prev]').onclick=()=>go(r.idx-1);
+  el.querySelector('[data-next]').onclick=()=>go(r.idx+1);
+  el.querySelector('[data-focus]').onclick=()=>push({type:'deck',kind:'group',dim,val,title});
+  el.querySelector('[data-add]').onclick=()=>addSheet({[dim]:val},()=>paintBoard(s));
+  el.querySelector('[data-tog]').onclick=()=>{ const all=shut.size>=secs.length; shutAll[dim+':'+val]=all?[]:secs.map(x=>x[0]); save('m.shut',shutAll); paintBoard(s); };
+  el.querySelectorAll('.sec').forEach(sec=>{ sec.querySelector('.sech').onclick=()=>{ const k=sec.dataset.k; sec.classList.toggle('shut');
+    const cur=new Set(shutAll[dim+':'+val]||[]); sec.classList.contains('shut')?cur.add(k):cur.delete(k); shutAll[dim+':'+val]=[...cur]; save('m.shut',shutAll); buzz(5);
+    el.querySelector('[data-tog]').textContent=cur.size>=secs.length?'⊞':'⊟'; }; });
+  // swipe the header to flip projects
+  let hx=null; const hd=el.querySelector('.bhead');
+  hd.addEventListener('touchstart',e=>{ hx=e.touches[0].clientX; },{passive:true});
+  hd.addEventListener('touchend',e=>{ if(hx==null) return; const dx=e.changedTouches[0].clientX-hx; hx=null; if(dx<-60) go(r.idx+1); else if(dx>60) go(r.idx-1); });
+  el.querySelectorAll('.rw').forEach(rw=>wireRow(rw,s));
+}
+function rowHTML(t,dim,open){
+  const d=daysOpen(t), sl=slotOf(t);
+  const bits=[]; const other=dim==='project'?'lead':(dim==='lead'?'sub':'lead'); if(t[other]) bits.push(esc(t[other]));
+  bits.push(d>=21?`<span class="o">${d}d</span>`:d+'d'); if(sl) bits.push(SLOTS[sl].em); if(t.phone) bits.push('📞'); if(t.next) bits.push('➜');
+  return `<div class="rw ${open&&open.has(t.id)?'open':''}" data-id="${t.id}"><div class="bgL">✓ Done</div><div class="bgR">Snooze 😴</div>
+    <div class="row3"><button class="tick" aria-label="Done">✓</button><div class="tt"><div class="tn">${esc(cleanName(t))}</div><div class="tm">${bits.join(' · ')}</div></div><button class="tsnz" aria-label="Snooze">😴</button></div>
+    <div class="tx"><div><div class="txi">${t.next?`<div class="nx"><b>Next step</b>${esc(t.next)}</div>`:''}${t.notes?`<div class="nx"><b>Notes</b>${esc(t.notes)}</div>`:''}
+      <div class="txb">${t.phone?`<a href="tel:${esc(t.phone)}">📞 Call</a><a href="sms:${esc(t.phone)}">💬</a>`:''}
+      <button data-sl="morning" class="${sl==='morning'?'on':''}">🌅 AM</button><button data-sl="afternoon" class="${sl==='afternoon'?'on':''}">☀️ PM</button>
+      <button data-z="1">🌙 Tmrw</button><button data-z="30">🗓 Month</button><button data-note>📝</button></div></div></div></div></div>`;
+}
+function wireRow(rw,s){
+  const t=tasks.find(x=>x.id===rw.dataset.id); if(!t) return; const row=rw.querySelector('.row3');
+  const finish=(kind,days)=>{
+    if(kind==='done'){ rw.classList.add('gone'); done(t); } else { rw.classList.add('snzd'); snooze(t,days); }
+    setTimeout(()=>{ const left=groupTasks(s.route.dim,s.route.list[s.route.idx]).length;
+      if(!left){ const b=rw.getBoundingClientRect(); celebrate(innerWidth/2,b.top||innerHeight/2,18); } paintBoard(s); if(stack[0]) paintHome(stack[0]); }, kind==='done'?560:320);
+  };
+  rw.querySelector('.tick').onclick=e=>{ e.stopPropagation(); finish('done'); };
+  rw.querySelector('.tsnz').onclick=e=>{ e.stopPropagation(); finish('snz',10); };
+  row.addEventListener('click',e=>{ if(e.target.closest('button,a')) return; if(moved) return; rw.classList.toggle('open'); s.open=s.open||new Set(); rw.classList.contains('open')?s.open.add(t.id):s.open.delete(t.id); buzz(4); });
+  rw.querySelectorAll('[data-sl]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); setSlot(t,b.dataset.sl); paintBoard(s); if(stack[0]) paintHome(stack[0]); });
+  rw.querySelectorAll('[data-z]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); finish('snz',+b.dataset.z); });
+  rw.querySelector('[data-note]').onclick=e=>{ e.stopPropagation(); noteSheet({route:{},el:document.createElement('div')},t); };
+  // horizontal swipe on the row: → done, ← snooze (vertical scrolling stays native)
+  let x0=null,y0=0,dx=0,moved=false,lock=null;
+  row.addEventListener('touchstart',e=>{ x0=e.touches[0].clientX; y0=e.touches[0].clientY; dx=0; moved=false; lock=null; row.style.transition='none'; },{passive:true});
+  row.addEventListener('touchmove',e=>{ if(x0==null) return; const mx=e.touches[0].clientX-x0, my=e.touches[0].clientY-y0;
+    if(lock==null && (Math.abs(mx)>8||Math.abs(my)>8)) lock=Math.abs(mx)>Math.abs(my)?'x':'y';
+    if(lock!=='x') return; dx=mx; moved=true; row.style.transform=`translateX(${dx}px)`;
+    rw.querySelector('.bgL').style.opacity=dx>0?1:0; rw.querySelector('.bgR').style.opacity=dx<0?1:0;
+    if(Math.abs(dx)>90&&!row._b){ buzz(6); row._b=1; } if(Math.abs(dx)<90) row._b=0; },{passive:true});
+  row.addEventListener('touchend',()=>{ if(x0==null) return; x0=null; row.style.transition='transform .22s var(--ease)';
+    if(dx>90){ row.style.transform='translateX(110%)'; finish('done'); } else if(dx<-90){ row.style.transform='translateX(-110%)'; finish('snz',10); }
+    else { row.style.transform=''; setTimeout(()=>rw.querySelectorAll('.bgL,.bgR').forEach(b=>b.style.opacity=0),220); }
+    setTimeout(()=>{moved=false;},50); });
+}
+
+/* ---------- sheets ---------- */
+function sheet(html,onOpen){
+  const scrim=document.createElement('div'); scrim.className='scrim'; const sh=document.createElement('div'); sh.className='sheet';
+  sh.innerHTML='<div class="grab"></div>'+html; document.body.append(scrim,sh);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ scrim.classList.add('on'); sh.classList.add('on'); }));
+  const close=()=>{ scrim.classList.remove('on'); sh.classList.remove('on'); setTimeout(()=>{scrim.remove();sh.remove();},320); };
+  scrim.onclick=close; sh.querySelectorAll('[data-close]').forEach(b=>b.onclick=close);
+  // drag the sheet down to dismiss
+  let y0=null; sh.addEventListener('touchstart',e=>{ if(sh.scrollTop<=0) y0=e.touches[0].clientY; },{passive:true});
+  sh.addEventListener('touchmove',e=>{ if(y0==null) return; const d=e.touches[0].clientY-y0; if(d>0){ sh.style.transition='none'; sh.style.transform=`translateY(${d}px)`; } },{passive:true});
+  sh.addEventListener('touchend',e=>{ if(y0==null) return; const d=(e.changedTouches[0].clientY-y0); sh.style.transition=''; sh.style.transform=''; y0=null; if(d>100) close(); });
+  if(onOpen) onOpen(sh,close); return close;
+}
+function moreSheet(s,t){
+  const sl=slotOf(t), ph=t.phone;
+  sheet(`<h3>${esc(cleanName(t))}</h3>
+    ${ph?`<a class="sbtn" href="tel:${esc(ph)}"><span class="si">📞</span>Call ${esc(t.lead||ph)}</a><a class="sbtn" href="sms:${esc(ph)}"><span class="si">💬</span>Text</a>`:''}
+    <button class="sbtn ${sl==='morning'?'on':''}" data-s="morning"><span class="si">🌅</span>${sl==='morning'?'Remove from morning call':'Add to morning call'}</button>
+    <button class="sbtn ${sl==='afternoon'?'on':''}" data-s="afternoon"><span class="si">☀️</span>${sl==='afternoon'?'Remove from afternoon call':'Add to afternoon call'}</button>
+    <button class="sbtn" data-z="1"><span class="si">🌙</span>Snooze to tomorrow</button>
+    <button class="sbtn" data-z="3"><span class="si">😴</span>Snooze 3 days</button>
+    <button class="sbtn" data-z="30"><span class="si">🗓</span>Snooze a month</button>
+    <button class="sbtn" data-note><span class="si">📝</span>Add a note</button>
+    <button class="sbtn cancel" data-close>Cancel</button>`,(sh,close)=>{
+      sh.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ close(); setSlot(t,b.dataset.s); paintDeck(s); paintHome(stack[0]); });
+      sh.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>{ close(); handle(s,t,+b.dataset.z,document.getElementById('top')); });
+      sh.querySelector('[data-note]').onclick=()=>{ close(); noteSheet(s,t); };
+    });
+}
+function snoozeSheet(s,t,top){
+  sheet(`<h3>Snooze for…</h3>
+    <button class="sbtn" data-z="1"><span class="si">🌙</span>Tomorrow</button><button class="sbtn" data-z="3"><span class="si">😴</span>3 days</button>
+    <button class="sbtn" data-z="10"><span class="si">⏳</span>10 days</button><button class="sbtn" data-z="30"><span class="si">🗓</span>A month</button>
+    <button class="sbtn cancel" data-close>Cancel</button>`,(sh,close)=>{
+      sh.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>{ close(); handle(s,t,+b.dataset.z,top); }); });
+}
+function noteSheet(s,t){
+  sheet(`<h3>Note</h3><textarea class="field" rows="4" placeholder="What happened / what's next"></textarea>
+    <div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Save</button></div>`,(sh,close)=>{
+      const ta=sh.querySelector('textarea'); setTimeout(()=>ta.focus(),350);
+      sh.querySelector('[data-ok]').onclick=()=>{ const v=ta.value.trim(); if(!v){close();return;}
+        const stamp=new Date().toLocaleDateString(undefined,{month:'numeric',day:'numeric'});
+        t.notes=(t.notes?t.notes+'\n':'')+stamp+': '+v; save(LS_CACHE,tasks); patch(t.id,{Notes:t.notes}); close(); toast('📝 Saved'); paintDeck(s); };
+    });
+}
+function addSheet(pre,after){
+  const tag=pre.slot?(SLOTS[pre.slot].em+' '+SLOTS[pre.slot].label):pre.project!=null?('🏗 '+pre.project):pre.lead!=null?('👤 '+pre.lead):pre.sub!=null?('🏷 '+pre.sub):'';
+  sheet(`<h3>New task</h3>${tag?`<div class="lbl2">Goes to ${esc(tag)}</div>`:''}
+    <input class="field" id="nt" placeholder="What needs doing?" enterkeyhint="done" autocomplete="off">
+    ${pre.slot?'':`<div class="row2" style="margin-bottom:10px"><button class="pill" data-sl="morning">🌅 Morning</button><button class="pill" data-sl="afternoon">☀️ Afternoon</button></div>`}
+    <div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Add</button></div>`,(sh,close)=>{
+      const inp=sh.querySelector('#nt'); setTimeout(()=>inp.focus(),350); let slot=pre.slot||'';
+      sh.querySelectorAll('[data-sl]').forEach(b=>b.onclick=()=>{ slot=slot===b.dataset.sl?'':b.dataset.sl; sh.querySelectorAll('[data-sl]').forEach(x=>x.classList.toggle('acc',x.dataset.sl===slot)); });
+      const go=async()=>{ const v=inp.value.trim(); if(!v) return; const f={Task:v};
+        if(pre.project) f.Project=pre.project; if(pre.lead) f.SBLead=pre.lead; if(pre.sub) f.Sub=pre.sub; if(slot){ f.MeetingSlot=slot; f.Section=slot; }
+        close(); await create(f); toast('➕ Added'); render(); if(after) after(); };
+      sh.querySelector('[data-ok]').onclick=go; inp.onkeydown=e=>{ if(e.key==='Enter') go(); };
+    });
+}
+function settingsSheet(){
+  sheet(`<h3>Settings</h3>
+    <div class="lbl2">Airtable personal access token (stored only on this phone)</div>
+    <input class="field" id="tok" type="password" placeholder="pat…" value="${esc(cfg.apiKey||'')}" autocomplete="off">
+    <div class="lbl2">Base / table</div>
+    <input class="field" id="bid" value="${esc(cfg.baseId)}"><input class="field" id="tid" value="${esc(cfg.tableId)}">
+    <div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Save & sync</button></div>
+    <div style="height:10px"></div>
+    <button class="sbtn" data-sync><span class="si">🔄</span>Sync now</button>
+    <a class="sbtn" href="../"><span class="si">🖥</span>Open full dashboard</a>
+    <div class="foot">Build ${esc(BUILD)} · ${tasks.filter(live).length} open tasks cached</div>`,(sh,close)=>{
+      sh.querySelector('[data-ok]').onclick=()=>{ cfg.apiKey=sh.querySelector('#tok').value.trim(); cfg.baseId=sh.querySelector('#bid').value.trim()||cfg.baseId; cfg.tableId=sh.querySelector('#tid').value.trim()||cfg.tableId;
+        save(LS_CFG,cfg); close(); if(demo){ tasks=[]; } fetchAll(); };
+      sh.querySelector('[data-sync]').onclick=()=>{ close(); fetchAll(); };
+    });
+}
+
+/* ---------- toast with undo ---------- */
+let tt;
+function toast(msg,undo){
+  const el=document.getElementById('toast'), ub=document.getElementById('undoBtn');
+  el.querySelector('.tm').textContent=msg; el.classList.add('on'); undoFn=undo||null; ub.classList.toggle('hidden',!undo);
+  ub.onclick=async()=>{ const f=undoFn; undoFn=null; el.classList.remove('on'); if(f){ await f(); stack.forEach(s=>{ if(s.route.type==='deck'){ s.queue=null; s.handled=Math.max(0,(s.handled||0)-1); } }); render(); } };
+  clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('on'), undo?4500:2200);
+}
+function paintSync(){ if(stack[0]) paintHome(stack[0]); }
+
+/* ---------- demo (no token yet) ---------- */
+function demoTasks(){
+  const mk=(i,name,project,lead,sub,days,slot,extra)=>Object.assign({id:'demo'+i,createdTime:new Date(Date.now()-days*864e5).toISOString(),name,project,lead,sub,status:'Open',slotRemote:slot||'',sectionRemote:slot||'',doDate:'',phone:'',next:'',notes:'',priorityRemote:0},extra||{});
+  return [
+    mk(1,'Confirm steel delivery date','Riverside','Sam','Steel',3,'morning',{phone:'+15555550100',next:'Get a firm date before Thursday pour'}),
+    mk(2,'Window gaskets — missing pieces','Riverside','Nick','Windows',12,'morning'),
+    mk(3,'Insurance payment','Maple','','Admin',6,'morning'),
+    mk(4,'Lobby desk shop drawings','Harbor','Gustavo','Millwork',9,'afternoon'),
+    mk(5,'Plumbing fixtures order','Harbor','Sam','Plumbing',20,'afternoon'),
+    mk(6,'Roof door gaskets','Riverside','Nick','Doors',2,''),
+    mk(7,'Review lease draft','Maple','Richard','Legal',1,''),
+    mk(8,'Fence quote','Oak St','Gustavo','Sitework',15,''),
+  ];
+}
+
+/* ---------- boot ---------- */
+if(!cfg.apiKey && !tasks.length){ tasks=demoTasks(); demo=true; }
+push({type:'home'});
+fetchAll();
+// refresh when the app comes back to the foreground (at most every 2 min)
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && Date.now()-lastSync>120000) fetchAll(); });
+if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

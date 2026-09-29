@@ -1,0 +1,16 @@
+{
+  "name": "Tasks — Roni",
+  "short_name": "Tasks",
+  "description": "Morning & afternoon calls, then one task at a time.",
+  "id": "/task-board/m/",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14110f",
+  "theme_color": "#14110f",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
