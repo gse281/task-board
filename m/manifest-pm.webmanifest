@@ -1,0 +1,15 @@
+{
+  "name": "PM Call",
+  "short_name": "PM Call",
+  "id": "/task-board/m/#afternoon",
+  "start_url": "./#afternoon",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#14110f",
+  "theme_color": "#14110f",
+  "icons": [
+    { "src": "icon-pm-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-pm-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

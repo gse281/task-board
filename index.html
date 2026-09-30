@@ -365,9 +365,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-29 15:06';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-09-30 13:45';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-09-30 · move fix', d:'Fixed: moving or unfiling a task OUT of 🌅 Morning / ☀️ Afternoon Call now actually sticks. Before, the hidden call-slot dragged it right back, so the 📂 move icon and the Move pop-up seemed to do nothing.'},
   {v:'2026-09-28 · desktop tidy', d:'Desktop: removed the 🗑 Triage panel. The P/S/L/Category/Added filters now stay hidden until you tap the 🔍 Find bar (like the iPhone) — cleaner top. And clicking a filter opens its results as a FULL-height column instead of a half cell.'},
   {v:'2026-09-28 · focus resets', d:'🎯 Now/Focus now clears every morning — start each day with a clean focus list. Anything left in it at the day’s turnover is pushed to the top of 🔥 Priority (not lost). 📌 Pinned focus items stay put. Also: the ⧉ floated-out window got an add bubble so you can add tasks straight into that section.'},
   {v:'2026-09-28 · call order', d:'🌅/☀️ Morning & Afternoon call lists now always sort newest-first — oldest task sits at the bottom — on the main panel, the tap-in "see all" view, and desktop.'},
@@ -620,12 +621,14 @@ function setSlot(id,slot){
 }
 function sectionOf(t){ return A(t.id).section || t.sectionRemote || defaultSection(t); }
 // Move a task to a section AND sync it to Airtable so every device agrees.
+// Also clears the morning/afternoon MeetingSlot — otherwise the slot re-derives the old
+// section (defaultSection) and the task snaps right back into Morning/Afternoon Call.
 function setSection(id,sec){
   const t=tasks.find(x=>x.id===id);
-  const prev={sec:A(id).section,secR:t?t.sectionRemote:''};
-  pushUndo('move: '+(t?cleanName(t):id),async()=>{ A(id).section=prev.sec; if(t)t.sectionRemote=prev.secR; await atPatch(id,{Section:prev.secR||prev.sec||''}); });
-  A(id).section=sec||null; if(t)t.sectionRemote=sec||'';
-  saveAug(); atPatch(id,{Section:sec||''});
+  const prev={sec:A(id).section,secR:t?t.sectionRemote:'',slotR:t?t.slotRemote:''};
+  pushUndo('move: '+(t?cleanName(t):id),async()=>{ A(id).section=prev.sec; if(t){t.sectionRemote=prev.secR;t.slotRemote=prev.slotR;} await atPatch(id,{Section:prev.secR||prev.sec||'',MeetingSlot:prev.slotR||''}); });
+  A(id).section=sec||null; if(t){t.sectionRemote=sec||''; t.slotRemote='';}
+  saveAug(); atPatch(id,{Section:sec||'', MeetingSlot:''});
 }
 
 /* ---------- Airtable ---------- */
