@@ -55,6 +55,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 .panel-head .send-list{margin-left:auto;padding:2px 7px}
 .panel-head .count{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:1px 9px;font-size:12px;color:var(--muted)}
 .panel-body{padding:6px;display:flex;flex-direction:column;gap:4px;min-height:0;flex:1;overflow-y:auto;max-height:calc(100vh - 110px)}
+.scratch-stat{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap}
+.mcall.rm{color:#e0774f}
 .panel.drop-hover{outline:2px dashed var(--accent);outline-offset:-4px}
 .panel.stub .panel-body{align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:18px}
 /* Triage: Done / Don't care / Auto-sort as three drop zones in one box */
@@ -365,9 +367,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-09-30 13:47';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-01 14:50';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-10-01 · notes + calls', d:'🗒 Notes now back up to Airtable (survive a browser wipe, sync across devices) and show a "✓ Saved" time so you can tell. Morning/Afternoon calls on iPhone show the full LIST (not cards) with a one-tap ✕ remove + ✓ done on every row. And call slots are now locked to their own list — afternoon items can no longer drift into morning.'},
   {v:'2026-09-30 · move fix', d:'Fixed: moving or unfiling a task OUT of 🌅 Morning / ☀️ Afternoon Call now actually sticks. Before, the hidden call-slot dragged it right back, so the 📂 move icon and the Move pop-up seemed to do nothing.'},
   {v:'2026-09-28 · desktop tidy', d:'Desktop: removed the 🗑 Triage panel. The P/S/L/Category/Added filters now stay hidden until you tap the 🔍 Find bar (like the iPhone) — cleaner top. And clicking a filter opens its results as a FULL-height column instead of a half cell.'},
   {v:'2026-09-28 · focus resets', d:'🎯 Now/Focus now clears every morning — start each day with a clean focus list. Anything left in it at the day’s turnover is pushed to the top of 🔥 Priority (not lost). 📌 Pinned focus items stay put. Also: the ⧉ floated-out window got an add bubble so you can add tasks straight into that section.'},
@@ -616,8 +619,10 @@ function setSlot(id,slot){
   const t=tasks.find(x=>x.id===id); const cur=(sectionOf(t)===slot); const nv=cur?null:slot;
   const prev={sec:A(id).section,secR:t?t.sectionRemote:'',slotR:t?t.slotRemote:''};
   pushUndo('move: '+(t?cleanName(t):id),async()=>{ A(id).section=prev.sec; if(t){t.sectionRemote=prev.secR;t.slotRemote=prev.slotR;} await atPatch(id,{MeetingSlot:prev.slotR||'',Section:prev.secR||''}); });
-  A(id).section=nv; if(t){t.slotRemote=nv||''; t.sectionRemote=nv||'';} saveAug(); render();
-  atPatch(id,{MeetingSlot:nv||'', Section:nv||''});
+  // Slot is the single source of truth — do NOT also write Section (that created
+  // conflicting rows that could drift a call between morning/afternoon).
+  A(id).section=nv; if(t){t.slotRemote=nv||''; t.sectionRemote='';} saveAug(); render();
+  atPatch(id,{MeetingSlot:nv||'', Section:''});
 }
 function sectionOf(t){ return A(t.id).section || t.sectionRemote || defaultSection(t); }
 // Move a task to a section AND sync it to Airtable so every device agrees.
@@ -902,7 +907,10 @@ function dailyReset(){
     }
   }
   // 📌 pinned tasks stay wherever you put them until done
-  for(const id of Object.keys(aug)){ const s=aug[id].section; if(s && !keep.has(s) && !aug[id].pin){ aug[id].section=null; if(cfg.apiKey)atPatch(id,{Section:''}); } }
+  for(const id of Object.keys(aug)){ const s=aug[id].section; if(!s||keep.has(s)||aug[id].pin) continue;
+    const t=tasks.find(x=>x.id===id);
+    if(t&&(t.slotRemote==='morning'||t.slotRemote==='afternoon')) continue;   // call slots persist via MeetingSlot — never touched at EOD, so they can't drift
+    aug[id].section=null; if(cfg.apiKey)atPatch(id,{Section:''}); }
   meta.lastReset=today; saveAug(); saveMeta();
 }
 // Runs once a day AFTER data loads: kick untouched Still-open items 10 days out,
@@ -1716,6 +1724,8 @@ function mobileRow(t,opts){
   const mv=document.createElement('button'); mv.className='mcall move'; mv.textContent='📂'; mv.title='Move to…'; mv.onclick=e=>{e.stopPropagation();moveSectionPicker(t);}; acts.appendChild(mv);
   // Still Open: "Yes" keeps it open and drops it from this section (bumps last-touched)
   if(opts.stillOpen){ const y=document.createElement('button'); y.className='mcall move'; y.textContent='Yes'; y.title='Keep open — remove from Still Open'; y.onclick=e=>{e.stopPropagation();touch(t.id);toast('Kept open');render();}; acts.appendChild(y); }
+  // Remove from this call list (morning/afternoon only) — one tap, no picker
+  { const sec=sectionOf(t); if(sec==='morning'||sec==='afternoon'){ const rm=document.createElement('button'); rm.className='mcall rm'; rm.textContent='✕'; rm.title='Remove from this call'; rm.onclick=e=>{e.stopPropagation(); setSlot(t.id,sec); toast('Removed from call'); }; acts.appendChild(rm); } }
   // Done / check
   const done=document.createElement('button'); done.className='mcall done2'; done.textContent='✓'; done.onclick=e=>{e.stopPropagation();markDone(t);}; acts.appendChild(done);
   }
@@ -1767,8 +1777,7 @@ function mobileSlotPanel(title,slot){
   p.appendChild(head); mobileTitleTap(head,{dim:'category',val:slot,label:title});
   const body=document.createElement('div'); body.className='panel-body';
   if(!items.length) body.innerHTML='<div class="empty">—</div>';
-  items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t)));
-  if(items.length>5){const m=document.createElement('button'); m.className='more-btn'; m.textContent='+'+(items.length-5)+' more — tap to see all'; m.onclick=()=>{activeBulb={dim:'category',val:slot,label:title};render();}; body.appendChild(m);}
+  items.forEach(t=>body.appendChild(mobileRow(t)));   // full list (not cards) — every call item with its ✓/✕ buttons
   const add=document.createElement('div');add.className='add-inline';add.innerHTML='<input placeholder="Add to '+esc(title)+'…"><button>＋</button>';
   const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){setSlot(t.id,slot);bumpTop(t.id);render();}};
   add.querySelector('button').onclick=go;add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
@@ -2246,18 +2255,46 @@ function spotlightPanel(){
     h.onclick=e=>{e.stopPropagation(); rollSpotlight(true); render(); toast('🎲 '+(spotlightProj||'—')); }; }
   return p;
 }
-// A quick scratchpad pane — jot anything; autosaves to this browser.
+// A quick scratchpad pane — autosaves to this browser AND backs up to Airtable
+// (AppNotes, Key='scratch') so notes survive a browser wipe and sync across devices.
+const NOTES_TABLE='tblfAeWMfvocVGxZk';
+let scratchRid=null;
+function loadScratch(){
+  if(!cfg.apiKey) return Promise.resolve();
+  const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+NOTES_TABLE); u.searchParams.set('pageSize','5');
+  u.searchParams.set('filterByFormula',"{Key}='scratch'");
+  return fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{
+    if(d&&d.records&&d.records[0]){ scratchRid=d.records[0].id; const txt=flat(d.records[0].fields.Text)||'';
+      if(txt && txt!==(meta.scratch||'')){ meta.scratch=txt; saveMeta(); }       // remote backup is source of truth across devices
+      meta.scratchSaved=flat(d.records[0].fields.Updated)||meta.scratchSaved; }
+  }).catch(()=>{});
+}
+function saveScratchRemote(text,cb){
+  if(!cfg.apiKey){ cb&&cb('local'); return; }
+  const stamp=new Date().toLocaleString();
+  const body={fields:{Key:'scratch',Text:text,Updated:stamp}};
+  const ok=rid=>{ scratchRid=rid; meta.scratchSaved=stamp; saveMeta(); cb&&cb('saved',stamp); };
+  const fail=()=>cb&&cb('error');
+  if(scratchRid){ fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+NOTES_TABLE+'/'+scratchRid,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.ok?ok(scratchRid):fail()).catch(fail); }
+  else { fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+NOTES_TABLE,{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({records:[body],typecast:true})}).then(r=>r.ok?r.json():Promise.reject()).then(d=>ok(d.records[0].id)).catch(fail); }
+}
 function scratchPanel(){
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='scratch';
   const head=document.createElement('div'); head.className='panel-head';
-  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>🗒 Notes</h3>';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>🗒 Notes</h3><span class="scratch-stat" id="scratchStat"></span>';
   p.appendChild(head); wirePanel(p,head,'scratch');
+  const stat=head.querySelector('#scratchStat');
+  const setStat=(s,when)=>{ if(!stat)return;
+    stat.textContent = s==='saving'?'saving…' : s==='saved'?('✓ Saved '+(when||'')) : s==='error'?'⚠︎ not saved — retry' : s==='local'?'✓ Saved on this device'
+      : (meta.scratchSaved?('✓ Saved '+meta.scratchSaved):'autosaves'); };
   const body=document.createElement('div'); body.className='panel-body';
   const ta=document.createElement('textarea'); ta.className='inp'; ta.style.cssText='min-height:100%;height:100%;resize:none';
-  ta.placeholder='Jot anything here…'; ta.value=meta.scratch||'';
-  ta.addEventListener('input',()=>{ meta.scratch=ta.value; clearTimeout(ta._t); ta._t=setTimeout(saveMeta,400); });
+  ta.placeholder='Jot anything here…'; ta.value=meta.scratch||''; setStat('init');
+  ta.addEventListener('input',()=>{ meta.scratch=ta.value; clearTimeout(ta._t); setStat('saving');
+    ta._t=setTimeout(()=>{ saveMeta(); saveScratchRemote(ta.value,(s,when)=>setStat(s,when)); },700); });
   ta.addEventListener('pointerdown',e=>e.stopPropagation());   // don't start a panel drag when clicking into notes
   body.appendChild(ta); p.appendChild(body);
+  loadScratch().then(()=>{ if(ta.value!==(meta.scratch||'')) ta.value=meta.scratch||''; setStat('init'); });
   p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'scratch');});
   return p;
 }
