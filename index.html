@@ -367,9 +367,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-10-05 15:42';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-05 16:54';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-10-05 · search sort', d:'The searched / filtered (🔍) pane now groups by project and, within each project, sorts by age with the oldest at the bottom. (Still override it anytime with the Sort dropdown.)'},
   {v:'2026-10-05 · badge in search', d:'The project bubble now shows at the start of each task title in the searched / filtered (🔍) pane too — tap it to set or change the project right there.'},
   {v:'2026-10-01 · notes + calls', d:'🗒 Notes now back up to Airtable (survive a browser wipe, sync across devices) and show a "✓ Saved" time so you can tell. Morning/Afternoon calls on iPhone show the full LIST (not cards) with a one-tap ✕ remove + ✓ done on every row. And call slots are now locked to their own list — afternoon items can no longer drift into morning.'},
   {v:'2026-09-30 · move fix', d:'Fixed: moving or unfiling a task OUT of 🌅 Morning / ☀️ Afternoon Call now actually sticks. Before, the hidden call-slot dragged it right back, so the 📂 move icon and the Move pop-up seemed to do nothing.'},
@@ -436,7 +437,7 @@ function sortItems(items,mode){
   const a=[...items];
   if(mode==='days') a.sort((x,y)=>daysOpen(y)-daysOpen(x));
   else if(mode==='priority') a.sort((x,y)=>((y.priorityRemote||priorityScore(y))-(x.priorityRemote||priorityScore(x))));
-  else if(mode==='project') a.sort((x,y)=>(x.project||'~').localeCompare(y.project||'~'));
+  else if(mode==='project') a.sort((x,y)=>{ const p=(x.project||'~').localeCompare(y.project||'~'); return p!==0?p:(new Date(y.createdTime||0)-new Date(x.createdTime||0)); });   // project, then newest-first (oldest last)
   else if(mode==='lead') a.sort((x,y)=>(x.lead||'~').localeCompare(y.lead||'~'));
   else if(mode==='sub') a.sort((x,y)=>(x.sub||'~').localeCompare(y.sub||'~'));
   else if(mode==='old') a.sort((x,y)=>new Date(x.createdTime||0)-new Date(y.createdTime||0));
@@ -1361,6 +1362,7 @@ function bulbPanel(){
   // Morning/Afternoon call lists default to newest-first (oldest at the bottom), matching the on-screen panels.
   if(isCat && (val==='morning'||val==='afternoon') && !bulbSort) items=items.slice().sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
   if(bulbSort) items=sortItems(items,bulbSort);
+  else if(!isCat && !isAdded) items=sortItems(items,'project');   // searched P/S/L pane defaults to: by project, then age (oldest last)
   const title = isAdded ? ('🗓 Added: '+label) : isCat ? label : '🔎 '+val;
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='bulb';
   const head=document.createElement('div'); head.className='panel-head';

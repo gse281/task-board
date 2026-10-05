@@ -154,6 +154,7 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .agenda .row{display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:60px;border-bottom:1px solid var(--line);width:100%;text-align:left}
 .agenda .row:last-child{border-bottom:0}
 .agenda .row:active{background:var(--panel2)}
+.agenda .row3{padding-left:8px}
 .agenda .num{width:26px;height:26px;border-radius:13px;background:var(--panel2);display:grid;place-items:center;font-size:13px;font-weight:700;color:var(--muted);flex:none}
 .agenda .rt{flex:1;min-width:0}
 .agenda .rn{font-weight:600;font-size:16px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
@@ -341,7 +342,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-05 15:42';   // stamped by deploy.sh
+const BUILD='2026-10-05 16:54';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -627,7 +628,7 @@ function paintHome(s){
       <div class="foot">Build ${esc(BUILD)} · <a href="../">Desktop dashboard</a></div>
     </div>`;
   el.querySelector('.scroll').scrollTop=st;
-  el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>{ const sl=b.dataset.slot; push({type:'deck',kind:'slot',slot:sl,title:SLOTS[sl].label}); });
+  el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>{ const sl=b.dataset.slot; push({type:'deck',kind:'slot',slot:sl,title:SLOTS[sl].label,list:true}); });
   el.querySelectorAll('[data-dim]').forEach(b=>b.onclick=()=>push({type:'groups',dim:b.dataset.dim}));
   el.querySelector('[data-review]').onclick=()=>{ const l=groups('project').map(g=>g.k); push({type:'board',dim:'project',list:l,idx:0}); };
   el.querySelector('[data-q="today"]').onclick=()=>push({type:'deck',kind:'today',title:'Due today'});
@@ -682,6 +683,7 @@ function deckItems(r){
 function paintDeck(s){
   const r=s.route, el=s.el;
   // Keep a stable queue for this session: tasks leave when handled, "Next" rotates to the back.
+  if(s.list===undefined) s.list=!!r.list;
   const fresh=deckItems(r); const ids=new Set(fresh.map(t=>t.id));
   if(!s.queue){ s.queue=fresh.map(t=>t.id); if(r.startId&&s.queue.includes(r.startId)) s.queue=[r.startId,...s.queue.filter(x=>x!==r.startId)]; } else { s.queue=s.queue.filter(id=>ids.has(id)); fresh.forEach(t=>{ if(!s.queue.includes(t.id)) s.queue.push(t.id); }); }
   s.total=Math.max(s.total||0, s.queue.length+(s.handled||0));
@@ -691,7 +693,7 @@ function paintDeck(s){
   const titleEm=isSlot?SLOTS[r.slot].em+' ':'';
   el.innerHTML=`<div class="nav">${backBtn(stack.length>2&&stack[stack.length-2].route.type==='groups'?DIMS[stack[stack.length-2].route.dim].plural:'Tasks')}
       <div class="ttl">${titleEm}${esc(r.title)}</div>${streakHTML()}
-      <button class="icon" data-list aria-label="List">${s.list?'▭':'☰'}</button><button class="icon" data-add aria-label="Add">＋</button></div>`;
+      <button class="statsbtn" data-list aria-label="Toggle list / cards">${s.list?'CARDS':'LIST'}</button><button class="icon" data-add aria-label="Add">＋</button></div>`;
   wire(el);
   el.querySelector('[data-add]').onclick=()=>addSheet(r.kind==='slot'?{slot:r.slot}:r.kind==='group'?{[r.dim]:r.val}:{} , ()=>paintDeck(s));
   el.querySelector('[data-list]').onclick=()=>{ s.list=!s.list; paintDeck(s); };
@@ -800,14 +802,33 @@ function swipe(card,cb){
   card.addEventListener('pointerup',end); card.addEventListener('pointercancel',end);
 }
 function paintAgenda(s,q){
-  const el=s.el, r=s.route;
-  el.insertAdjacentHTML('beforeend',`<div class="scroll agenda"><div class="sub" style="margin-top:6px">${q.length} open · tap a row to focus it, tap ○ to finish</div>
-    <div class="glist">${q.map((t,i)=>`<div class="row" data-id="${t.id}"><span class="num">${i+1}</span><span class="rt"><div class="rn">${esc(cleanName(t))}</div>
-      <div class="rm">${esc([t.project,t.lead,t.sub].filter(Boolean).join(' · ')||('Open '+daysOpen(t)+'d'))}</div></span><button class="ck" data-ck="${t.id}">✓</button></div>`).join('')}</div></div>`);
-  el.querySelectorAll('[data-ck]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const t=tasks.find(x=>x.id===b.dataset.ck); if(!t) return;
-    done(t); s.queue=s.queue.filter(id=>id!==t.id); s.handled=(s.handled||0)+1; const row=b.closest('.row'); row.style.transition='opacity .2s'; row.style.opacity='0';
-    setTimeout(()=>{ paintDeck(s); paintHome(stack[0]); },200); });
-  el.querySelectorAll('.row').forEach(row=>row.onclick=()=>{ const id=row.dataset.id; s.queue=[id,...s.queue.filter(x=>x!==id)]; s.list=false; paintDeck(s); });
+  const el=s.el;
+  const keep=s.agScroll||0;
+  el.insertAdjacentHTML('beforeend',`<div class="bhint" style="padding-top:2px;white-space:nowrap"><b>✓ or swipe → Done</b> · <i>😴 or ← Snooze 10d</i> · tap = open</div>
+    <div class="scroll agenda"><div class="sub" style="margin:2px 4px 8px">${q.length} open${s.handled?' · '+s.handled+' handled':''}</div>
+    <div class="glist">${q.map((t,i)=>{ const d=daysOpen(t); return `<div class="rw" data-id="${t.id}"><div class="bgL">✓ DONE</div><div class="bgR">SNOOZE 10d 😴</div>
+      <div class="row3"><span class="num">${i+1}</span><div class="tt"><div class="tn">${esc(cleanName(t))}</div>
+        <div class="tm">${t.project?`<b style="color:${projColor(t.project)}">${esc(t.project)}</b> · `:''}${esc([t.lead,t.sub].filter(Boolean).join(' · '))}${t.lead||t.sub?' · ':''}${d>=21?`<span class="o">${d}d</span>`:d+'d'}${t.phone?' · 📞':''}</div></div>
+        <button class="tsnz" aria-label="Snooze">😴</button><button class="tick" aria-label="Done">✓</button></div></div>`; }).join('')}</div>
+    <div style="height:30px"></div></div>`);
+  const sc=el.querySelector('.agenda'); sc.scrollTop=keep; sc.addEventListener('scroll',()=>{ s.agScroll=sc.scrollTop; },{passive:true});
+  el.querySelectorAll('.rw').forEach(rw=>{
+    const t=tasks.find(x=>x.id===rw.dataset.id); if(!t) return; const row=rw.querySelector('.row3');
+    const finish=kind=>{ rw.classList.add(kind==='done'?'gone':'snzd'); if(kind==='done') done(t); else snooze(t,10);
+      s.queue=s.queue.filter(id=>id!==t.id); s.handled=(s.handled||0)+1; setTimeout(()=>{ paintDeck(s); if(stack[0]) paintHome(stack[0]); },kind==='done'?520:300); };
+    rw.querySelector('.tick').onclick=e=>{ e.stopPropagation(); finish('done'); };
+    rw.querySelector('.tsnz').onclick=e=>{ e.stopPropagation(); finish('snz'); };
+    let x0=null,y0=0,dx=0,lock=null,moved=false;
+    row.addEventListener('click',e=>{ if(e.target.closest('button')||moved) return; s.queue=[t.id,...s.queue.filter(x=>x!==t.id)]; s.list=false; buzz(5); paintDeck(s); });
+    row.addEventListener('touchstart',e=>{ x0=e.touches[0].clientX; y0=e.touches[0].clientY; dx=0; lock=null; moved=false; row.style.transition='none'; },{passive:true});
+    row.addEventListener('touchmove',e=>{ if(x0==null) return; const mx=e.touches[0].clientX-x0, my=e.touches[0].clientY-y0;
+      if(lock==null&&(Math.abs(mx)>8||Math.abs(my)>8)) lock=Math.abs(mx)>Math.abs(my)?'x':'y'; if(lock!=='x') return;
+      dx=mx; moved=true; row.style.transform=`translateX(${dx}px)`; rw.querySelector('.bgL').style.opacity=dx>0?1:0; rw.querySelector('.bgR').style.opacity=dx<0?1:0;
+      if(Math.abs(dx)>90&&!row._b){ buzz(6); row._b=1; } if(Math.abs(dx)<90) row._b=0; },{passive:true});
+    row.addEventListener('touchend',()=>{ if(x0==null) return; x0=null; row.style.transition='transform .22s var(--ease)';
+      if(dx>90){ row.style.transform='translateX(110%)'; finish('done'); } else if(dx<-90){ row.style.transform='translateX(-110%)'; finish('snz'); }
+      else { row.style.transform=''; setTimeout(()=>rw.querySelectorAll('.bgL,.bgR').forEach(b=>b.style.opacity=0),220); } setTimeout(()=>{moved=false;},60); });
+  });
 }
 
 /* ---------- SNAPSHOT: entire open list, one dense line per task ----------
@@ -1103,7 +1124,7 @@ push({type:'home'});
 // Deep link → open straight into that screen (also on re-open / hash change)
 function routeFromHash(){ const h=(location.hash||'').slice(1).toLowerCase(); if(!h) return;
   goHome();
-  if(h==='morning'||h==='afternoon'||h==='am'||h==='pm'){ const sl=(h==='am'||h==='morning')?'morning':'afternoon'; push({type:'deck',kind:'slot',slot:sl,title:SLOTS[sl].label}); }
+  if(h==='morning'||h==='afternoon'||h==='am'||h==='pm'){ const sl=(h==='am'||h==='morning')?'morning':'afternoon'; push({type:'deck',kind:'slot',slot:sl,title:SLOTS[sl].label,list:true}); }
   else if(h==='review'){ push({type:'board',dim:'project',list:groups('project').map(g=>g.k),idx:0}); }
   else if(h==='notes'){ push({type:'notes',q:'',range:'all'}); }
   else if(h==='snapshot'||h==='list'){ push({type:'snap',mode:localStorage.getItem('m.snapMode')||'group'}); } }
