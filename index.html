@@ -367,9 +367,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-10-01 14:50';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-05 15:40';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-10-05 · badge in search', d:'The project bubble now shows at the start of each task title in the searched / filtered (🔍) pane too — tap it to set or change the project right there.'},
   {v:'2026-10-01 · notes + calls', d:'🗒 Notes now back up to Airtable (survive a browser wipe, sync across devices) and show a "✓ Saved" time so you can tell. Morning/Afternoon calls on iPhone show the full LIST (not cards) with a one-tap ✕ remove + ✓ done on every row. And call slots are now locked to their own list — afternoon items can no longer drift into morning.'},
   {v:'2026-09-30 · move fix', d:'Fixed: moving or unfiling a task OUT of 🌅 Morning / ☀️ Afternoon Call now actually sticks. Before, the hidden call-slot dragged it right back, so the 📂 move icon and the Move pop-up seemed to do nothing.'},
   {v:'2026-09-28 · desktop tidy', d:'Desktop: removed the 🗑 Triage panel. The P/S/L/Category/Added filters now stay hidden until you tap the 🔍 Find bar (like the iPhone) — cleaner top. And clicking a filter opens its results as a FULL-height column instead of a half cell.'},
@@ -2374,8 +2375,8 @@ function taskEl(t,sectionId){
     `</div>`;
   const nm=el.querySelector('.name'); nm.style.cursor='pointer'; nm.title='Edit';
   nm.onclick=e=>{e.stopPropagation();openDetail(t);};
-  // Project ID badge to the LEFT of the description text.
-  if(sectionId!=='bulb'){ const pb=document.createElement('button'); pb.className='projbadge'+(t.project?'':' empty'); pb.textContent=t.project||'＋P';
+  // Project ID badge to the LEFT of the description text — shown everywhere, including the searched/filtered pane.
+  { const pb=document.createElement('button'); pb.className='projbadge'+(t.project?'':' empty'); pb.textContent=t.project||'＋P';
     pb.title=t.project?('Project: '+t.project+' — click to change'):'Set project';
     pb.onclick=e=>{e.stopPropagation();pickAssign(t,'project');}; nm.insertBefore(pb, nm.firstChild); }
   const np=el.querySelector('.notepv'); if(np){ np.style.cursor='pointer'; np.onclick=e=>{e.stopPropagation();editNotes(t);}; }
