@@ -385,7 +385,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-07 13:21';   // stamped by deploy.sh
+const BUILD='2026-10-07 13:33';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -911,7 +911,7 @@ function paintHome(s){
         <button class="mini" data-notesbtn><b>🗒</b><span>Notes</span></button>
         <button class="mini" data-wx><b>${(()=>{ if(!wx.length) return '🌤'; const w=wx.find(x=>x.date===todayISO())||wx[0]; return w.hi+'°'; })()}</b><span>Weather</span></button>
       </div>
-      ${parkedTasks().length?`<button class="view" data-parked style="margin:2px 0 12px"><span class="vi" style="background:#2a241c">🅿️</span><span class="vt"><div class="vn">Parked</div><div class="vs">${parkedTasks().length} set aside · tap to restore</div></span><span class="chev">›</span></button>`:''}
+      <button class="view" data-parked style="margin:2px 0 12px"><span class="vi" style="background:#2a241c">🅿️</span><span class="vt"><div class="vn">Parked</div><div class="vs">${parkedTasks().length} set aside · cleared items wait here to restore</div></span><span class="chev">›</span></button>
       ${(()=>{ const A2=autoSummary(); const shown=A2.bad.slice(0,3); const leads=autoRows.filter(r=>r.kind==='Lead');
         return `<button class="autocard" data-autos><div class="ah">⚙️ Automations<span class="ab" style="background:${A2.bad.length?'#e5533a':'#3a8f5f'}">${A2.t.length?(A2.bad.length?A2.bad.length+' need attention':'all OK'):'no feed yet'}</span></div>
           <div class="ap" style="margin-top:3px">${A2.ok} running OK · ${A2.paused} paused · feed ${autoAgo(A2.fresh)}</div>
