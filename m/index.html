@@ -51,17 +51,17 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:0 16px calc(28px + var(--sab))}
 
 /* nav bar */
-.nav{padding:calc(var(--sat) + 6px) 8px 6px;display:flex;align-items:center;min-height:calc(var(--sat) + 50px);gap:4px;flex:none}
+.nav{padding:calc(var(--sat) + 6px) 8px 6px;display:flex;align-items:center;flex-wrap:wrap;row-gap:2px;max-width:100%;min-height:calc(var(--sat) + 50px);gap:4px;flex:none}
 .nav .back{display:flex;align-items:center;gap:2px;color:var(--accent);font-size:17px;padding:8px 8px;min-height:44px}
 .nav .back svg{width:13px;height:21px}
 .nav .ttl{flex:1;text-align:center;font-weight:600;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px}
-.nav .icon{min-width:44px;height:44px;display:grid;place-items:center;color:var(--accent);font-size:22px;border-radius:12px}
+.nav .icon{flex:none;min-width:40px;height:44px;display:grid;place-items:center;color:var(--accent);font-size:22px;border-radius:12px}
 .nav .icon:active{background:var(--panel)}
 .big{font-size:34px;font-weight:800;letter-spacing:-.5px;margin:2px 4px 2px}
 .sub{color:var(--muted);font-size:15px;margin:0 4px 16px}
 
 /* ---------- home ---------- */
-.calls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:26px}
+.calls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:26px}
 .call{position:relative;border-radius:22px;padding:16px 16px 14px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;
   text-align:left;overflow:hidden;transition:transform .12s}
 .call:active{transform:scale(.97)}
@@ -237,7 +237,7 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .streak.hot{background:#FF6B35;border-color:#FF9A00}
 .streak.pop{animation:popk .35s var(--ease)}
 .score{font:600 13px ui-monospace,Menlo,monospace;color:#CBD5E1;white-space:nowrap}
-.statsbtn{font:700 12px ui-monospace,Menlo,monospace;letter-spacing:1px;color:#CBD5E1;border:1px solid #334155;border-radius:8px;padding:7px 10px;min-height:34px}
+.statsbtn{flex:none;font:700 11px ui-monospace,Menlo,monospace;letter-spacing:.5px;color:#CBD5E1;border:1px solid #334155;border-radius:8px;padding:7px 10px;min-height:34px}
 .drill{background:#0f0d0c;border:1px solid var(--line);border-radius:20px;padding:14px 0 14px;margin-bottom:22px}
 .drill .dh{font:700 11px ui-monospace,Menlo,monospace;letter-spacing:2px;color:#FF6B35;margin:0 16px 10px}
 .drill .chips2{padding:0 14px 12px}
@@ -287,13 +287,37 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .sgh .d{width:10px;height:10px;border-radius:5px}
 .sgh b{flex:1;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sgh span{font:700 12px ui-monospace,Menlo,monospace;color:var(--gold)}
-.sl{display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:8px;width:100%;text-align:left;min-height:42px;padding:6px 8px;border-bottom:1px solid #221d1a;font-size:14.5px}
+.sl{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:8px;width:100%;text-align:left;min-height:42px;padding:6px 8px;border-bottom:1px solid #221d1a;font-size:14.5px}
+.sl.isdone .tk{text-decoration:line-through;opacity:.55}
 .sl:active{background:var(--panel2)}
 .sl .tg{font:800 10.5px ui-monospace,Menlo,monospace;color:#111;border-radius:6px;padding:3px 6px;max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl .tk{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 .sl .ld{color:var(--muted);font-size:12.5px;max-width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl .ag{font:700 12.5px ui-monospace,Menlo,monospace;min-width:38px;text-align:right;color:var(--muted)}
 .sl .ag.o{color:#e8836b}.sl .ag.oo{color:#ff5a3c}
+/* automations */
+.autocard{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:12px 14px;margin-bottom:22px}
+.autocard .ah{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+.autocard .ab{margin-left:auto;font-size:12px;font-weight:800;border-radius:9px;padding:3px 9px;color:#fff}
+.arow{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line)}
+.arow:last-child{border-bottom:0}
+.adot{width:10px;height:10px;border-radius:5px;margin-top:5px;flex:none}
+.an{font-weight:700;font-size:14.5px}.ap{color:var(--muted);font-size:12.5px;line-height:1.35}
+.ast{font:800 11px ui-monospace,Menlo,monospace;flex:none;margin-top:3px}
+.lgrid{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:6px 12px;font-size:13px;align-items:center}
+.lgrid>span:nth-child(-n+4){color:var(--dim);font-size:11px}
+.lgrid i{font-style:normal;color:var(--dim);font-size:11.5px}
+/* no sideways scrolling, ever */
+html,body,#stack,.screen,.scroll,.bscroll,.deckwrap,.cardzone,.agenda,.glist{max-width:100vw;overflow-x:hidden}
+html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
+.scroll,.bscroll,.cardzone{touch-action:pan-y}
+.chips2{touch-action:pan-x;overscroll-behavior-x:contain;max-width:100%}
+.nav>*{min-width:0}
+.screen>*,.scroll>*{max-width:100%;min-width:0}
+.call,.view,.review,.autocard,.drill,.mini{min-width:0;max-width:100%}
+.call .lbl,.call .hint{overflow-wrap:anywhere}
+.homesync{flex:1 1 90px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:380px){ .statsbtn{padding:6px 7px} .nav .icon{min-width:36px} .call .n{font-size:38px} .call .lbl{font-size:17px} }
 /* notes archive */
 .nrow{display:block;width:100%;text-align:left;padding:12px 14px;border-bottom:1px solid var(--line)}
 .nrow:last-child{border-bottom:0}
@@ -342,7 +366,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-05 16:54';   // stamped by deploy.sh
+const BUILD='2026-10-07 09:57';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -410,8 +434,137 @@ async function fetchAll(){
     }while(offset && ++guard<60);
   }catch(e){ toast('Offline — showing saved list'); }
   syncing=false; render();
-  sweepNotes(false);
+  sweepNotes(false); dnArchive(); fetchAutos(false);
 }
+
+/* ---------- ⚙️ AUTOMATIONS — always on the home screen (feed: Airtable Automations table, refreshed every 2h
+   by the automations-status scheduled task + each task's own end-of-run report) ---------- */
+const AUTO_TABLE='tblDBZXPxzKDKVKJh';
+let autoRows=load('m.autos',[]), autoBusy=false;
+const AUTO_C={OK:'#3a8f5f',Failing:'#e5533a',Missed:'#e0a458',Paused:'#6f6861',Manual:'#5b8fb0',Unknown:'#a8a29a'};
+async function fetchAutos(force){
+  if(demo||!cfg.apiKey||autoBusy) return; if(!force && Date.now()-(+localStorage.getItem('m.autosAt')||0)<10*60000) return;
+  autoBusy=true;
+  try{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+AUTO_TABLE); u.searchParams.set('pageSize','100');
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(r.ok){ const d=await r.json();
+      autoRows=(d.records||[]).map(x=>{ const f=x.fields; return {name:f.Name||f.TaskId||'',id:f.TaskId||'',kind:flat(f.Kind)||'Task',purpose:f.Purpose||'',schedule:f.Schedule||'',
+        last:f.LastRun||'',next:f.NextRun||'',status:flat(f.Status)||'Unknown',detail:f.Detail||'',sent:f.Sent||0,replied:f.Replied||0,noreply:f.NoReply||0,updated:f.Updated||''}; });
+      save('m.autos',autoRows); localStorage.setItem('m.autosAt',Date.now()); } }catch(e){}
+  autoBusy=false; stack.forEach(x=>{ if(x.route.type==='home') paintHome(x); if(x.route.type==='autos') paintAutos(x); });
+}
+function autoAgo(iso){ if(!iso) return '—'; const t=Date.parse(iso); if(isNaN(t)) return iso; const m=Math.round((Date.now()-t)/60000);
+  if(m<0){ const h=Math.round(-m/60); return h<24?'in '+h+'h':'in '+Math.round(h/24)+'d'; } return m<60?m+'m ago':m<1440?Math.round(m/60)+'h ago':Math.round(m/1440)+'d ago'; }
+function autoRowHTML(r){ return `<div class="arow"><span class="adot" style="background:${AUTO_C[r.status]||'#999'}"></span><div style="flex:1;min-width:0"><div class="an">${esc(r.name)}</div>
+  <div class="ap">${esc(r.purpose)}</div><div class="ap">${esc(r.schedule)} · last ${autoAgo(r.last)}${r.next?' · next '+autoAgo(r.next):''}</div>
+  ${r.detail&&r.status!=='OK'?`<div class="ap" style="color:${AUTO_C[r.status]}">${esc(r.detail)}</div>`:''}</div><span class="ast" style="color:${AUTO_C[r.status]||'#ccc'}">${esc(r.status)}</span></div>`; }
+function leadsHTML(leads){ return leads.length?`<div class="lgrid"><span></span><span>sent</span><span>replied</span><span>no reply</span>${leads.map(l=>`<span><b>${esc(l.name)}</b><br><i>${esc(l.detail)}</i></span><span>${l.sent}</span><span style="color:${l.replied?'#6fdc9c':'#e5533a'}">${l.replied}</span><span style="color:${l.noreply?'#e0a458':'inherit'}">${l.noreply}</span>`).join('')}</div>`:''; }
+function autoSummary(){ const t=autoRows.filter(r=>r.kind==='Task'); const bad=t.filter(r=>r.status==='Failing'||r.status==='Missed');
+  const ok=t.filter(r=>r.status==='OK').length, paused=t.filter(r=>r.status==='Paused').length; const fresh=autoRows.reduce((m,r)=>r.updated>m?r.updated:m,'');
+  return {t,bad,ok,paused,fresh}; }
+function paintAutos(s){
+  const el=s.el, A2=autoSummary(), rank={Failing:0,Missed:1,OK:2,Manual:3,Unknown:4,Paused:5};
+  const act=A2.t.filter(r=>r.status!=='Paused').sort((a,b)=>(rank[a.status]-rank[b.status])||a.name.localeCompare(b.name));
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">⚙️ Automations</div><button class="icon" data-ar aria-label="Reload">↻</button></div>
+    <div class="scroll"><div class="sub" style="margin-top:4px">${A2.ok} OK · ${A2.bad.length} need attention · ${A2.paused} paused · feed ${autoAgo(A2.fresh)}</div>
+    <div class="glist" style="padding:2px 12px">${act.map(autoRowHTML).join('')||'<div class="ap" style="padding:14px 0">No feed yet.</div>'}</div>
+    ${A2.t.some(r=>r.status==='Paused')?`<details style="margin-top:12px"><summary class="sect" style="cursor:pointer">Paused (${A2.paused})</summary><div class="glist" style="padding:2px 12px">${A2.t.filter(r=>r.status==='Paused').map(autoRowHTML).join('')}</div></details>`:''}
+    <div class="sect" style="margin-top:18px">📲 Lead texts · last 7 days</div><div class="glist" style="padding:8px 12px">${leadsHTML(autoRows.filter(r=>r.kind==='Lead'))||'<span class="ap">No lead data yet.</span>'}</div>
+    <div class="foot">Refreshed every 2h by the “automations-status” task; each task also reports OK / Failing when it finishes.</div></div>`;
+  wire(el); el.querySelector('[data-ar]').onclick=()=>{ toast('Reloading…'); fetchAutos(true); };
+}
+
+/* ============================================================
+   DAILY NOTES — same pages as the desktop 🗒 Notes panel (Airtable AppNotes, Key='scratch:YYYY-MM-DD').
+   Today always opens blank; ‹ › walks back through past days; nothing is ever overwritten by the rollover.
+   Finished days are copied into EventLog (Field=DailyNotes, UID=S:<day>:<hash>) → they show in 📝 Notes archive too.
+   ============================================================ */
+const DN_TABLE='tblfAeWMfvocVGxZk';
+const dnLabel=day=>day===todayISO()?'Today':new Date(day+'T12:00:00').toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+const dnShift=(day,n)=>{ const d=new Date(day+'T12:00:00'); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const dnLocal=()=>{ const L=load('m.days',{}); return L; };
+const dnRid={};
+function dnPut(day,text){ const L=dnLocal(); L[day]=text; save('m.days',L); }
+async function dnSave(day,text){
+  dnPut(day,text); if(demo||!cfg.apiKey) return 'local';
+  const body={fields:{Key:'scratch:'+day,Text:text,Updated:new Date().toLocaleString()}}; const H={Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'};
+  try{ if(dnRid[day]){ const r=await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE+'/'+dnRid[day],{method:'PATCH',headers:H,body:JSON.stringify(body)}); return r.ok?'saved':'error'; }
+    const r=await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE,{method:'POST',headers:H,body:JSON.stringify({records:[body],typecast:true})});
+    if(!r.ok) return 'error'; const d=await r.json(); dnRid[day]=d.records[0].id; return 'saved'; }catch(e){ return 'error'; }
+}
+async function dnLoad(day){
+  const L=dnLocal(); if(demo||!cfg.apiKey) return L[day]||'';
+  try{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE); u.searchParams.set('pageSize','5'); u.searchParams.set('filterByFormula',"{Key}='scratch:"+day+"'");
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return L[day]||''; const d=await r.json(); const rec=(d.records||[])[0];
+    if(rec){ dnRid[day]=rec.id; const txt=rec.fields.Text||''; if(!txt&&L[day]){ dnSave(day,L[day]); return L[day]; } dnPut(day,txt); return txt; }
+    if(L[day]) dnSave(day,L[day]); return L[day]||''; }catch(e){ return L[day]||''; }
+}
+async function dnArchive(){
+  if(demo||!cfg.apiKey||localStorage.getItem('m.dnArchivedOn')===todayISO()) return;
+  try{ const H={Authorization:'Bearer '+cfg.apiKey};
+    const get=async(tbl,f,fields)=>{ let off,out=[],g=0; do{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+tbl); u.searchParams.set('pageSize','100'); u.searchParams.set('filterByFormula',f);
+      fields.forEach(x=>u.searchParams.append('fields[]',x)); if(off)u.searchParams.set('offset',off); const r=await fetch(u,{headers:H}); if(!r.ok) throw 0; const d=await r.json(); out=out.concat(d.records||[]); off=d.offset; }while(off&&++g<30); return out; };
+    const days=await get(DN_TABLE,"LEFT({Key},8)='scratch:'",['Key','Text']); const have=new Set((await get(LOG_TABLE,"{Field}='DailyNotes'",['UID'])).map(x=>x.fields.UID));
+    const rows=[]; for(const r of days){ const day=String(r.fields.Key||'').slice(8), txt=(r.fields.Text||'').trim(); if(!txt||day>=todayISO()) continue;
+      const uid='S:'+day+':'+hash(txt); if(have.has(uid)) continue;
+      rows.push({fields:{'Event Name':'Daily notes — '+day,'Event Type':'Note','Event Date':new Date(day+'T23:59:00').toISOString(),'Timestamp':new Date().toISOString(),'Details':txt,'Field':'DailyNotes','NewValue':txt,'UID':uid,'Source':'rollover','Actor':'Roni'}}); }
+    if(rows.length) await createLogs(rows);
+    localStorage.setItem('m.dnArchivedOn',todayISO());
+  }catch(e){}
+}
+function paintDay(s){
+  const r=s.route, el=s.el; const day=r.day||todayISO(), isToday=day===todayISO();
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">🗒 Notes</div><button class="icon" data-arch aria-label="Archive">📝</button></div>
+    <div style="display:flex;align-items:center;gap:8px;padding:0 16px 10px;flex:none">
+      <button class="pill" data-prev style="min-height:46px;padding:0 16px">‹</button>
+      <div style="flex:1;text-align:center"><div style="font-weight:800;font-size:19px;${isToday?'':'color:var(--gold)'}">${esc(dnLabel(day))}</div>
+        <div class="dstat" style="color:var(--dim);font-size:12px">${isToday?'new blank page every day':'archived day'}</div></div>
+      <button class="pill" data-next style="min-height:46px;padding:0 16px" ${isToday?'disabled':''}>›</button>
+      ${isToday?'':'<button class="pill acc" data-today style="min-height:46px;padding:0 12px">Today</button>'}</div>
+    <div style="flex:1;display:flex;padding:0 16px calc(14px + var(--sab));min-height:0">
+      <textarea class="field" data-ta style="flex:1;margin:0;font-size:17px;line-height:1.45" placeholder="${isToday?'Today’s notes — starts blank every day. Tap ‹ for yesterday.':'Nothing written on this day.'}"></textarea></div>`;
+  wire(el);
+  const ta=el.querySelector('[data-ta]'), st=el.querySelector('.dstat'); ta.value=dnLocal()[day]||''; ta.dataset.day=day;
+  const go=d=>{ r.day=d>=todayISO()?null:d; buzz(5); paintDay(s); };
+  el.querySelector('[data-prev]').onclick=()=>go(dnShift(day,-1));
+  el.querySelector('[data-next]').onclick=()=>{ if(!isToday) go(dnShift(day,1)); };
+  const tb=el.querySelector('[data-today]'); if(tb) tb.onclick=()=>go(todayISO());
+  el.querySelector('[data-arch]').onclick=()=>push({type:'notes',q:'',range:'all'});
+  ta.addEventListener('input',()=>{ const d=ta.dataset.day; dnPut(d,ta.value); st.textContent='saving…'; clearTimeout(ta._t);
+    ta._t=setTimeout(async()=>{ const res=await dnSave(d,ta.value); st.textContent=res==='saved'?'✓ saved':res==='local'?'✓ saved on this phone':'⚠︎ not saved — will retry'; },700); });
+  ta.addEventListener('blur',()=>{ if(ta._t){ clearTimeout(ta._t); dnSave(ta.dataset.day,ta.value); } });
+  dnLoad(day).then(txt=>{ if(document.activeElement!==ta && ta.value!==txt) ta.value=txt; });
+}
+/* ---------- 📥 INCOMING — what you added, by day (blank every morning, swipe ‹ › back in time) ---------- */
+function paintIncoming(s){
+  const r=s.route, el=s.el; const day=r.day||todayISO(), isToday=day===todayISO();
+  const rowFor=t=>{ const done=(t.status||'Open')!=='Open'; const tm=new Date(t.createdTime||0).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+    return `<button class="sl${done?' isdone':''}" data-id="${t.id}"><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="tk">${done?'✓ ':''}${esc(cleanName(t))}</span><span class="ld">${esc(t.lead||'')}</span><span class="ag">${esc(tm)}</span></button>`; };
+  const fill=items=>{ const sc=el.querySelector('.scroll'); if(!sc) return;
+    sc.innerHTML=items.length?items.map(rowFor).join('')
+      :`<div class="empty" style="padding-top:56px"><div class="big2">📥</div><h2>${isToday?'Nothing added today':'Nothing added this day'}</h2><p style="color:var(--dim);padding:0 24px">${isToday?'Tap ＋ to capture. Starts fresh every morning — swipe ‹ to see earlier days.':'Swipe ‹ › to browse other days.'}</p></div>`;
+    const cnt=el.querySelector('[data-cnt]'); if(cnt) cnt.textContent=items.length+' added';
+    sc.querySelectorAll('.sl').forEach(b=>b.onclick=()=>{ const t=items.find(x=>x.id===b.dataset.id); if(!t) return; buzz(5);
+      if(isOpen(t)) push({type:'deck',kind:'group',dim:'project',val:t.project||'',title:t.project||'No project',startId:t.id}); else toast('✓ '+cleanName(t)+' — already done'); }); };
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">📥 Incoming</div><span class="score" data-cnt></span><button class="icon" data-add aria-label="Add">＋</button></div>
+    <div style="display:flex;align-items:center;gap:8px;padding:0 16px 10px;flex:none">
+      <button class="pill" data-prev style="min-height:46px;padding:0 16px">‹</button>
+      <div style="flex:1;text-align:center"><div style="font-weight:800;font-size:19px;${isToday?'':'color:var(--gold)'}">${esc(dayLabel(day))}</div>
+        <div style="color:var(--dim);font-size:12px">${isToday?'what you added today · blanks every morning':'what you added that day'}</div></div>
+      <button class="pill" data-next style="min-height:46px;padding:0 16px"${isToday?' disabled':''}>›</button>
+      ${isToday?'':'<button class="pill acc" data-today style="min-height:46px;padding:0 12px">Today</button>'}</div>
+    <div class="scroll" style="padding:0 10px calc(20px + var(--sab))"></div>`;
+  wire(el);
+  const go=d=>{ r.day=d>=todayISO()?null:d; buzz(5); paintIncoming(s); };
+  el.querySelector('[data-prev]').onclick=()=>go(dnShift(day,-1));
+  el.querySelector('[data-next]').onclick=()=>{ if(!isToday) go(dnShift(day,1)); };
+  const tb=el.querySelector('[data-today]'); if(tb) tb.onclick=()=>go(todayISO());
+  el.querySelector('[data-add]').onclick=()=>addSheet({},()=>{ incomingCache={}; paintIncoming(s); });
+  if(isToday) fill(incomingToday());
+  else { el.querySelector('.scroll').innerHTML='<div style="padding:46px;text-align:center;color:var(--dim)">Loading…</div>'; fetchIncoming(day).then(fill); }
+}
+// app left open past midnight → today's page flips to a fresh blank one (yesterday's text is already saved under yesterday)
+let dnShown=todayISO();
+setInterval(()=>{ if(todayISO()!==dnShown){ dnShown=todayISO(); localStorage.removeItem('m.dnArchivedOn'); dnArchive(); incomingCache={}; stack.forEach(x=>{ if(x.route.type==='day'&&!x.route.day) paintDay(x); if(x.route.type==='incoming'&&!x.route.day) paintIncoming(x); }); if(stack[0]) paintHome(stack[0]); } },60000);
 
 /* ============================================================
    NOTES ARCHIVE — every note is kept, by day, forever, and searchable.
@@ -561,6 +714,31 @@ function groupTasks(dim,val){ return tasks.filter(t=>live(t)&&(t[dim]||'')===val
 function todayTasks(){ const td=todayISO(); return tasks.filter(t=>isOpen(t)&&t.doDate&&t.doDate<=td&&!(A(t.id).snoozeUntil>Date.now())).sort((a,b)=>a.doDate.localeCompare(b.doDate)); }
 function allLive(){ return tasks.filter(live).sort((a,b)=>score(b)-score(a)); }
 function currentSlot(){ const h=new Date().getHours(); return h<12?'morning':(h<18?'afternoon':''); }
+// 📞 Calls = call-type tasks (Type="call" or the name starts with "call"), newest/most-urgent first.
+function isCallTask(t){ return t.type==='call' || /^\s*call\b/i.test(t.name||''); }
+function callTasks(){ return tasks.filter(t=>live(t)&&isCallTask(t)).sort((a,b)=>score(b)-score(a)); }
+// 📥 Incoming = what you ADDED on a given day (by created date). Today is derived live from the
+// loaded list (blanks every morning); past days are fetched on demand (includes completed items).
+const localDayOf=t=>{ const d=new Date(t.createdTime||0); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+function incomingToday(){ const td=todayISO(); return tasks.filter(t=>localDayOf(t)===td).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0)); }
+let incomingCache={};
+async function fetchIncoming(day){
+  if(incomingCache[day]) return incomingCache[day];
+  if(!cfg.apiKey) return incomingCache[day]=[];
+  try{
+    const u=new URL(atUrl()); u.searchParams.set('pageSize','100');
+    u.searchParams.set('filterByFormula',"DATETIME_FORMAT(SET_TIMEZONE(CREATED_TIME(),'America/New_York'),'YYYY-MM-DD')='"+day+"'");
+    FIELDS.forEach(f=>u.searchParams.append('fields[]',f));
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return incomingCache[day]=[];
+    const d=await r.json();
+    const rows=(d.records||[]).map(rec=>{ const f=rec.fields; return { id:rec.id, createdTime:rec.createdTime, name:flat(f.Task),
+      project:flat(f.Project).trim(), lead:flat(f.SBLead).trim(), sub:flat(f.Sub).trim(), status:flat(f.Status)||'Open',
+      slotRemote:flat(f.MeetingSlot).toLowerCase(), sectionRemote:flat(f.Section).toLowerCase(), doDate:flat(f.DoDate).slice(0,10),
+      phone:flat(f.Phone), next:flat(f.NextStep), notes:flat(f.Notes), priorityRemote:+flat(f.Priority)||0, type:flat(f.Type).toLowerCase() }; })
+      .sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
+    return incomingCache[day]=rows;
+  }catch(e){ return incomingCache[day]=[]; }
+}
 
 /* ---------- navigation stack ---------- */
 const stack=[]; const $stack=document.getElementById('stack');
@@ -568,17 +746,19 @@ function push(route){
   const el=document.createElement('div'); el.className=stack.length?'screen enter':'screen'; $stack.appendChild(el);
   const top=stack[stack.length-1]; stack.push({route,el});
   paint(stack[stack.length-1]);
-  requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.classList.remove('enter'); if(top) top.el.classList.add('under'); }));
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ el.classList.remove('enter'); syncLayers(); }));
   edgeSwipe(el);
 }
 function pop(){
   if(stack.length<2) return; const cur=stack.pop(); const top=stack[stack.length-1];
-  cur.el.classList.add('leave'); top.el.classList.remove('under'); paint(top);
+  cur.el.classList.add('leave'); syncLayers(); paint(top);
   setTimeout(()=>cur.el.remove(),360);
 }
-function goHome(){ while(stack.length>1){ const s=stack.pop(); s.el.remove(); } stack[0].el.classList.remove('under'); paint(stack[0]); }
+// Only screens that are still UNDER the current top get the shifted 'under' look; the top one is always flush (fixes a stuck sideways-shifted home screen after fast navigation).
+function syncLayers(){ stack.forEach((x,i)=>{ const isTop=i===stack.length-1; x.el.classList.toggle('under',!isTop); if(isTop){ x.el.classList.remove('enter','leave'); x.el.style.transform=''; } }); }
+function goHome(){ while(stack.length>1){ const s=stack.pop(); s.el.remove(); } syncLayers(); paint(stack[0]); }
 function render(){ stack.forEach(paint); }
-function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); }
+function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='autos') paintAutos(s); }
 // iOS-style swipe from the left edge to go back
 function edgeSwipe(el){
   let sx=null,sy=0,dx=0;
@@ -599,7 +779,7 @@ function paintHome(s){
   const td=todayTasks().length, all=allLive().length;
   const keep=el.querySelector('.scroll'); const st=keep?keep.scrollTop:0;
   el.innerHTML=`
-    <div class="nav"><div style="flex:1;padding-left:10px;color:var(--muted);font-size:13px"><span class="sync ${syncing?'busy':(cfg.apiKey?'':'off')}"></span>${syncing?'Syncing…':(demo?'Demo data':(lastSync?'Updated '+ago(lastSync):'Not synced'))}</div>
+    <div class="nav"><div class="homesync" style="padding-left:10px;color:var(--muted);font-size:13px"><span class="sync ${syncing?'busy':(cfg.apiKey?'':'off')}"></span>${syncing?'Syncing…':(demo?'Demo data':(lastSync?'Updated '+ago(lastSync):'Not synced'))}</div>
       ${streakHTML()}${(()=>{const x=sess();const n=x.done+x.snz;return n?`<span class="score">&nbsp;${x.done}✓ ${x.snz}😴</span>`:''})()}
       <button class="statsbtn" data-snap>LIST</button><button class="statsbtn" data-stats>STATS</button><button class="icon" data-add aria-label="Add task">＋</button><button class="icon" data-cfg aria-label="Settings">⚙︎</button></div>
     <div class="scroll">
@@ -609,6 +789,15 @@ function paintHome(s){
         <button class="call am ${now==='morning'?'now':''}" data-slot="morning"><span class="em">🌅</span><span><div class="n">${am}</div><div class="lbl">Morning call</div><div class="hint">Tap to run it</div></span></button>
         <button class="call pm ${now==='afternoon'?'now':''}" data-slot="afternoon"><span class="em">☀️</span><span><div class="n">${pm}</div><div class="lbl">Afternoon call</div><div class="hint">Tap to run it</div></span></button>
       </div>
+      <div class="minirow">
+        <button class="mini" data-calls><b>${callTasks().length}</b><span>📞 Calls</span></button>
+        <button class="mini" data-incoming><b>${incomingToday().length}</b><span>📥 Incoming</span></button>
+      </div>
+      ${(()=>{ const A2=autoSummary(); const shown=A2.bad.slice(0,3); const leads=autoRows.filter(r=>r.kind==='Lead');
+        return `<button class="autocard" data-autos><div class="ah">⚙️ Automations<span class="ab" style="background:${A2.bad.length?'#e5533a':'#3a8f5f'}">${A2.t.length?(A2.bad.length?A2.bad.length+' need attention':'all OK'):'no feed yet'}</span></div>
+          <div class="ap" style="margin-top:3px">${A2.ok} running OK · ${A2.paused} paused · feed ${autoAgo(A2.fresh)}</div>
+          ${shown.map(r=>`<div class="ap" style="margin-top:4px;color:${AUTO_C[r.status]}">● ${esc(r.name)} — ${esc(r.status)}${r.detail?': '+esc(r.detail):''}</div>`).join('')}
+          ${leads.length?`<div class="ap" style="margin-top:6px">📲 ${leads.map(l=>`${esc(l.name)} ${l.sent}↑ ${l.replied}↓${l.noreply?` <span style="color:#e0a458">${l.noreply}⌛</span>`:''}`).join(' · ')}</div>`:''}</button>`; })()}
       <div class="drill"><div class="dh">DRILL — ONE TASK AT A TIME</div>
         <div class="chips2">${drillChips()}</div>
         <button class="cta" data-drill>START DRILLING →</button></div>
@@ -619,6 +808,8 @@ function paintHome(s){
         ${Object.entries(DIMS).map(([k,v])=>`<button class="view" data-dim="${k}"><span class="vi" style="background:${v.tint}">${v.icon}</span>
           <span class="vt"><div class="vn">${v.label}</div><div class="vs">${gc(k)} ${v.plural.toLowerCase()} · ${topNames(k)}</div></span><span class="chev">›</span></button>`).join('')}
       </div>
+      <button class="view" data-day style="margin-bottom:12px"><span class="vi" style="background:#1f2a20">🗒</span>
+        <span class="vt"><div class="vn">Today’s notes</div><div class="vs">${esc(((dnLocal()[todayISO()]||'').split('\n').find(x=>x.trim())||'Blank page · ‹ for yesterday').slice(0,60))}</div></span><span class="chev">›</span></button>
       <button class="view" data-notes style="margin-bottom:12px"><span class="vi" style="background:#2e2a1c">📝</span>
         <span class="vt"><div class="vn">Notes archive</div><div class="vs">${notesArc.length} notes · ${notesToday()} today · search by day, project, word</div></span><span class="chev">›</span></button>
       <div class="minirow">
@@ -636,6 +827,10 @@ function paintHome(s){
   el.querySelector('[data-snap]').onclick=()=>push({type:'snap',mode:localStorage.getItem('m.snapMode')||'group'});
   el.querySelectorAll('[data-dsel]').forEach(b=>b.onclick=()=>{ localStorage.setItem('m.drillSel',b.dataset.dsel); buzz(5); el.querySelectorAll('[data-dsel]').forEach(x=>x.classList.toggle('on',x===b)); });
   el.querySelector('[data-drill]').onclick=()=>{ const v=localStorage.getItem('m.drillSel')||'*'; push({type:'deck',kind:'drill',val:v,title:v==='*'?'Drill · all':v||'No project'}); };
+  el.querySelector('[data-autos]').onclick=()=>push({type:'autos'});
+  el.querySelector('[data-calls]').onclick=()=>push({type:'deck',kind:'calls',title:'📞 Calls'});
+  el.querySelector('[data-incoming]').onclick=()=>push({type:'incoming',day:null});
+  el.querySelector('[data-day]').onclick=()=>push({type:'day',day:null});
   el.querySelector('[data-notes]').onclick=()=>push({type:'notes',q:'',range:'all'});
   el.querySelector('[data-q="all"]').onclick=()=>push({type:'snap',mode:localStorage.getItem('m.snapMode')||'group'});
   el.querySelector('[data-add]').onclick=()=>addSheet({});
@@ -673,6 +868,7 @@ function paintGroups(s){
 /* ---------- DECK: one task at a time ---------- */
 function deckItems(r){
   if(r.kind==='slot') return slotTasks(r.slot);
+  if(r.kind==='calls') return callTasks();
   if(r.kind==='group') return groupTasks(r.dim,r.val);
   if(r.kind==='today') return todayTasks();
   if(r.kind==='drill'){ // grouped by project (biggest first), priority inside — like drilling one topic at a time
@@ -924,7 +1120,7 @@ function paintNotes(s){
       +(list.length>lim?`<button class="pill" style="width:100%;margin-top:14px" data-more>Show more (${list.length-lim})</button>`:'')
     :`<div class="empty" style="padding-top:60px"><div class="big2">📝</div><h2>${q?'No matches':'No notes yet'}</h2><div>${q?'Try another word or widen the range.':'Notes you add are archived here by day.'}</div></div>`;
   const mb=box.querySelector('[data-more]'); if(mb) mb.onclick=()=>{ s.lim=lim+150; paintNotes(s); };
-  box.querySelectorAll('.nrow').forEach(b=>b.onclick=()=>{ const t=byId.get(b.dataset.item);
+  box.querySelectorAll('.nrow').forEach(b=>b.onclick=()=>{ if(b.dataset.p==='Daily notes'){ const dd=(b.querySelector('.nt').textContent||'').trim(); if(/^\d{4}-\d{2}-\d{2}$/.test(dd)){ push({type:'day',day:dd>=todayISO()?null:dd}); return; } } const t=byId.get(b.dataset.item);
     if(t&&live(t)){ const l=groups('project').map(g=>g.k); push({type:'board',dim:'project',list:l,idx:Math.max(0,l.indexOf(t.project||''))}); s.lastOpen=t.id; }
     else toast(t?'That task is snoozed':'That task is closed — note kept in archive'); });
 }
@@ -1127,6 +1323,8 @@ function routeFromHash(){ const h=(location.hash||'').slice(1).toLowerCase(); if
   if(h==='morning'||h==='afternoon'||h==='am'||h==='pm'){ const sl=(h==='am'||h==='morning')?'morning':'afternoon'; push({type:'deck',kind:'slot',slot:sl,title:SLOTS[sl].label,list:true}); }
   else if(h==='review'){ push({type:'board',dim:'project',list:groups('project').map(g=>g.k),idx:0}); }
   else if(h==='notes'){ push({type:'notes',q:'',range:'all'}); }
+  else if(h==='automations'||h==='autos'){ push({type:'autos'}); }
+  else if(h==='today'||h==='daynotes'){ push({type:'day',day:null}); }
   else if(h==='snapshot'||h==='list'){ push({type:'snap',mode:localStorage.getItem('m.snapMode')||'group'}); } }
 routeFromHash(); addEventListener('hashchange',routeFromHash);
 fetchAll();

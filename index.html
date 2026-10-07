@@ -367,7 +367,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-10-05 16:54';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-07 09:57';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-05 · search sort', d:'The searched / filtered (🔍) pane now groups by project and, within each project, sorts by age with the oldest at the bottom. (Still override it anytime with the Sort dropdown.)'},
@@ -1027,8 +1027,9 @@ const expanded = new Set();   // ephemeral: which capped sections are showing al
 function orderedPanels(){
   const custom=((meta.customCats||[]).map(c=>c.id));
   // to-send / from-outside / improvements are now folded INTO the Triage pane.
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','scratch',...STUBS.map(s=>s.id)];
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','scratch','automations',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
+  if(!ord.includes('automations')) ord.unshift('automations');   // always-on status panel: first time it appears at the top
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
   return ord.filter(id=>def.includes(id) && id!=='backlog');   // backlog hidden
 }
@@ -1109,6 +1110,7 @@ function render(){
     else if(id==='respond') board.appendChild(respondPanel());
     else if(id==='tosend') board.appendChild(outboxPanel());
     else if(id==='scratch') board.appendChild(scratchPanel());
+    else if(id==='automations') board.appendChild(automationsPanel());
     else if(stub) board.appendChild(stubPanel(stub));
     else { const cc=(meta.customCats||[]).find(c=>c.id===id); const b=BUCKETS.find(x=>x.id===id)||cc; if(!b)return;
       let items = openVisible.filter(t=>sectionOf(t)===b.id);
@@ -2258,49 +2260,144 @@ function spotlightPanel(){
     h.onclick=e=>{e.stopPropagation(); rollSpotlight(true); render(); toast('🎲 '+(spotlightProj||'—')); }; }
   return p;
 }
-// A quick scratchpad pane — autosaves to this browser AND backs up to Airtable
-// (AppNotes, Key='scratch') so notes survive a browser wipe and sync across devices.
-const NOTES_TABLE='tblfAeWMfvocVGxZk';
-let scratchRid=null;
-function loadScratch(){
-  if(!cfg.apiKey) return Promise.resolve();
-  const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+NOTES_TABLE); u.searchParams.set('pageSize','5');
-  u.searchParams.set('filterByFormula',"{Key}='scratch'");
-  return fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{
-    if(d&&d.records&&d.records[0]){ scratchRid=d.records[0].id; const txt=flat(d.records[0].fields.Text)||'';
-      if(txt && txt!==(meta.scratch||'')){ meta.scratch=txt; saveMeta(); }       // remote backup is source of truth across devices
-      meta.scratchSaved=flat(d.records[0].fields.Updated)||meta.scratchSaved; }
-  }).catch(()=>{});
-}
-function saveScratchRemote(text,cb){
+// 🗒 Daily notes — one page per day in Airtable AppNotes (Key='scratch:YYYY-MM-DD').
+// Today ALWAYS opens blank. Past days are never deleted: browse them with ‹ › (or the iPhone Notes archive).
+// At rollover each finished day is also copied into EventLog (Event Type=Note, Field=DailyNotes, UID=S:<day>:<hash>);
+// the nightly 11:30 PM job archives it again and writes the Markdown day file. Local copy per day in meta.scratchDays.
+const NOTES_TABLE='tblfAeWMfvocVGxZk', DN_LOG='tblsK9WKLLqvvy9Sj';
+const dnISO=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const dnToday=()=>dnISO(new Date());
+const dnShift=(day,n)=>{ const d=new Date(day+'T12:00:00'); d.setDate(d.getDate()+n); return dnISO(d); };
+const dnHash=str=>{ let h=2166136261; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(16); };
+const dnLabel=day=>day===dnToday()?'Today':new Date(day+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+let dnRid={}, scratchDay=null;   // record id per day · day shown (null = today)
+const dnLocal=()=>(meta.scratchDays=meta.scratchDays||{});
+function dnSave(day,text,cb){
+  const L=dnLocal(); L[day]=text; saveMeta();
   if(!cfg.apiKey){ cb&&cb('local'); return; }
-  const stamp=new Date().toLocaleString();
-  const body={fields:{Key:'scratch',Text:text,Updated:stamp}};
-  const ok=rid=>{ scratchRid=rid; meta.scratchSaved=stamp; saveMeta(); cb&&cb('saved',stamp); };
-  const fail=()=>cb&&cb('error');
-  if(scratchRid){ fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+NOTES_TABLE+'/'+scratchRid,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify(body)}).then(r=>r.ok?ok(scratchRid):fail()).catch(fail); }
-  else { fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+NOTES_TABLE,{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({records:[body],typecast:true})}).then(r=>r.ok?r.json():Promise.reject()).then(d=>ok(d.records[0].id)).catch(fail); }
+  const stamp=new Date().toLocaleString(); const body={fields:{Key:'scratch:'+day,Text:text,Updated:stamp}};
+  const ok=rid=>{ dnRid[day]=rid; cb&&cb('saved',stamp); }, fail=()=>cb&&cb('error');
+  const H={Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'};
+  if(dnRid[day]) fetch(AT+cfg.baseId+'/'+NOTES_TABLE+'/'+dnRid[day],{method:'PATCH',headers:H,body:JSON.stringify(body)}).then(r=>r.ok?ok(dnRid[day]):fail()).catch(fail);
+  else fetch(AT+cfg.baseId+'/'+NOTES_TABLE,{method:'POST',headers:H,body:JSON.stringify({records:[body],typecast:true})}).then(r=>r.ok?r.json():Promise.reject()).then(d=>ok(d.records[0].id)).catch(fail);
 }
+function dnLoad(day){
+  const L=dnLocal();
+  if(!cfg.apiKey) return Promise.resolve(L[day]||'');
+  const u=new URL(AT+cfg.baseId+'/'+NOTES_TABLE); u.searchParams.set('pageSize','5'); u.searchParams.set('filterByFormula',"{Key}='scratch:"+day+"'");
+  return fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{
+    const rec=d&&d.records&&d.records[0];
+    if(rec){ dnRid[day]=rec.id; const txt=flat(rec.fields.Text)||''; if(!txt&&L[day]){ dnSave(day,L[day]); return L[day]; } L[day]=txt; saveMeta(); return txt; }
+    if(L[day]) dnSave(day,L[day]);            // edits made offline that never reached Airtable
+    return L[day]||'';
+  }).catch(()=>L[day]||'');
+}
+// one-time: the old single scratch note becomes the page for the day it was last saved (never today) — nothing is dropped
+function dnMigrate(){
+  if(meta.scratchMigrated) return; const old=(meta.scratch||'').trim();
+  if(old){ let day=null; const t=Date.parse(meta.scratchSaved||''); if(!isNaN(t)) day=dnISO(new Date(t)); if(!day||day>=dnToday()) day=dnShift(dnToday(),-1);
+    const L=dnLocal(); L[day]=(L[day]&&L[day]!==old?L[day]+'\n\n':'')+old; meta.scratchLegacyBackup=old; dnSave(day,L[day]); }
+  meta.scratchMigrated=1; saveMeta();
+}
+// rollover archive: every finished day with text → EventLog once per version (idempotent via UID)
+async function dnArchive(){
+  if(!cfg.apiKey||meta.dnArchivedOn===dnToday()) return;
+  try{
+    const H={Authorization:'Bearer '+cfg.apiKey};
+    const get=async(tbl,formula,fields)=>{ let off,out=[],g=0; do{ const u=new URL(AT+cfg.baseId+'/'+tbl); u.searchParams.set('pageSize','100'); u.searchParams.set('filterByFormula',formula);
+      fields.forEach(f=>u.searchParams.append('fields[]',f)); if(off)u.searchParams.set('offset',off); const r=await fetch(u,{headers:H}); if(!r.ok) throw 0; const d=await r.json(); out=out.concat(d.records||[]); off=d.offset; }while(off&&++g<30); return out; };
+    const days=await get(NOTES_TABLE,"LEFT({Key},8)='scratch:'",['Key','Text']);
+    const have=new Set((await get(DN_LOG,"{Field}='DailyNotes'",['UID'])).map(x=>x.fields.UID));
+    const rows=[];
+    for(const r of days){ const day=String(r.fields.Key||'').slice(8), txt=(r.fields.Text||'').trim(); if(!txt||day>=dnToday()) continue;
+      const uid='S:'+day+':'+dnHash(txt); if(have.has(uid)) continue;
+      rows.push({fields:{'Event Name':'Daily notes — '+day,'Event Type':'Note','Event Date':new Date(day+'T23:59:00').toISOString(),'Timestamp':new Date().toISOString(),
+        'Details':txt,'Field':'DailyNotes','NewValue':txt,'UID':uid,'Source':'rollover','Actor':'Roni'}}); }
+    for(let i=0;i<rows.length;i+=10) await fetch(AT+cfg.baseId+'/'+DN_LOG,{method:'POST',headers:{...H,'Content-Type':'application/json'},body:JSON.stringify({records:rows.slice(i,i+10),typecast:true})});
+    meta.dnArchivedOn=dnToday(); saveMeta();
+  }catch(e){}
+}
+// if the dashboard stays open past midnight, flip the panel to the new (blank) day — yesterday's text is already saved under yesterday
+let dnShownToday=dnToday();
+setInterval(()=>{ if(dnToday()!==dnShownToday){ dnShownToday=dnToday(); meta.dnArchivedOn=''; dnArchive(); if(scratchDay===null) try{ render(); }catch(e){} } },60000);
 function scratchPanel(){
+  dnMigrate(); dnArchive();
+  const day=scratchDay||dnToday(), isToday=day===dnToday();
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='scratch';
   const head=document.createElement('div'); head.className='panel-head';
-  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>🗒 Notes</h3><span class="scratch-stat" id="scratchStat"></span>';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>🗒 Notes</h3>'
+    +'<button class="mini" data-dp title="Previous day">‹</button><span style="font-size:12px;font-weight:700;min-width:70px;text-align:center'+(isToday?'':';color:var(--accent)')+'">'+dnLabel(day)+'</span>'
+    +'<button class="mini" data-dn title="Next day"'+(isToday?' disabled style="opacity:.3"':'')+'>›</button>'+(isToday?'':'<button class="mini" data-dt title="Back to today">Today</button>')
+    +'<span class="scratch-stat" id="scratchStat"></span>';
   p.appendChild(head); wirePanel(p,head,'scratch');
+  head.querySelector('[data-dp]').onclick=e=>{ e.stopPropagation(); scratchDay=dnShift(day,-1); render(); };
+  head.querySelector('[data-dn]').onclick=e=>{ e.stopPropagation(); if(isToday) return; const n=dnShift(day,1); scratchDay=n>=dnToday()?null:n; render(); };
+  const dt=head.querySelector('[data-dt]'); if(dt) dt.onclick=e=>{ e.stopPropagation(); scratchDay=null; render(); };
   const stat=head.querySelector('#scratchStat');
   const setStat=(s,when)=>{ if(!stat)return;
-    stat.textContent = s==='saving'?'saving…' : s==='saved'?('✓ Saved '+(when||'')) : s==='error'?'⚠︎ not saved — retry' : s==='local'?'✓ Saved on this device'
-      : (meta.scratchSaved?('✓ Saved '+meta.scratchSaved):'autosaves'); };
+    stat.textContent = s==='saving'?'saving…' : s==='saved'?('✓ Saved '+(when||'')) : s==='error'?'⚠︎ not saved — retry' : s==='local'?'✓ Saved on this device' : (isToday?'new page every day':'archived day'); };
   const body=document.createElement('div'); body.className='panel-body';
   const ta=document.createElement('textarea'); ta.className='inp'; ta.style.cssText='min-height:100%;height:100%;resize:none';
-  ta.placeholder='Jot anything here…'; ta.value=meta.scratch||''; setStat('init');
-  ta.addEventListener('input',()=>{ meta.scratch=ta.value; clearTimeout(ta._t); setStat('saving');
-    ta._t=setTimeout(()=>{ saveMeta(); saveScratchRemote(ta.value,(s,when)=>setStat(s,when)); },700); });
+  ta.dataset.day=day; ta.placeholder=isToday?'Today’s notes — starts blank every day. Yesterday is one tap away (‹).':'Nothing written on '+dnLabel(day)+'.';
+  ta.value=dnLocal()[day]||''; setStat('init');
+  ta.addEventListener('input',()=>{ const d=ta.dataset.day; dnLocal()[d]=ta.value; clearTimeout(ta._t); setStat('saving');
+    ta._t=setTimeout(()=>dnSave(d,ta.value,(s,when)=>setStat(s,when)),700); });
   ta.addEventListener('pointerdown',e=>e.stopPropagation());   // don't start a panel drag when clicking into notes
   body.appendChild(ta); p.appendChild(body);
-  loadScratch().then(()=>{ if(ta.value!==(meta.scratch||'')) ta.value=meta.scratch||''; setStat('init'); });
+  dnLoad(day).then(txt=>{ if(document.activeElement!==ta && ta.value!==txt) ta.value=txt; setStat('init'); });
   p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'scratch');});
   return p;
 }
+// ⚙️ Automations — always-on status of every scheduled task + lead-text health.
+// Feed = Airtable "Automations" table, refreshed every 2h by the automations-status scheduled task
+// and by each task at the end of its run (Status OK / Failing). Missed = enabled but overdue.
+const AUTO_TABLE='tblDBZXPxzKDKVKJh';
+let autoRows=(meta.autos||[]), autoBusy=false;
+function fetchAutos(force){
+  if(!cfg.apiKey||autoBusy) return; if(!force && Date.now()-(meta.autosAt||0)<10*60000) return;
+  autoBusy=true; const u=new URL(AT+cfg.baseId+'/'+AUTO_TABLE); u.searchParams.set('pageSize','100');
+  fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{ autoBusy=false; if(!d) return;
+    autoRows=(d.records||[]).map(r=>{ const f=r.fields; return {name:f.Name||f.TaskId||'',id:f.TaskId||'',kind:flat(f.Kind)||'Task',purpose:f.Purpose||'',schedule:f.Schedule||'',enabled:!!f.Enabled,
+      last:f.LastRun||'',next:f.NextRun||'',status:flat(f.Status)||'Unknown',detail:f.Detail||'',sent:f.Sent||0,replied:f.Replied||0,noreply:f.NoReply||0,lastSent:f.LastSent||'',updated:f.Updated||''}; });
+    meta.autos=autoRows; meta.autosAt=Date.now(); saveMeta(); try{ render(); }catch(e){} }).catch(()=>{ autoBusy=false; });
+}
+function autoAgo(iso){ if(!iso) return '—'; const t=Date.parse(iso); if(isNaN(t)) return iso; const m=Math.round((Date.now()-t)/60000);
+  if(m<0){ const h=Math.round(-m/60); return h<24?'in '+h+'h':'in '+Math.round(h/24)+'d'; } return m<60?m+'m ago':m<1440?Math.round(m/60)+'h ago':Math.round(m/1440)+'d ago'; }
+const AUTO_C={OK:'#3a8f5f',Failing:'#c2553f',Missed:'#e0a458',Paused:'#6f6861',Manual:'#5b8fb0',Unknown:'#a8a29a'};
+function automationsPanel(){
+  fetchAutos(false);
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='automations';
+  const tasksA=autoRows.filter(r=>r.kind==='Task'), leads=autoRows.filter(r=>r.kind==='Lead');
+  const rank={Failing:0,Missed:1,OK:2,Manual:3,Unknown:4,Paused:5};
+  const act=tasksA.filter(r=>r.status!=='Paused').sort((a,b)=>(rank[a.status]-rank[b.status])||a.name.localeCompare(b.name));
+  const paused=tasksA.filter(r=>r.status==='Paused');
+  const bad=tasksA.filter(r=>r.status==='Failing'||r.status==='Missed').length;
+  const fresh=autoRows.reduce((m,r)=>r.updated>m?r.updated:m,'');
+  const head=document.createElement('div'); head.className='panel-head';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>⚙️ Automations</h3>'
+    +'<span style="font-size:11px;font-weight:700;border-radius:8px;padding:2px 7px;background:'+(bad?'#c2553f':'#3a8f5f')+';color:#fff">'+(bad?bad+' need attention':'all OK')+'</span>'
+    +'<span class="scratch-stat" title="Feed refreshed every 2h by the automations-status task">feed '+autoAgo(fresh)+'</span><button class="mini" data-ar title="Reload">↻</button>';
+  p.appendChild(head); wirePanel(p,head,'automations');
+  head.querySelector('[data-ar]').onclick=e=>{ e.stopPropagation(); fetchAutos(true); };
+  const body=document.createElement('div'); body.className='panel-body'; body.style.fontSize='12.5px';
+  const hp=heightPx('automations'); if(hp) body.style.maxHeight=hp;
+  const row=r=>'<div title="'+esc(r.purpose+(r.detail?'\n'+r.detail:''))+'" style="display:grid;grid-template-columns:10px 1fr auto;gap:6px;align-items:start;padding:5px 2px;border-bottom:1px solid var(--line)">'
+    +'<span style="width:9px;height:9px;border-radius:5px;margin-top:4px;background:'+(AUTO_C[r.status]||'#999')+'"></span>'
+    +'<span><b>'+esc(r.name)+'</b><br><span style="color:var(--muted)">'+esc(r.purpose)+'</span><br><span style="color:var(--muted)">'+esc(r.schedule)+' · last '+autoAgo(r.last)+(r.next?' · next '+autoAgo(r.next):'')+'</span>'
+    +(r.detail&&r.status!=='OK'?'<br><span style="color:'+(AUTO_C[r.status]||'#ccc')+'">'+esc(r.detail)+'</span>':'')+'</span>'
+    +'<span style="font-weight:800;font-size:11px;color:'+(AUTO_C[r.status]||'#ccc')+'">'+esc(r.status)+'</span></div>';
+  let h=autoRows.length?'':'<div class="note">No feed yet — the automations-status task fills this every 2h (add your Airtable key in ⚙︎ if empty).</div>';
+  h+=act.map(row).join('');
+  if(paused.length) h+='<details style="margin-top:4px"><summary style="cursor:pointer;color:var(--muted);padding:4px 0">Paused ('+paused.length+')</summary>'+paused.map(row).join('')+'</details>';
+  if(leads.length) h+='<div style="margin-top:10px;font-weight:800">📲 Lead texts · last 7 days</div>'
+    +'<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:2px 10px;margin-top:4px;color:var(--muted)"><span></span><span>sent</span><span>replied</span><span>no reply</span></div>'
+    +leads.map(l=>'<div title="'+esc(l.detail)+'" style="display:grid;grid-template-columns:1fr auto auto auto;gap:2px 10px;padding:3px 0;border-bottom:1px solid var(--line)"><span><b>'+esc(l.name)+'</b> <span style="color:var(--muted)">'+esc(l.detail)+'</span></span>'
+      +'<span style="text-align:right">'+l.sent+'</span><span style="text-align:right;color:'+(l.replied?'#3a8f5f':'#c2553f')+'">'+l.replied+'</span><span style="text-align:right;color:'+(l.noreply?'#e0a458':'inherit')+'">'+l.noreply+'</span></div>').join('');
+  body.innerHTML=h; p.appendChild(body);
+  p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'automations');});
+  return p;
+}
+setInterval(()=>fetchAutos(false),10*60000);
 function panelEl(sectionId,title,items,isDrop){
   const p=document.createElement('div'); p.className='panel'; p.dataset.section=sectionId;
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls(sectionId,title,items);
