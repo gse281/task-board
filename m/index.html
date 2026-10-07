@@ -289,6 +289,17 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .sgh span{font:700 12px ui-monospace,Menlo,monospace;color:var(--gold)}
 .sl{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:8px;width:100%;text-align:left;min-height:42px;padding:6px 8px;border-bottom:1px solid #221d1a;font-size:14.5px}
 .sl.isdone .tk{text-decoration:line-through;opacity:.55}
+.clrow{display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--line)}
+.clmain{flex:1;min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px;text-align:left;padding:10px 4px;background:none;border:none;color:var(--ink)}
+.clmain .cltx{min-width:0;display:flex;flex-direction:column;gap:1px}
+.clmain .tk{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clsub{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clact{flex:0 0 auto;width:46px;font-size:19px;font-weight:800;background:none;border:none;border-left:1px solid var(--line);color:var(--muted)}
+.clact.done{color:var(--green)} .clact.rm{color:var(--accent)} .clact:active{background:var(--panel2)}
+.addbar{display:flex;gap:7px;padding:10px 4px 12px}
+.qadd{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:12px;font-size:16px}
+.qadd::placeholder{color:var(--dim)}
+.qaddb{flex:0 0 auto;width:48px;background:var(--gold);border:none;color:#14110f;border-radius:11px;font-size:23px;font-weight:800}
 .sl:active{background:var(--panel2)}
 .sl .tg{font:800 10.5px ui-monospace,Menlo,monospace;color:#111;border-radius:6px;padding:3px 6px;max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl .tk{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
@@ -366,7 +377,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-07 09:57';   // stamped by deploy.sh
+const BUILD='2026-10-07 13:11';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -562,6 +573,36 @@ function paintIncoming(s){
   if(isToday) fill(incomingToday());
   else { el.querySelector('.scroll').innerHTML='<div style="padding:46px;text-align:center;color:var(--dim)">Loading…</div>'; fetchIncoming(day).then(fill); }
 }
+/* ---------- 🌅/☀️ CALL LIST — morning/afternoon as a list with ✓ done + ✕ remove per row ---------- */
+function paintSlotList(s){
+  const r=s.route, el=s.el, slot=r.slot, S=SLOTS[slot];
+  const items=slotTasks(slot); const keep=el.querySelector('.scroll'); const st=keep?keep.scrollTop:0;
+  const rowFor=t=>{ const d=daysOpen(t); return `<div class="clrow" data-id="${t.id}">
+      <button class="clmain" data-open><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span>
+        <span class="cltx"><span class="tk">${esc(cleanName(t))}</span>${t.lead||t.sub?`<span class="clsub">${esc([t.lead,t.sub].filter(Boolean).join(' · '))}</span>`:''}</span>
+        <span class="ag ${d>=21?'o':''}">${d}d</span></button>
+      <button class="clact rm" data-rm aria-label="Remove from call">✕</button>
+      <button class="clact done" data-done aria-label="Done">✓</button></div>`; };
+  const body=items.length?items.map(rowFor).join('')
+    :`<div class="empty" style="padding-top:50px"><div class="big2">${S.em}</div><h2>No ${esc(S.label.toLowerCase())} items</h2><p style="color:var(--dim);padding:0 24px">Add one below, or tap ${S.em} on any task.</p></div>`;
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">${S.em} ${esc(S.label)}</div><button class="statsbtn" data-run>▶ RUN</button><button class="icon" data-add aria-label="Add">＋</button></div>
+    <div class="scroll" style="padding:0 10px calc(20px + var(--sab))">
+      <div class="addbar"><input class="qadd" type="text" enterkeyhint="done" placeholder="Add to ${esc(S.label.toLowerCase())}…" autocomplete="off"><button class="qaddb" data-qadd>＋</button></div>
+      <div data-list>${body}</div></div>`;
+  wire(el);
+  el.querySelector('[data-run]').onclick=()=>{ if(!items.length){ toast('Nothing to run'); return; } push({type:'deck',kind:'slot',slot,title:S.label}); };
+  el.querySelector('[data-add]').onclick=()=>addSheet({slot},()=>paintSlotList(s));
+  const qa=el.querySelector('.qadd');
+  const addNow=async()=>{ const v=qa.value.trim(); if(!v) return; qa.value='';
+    const t=await create({Task:v,MeetingSlot:slot}); if(t){ t.slotRemote=slot; t.sectionRemote=''; save(LS_CACHE,tasks); } buzz(8); paintSlotList(s); };
+  el.querySelector('[data-qadd]').onclick=addNow; qa.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addNow(); } });
+  const sc=el.querySelector('.scroll'); if(keep) sc.scrollTop=st;
+  el.querySelectorAll('.clrow').forEach(row=>{ const t=tasks.find(x=>x.id===row.dataset.id); if(!t) return;
+    row.querySelector('[data-open]').onclick=()=>{ buzz(5); push({type:'deck',kind:'slot',slot,title:S.label,startId:t.id}); };
+    row.querySelector('[data-done]').onclick=()=>{ done(t); row.style.opacity='.35'; setTimeout(()=>paintSlotList(s),220); };
+    row.querySelector('[data-rm]').onclick=()=>{ setSlot(t,slot); setTimeout(()=>paintSlotList(s),150); };
+  });
+}
 // app left open past midnight → today's page flips to a fresh blank one (yesterday's text is already saved under yesterday)
 let dnShown=todayISO();
 setInterval(()=>{ if(todayISO()!==dnShown){ dnShown=todayISO(); localStorage.removeItem('m.dnArchivedOn'); dnArchive(); incomingCache={}; stack.forEach(x=>{ if(x.route.type==='day'&&!x.route.day) paintDay(x); if(x.route.type==='incoming'&&!x.route.day) paintIncoming(x); }); if(stack[0]) paintHome(stack[0]); } },60000);
@@ -697,8 +738,9 @@ function snooze(t,days){
 function setSlot(t,slot){
   const prev={s:A(t.id).section, sr:t.sectionRemote, m:t.slotRemote};
   const nv=slotOf(t)===slot?'':slot;
-  A(t.id).section=nv||null; t.sectionRemote=nv; t.slotRemote=nv; saveAug(); save(LS_CACHE,tasks);
-  patch(t.id,{MeetingSlot:nv,Section:nv});
+  // Slot is the single source of truth — write MeetingSlot only, clear Section (prevents morning/afternoon drift).
+  A(t.id).section=nv||null; t.slotRemote=nv; t.sectionRemote=''; saveAug(); save(LS_CACHE,tasks);
+  patch(t.id,{MeetingSlot:nv,Section:''});
   toast(nv?(SLOTS[nv].em+' Added to '+SLOTS[nv].label.toLowerCase()):'Removed from '+SLOTS[slot].label.toLowerCase(), async()=>{
     A(t.id).section=prev.s; t.sectionRemote=prev.sr; t.slotRemote=prev.m; saveAug(); save(LS_CACHE,tasks); await patch(t.id,{MeetingSlot:prev.m||'',Section:prev.sr||''}); });
 }
@@ -758,7 +800,7 @@ function pop(){
 function syncLayers(){ stack.forEach((x,i)=>{ const isTop=i===stack.length-1; x.el.classList.toggle('under',!isTop); if(isTop){ x.el.classList.remove('enter','leave'); x.el.style.transform=''; } }); }
 function goHome(){ while(stack.length>1){ const s=stack.pop(); s.el.remove(); } syncLayers(); paint(stack[0]); }
 function render(){ stack.forEach(paint); }
-function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='autos') paintAutos(s); }
+function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='autos') paintAutos(s); }
 // iOS-style swipe from the left edge to go back
 function edgeSwipe(el){
   let sx=null,sy=0,dx=0;
@@ -786,8 +828,8 @@ function paintHome(s){
       <div class="ptr"></div>
       <div class="big">Tasks</div><div class="sub">${esc(dateStr)} · <span style="color:var(--gold);font:600 12px ui-monospace,Menlo,monospace">build ${esc(BUILD)}</span></div>
       <div class="calls">
-        <button class="call am ${now==='morning'?'now':''}" data-slot="morning"><span class="em">🌅</span><span><div class="n">${am}</div><div class="lbl">Morning call</div><div class="hint">Tap to run it</div></span></button>
-        <button class="call pm ${now==='afternoon'?'now':''}" data-slot="afternoon"><span class="em">☀️</span><span><div class="n">${pm}</div><div class="lbl">Afternoon call</div><div class="hint">Tap to run it</div></span></button>
+        <button class="call am ${now==='morning'?'now':''}" data-slot="morning"><span class="em">🌅</span><span><div class="n">${am}</div><div class="lbl">Morning call</div><div class="hint">Tap to open · run inside</div></span></button>
+        <button class="call pm ${now==='afternoon'?'now':''}" data-slot="afternoon"><span class="em">☀️</span><span><div class="n">${pm}</div><div class="lbl">Afternoon call</div><div class="hint">Tap to open · run inside</div></span></button>
       </div>
       <div class="minirow">
         <button class="mini" data-calls><b>${callTasks().length}</b><span>📞 Calls</span></button>
@@ -819,7 +861,7 @@ function paintHome(s){
       <div class="foot">Build ${esc(BUILD)} · <a href="../">Desktop dashboard</a></div>
     </div>`;
   el.querySelector('.scroll').scrollTop=st;
-  el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>{ const sl=b.dataset.slot; push({type:'deck',kind:'slot',slot:sl,title:SLOTS[sl].label,list:true}); });
+  el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>{ const sl=b.dataset.slot; push({type:'slotlist',slot:sl}); });
   el.querySelectorAll('[data-dim]').forEach(b=>b.onclick=()=>push({type:'groups',dim:b.dataset.dim}));
   el.querySelector('[data-review]').onclick=()=>{ const l=groups('project').map(g=>g.k); push({type:'board',dim:'project',list:l,idx:0}); };
   el.querySelector('[data-q="today"]').onclick=()=>push({type:'deck',kind:'today',title:'Due today'});
@@ -1267,7 +1309,7 @@ function addSheet(pre,after){
       const inp=sh.querySelector('#nt'); setTimeout(()=>inp.focus(),350); let slot=pre.slot||'';
       sh.querySelectorAll('[data-sl]').forEach(b=>b.onclick=()=>{ slot=slot===b.dataset.sl?'':b.dataset.sl; sh.querySelectorAll('[data-sl]').forEach(x=>x.classList.toggle('acc',x.dataset.sl===slot)); });
       const go=async()=>{ const v=inp.value.trim(); if(!v) return; const f={Task:v};
-        if(pre.project) f.Project=pre.project; if(pre.lead) f.SBLead=pre.lead; if(pre.sub) f.Sub=pre.sub; if(slot){ f.MeetingSlot=slot; f.Section=slot; }
+        if(pre.project) f.Project=pre.project; if(pre.lead) f.SBLead=pre.lead; if(pre.sub) f.Sub=pre.sub; if(slot){ f.MeetingSlot=slot; }   // slot = single source (no Section)
         close(); await create(f); toast('➕ Added'); render(); if(after) after(); };
       sh.querySelector('[data-ok]').onclick=go; inp.onkeydown=e=>{ if(e.key==='Enter') go(); };
     });
