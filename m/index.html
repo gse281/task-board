@@ -377,7 +377,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-07 13:11';   // stamped by deploy.sh
+const BUILD='2026-10-07 13:14';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -522,8 +522,27 @@ async function dnArchive(){
     localStorage.setItem('m.dnArchivedOn',todayISO());
   }catch(e){}
 }
+// Which past days actually HAVE notes — so ‹ › can skip over blank days.
+let dnDays=[], dnDaysReady=false;
+async function loadDnDays(){
+  const set=new Set(); const L=dnLocal(); for(const k in L){ if((L[k]||'').trim()) set.add(k); }
+  if(!demo && cfg.apiKey){
+    try{ let off,g=0; do{
+      const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE); u.searchParams.set('pageSize','100');
+      u.searchParams.set('filterByFormula',"LEFT({Key},8)='scratch:'"); ['Key','Text'].forEach(x=>u.searchParams.append('fields[]',x)); if(off)u.searchParams.set('offset',off);
+      const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) break; const d=await r.json();
+      (d.records||[]).forEach(rec=>{ const day=String(rec.fields.Key||'').slice(8); if(day && (rec.fields.Text||'').trim()) set.add(day); });
+      off=d.offset; }while(off&&++g<30);
+    }catch(e){}
+  }
+  dnDays=[...set].sort(); dnDaysReady=true; return dnDays;
+}
+function dnNoteSet(){ const s=new Set(dnDays); const L=dnLocal(); for(const k in L){ if((L[k]||'').trim()) s.add(k); } return s; }   // merge freshly-typed local days
+function prevNoteDay(day){ let best=null; for(const d of dnNoteSet()){ if(d<day && (!best||d>best)) best=d; } return best; }
+function nextNoteDay(day){ const td=todayISO(); let best=null; for(const d of dnNoteSet()){ if(d>day && d<td && (!best||d<best)) best=d; } return best; }
 function paintDay(s){
   const r=s.route, el=s.el; const day=r.day||todayISO(), isToday=day===todayISO();
+  if(!dnDaysReady) loadDnDays();
   el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">🗒 Notes</div><button class="icon" data-arch aria-label="Archive">📝</button></div>
     <div style="display:flex;align-items:center;gap:8px;padding:0 16px 10px;flex:none">
       <button class="pill" data-prev style="min-height:46px;padding:0 16px">‹</button>
@@ -532,12 +551,13 @@ function paintDay(s){
       <button class="pill" data-next style="min-height:46px;padding:0 16px" ${isToday?'disabled':''}>›</button>
       ${isToday?'':'<button class="pill acc" data-today style="min-height:46px;padding:0 12px">Today</button>'}</div>
     <div style="flex:1;display:flex;padding:0 16px calc(14px + var(--sab));min-height:0">
-      <textarea class="field" data-ta style="flex:1;margin:0;font-size:17px;line-height:1.45" placeholder="${isToday?'Today’s notes — starts blank every day. Tap ‹ for yesterday.':'Nothing written on this day.'}"></textarea></div>`;
+      <textarea class="field" data-ta style="flex:1;margin:0;font-size:17px;line-height:1.45" placeholder="${isToday?'Today’s notes — starts blank every day. Tap ‹ for your last note.':'Nothing written on this day.'}"></textarea></div>`;
   wire(el);
   const ta=el.querySelector('[data-ta]'), st=el.querySelector('.dstat'); ta.value=dnLocal()[day]||''; ta.dataset.day=day;
   const go=d=>{ r.day=d>=todayISO()?null:d; buzz(5); paintDay(s); };
-  el.querySelector('[data-prev]').onclick=()=>go(dnShift(day,-1));
-  el.querySelector('[data-next]').onclick=()=>{ if(!isToday) go(dnShift(day,1)); };
+  // ‹ › skip over blank days — jump to the nearest day that actually has notes (› lands on Today).
+  el.querySelector('[data-prev]').onclick=async()=>{ if(!dnDaysReady) await loadDnDays(); const p=prevNoteDay(day); if(p) go(p); else toast('No earlier notes'); };
+  el.querySelector('[data-next]').onclick=async()=>{ if(isToday) return; if(!dnDaysReady) await loadDnDays(); go(nextNoteDay(day)||todayISO()); };
   const tb=el.querySelector('[data-today]'); if(tb) tb.onclick=()=>go(todayISO());
   el.querySelector('[data-arch]').onclick=()=>push({type:'notes',q:'',range:'all'});
   ta.addEventListener('input',()=>{ const d=ta.dataset.day; dnPut(d,ta.value); st.textContent='saving…'; clearTimeout(ta._t);
@@ -851,7 +871,7 @@ function paintHome(s){
           <span class="vt"><div class="vn">${v.label}</div><div class="vs">${gc(k)} ${v.plural.toLowerCase()} · ${topNames(k)}</div></span><span class="chev">›</span></button>`).join('')}
       </div>
       <button class="view" data-day style="margin-bottom:12px"><span class="vi" style="background:#1f2a20">🗒</span>
-        <span class="vt"><div class="vn">Today’s notes</div><div class="vs">${esc(((dnLocal()[todayISO()]||'').split('\n').find(x=>x.trim())||'Blank page · ‹ for yesterday').slice(0,60))}</div></span><span class="chev">›</span></button>
+        <span class="vt"><div class="vn">Today’s notes</div><div class="vs">${esc(((dnLocal()[todayISO()]||'').split('\n').find(x=>x.trim())||'Blank page · ‹ for last note').slice(0,60))}</div></span><span class="chev">›</span></button>
       <button class="view" data-notes style="margin-bottom:12px"><span class="vi" style="background:#2e2a1c">📝</span>
         <span class="vt"><div class="vn">Notes archive</div><div class="vs">${notesArc.length} notes · ${notesToday()} today · search by day, project, word</div></span><span class="chev">›</span></button>
       <div class="minirow">
