@@ -300,6 +300,14 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .qadd{flex:1;min-width:0;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:11px;padding:12px;font-size:16px}
 .qadd::placeholder{color:var(--dim)}
 .qaddb{flex:0 0 auto;width:48px;background:var(--gold);border:none;color:#14110f;border-radius:11px;font-size:23px;font-weight:800}
+.clact.restore{color:var(--gold)}
+.wxrow{display:grid;grid-template-columns:1fr auto auto 54px;align-items:center;gap:10px;padding:11px 6px;border-bottom:1px solid var(--line)}
+.wxrow.now{background:var(--panel)}
+.wxrow .wxd{font-weight:600;font-size:15px}
+.wxrow .wxe{font-size:20px}
+.wxrow .wxt{font-weight:800;font-size:16px;min-width:44px;text-align:right}
+.wxt.hot{color:#ff7a4d}.wxt.cold{color:#6fb2d6}.wxt.xhot{color:#fff;background:#e8683c;border-radius:6px;padding:0 5px}.wxt.xcold{color:#0b1a24;background:#8fd3ee;border-radius:6px;padding:0 5px}
+.wxrow .wxp{color:var(--blue);font-size:12px;text-align:right}
 .sl:active{background:var(--panel2)}
 .sl .tg{font:800 10.5px ui-monospace,Menlo,monospace;color:#111;border-radius:6px;padding:3px 6px;max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sl .tk{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
@@ -377,7 +385,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-07 13:14';   // stamped by deploy.sh
+const BUILD='2026-10-07 13:21';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -405,9 +413,14 @@ const daysOpen=t=>t.createdTime?Math.floor((Date.now()-new Date(t.createdTime))/
 function isOpen(t){ return (t.status||'Open')==='Open'; }
 // Snoozed = snoozed on this phone, or scheduled for a later day (desktop snooze pushes DoDate out too).
 function snoozed(t){ const a=A(t.id); if(a.snoozeUntil>Date.now()) return true; const dd=t.doDate||''; return !!dd && dd>todayISO(); }
-function live(t){ return isOpen(t) && !snoozed(t); }
+// "Parked" = set aside in purgatory (Section='parked'): hidden from every live list but not gone.
+function isParked(t){ return ((A(t.id).section||t.sectionRemote||'').toLowerCase())==='parked'; }
+function live(t){ return isOpen(t) && !snoozed(t) && !isParked(t); }
+function parkedTasks(){ return tasks.filter(t=>isOpen(t)&&isParked(t)).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0)); }
+function park(t){ A(t.id).section='parked'; t.sectionRemote='parked'; saveAug(); save(LS_CACHE,tasks); patch(t.id,{Section:'parked'}); }
+function unpark(t){ A(t.id).section=null; t.sectionRemote=''; saveAug(); save(LS_CACHE,tasks); patch(t.id,{Section:''}); }   // clears Section → falls back to its call slot (MeetingSlot) or normal views
 // Call lists only hide what was explicitly snoozed, so a future DoDate never drops an item off a call.
-function liveCall(t){ return isOpen(t) && !(A(t.id).snoozeUntil>Date.now()); }
+function liveCall(t){ return isOpen(t) && !(A(t.id).snoozeUntil>Date.now()) && !isParked(t); }
 // Same rule the desktop uses: Section wins, then MeetingSlot.
 function slotOf(t){ const s=(A(t.id).section||t.sectionRemote||'').toLowerCase(); if(s==='morning'||s==='afternoon') return s; if(s) return ''; return t.slotRemote==='morning'||t.slotRemote==='afternoon'?t.slotRemote:''; }
 function score(t){ return (t.priorityRemote||0)*100 + daysOpen(t); }
@@ -605,12 +618,15 @@ function paintSlotList(s){
       <button class="clact done" data-done aria-label="Done">✓</button></div>`; };
   const body=items.length?items.map(rowFor).join('')
     :`<div class="empty" style="padding-top:50px"><div class="big2">${S.em}</div><h2>No ${esc(S.label.toLowerCase())} items</h2><p style="color:var(--dim);padding:0 24px">Add one below, or tap ${S.em} on any task.</p></div>`;
-  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">${S.em} ${esc(S.label)}</div><button class="statsbtn" data-run>▶ RUN</button><button class="icon" data-add aria-label="Add">＋</button></div>
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">${S.em} ${esc(S.label)}</div>${items.length?'<button class="statsbtn" data-clear>CLEAR</button>':''}<button class="statsbtn" data-run>▶ RUN</button><button class="icon" data-add aria-label="Add">＋</button></div>
     <div class="scroll" style="padding:0 10px calc(20px + var(--sab))">
       <div class="addbar"><input class="qadd" type="text" enterkeyhint="done" placeholder="Add to ${esc(S.label.toLowerCase())}…" autocomplete="off"><button class="qaddb" data-qadd>＋</button></div>
       <div data-list>${body}</div></div>`;
   wire(el);
   el.querySelector('[data-run]').onclick=()=>{ if(!items.length){ toast('Nothing to run'); return; } push({type:'deck',kind:'slot',slot,title:S.label}); };
+  { const cb=el.querySelector('[data-clear]'); if(cb) cb.onclick=()=>{ if(!items.length) return;
+    const snap=items.map(t=>({id:t.id,s:A(t.id).section,sr:t.sectionRemote})); items.forEach(park); buzz(12); paintSlotList(s);
+    toast('Parked '+snap.length+' → 🅿️ Parked', ()=>{ snap.forEach(x=>{ A(x.id).section=x.s; const t=tasks.find(y=>y.id===x.id); if(t)t.sectionRemote=x.sr; patch(x.id,{Section:x.sr||''}); }); saveAug(); save(LS_CACHE,tasks); paintSlotList(s); }); }; }
   el.querySelector('[data-add]').onclick=()=>addSheet({slot},()=>paintSlotList(s));
   const qa=el.querySelector('.qadd');
   const addNow=async()=>{ const v=qa.value.trim(); if(!v) return; qa.value='';
@@ -820,7 +836,7 @@ function pop(){
 function syncLayers(){ stack.forEach((x,i)=>{ const isTop=i===stack.length-1; x.el.classList.toggle('under',!isTop); if(isTop){ x.el.classList.remove('enter','leave'); x.el.style.transform=''; } }); }
 function goHome(){ while(stack.length>1){ const s=stack.pop(); s.el.remove(); } syncLayers(); paint(stack[0]); }
 function render(){ stack.forEach(paint); }
-function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='autos') paintAutos(s); }
+function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='wx') paintWx(s); else if(r.type==='parked') paintParked(s); else if(r.type==='autos') paintAutos(s); }
 // iOS-style swipe from the left edge to go back
 function edgeSwipe(el){
   let sx=null,sy=0,dx=0;
@@ -833,6 +849,42 @@ function wire(el){
   el.querySelectorAll('[data-back]').forEach(b=>b.onclick=pop);
 }
 
+/* ---------- 🌤 WEATHER (open-meteo, no key; NYC) ---------- */
+const WX_URL='https://api.open-meteo.com/v1/forecast?latitude=40.7128&longitude=-74.0060&daily=precipitation_sum,weathercode,temperature_2m_max&timezone=America/New_York&forecast_days=10&precipitation_unit=inch&temperature_unit=fahrenheit';
+let wx=load('m.wx',[]);
+function wxEmoji(c){ if(c===0) return '☀️'; if(c>=95) return '⛈️'; if((c>=71&&c<=77)||c===85||c===86) return '❄️'; if((c>=61&&c<=67)||c===82) return '🌧️'; if((c>=51&&c<=57)||c===80||c===81) return '🌦️'; return '🌥️'; }
+async function fetchWx(){ try{ const r=await fetch(WX_URL); if(!r.ok) return; const d=await r.json(); const D=d.daily;
+  wx=D.time.map((t,i)=>({date:t,code:D.weathercode[i],hi:Math.round(D.temperature_2m_max[i]),pr:+D.precipitation_sum[i]||0})); save('m.wx',wx);
+  stack.forEach(x=>{ if(x.route.type==='home') paintHome(x); if(x.route.type==='wx') paintWx(x); }); }catch(e){} }
+function paintWx(s){
+  const el=s.el; const td=todayISO();
+  const row=w=>{ const d=new Date(w.date+'T12:00:00'); const nm=w.date===td?'Today':d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+    const tcls=w.hi>=95?'xhot':w.hi>=90?'hot':w.hi<=20?'xcold':w.hi<=32?'cold':''; const rain=w.pr>0.02?(w.pr.toFixed(2).replace(/^0/,'')+'″'):'';
+    return `<div class="wxrow${w.date===td?' now':''}"><span class="wxd">${esc(nm)}</span><span class="wxe">${wxEmoji(w.code)}</span><span class="wxt ${tcls}">${w.hi}°</span><span class="wxp">${rain}</span></div>`; };
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">🌤 Weather</div><div style="min-width:60px"></div></div>
+    <div class="scroll" style="padding:4px 14px calc(20px + var(--sab))">${wx.length?wx.map(row).join(''):'<div style="padding:50px;text-align:center;color:var(--dim)">Loading forecast…</div>'}</div>`;
+  wire(el); if(!wx.length) fetchWx();
+}
+/* ---------- 🅿️ PARKED — items cleared from a list but kept for later ---------- */
+function paintParked(s){
+  const el=s.el; const items=parkedTasks(); const keep=el.querySelector('.scroll'); const st=keep?keep.scrollTop:0;
+  const rowFor=t=>{ const d=daysOpen(t); return `<div class="clrow" data-id="${t.id}">
+      <button class="clmain" data-open><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span>
+        <span class="cltx"><span class="tk">${esc(cleanName(t))}</span>${t.lead||t.sub?`<span class="clsub">${esc([t.lead,t.sub].filter(Boolean).join(' · '))}</span>`:''}</span>
+        <span class="ag ${d>=21?'o':''}">${d}d</span></button>
+      <button class="clact restore" data-restore aria-label="Restore">↩</button></div>`; };
+  const body=items.length?items.map(rowFor).join('')
+    :`<div class="empty" style="padding-top:56px"><div class="big2">🅿️</div><h2>Nothing parked</h2><p style="color:var(--dim);padding:0 24px">Use <b>Clear</b> on a call list to set its items aside here without losing them.</p></div>`;
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">🅿️ Parked</div>${items.length?'<button class="statsbtn" data-restoreall>RESTORE ALL</button>':'<div style="min-width:60px"></div>'}</div>
+    <div class="scroll" style="padding:0 10px calc(20px + var(--sab))">${body}</div>`;
+  wire(el);
+  const ra=el.querySelector('[data-restoreall]'); if(ra) ra.onclick=()=>{ items.forEach(unpark); buzz(10); toast('Restored '+items.length); paintParked(s); };
+  const sc=el.querySelector('.scroll'); if(keep) sc.scrollTop=st;
+  el.querySelectorAll('.clrow').forEach(r=>{ const t=tasks.find(x=>x.id===r.dataset.id); if(!t) return;
+    r.querySelector('[data-open]').onclick=()=>{ buzz(5); push({type:'deck',kind:'group',dim:'project',val:t.project||'',title:t.project||'No project',startId:t.id}); };
+    r.querySelector('[data-restore]').onclick=()=>{ unpark(t); buzz(8); r.style.opacity='.35'; setTimeout(()=>paintParked(s),200); };
+  });
+}
 /* ---------- HOME ---------- */
 function paintHome(s){
   const el=s.el, am=slotTasks('morning').length, pm=slotTasks('afternoon').length, now=currentSlot();
@@ -855,6 +907,11 @@ function paintHome(s){
         <button class="mini" data-calls><b>${callTasks().length}</b><span>📞 Calls</span></button>
         <button class="mini" data-incoming><b>${incomingToday().length}</b><span>📥 Incoming</span></button>
       </div>
+      <div class="minirow">
+        <button class="mini" data-notesbtn><b>🗒</b><span>Notes</span></button>
+        <button class="mini" data-wx><b>${(()=>{ if(!wx.length) return '🌤'; const w=wx.find(x=>x.date===todayISO())||wx[0]; return w.hi+'°'; })()}</b><span>Weather</span></button>
+      </div>
+      ${parkedTasks().length?`<button class="view" data-parked style="margin:2px 0 12px"><span class="vi" style="background:#2a241c">🅿️</span><span class="vt"><div class="vn">Parked</div><div class="vs">${parkedTasks().length} set aside · tap to restore</div></span><span class="chev">›</span></button>`:''}
       ${(()=>{ const A2=autoSummary(); const shown=A2.bad.slice(0,3); const leads=autoRows.filter(r=>r.kind==='Lead');
         return `<button class="autocard" data-autos><div class="ah">⚙️ Automations<span class="ab" style="background:${A2.bad.length?'#e5533a':'#3a8f5f'}">${A2.t.length?(A2.bad.length?A2.bad.length+' need attention':'all OK'):'no feed yet'}</span></div>
           <div class="ap" style="margin-top:3px">${A2.ok} running OK · ${A2.paused} paused · feed ${autoAgo(A2.fresh)}</div>
@@ -892,6 +949,9 @@ function paintHome(s){
   el.querySelector('[data-autos]').onclick=()=>push({type:'autos'});
   el.querySelector('[data-calls]').onclick=()=>push({type:'deck',kind:'calls',title:'📞 Calls'});
   el.querySelector('[data-incoming]').onclick=()=>push({type:'incoming',day:null});
+  el.querySelector('[data-notesbtn]').onclick=()=>push({type:'day',day:null});
+  el.querySelector('[data-wx]').onclick=()=>push({type:'wx'});
+  { const pb=el.querySelector('[data-parked]'); if(pb) pb.onclick=()=>push({type:'parked'}); }
   el.querySelector('[data-day]').onclick=()=>push({type:'day',day:null});
   el.querySelector('[data-notes]').onclick=()=>push({type:'notes',q:'',range:'all'});
   el.querySelector('[data-q="all"]').onclick=()=>push({type:'snap',mode:localStorage.getItem('m.snapMode')||'group'});
@@ -1390,6 +1450,7 @@ function routeFromHash(){ const h=(location.hash||'').slice(1).toLowerCase(); if
   else if(h==='snapshot'||h==='list'){ push({type:'snap',mode:localStorage.getItem('m.snapMode')||'group'}); } }
 routeFromHash(); addEventListener('hashchange',routeFromHash);
 fetchAll();
+if(!wx.length || wx[0].date<todayISO()) fetchWx();   // refresh the forecast if missing/stale
 // refresh when the app comes back to the foreground (at most every 2 min)
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden && Date.now()-lastSync>120000) fetchAll(); });
 /* ---------- auto-update: never get stuck on an old build ----------
