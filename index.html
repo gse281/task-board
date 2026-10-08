@@ -407,9 +407,10 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 
 <script>
 "use strict";
-const BUILD='2026-10-08 09:50';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-08 13:18';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-10-08 · Focus clears at 11 PM', d:'🎯 Now/Focus no longer empties when you open the app in the morning — it now stays put all day and clears at ~11 PM (its leftovers still jump to the top of 🔥 Priority, nothing lost). If the app is closed at 11 PM it catches up next time you open it. So things you put in Focus during the day actually stay there.'},
   {v:'2026-10-08 · iPhone-style polish + history', d:'Desktop restyled to feel more like the iPhone app — rounder panels & cards, more breathing room, soft depth/shadows, crisper type, thin iOS scrollbars, warm gradient on the main buttons (same colors/layout, just nicer). Plus: 🕘 on the 🎯 Now/Focus and 📥 Incoming panels to browse PAST days — see what you focused on / added each day (with Re-focus and day ‹ › nav).'},
   {v:'2026-10-08 · park / purgatory', d:'🅿️ Park — set things aside without losing them. Tap 🅿️ on any task, or 🅿️ in a panel/🔍-search header to park the WHOLE list at once ("make it all go away, focus on one thing"). Parked items vanish from every list (Priority, Still-open, project/lead/sub, counts) and wait in the new 🅿️ Parked panel — Restore one, Restore all, or drag a task onto it. ⌘Z undoes a park. Separate from ⊘ Clear (which just unfiles to Backlog).'},
   {v:'2026-10-05 · search sort', d:'The searched / filtered (🔍) pane now groups by project and, within each project, sorts by age with the oldest at the bottom. (Still override it anytime with the Sort dropdown.)'},
@@ -952,25 +953,13 @@ function outboxPanel(){
 function dailyReset(){
   const today=todayISO();
   if(meta.lastReset===today) return;
-  // These sections persist across the daily reset: priorities, Sunday, and any custom category.
-  // Now/Focus is deliberately NOT kept — it blanks every morning (see below).
-  const keep=new Set(['bigticket','nextup','sunday','parked',...((meta.customCats||[]).map(c=>c.id))]);   // parked items stay parked across days
+  // These sections persist across the daily (morning) reset: priorities, Sunday, Now/Focus and any custom category.
+  // Now/Focus is blanked on its OWN schedule — at ~11 PM (see blankFocus / focusBlankTick), NOT in the morning.
+  const keep=new Set(['bigticket','nextup','sunday','focus','parked',...((meta.customCats||[]).map(c=>c.id))]);
   if(meta.lastReset){ // log the day that just ended
     const snap=Object.keys(aug).filter(id=>aug[id].section).map(id=>{const t=tasks.find(z=>z.id===id);return {id,section:aug[id].section,name:t?cleanName(t):''};});
     meta.resetLog=meta.resetLog||{}; meta.resetLog[meta.lastReset]=snap;
     const ks=Object.keys(meta.resetLog).sort(); while(ks.length>14) delete meta.resetLog[ks.shift()];
-  }
-  // 🎯 Now/Focus empties every morning; whatever was left in it is shifted to the top of 🔥 Priority so it isn't lost.
-  { const focusIds=new Set();
-    for(const id of Object.keys(aug)){ if(aug[id].section==='focus') focusIds.add(id); }
-    for(const t of tasks){ if(t.sectionRemote==='focus') focusIds.add(t.id); }
-    for(const id of focusIds){ if(aug[id]&&aug[id].pin) continue;   // 📌 pinned focus stays put
-      const t=tasks.find(x=>x.id===id); const a=A(id);
-      a.priAdj=Math.max(a.priAdj||0,500);                 // jump to the top of Priority (stays until done/demoted)
-      if(t) t.priorityRemote=Math.max(t.priorityRemote||0,900);
-      a.section=null; if(t) t.sectionRemote='';
-      if(cfg.apiKey) atPatch(id,{Section:'',Priority:900});
-    }
   }
   // 📌 pinned tasks stay wherever you put them until done
   for(const id of Object.keys(aug)){ const s=aug[id].section; if(!s||keep.has(s)||aug[id].pin) continue;
@@ -978,6 +967,34 @@ function dailyReset(){
     if(t&&(t.slotRemote==='morning'||t.slotRemote==='afternoon')) continue;   // call slots persist via MeetingSlot — never touched at EOD, so they can't drift
     aug[id].section=null; if(cfg.apiKey)atPatch(id,{Section:''}); }
   meta.lastReset=today; saveAug(); saveMeta();
+}
+// 🎯 Now/Focus empties at ~11 PM each night — its leftovers jump to the top of 🔥 Priority (not lost).
+function blankFocus(logDay){
+  const ids=new Set();
+  for(const id of Object.keys(aug)){ if(aug[id].section==='focus') ids.add(id); }
+  for(const t of tasks){ if(t.sectionRemote==='focus') ids.add(t.id); }
+  if(!ids.size) return 0;
+  const day=logDay||todayISO(); meta.resetLog=meta.resetLog||{}; const logArr=(meta.resetLog[day]=meta.resetLog[day]||[]);
+  let n=0;
+  for(const id of ids){ if(aug[id]&&aug[id].pin) continue;   // 📌 pinned focus stays put
+    const t=tasks.find(x=>x.id===id); const a=A(id);
+    logArr.push({id,section:'focus',name:t?cleanName(t):''});          // keep it in the 🕘 time machine
+    a.priAdj=Math.max(a.priAdj||0,500); if(t) t.priorityRemote=Math.max(t.priorityRemote||0,900);
+    a.section=null; if(t) t.sectionRemote='';
+    if(cfg.apiKey) atPatch(id,{Section:'',Priority:900}); n++;
+  }
+  const ks=Object.keys(meta.resetLog).sort(); while(ks.length>14) delete meta.resetLog[ks.shift()];
+  saveAug(); saveMeta(); return n;
+}
+// Fires when the clock passes 11 PM (live if the app is open; caught up on the next open if it was closed).
+function focusBlankTick(){
+  const now=new Date(), b=new Date(now); b.setHours(23,0,0,0);
+  if(now<b) b.setDate(b.getDate()-1);          // most recent 11 PM that has already passed
+  const bt=b.getTime();
+  if(meta.focusBlankedAt==null){ meta.focusBlankedAt=bt; saveMeta(); return; }   // first run: adopt current boundary, don't clear what's already there
+  if(meta.focusBlankedAt>=bt) return;          // already cleared for this 11 PM boundary
+  const n=blankFocus(localDayISO(bt)); meta.focusBlankedAt=bt; saveMeta();
+  if(n){ toast('🎯 Now/Focus cleared for the night — '+n+' sent to the top of Priority'); try{render();}catch(e){} }
 }
 // Runs once a day AFTER data loads: kick untouched Still-open items 10 days out,
 // auto-categorize anything with no project/lead, and drop stale outbox drafts.
@@ -2457,7 +2474,7 @@ async function dnArchive(){
 }
 // if the dashboard stays open past midnight, flip the panel to the new (blank) day — yesterday's text is already saved under yesterday
 let dnShownToday=dnToday();
-setInterval(()=>{ if(dnToday()!==dnShownToday){ dnShownToday=dnToday(); meta.dnArchivedOn=''; dnArchive(); if(scratchDay===null) try{ render(); }catch(e){} } },60000);
+setInterval(()=>{ if(dnToday()!==dnShownToday){ dnShownToday=dnToday(); meta.dnArchivedOn=''; dnArchive(); if(scratchDay===null) try{ render(); }catch(e){} } focusBlankTick(); },60000);   // also clears Now/Focus right at 11 PM if the app is open
 // 🅿️ Parked — items you set aside (purgatory). Hidden everywhere else; restore from here.
 function parkedPanel(){
   const items=parkedList();
@@ -3543,6 +3560,7 @@ if(meta.unsnoozeFix!==2){ let n=0;
   for(const id of Object.keys(aug)){ if(aug[id].snoozeUntil>Date.now()){ delete aug[id].snoozeUntil; n++; } }
   meta.unsnoozeFix=2; saveAug(); saveMeta(); if(n) setTimeout(()=>toast('↩ Restored '+n+' hidden tasks'),800); }
 dailyReset();
+focusBlankTick();   // catch up the 11 PM Now/Focus blank if the app was closed when it was due
 // Instant open: paint last-known tasks from cache immediately, then refresh in the
 // background — no waiting on the network when you tap into the app.
 if(cfg.apiKey){

@@ -337,6 +337,18 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .call .lbl,.call .hint{overflow-wrap:anywhere}
 .homesync{flex:1 1 90px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:380px){ .statsbtn{padding:6px 7px} .nav .icon{min-width:36px} .call .n{font-size:38px} .call .lbl{font-size:17px} }
+/* call lists = Incoming look + swipe actions */
+.swr{position:relative;overflow:hidden;border-bottom:1px solid #221d1a;transition:max-height .25s,opacity .25s;max-height:120px}
+.swr.gone{max-height:0;opacity:0}
+.swr .sl{position:relative;z-index:1;background:var(--bg);border-bottom:0;will-change:transform;touch-action:pan-y}
+.swr .sl .ag{color:var(--muted)}
+.swbg{position:absolute;inset:0;display:flex;justify-content:space-between;align-items:stretch}
+.swdone{display:flex;align-items:center;padding:0 18px;background:var(--green);color:#fff;font-weight:800;font-size:14px;opacity:0;flex:1}
+.swacts{display:flex;opacity:0;margin-left:auto}
+.swacts button{width:88px;color:#fff;font-weight:800;font-size:13px}
+.swrm{background:#c2553f}.swsz{background:#b07a1c}
+.swr.open .swacts{opacity:1}
+.swhint{color:var(--dim);font:600 11px ui-monospace,Menlo,monospace;padding:0 6px 6px}
 /* @Computer – Claude */
 .compbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px;margin:0 0 12px;background:#1f1a14;border:1px solid #4a3522;border-radius:16px;font-weight:800;font-size:15px;text-align:left}
 .compbtn>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -400,7 +412,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-08 09:50';   // stamped by deploy.sh
+const BUILD='2026-10-08 13:18';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -636,35 +648,52 @@ function paintIncoming(s){
 }
 /* ---------- 🌅/☀️ CALL LIST — morning/afternoon as a list with ✓ done + ✕ remove per row ---------- */
 function paintSlotList(s){
-  const r=s.route, el=s.el, slot=r.slot, S=SLOTS[slot];
-  const items=slotTasks(slot); const keep=el.querySelector('.scroll'); const st=keep?keep.scrollTop:0;
-  const rowFor=t=>{ const d=daysOpen(t); return `<div class="clrow" data-id="${t.id}">
-      <button class="clmain" data-open><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span>
-        <span class="cltx"><span class="tk">${esc(cleanName(t))}</span>${t.lead||t.sub?`<span class="clsub">${esc([t.lead,t.sub].filter(Boolean).join(' · '))}</span>`:''}</span>
-        <span class="ag ${d>=21?'o':''}">${d}d</span></button>
-      <button class="clact rm" data-rm aria-label="Remove from call">✕</button>
-      <button class="clact done" data-done aria-label="Done">✓</button></div>`; };
+  // Same look as 📥 Incoming: single clean rows — rounded project pill · title · lead · muted mono age.
+  // Swipe right = ✓ Done · swipe left = reveal ⊘ Remove + 😴 Snooze · tap = open. Morning, Afternoon and Calls all use this.
+  const r=s.route, el=s.el, slot=r.slot, isCalls=slot==='calls';
+  const S=isCalls?{label:'Calls',em:'📞'}:SLOTS[slot];
+  const items=isCalls?callTasks():slotTasks(slot); const keep=el.querySelector('.scroll'); const st=keep?keep.scrollTop:0;
+  const rowFor=t=>`<div class="swr" data-id="${t.id}"><div class="swbg"><span class="swdone">✓ Done</span><span class="swacts"><button class="swrm" data-rm>⊘ Remove</button><button class="swsz" data-snz>😴 Snooze</button></span></div>
+      <button class="sl" data-open><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="tk">${esc(cleanName(t))}</span><span class="ld">${esc(t.lead||'')}</span><span class="ag">${daysOpen(t)}d</span></button></div>`;
   const body=items.length?items.map(rowFor).join('')
-    :`<div class="empty" style="padding-top:50px"><div class="big2">${S.em}</div><h2>No ${esc(S.label.toLowerCase())} items</h2><p style="color:var(--dim);padding:0 24px">Add one below, or tap ${S.em} on any task.</p></div>`;
+    :`<div class="empty" style="padding-top:50px"><div class="big2">${S.em}</div><h2>No ${esc(S.label.toLowerCase())} items</h2><p style="color:var(--dim);padding:0 24px">Add one above${isCalls?'':', or tap '+S.em+' on any task'}.</p></div>`;
   el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">${S.em} ${esc(S.label)}</div>${items.length?'<button class="statsbtn" data-clear>CLEAR</button>':''}<button class="statsbtn" data-run>▶ RUN</button><button class="icon" data-add aria-label="Add">＋</button></div>
     <div class="scroll" style="padding:0 10px calc(20px + var(--sab))">
       <div class="addbar"><input class="qadd" type="text" enterkeyhint="done" placeholder="Add to ${esc(S.label.toLowerCase())}…" autocomplete="off"><button class="qaddb" data-qadd>＋</button></div>
+      ${items.length?'<div class="swhint">swipe → done · ← remove / snooze · tap to open</div>':''}
       <div data-list>${body}</div></div>`;
   wire(el);
-  el.querySelector('[data-run]').onclick=()=>{ if(!items.length){ toast('Nothing to run'); return; } push({type:'deck',kind:'slot',slot,title:S.label}); };
+  el.querySelector('[data-run]').onclick=()=>{ if(!items.length){ toast('Nothing to run'); return; } push(isCalls?{type:'deck',kind:'calls',title:'📞 Calls'}:{type:'deck',kind:'slot',slot,title:S.label}); };
   { const cb=el.querySelector('[data-clear]'); if(cb) cb.onclick=()=>{ if(!items.length) return;
     const snap=items.map(t=>({id:t.id,s:A(t.id).section,sr:t.sectionRemote})); items.forEach(park); buzz(12); paintSlotList(s);
     toast('Parked '+snap.length+' → 🅿️ Parked', ()=>{ snap.forEach(x=>{ A(x.id).section=x.s; const t=tasks.find(y=>y.id===x.id); if(t)t.sectionRemote=x.sr; patch(x.id,{Section:x.sr||''}); }); saveAug(); save(LS_CACHE,tasks); paintSlotList(s); }); }; }
-  el.querySelector('[data-add]').onclick=()=>addSheet({slot},()=>paintSlotList(s));
+  el.querySelector('[data-add]').onclick=()=>addSheet(isCalls?{}:{slot},()=>paintSlotList(s));
   const qa=el.querySelector('.qadd');
   const addNow=async()=>{ const v=qa.value.trim(); if(!v) return; qa.value='';
-    const t=await create({Task:v,MeetingSlot:slot}); if(t){ t.slotRemote=slot; t.sectionRemote=''; save(LS_CACHE,tasks); } buzz(8); paintSlotList(s); };
+    const t=await create(isCalls?{Task:v,Type:'call',Section:'calls'}:{Task:v,MeetingSlot:slot});
+    if(t){ if(isCalls){ t.type='call'; t.sectionRemote='calls'; } else { t.slotRemote=slot; t.sectionRemote=''; } save(LS_CACHE,tasks); } buzz(8); paintSlotList(s); };
   el.querySelector('[data-qadd]').onclick=addNow; qa.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addNow(); } });
   const sc=el.querySelector('.scroll'); if(keep) sc.scrollTop=st;
-  el.querySelectorAll('.clrow').forEach(row=>{ const t=tasks.find(x=>x.id===row.dataset.id); if(!t) return;
-    row.querySelector('[data-open]').onclick=()=>{ buzz(5); push({type:'deck',kind:'slot',slot,title:S.label,startId:t.id}); };
-    row.querySelector('[data-done]').onclick=()=>{ done(t); row.style.opacity='.35'; setTimeout(()=>paintSlotList(s),220); };
-    row.querySelector('[data-rm]').onclick=()=>{ row.style.opacity='.3'; unfile(t,()=>paintSlotList(s)); };
+  const OPEN=-176; let openRow=null;
+  const closeRow=w=>{ if(!w) return; const b=w.querySelector('.sl'); b.style.transition='transform .2s var(--ease)'; b.style.transform=''; w.classList.remove('open'); if(openRow===w) openRow=null; };
+  el.querySelectorAll('.swr').forEach(w=>{ const t=tasks.find(x=>x.id===w.dataset.id); if(!t) return; const row=w.querySelector('.sl');
+    const gone=kind=>{ w.classList.add('gone'); setTimeout(()=>paintSlotList(s),260); };
+    row.onclick=()=>{ if(row._moved) return; if(w.classList.contains('open')){ closeRow(w); return; } if(openRow){ closeRow(openRow); return; } buzz(5);
+      push(isCalls?{type:'deck',kind:'calls',title:'📞 Calls',startId:t.id}:{type:'deck',kind:'slot',slot,title:S.label,startId:t.id}); };
+    w.querySelector('[data-rm]').onclick=e=>{ e.stopPropagation(); gone(); unfile(t); };
+    w.querySelector('[data-snz]').onclick=e=>{ e.stopPropagation(); gone(); snooze(t,10); };
+    let x0=null,y0=0,dx=0,lock=null,base=0;
+    row.addEventListener('touchstart',e=>{ x0=e.touches[0].clientX; y0=e.touches[0].clientY; dx=0; lock=null; row._moved=false; base=w.classList.contains('open')?OPEN:0; row.style.transition='none'; if(openRow&&openRow!==w) closeRow(openRow); },{passive:true});
+    row.addEventListener('touchmove',e=>{ if(x0==null) return; const mx=e.touches[0].clientX-x0, my=e.touches[0].clientY-y0;
+      if(lock==null&&(Math.abs(mx)>8||Math.abs(my)>8)) lock=Math.abs(mx)>Math.abs(my)?'x':'y'; if(lock!=='x') return;
+      row._moved=true; dx=Math.max(OPEN-30,base+mx); row.style.transform=`translateX(${dx}px)`;
+      w.querySelector('.swdone').style.opacity=dx>0?Math.min(1,dx/90):0; w.querySelector('.swacts').style.opacity=dx<0?1:0;
+      if(dx>90&&!row._b){ buzz(8); row._b=1; } if(dx<90) row._b=0; },{passive:true});
+    row.addEventListener('touchend',()=>{ if(x0==null) return; x0=null; row.style.transition='transform .2s var(--ease)';
+      if(dx>90){ row.style.transform='translateX(110%)'; gone(); done(t); }
+      else if(dx<-60){ row.style.transform=`translateX(${OPEN}px)`; w.classList.add('open'); openRow=w; }
+      else { closeRow(w); }
+      setTimeout(()=>{ row._moved=false; },60); });
   });
 }
 // app left open past midnight → today's page flips to a fresh blank one (yesterday's text is already saved under yesterday)
@@ -989,7 +1018,7 @@ function paintHome(s){
   el.querySelector('[data-drill]').onclick=()=>{ const v=localStorage.getItem('m.drillSel')||'*'; push({type:'deck',kind:'drill',val:v,title:v==='*'?'Drill · all':v||'No project'}); };
   { const cb=el.querySelector('[data-comp]'); if(cb) cb.onclick=()=>push({type:'comp'}); }
   el.querySelector('[data-autos]').onclick=()=>push({type:'autos'});
-  el.querySelector('[data-calls]').onclick=()=>push({type:'deck',kind:'calls',title:'📞 Calls'});
+  el.querySelector('[data-calls]').onclick=()=>push({type:'slotlist',slot:'calls'});
   el.querySelector('[data-incoming]').onclick=()=>push({type:'incoming',day:null});
   el.querySelector('[data-notesbtn]').onclick=()=>push({type:'day',day:null});
   el.querySelector('[data-wx]').onclick=()=>push({type:'wx'});
