@@ -376,7 +376,7 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-10-08 09:18';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-08 09:27';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-08 · park / purgatory', d:'🅿️ Park — set things aside without losing them. Tap 🅿️ on any task, or 🅿️ in a panel/🔍-search header to park the WHOLE list at once ("make it all go away, focus on one thing"). Parked items vanish from every list (Priority, Still-open, project/lead/sub, counts) and wait in the new 🅿️ Parked panel — Restore one, Restore all, or drag a task onto it. ⌘Z undoes a park. Separate from ⊘ Clear (which just unfiles to Backlog).'},
@@ -924,7 +924,7 @@ function dailyReset(){
   // Now/Focus is deliberately NOT kept — it blanks every morning (see below).
   const keep=new Set(['bigticket','nextup','sunday','parked',...((meta.customCats||[]).map(c=>c.id))]);   // parked items stay parked across days
   if(meta.lastReset){ // log the day that just ended
-    const snap=Object.keys(aug).filter(id=>aug[id].section).map(id=>({id,section:aug[id].section}));
+    const snap=Object.keys(aug).filter(id=>aug[id].section).map(id=>{const t=tasks.find(z=>z.id===id);return {id,section:aug[id].section,name:t?cleanName(t):''};});
     meta.resetLog=meta.resetLog||{}; meta.resetLog[meta.lastReset]=snap;
     const ks=Object.keys(meta.resetLog).sort(); while(ks.length>14) delete meta.resetLog[ks.shift()];
   }
@@ -1060,6 +1060,46 @@ function massPark(label,items){ items=(items||[]).filter(t=>!isParked(t)); if(!i
   pushUndo('park '+snap.length+' · '+label,async()=>{ snap.forEach(x=>{ A(x.id).section=x.sec; const t=tasks.find(y=>y.id===x.id); if(t)t.sectionRemote=x.secR; atPatch(x.id,{Section:x.secR||''}); }); saveAug(); render(); });
   items.forEach(t=>park(t.id)); toast('🅿️ Parked '+snap.length+' — ⌘Z to undo'); render(); }
 function restoreAllParked(){ const items=parkedList(); if(!items.length)return; items.forEach(t=>unpark(t.id)); toast('↩ Restored '+items.length); render(); }
+// ── Day history: see Now/Focus and Incoming (what you added) from past days ──
+const localDayISO=iso=>{ const d=new Date(iso||0); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const dayShiftISO=(day,n)=>{ const d=new Date(day+'T12:00:00'); d.setDate(d.getDate()+n); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+function dayLabelISO(day){ const td=todayISO(), y=dayShiftISO(td,-1); const d=new Date(day+'T12:00:00');
+  const w=d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'}); return day===td?'Today · '+w:day===y?'Yesterday · '+w:w; }
+function histModal(title,sub){ const bd=document.createElement('div'); bd.className='backdrop';
+  const box=document.createElement('div'); box.className='modal'; box.innerHTML='<h3>'+esc(title)+'</h3>'+(sub?'<div style="font-size:12px;color:var(--muted);margin:2px 0 6px">'+esc(sub)+'</div>':'');
+  bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd); return {bd,box}; }
+function histRow(t,name,extra,action){ const row=document.createElement('div'); row.className='parkrow';
+  const n=document.createElement('div'); n.className='parkname';
+  n.innerHTML=(t&&t.project?'<span class="projbadge">'+esc(String(t.project).split(',')[0].trim())+'</span> ':'')+esc(name)+(extra?' <span style="color:var(--muted);font-size:11px">'+esc(extra)+'</span>':'');
+  if(t){ n.style.cursor='pointer'; n.onclick=()=>{ const b=n.closest('.backdrop'); if(b)b.remove(); openDetail(t); }; } row.appendChild(n);
+  if(action){ const b=document.createElement('button'); b.className='cardbtn'; b.textContent=action.label; b.title=action.title||''; b.onclick=action.fn; row.appendChild(b); } return row; }
+function focusHistory(){
+  const {box}=histModal('🎯 Now/Focus — past days','What you had in Now/Focus each day (kept ~14 days). Re-focus puts an item back.');
+  const list=document.createElement('div'); list.style.cssText='max-height:62vh;overflow:auto;margin-top:4px'; box.appendChild(list);
+  const log=meta.resetLog||{}; const days=Object.keys(log).sort().reverse(); let any=false;
+  for(const day of days){ const items=(log[day]||[]).filter(x=>x.section==='focus'); if(!items.length) continue; any=true;
+    const h=document.createElement('div'); h.style.cssText='font-weight:800;margin:10px 0 3px;color:var(--accent)'; h.textContent=dayLabelISO(day)+' · '+items.length; list.appendChild(h);
+    items.forEach(x=>{ const t=tasks.find(z=>z.id===x.id); const nm=x.name||(t?cleanName(t):'(completed or removed)');
+      list.appendChild(histRow(t,nm,'', t?{label:'🎯 Re-focus',title:'Put back in Now/Focus',fn:()=>{setSection(t.id,'focus');toast('🎯 Back in Now/Focus');render();}}:null)); }); }
+  if(!any){ const e=document.createElement('div'); e.className='empty'; e.textContent='No Now/Focus history yet — it fills in as days pass.'; list.appendChild(e); }
+  const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>box.closest('.backdrop').remove(); box.appendChild(act);
+}
+function incomingHistory(day){
+  day=day||todayISO(); const isToday=day===todayISO();
+  const {box}=histModal('📥 Added — '+dayLabelISO(day),'What you added that day. ‹ › to move between days.');
+  const nav=document.createElement('div'); nav.style.cssText='display:flex;align-items:center;gap:8px;margin:4px 0 8px';
+  nav.innerHTML='<button class="btn" data-prev>‹</button><div style="flex:1;text-align:center;font-weight:800'+(isToday?'':';color:var(--accent)')+'">'+esc(dayLabelISO(day))+'</div><button class="btn" data-next'+(isToday?' disabled':'')+'>›</button>'+(isToday?'':'<button class="btn" data-today>Today</button>'); box.appendChild(nav);
+  const list=document.createElement('div'); list.style.cssText='max-height:58vh;overflow:auto'; box.appendChild(list);
+  const items=tasks.filter(t=>localDayISO(t.createdTime)===day).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
+  if(!items.length){ const e=document.createElement('div'); e.className='empty'; e.textContent=isToday?'Nothing added today yet.':'Nothing added this day.'; list.appendChild(e); }
+  items.forEach(t=>{ const done=t.status!=='Open'; const tm=new Date(t.createdTime||0).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+    list.appendChild(histRow(done?null:t, (done?'✓ ':'')+cleanName(t), tm)); });
+  const go=d=>{ const bd=box.closest('.backdrop'); if(bd)bd.remove(); incomingHistory(d>=todayISO()?todayISO():d); };
+  nav.querySelector('[data-prev]').onclick=()=>go(dayShiftISO(day,-1));
+  const nx=nav.querySelector('[data-next]'); if(nx&&!isToday) nx.onclick=()=>go(dayShiftISO(day,1));
+  const tb=nav.querySelector('[data-today]'); if(tb) tb.onclick=()=>go(todayISO());
+  const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>box.closest('.backdrop').remove(); box.appendChild(act);
+}
 
 /* "Still open?" = aging & untouched, likely dead/irrelevant */
 function stillOpenItems(){
@@ -2039,6 +2079,8 @@ function headCtrls(id,title,items){
     (items&&items.length&&isRealSection(id)?`<button class="phead-ctrl" data-bulk title="Move all these to another category">⇄</button>`:'')+
     (items&&items.length?`<button class="phead-ctrl" data-clr title="Clear this category — tasks stay open, just unfiled">⊘</button>`:'')+
     (items&&items.length?`<button class="phead-ctrl" data-park title="Park all these — hide until you restore them (🅿️ Parked panel)">🅿️</button>`:'')+
+    (id==='focus'?`<button class="phead-ctrl" data-fhist title="See Now/Focus from past days">🕘</button>`:'')+
+    (id==='incoming'?`<button class="phead-ctrl" data-ihist title="See what you added on past days">🕘</button>`:'')+
     (items?`<button class="phead-ctrl" data-m title="Max shown">#${(meta.max&&meta.max[id])||''}</button>`:'')+
     (items?`<button class="mini send-list" title="Send this list">⤴</button>`:'')+
     (items?`<button class="phead-ctrl" data-pop title="Float this out to its own window">⧉</button>`:'')+
@@ -2520,6 +2562,8 @@ function panelEl(sectionId,title,items,isDrop){
   head.querySelector('[data-m]').onclick=()=>setMax(sectionId);
   const clr=head.querySelector('[data-clr]'); if(clr)clr.onclick=()=>clearCategory(sectionId,title,items);
   const pk=head.querySelector('[data-park]'); if(pk)pk.onclick=()=>massPark(title,items);
+  { const fh=head.querySelector('[data-fhist]'); if(fh)fh.onclick=()=>focusHistory();
+    const ih=head.querySelector('[data-ihist]'); if(ih)ih.onclick=()=>incomingHistory(); }
   const bk=head.querySelector('[data-blinkoff]'); if(bk)bk.onclick=()=>stopBlinks(items,sectionId);
   const bm=head.querySelector('[data-bulk]'); if(bm)bm.onclick=()=>bulkMove(sectionId,title,items);
   const pb=head.querySelector('[data-pop]'); if(pb)pb.onclick=()=>popOut(sectionId,title);
