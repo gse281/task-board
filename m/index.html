@@ -337,6 +337,21 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .call .lbl,.call .hint{overflow-wrap:anywhere}
 .homesync{flex:1 1 90px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 @media (max-width:380px){ .statsbtn{padding:6px 7px} .nav .icon{min-width:36px} .call .n{font-size:38px} .call .lbl{font-size:17px} }
+/* @Computer – Claude */
+.compbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px;margin:0 0 12px;background:#1f1a14;border:1px solid #4a3522;border-radius:16px;font-weight:800;font-size:15px;text-align:left}
+.compbtn>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.compbtn b{background:var(--accent);color:#1a0e07;border-radius:10px;padding:2px 9px;font-size:13px}
+.compbtn:active{transform:scale(.98)}
+.compcard{background:#1f1a14;border:1px solid #4a3522;border-radius:18px;padding:12px 14px 6px;margin-bottom:14px}
+.compcard .ah{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
+.compcard .ab{margin-left:auto;font-size:12px;font-weight:800;border-radius:9px;padding:3px 9px}
+.crow{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-top:1px solid #33281e;transition:opacity .3s,max-height .35s;max-height:200px;overflow:hidden}
+.crow.gone{opacity:0;max-height:0;padding:0}
+.cck{width:38px;height:38px;border-radius:19px;border:2px solid #6b5640;flex:none;color:transparent;font-weight:900;font-size:17px}
+.cck:active,.crow.gone .cck{background:var(--green);border-color:var(--green);color:#fff}
+.cn{font-weight:700;font-size:14.5px;line-height:1.3}
+.cx{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cd{color:var(--dim);font:600 11px ui-monospace,Menlo,monospace;flex:none;margin-top:3px}
 /* notes archive */
 .nrow{display:block;width:100%;text-align:left;padding:12px 14px;border-bottom:1px solid var(--line)}
 .nrow:last-child{border-bottom:0}
@@ -385,7 +400,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-07 13:33';   // stamped by deploy.sh
+const BUILD='2026-10-08 09:18';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -454,7 +469,8 @@ async function fetchAll(){
         doDate:flat(f.DoDate).slice(0,10), phone:flat(f.Phone), next:flat(f.NextStep), notes:flat(f.Notes),
         priorityRemote:+flat(f.Priority)||0, type:flat(f.Type).toLowerCase(), updatedAt:flat(f.UpdatedAt) }; }));
       offset=d.offset;
-      if(!offset){ tasks=out; demo=false; lastSync=Date.now(); save(LS_CACHE,tasks); localStorage.setItem(LS_TS,lastSync); }
+      if(!offset){ tasks=out; demo=false; lastSync=Date.now(); save(LS_CACHE,tasks); localStorage.setItem(LS_TS,lastSync);
+        for(const t of tasks){ const a=aug[t.id]; if(a&&a.section&&!((Date.now()-(a.secAt||0))<180000)) a.section=null; } saveAug(); }
     }while(offset && ++guard<60);
   }catch(e){ toast('Offline — showing saved list'); }
   syncing=false; render();
@@ -476,6 +492,18 @@ async function fetchAutos(force){
       save('m.autos',autoRows); localStorage.setItem('m.autosAt',Date.now()); } }catch(e){}
   autoBusy=false; stack.forEach(x=>{ if(x.route.type==='home') paintHome(x); if(x.route.type==='autos') paintAutos(x); });
 }
+function paintComp(s){
+  const el=s.el, ci=computerItems();
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">🖥 @Computer – Claude</div><span class="score">${ci.length} open</span></div>
+    <div class="scroll"><div class="sub" style="margin-top:4px">Things that need you at the Mac. ✓ marks it done.</div>
+    ${ci.length?`<div class="compcard">${ci.map(t=>`<div class="crow" data-cid="${t.id}"><button class="cck" data-cdone="${t.id}" aria-label="Done">✓</button><div style="flex:1;min-width:0"><div class="cn">${esc(cleanName(t))}</div>${t.next?`<div class="cx" style="white-space:normal">→ ${esc(t.next)}</div>`:''}</div><span class="cd">${daysOpen(t)}d</span></div>`).join('')}</div>`
+      :'<div class="empty" style="padding-top:60px"><div class="big2">✅</div><h2>All clear</h2></div>'}</div>`;
+  wire(el);
+  el.querySelectorAll('[data-cdone]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const t=tasks.find(x=>x.id===b.dataset.cdone); if(!t) return;
+    b.closest('.crow').classList.add('gone'); setTimeout(()=>{ done(t); paintComp(s); if(stack[0]) paintHome(stack[0]); },420); });
+}
+// 🖥 @Computer – Claude: open items that need Roni at the Mac (Project "@Computer – Claude"); card hides itself when empty
+const computerItems=()=>tasks.filter(t=>isOpen(t)&&(/@computer/i.test(t.project||'')||/@computer/i.test(t.sectionRemote||''))).sort((a,b)=>new Date(a.createdTime||0)-new Date(b.createdTime||0));
 function autoAgo(iso){ if(!iso) return '—'; const t=Date.parse(iso); if(isNaN(t)) return iso; const m=Math.round((Date.now()-t)/60000);
   if(m<0){ const h=Math.round(-m/60); return h<24?'in '+h+'h':'in '+Math.round(h/24)+'d'; } return m<60?m+'m ago':m<1440?Math.round(m/60)+'h ago':Math.round(m/1440)+'d ago'; }
 function autoRowHTML(r){ return `<div class="arow"><span class="adot" style="background:${AUTO_C[r.status]||'#999'}"></span><div style="flex:1;min-width:0"><div class="an">${esc(r.name)}</div>
@@ -636,7 +664,7 @@ function paintSlotList(s){
   el.querySelectorAll('.clrow').forEach(row=>{ const t=tasks.find(x=>x.id===row.dataset.id); if(!t) return;
     row.querySelector('[data-open]').onclick=()=>{ buzz(5); push({type:'deck',kind:'slot',slot,title:S.label,startId:t.id}); };
     row.querySelector('[data-done]').onclick=()=>{ done(t); row.style.opacity='.35'; setTimeout(()=>paintSlotList(s),220); };
-    row.querySelector('[data-rm]').onclick=()=>{ setSlot(t,slot); setTimeout(()=>paintSlotList(s),150); };
+    row.querySelector('[data-rm]').onclick=()=>{ row.style.opacity='.3'; unfile(t,()=>paintSlotList(s)); };
   });
 }
 // app left open past midnight → today's page flips to a fresh blank one (yesterday's text is already saved under yesterday)
@@ -771,11 +799,23 @@ function snooze(t,days){
   patch(t.id,{DoDate:t.doDate});
   toast('😴 Snoozed '+(days===1?'to tomorrow':days+' days'), async()=>{ sessHit('snz',t,true); a.snoozeUntil=prev.s; a.doDate=prev.d||''; t.doDate=prev.d||''; saveAug(); save(LS_CACHE,tasks); await patch(t.id,{DoDate:prev.d||''}); });
 }
+// ⊘ Remove from category: Section='backlog' (explicit "no category" — beats MeetingSlot/Type defaults on every device),
+// MeetingSlot cleared, Type 'call' cleared. Disappears from the current list immediately; Undo restores all three fields.
+function unfile(t,after){
+  const a=A(t.id); const prev={s:a.section,sr:t.sectionRemote||'',m:t.slotRemote||'',ty:t.type||''};
+  a.section='backlog'; a.secAt=Date.now(); t.sectionRemote='backlog'; t.slotRemote='';
+  const f={Section:'backlog',MeetingSlot:''}; if(t.type==='call'){ f.Type=null; t.type=''; }
+  saveAug(); save(LS_CACHE,tasks); patch(t.id,f); buzz(10);
+  toast('⊘ Removed from category', async()=>{ a.section=prev.s; a.secAt=Date.now(); t.sectionRemote=prev.sr; t.slotRemote=prev.m; t.type=prev.ty; saveAug(); save(LS_CACHE,tasks);
+    await patch(t.id,Object.assign({Section:prev.sr,MeetingSlot:prev.m},prev.ty==='call'?{Type:'call'}:{})); if(after) after(); render(); });
+  if(after) after();
+}
+const hasCategory=t=>{ const sec=(A(t.id).section||t.sectionRemote||'').toLowerCase(); return (!!sec&&sec!=='backlog'&&sec!=='parked') || !!slotOf(t) || isCallTask(t); };
 function setSlot(t,slot){
   const prev={s:A(t.id).section, sr:t.sectionRemote, m:t.slotRemote};
   const nv=slotOf(t)===slot?'':slot;
   // Slot is the single source of truth — write MeetingSlot only, clear Section (prevents morning/afternoon drift).
-  A(t.id).section=nv||null; t.slotRemote=nv; t.sectionRemote=''; saveAug(); save(LS_CACHE,tasks);
+  A(t.id).section=nv||null; A(t.id).secAt=Date.now(); t.slotRemote=nv; t.sectionRemote=''; saveAug(); save(LS_CACHE,tasks);
   patch(t.id,{MeetingSlot:nv,Section:''});
   toast(nv?(SLOTS[nv].em+' Added to '+SLOTS[nv].label.toLowerCase()):'Removed from '+SLOTS[slot].label.toLowerCase(), async()=>{
     A(t.id).section=prev.s; t.sectionRemote=prev.sr; t.slotRemote=prev.m; saveAug(); save(LS_CACHE,tasks); await patch(t.id,{MeetingSlot:prev.m||'',Section:prev.sr||''}); });
@@ -793,7 +833,7 @@ function todayTasks(){ const td=todayISO(); return tasks.filter(t=>isOpen(t)&&t.
 function allLive(){ return tasks.filter(live).sort((a,b)=>score(b)-score(a)); }
 function currentSlot(){ const h=new Date().getHours(); return h<12?'morning':(h<18?'afternoon':''); }
 // 📞 Calls = call-type tasks (Type="call" or the name starts with "call"), newest/most-urgent first.
-function isCallTask(t){ return t.type==='call' || /^\s*call\b/i.test(t.name||''); }
+function isCallTask(t){ const sec=(A(t.id).section||t.sectionRemote||'').toLowerCase(); if(sec==='backlog') return false; return sec==='calls' || t.type==='call' || /^\s*call\b/i.test(t.name||''); }
 function callTasks(){ return tasks.filter(t=>live(t)&&isCallTask(t)).sort((a,b)=>score(b)-score(a)); }
 // 📥 Incoming = what you ADDED on a given day (by created date). Today is derived live from the
 // loaded list (blanks every morning); past days are fetched on demand (includes completed items).
@@ -836,7 +876,7 @@ function pop(){
 function syncLayers(){ stack.forEach((x,i)=>{ const isTop=i===stack.length-1; x.el.classList.toggle('under',!isTop); if(isTop){ x.el.classList.remove('enter','leave'); x.el.style.transform=''; } }); }
 function goHome(){ while(stack.length>1){ const s=stack.pop(); s.el.remove(); } syncLayers(); paint(stack[0]); }
 function render(){ stack.forEach(paint); }
-function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='wx') paintWx(s); else if(r.type==='parked') paintParked(s); else if(r.type==='autos') paintAutos(s); }
+function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='wx') paintWx(s); else if(r.type==='parked') paintParked(s); else if(r.type==='autos') paintAutos(s); else if(r.type==='comp') paintComp(s); }
 // iOS-style swipe from the left edge to go back
 function edgeSwipe(el){
   let sx=null,sy=0,dx=0;
@@ -907,6 +947,7 @@ function paintHome(s){
         <button class="mini" data-calls><b>${callTasks().length}</b><span>📞 Calls</span></button>
         <button class="mini" data-incoming><b>${incomingToday().length}</b><span>📥 Incoming</span></button>
       </div>
+      ${computerItems().length?`<button class="compbtn" data-comp><span>🖥 @Computer – Claude</span><b>${computerItems().length}</b><span class="chev">›</span></button>`:''}
       <div class="minirow">
         <button class="mini" data-notesbtn><b>🗒</b><span>Notes</span></button>
         <button class="mini" data-wx><b>${(()=>{ if(!wx.length) return '🌤'; const w=wx.find(x=>x.date===todayISO())||wx[0]; return w.hi+'°'; })()}</b><span>Weather</span></button>
@@ -946,6 +987,7 @@ function paintHome(s){
   el.querySelector('[data-snap]').onclick=()=>push({type:'snap',mode:localStorage.getItem('m.snapMode')||'group'});
   el.querySelectorAll('[data-dsel]').forEach(b=>b.onclick=()=>{ localStorage.setItem('m.drillSel',b.dataset.dsel); buzz(5); el.querySelectorAll('[data-dsel]').forEach(x=>x.classList.toggle('on',x===b)); });
   el.querySelector('[data-drill]').onclick=()=>{ const v=localStorage.getItem('m.drillSel')||'*'; push({type:'deck',kind:'drill',val:v,title:v==='*'?'Drill · all':v||'No project'}); };
+  { const cb=el.querySelector('[data-comp]'); if(cb) cb.onclick=()=>push({type:'comp'}); }
   el.querySelector('[data-autos]').onclick=()=>push({type:'autos'});
   el.querySelector('[data-calls]').onclick=()=>push({type:'deck',kind:'calls',title:'📞 Calls'});
   el.querySelector('[data-incoming]').onclick=()=>push({type:'incoming',day:null});
@@ -1305,7 +1347,7 @@ function rowHTML(t,dim,open){
     <div class="tx"><div><div class="txi">${t.next?`<div class="nx"><b>Next step</b>${esc(t.next)}</div>`:''}${t.notes?`<div class="nx"><b>Notes</b>${esc(t.notes)}</div>`:''}
       <div class="txb">${t.phone?`<a href="tel:${esc(t.phone)}">📞 Call</a><a href="sms:${esc(t.phone)}">💬</a>`:''}
       <button data-sl="morning" class="${sl==='morning'?'on':''}">🌅 AM</button><button data-sl="afternoon" class="${sl==='afternoon'?'on':''}">☀️ PM</button>
-      <button data-z="1">🌙 Tmrw</button><button data-z="30">🗓 Month</button><button data-note>📝</button></div></div></div></div></div>`;
+      <button data-z="1">🌙 Tmrw</button><button data-z="30">🗓 Month</button><button data-note>📝</button>${hasCategory(t)?'<button data-unfile>⊘ Uncategorize</button>':''}</div></div></div></div></div>`;
 }
 function wireRow(rw,s){
   const t=tasks.find(x=>x.id===rw.dataset.id); if(!t) return; const row=rw.querySelector('.row3');
@@ -1320,6 +1362,7 @@ function wireRow(rw,s){
   rw.querySelectorAll('[data-sl]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); setSlot(t,b.dataset.sl); paintBoard(s); if(stack[0]) paintHome(stack[0]); });
   rw.querySelectorAll('[data-z]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); finish('snz',+b.dataset.z); });
   rw.querySelector('[data-note]').onclick=e=>{ e.stopPropagation(); noteSheet(s,t); };
+  { const u=rw.querySelector('[data-unfile]'); if(u) u.onclick=e=>{ e.stopPropagation(); unfile(t,()=>paintBoard(s)); }; }
   // horizontal swipe on the row: → done, ← snooze (vertical scrolling stays native)
   let x0=null,y0=0,dx=0,moved=false,lock=null;
   row.addEventListener('touchstart',e=>{ x0=e.touches[0].clientX; y0=e.touches[0].clientY; dx=0; moved=false; lock=null; row.style.transition='none'; },{passive:true});
@@ -1353,6 +1396,7 @@ function moreSheet(s,t){
     ${ph?`<a class="sbtn" href="tel:${esc(ph)}"><span class="si">📞</span>Call ${esc(t.lead||ph)}</a><a class="sbtn" href="sms:${esc(ph)}"><span class="si">💬</span>Text</a>`:''}
     <button class="sbtn ${sl==='morning'?'on':''}" data-s="morning"><span class="si">🌅</span>${sl==='morning'?'Remove from morning call':'Add to morning call'}</button>
     <button class="sbtn ${sl==='afternoon'?'on':''}" data-s="afternoon"><span class="si">☀️</span>${sl==='afternoon'?'Remove from afternoon call':'Add to afternoon call'}</button>
+    ${hasCategory(t)?'<button class="sbtn" data-unfile><span class="si">⊘</span>Remove from category</button>':''}
     <button class="sbtn" data-z="1"><span class="si">🌙</span>Snooze to tomorrow</button>
     <button class="sbtn" data-z="3"><span class="si">😴</span>Snooze 3 days</button>
     <button class="sbtn" data-z="30"><span class="si">🗓</span>Snooze a month</button>
@@ -1361,6 +1405,7 @@ function moreSheet(s,t){
       sh.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{ close(); setSlot(t,b.dataset.s); paintDeck(s); paintHome(stack[0]); });
       sh.querySelectorAll('[data-z]').forEach(b=>b.onclick=()=>{ close(); handle(s,t,+b.dataset.z,document.getElementById('top')); });
       sh.querySelector('[data-note]').onclick=()=>{ close(); noteSheet(s,t); };
+      { const u=sh.querySelector('[data-unfile]'); if(u) u.onclick=()=>{ close(); unfile(t,()=>{ if(s.route&&s.route.type==='deck'){ if(s.route.kind==='slot'||s.route.kind==='calls') s.queue=(s.queue||[]).filter(x=>x!==t.id); paintDeck(s); } if(stack[0]) paintHome(stack[0]); }); }; }
     });
 }
 function snoozeSheet(s,t,top){

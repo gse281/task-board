@@ -56,6 +56,9 @@ button{font:inherit;color:inherit;cursor:pointer}
 .panel-head .count{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:1px 9px;font-size:12px;color:var(--muted)}
 .panel-body{padding:6px;display:flex;flex-direction:column;gap:4px;min-height:0;flex:1;overflow-y:auto;max-height:calc(100vh - 110px)}
 .scratch-stat{margin-left:auto;font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap}
+.parkrow{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--line)}
+.parkname{flex:1;min-width:0;font-size:13px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.parkrow .cardbtn{flex:0 0 auto}
 .mcall.rm{color:#e0774f}
 .panel.drop-hover{outline:2px dashed var(--accent);outline-offset:-4px}
 .panel.stub .panel-body{align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:18px}
@@ -92,6 +95,12 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 /* Task card */
 .task{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:3px 7px;cursor:grab;position:relative}
+/* Call panels = compact lists (Morning / Afternoon / Calls look identical): flat rows, one-line next step, notes preview hidden */
+.task.callrow{border-radius:0;border-width:0 0 1px;background:transparent;padding:4px 4px 3px;margin:0}
+.task.callrow .name{font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.task.callrow .next{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:1px 6px;margin:2px 0 0;font-size:11.5px}
+.task.callrow .notepv{display:none}
+.task.callrow .plsline{margin-top:1px}
 .task:active{cursor:grabbing}
 .task.blink{animation:blink 1s ease-in-out infinite;border-color:var(--accent)}
 @keyframes blink{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 3px var(--accent)}}
@@ -367,9 +376,10 @@ a.tellink{color:var(--green);text-decoration:none}
 
 <script>
 "use strict";
-const BUILD='2026-10-07 13:33';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-08 09:18';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-10-08 · park / purgatory', d:'🅿️ Park — set things aside without losing them. Tap 🅿️ on any task, or 🅿️ in a panel/🔍-search header to park the WHOLE list at once ("make it all go away, focus on one thing"). Parked items vanish from every list (Priority, Still-open, project/lead/sub, counts) and wait in the new 🅿️ Parked panel — Restore one, Restore all, or drag a task onto it. ⌘Z undoes a park. Separate from ⊘ Clear (which just unfiles to Backlog).'},
   {v:'2026-10-05 · search sort', d:'The searched / filtered (🔍) pane now groups by project and, within each project, sorts by age with the oldest at the bottom. (Still override it anytime with the Sort dropdown.)'},
   {v:'2026-10-05 · badge in search', d:'The project bubble now shows at the start of each task title in the searched / filtered (🔍) pane too — tap it to set or change the project right there.'},
   {v:'2026-10-01 · notes + calls', d:'🗒 Notes now back up to Airtable (survive a browser wipe, sync across devices) and show a "✓ Saved" time so you can tell. Morning/Afternoon calls on iPhone show the full LIST (not cards) with a one-tap ✕ remove + ✓ done on every row. And call slots are now locked to their own list — afternoon items can no longer drift into morning.'},
@@ -579,7 +589,7 @@ function priorityScore(t){
 }
 // Priority only ranks tasks you can actually see — snoozed ones don't count,
 // so the chip count always matches what the bubble shows (never 25 vs 0).
-function priorityList(){ const key=t=>((t.priorityRemote||priorityScore(t))+(A(t.id).priAdj||0)); return tasks.filter(t=>t.status==='Open'&&notSnoozed(t)&&!A(t.id).notPriority).sort((a,b)=>key(b)-key(a)).slice(0,25); }
+function priorityList(){ const key=t=>((t.priorityRemote||priorityScore(t))+(A(t.id).priAdj||0)); return tasks.filter(t=>t.status==='Open'&&notSnoozed(t)&&!A(t.id).notPriority&&!isParked(t)).sort((a,b)=>key(b)-key(a)).slice(0,25); }
 // Yesterday's board — what was placed in your sections yesterday (from the reset log).
 function yesterdayBoard(){
   const d=new Date(); d.setDate(d.getDate()-1);
@@ -623,7 +633,7 @@ function setSlot(id,slot){
   pushUndo('move: '+(t?cleanName(t):id),async()=>{ A(id).section=prev.sec; if(t){t.sectionRemote=prev.secR;t.slotRemote=prev.slotR;} await atPatch(id,{MeetingSlot:prev.slotR||'',Section:prev.secR||''}); });
   // Slot is the single source of truth — do NOT also write Section (that created
   // conflicting rows that could drift a call between morning/afternoon).
-  A(id).section=nv; if(t){t.slotRemote=nv||''; t.sectionRemote='';} saveAug(); render();
+  A(id).section=nv; A(id).secAt=Date.now(); if(t){t.slotRemote=nv||''; t.sectionRemote='';} saveAug(); render();
   atPatch(id,{MeetingSlot:nv||'', Section:''});
 }
 function sectionOf(t){ return A(t.id).section || t.sectionRemote || defaultSection(t); }
@@ -634,8 +644,25 @@ function setSection(id,sec){
   const t=tasks.find(x=>x.id===id);
   const prev={sec:A(id).section,secR:t?t.sectionRemote:'',slotR:t?t.slotRemote:''};
   pushUndo('move: '+(t?cleanName(t):id),async()=>{ A(id).section=prev.sec; if(t){t.sectionRemote=prev.secR;t.slotRemote=prev.slotR;} await atPatch(id,{Section:prev.secR||prev.sec||'',MeetingSlot:prev.slotR||''}); });
-  A(id).section=sec||null; if(t){t.sectionRemote=sec||''; t.slotRemote='';}
-  saveAug(); atPatch(id,{Section:sec||'', MeetingSlot:''});
+  if(!sec){ unfile(t||{id},true); return; }      // "None (unfile)" must not fall back to the MeetingSlot/Type default
+  A(id).section=sec; A(id).secAt=Date.now(); if(t){t.sectionRemote=sec; t.slotRemote='';}
+  saveAug(); atPatch(id,{Section:sec, MeetingSlot:''});
+}
+// ⊘ REMOVE FROM CATEGORY — the one true "unfile".
+// Why the old ⊘ didn't work (e.g. Eli GTO in the Morning call): it only blanked Section, but morning/afternoon
+// live in MeetingSlot and "call" lives in Type, so defaultSection() put the task straight back.
+// Now: Section='backlog' (explicit "no category", beats every default), MeetingSlot='', Type cleared if it was 'call'.
+function unfile(t,silent){
+  const id=t.id; t=tasks.find(x=>x.id===id)||t; const a=A(id);
+  const prev={sec:a.section,secR:t.sectionRemote||'',slotR:t.slotRemote||'',typeR:t.typeRemote||'',typeL:a.type};
+  const was=sectionOf(t);
+  pushUndo('unfile: '+cleanName(t),async()=>{ a.section=prev.sec; a.secAt=Date.now(); a.type=prev.typeL; t.sectionRemote=prev.secR; t.slotRemote=prev.slotR; t.typeRemote=prev.typeR; saveAug(); render();
+    await atPatch(id,Object.assign({Section:prev.secR,MeetingSlot:prev.slotR},prev.typeR==='call'?{Type:'call'}:{})); });
+  a.section='backlog'; a.secAt=Date.now(); if(a.type==='call') a.type=null; t.sectionRemote='backlog'; t.slotRemote='';
+  const f={Section:'backlog',MeetingSlot:''}; if(t.typeRemote==='call'){ f.Type=null; t.typeRemote=''; }
+  saveAug(); render();
+  atPatch(id,f);
+  if(!silent) toast('⊘ Removed from '+(((BUCKETS.find(b=>b.id===was)||(meta.customCats||[]).find(c=>c.id===was)||{}).name)||'category')+' — ↩ Undo in the top bar');
 }
 
 /* ---------- Airtable ---------- */
@@ -671,7 +698,12 @@ async function atFetch(){
   try{ localStorage.setItem('tb.tasks', JSON.stringify(out)); }catch(e){}   // cache for instant next open
   // backfill: push this device's local placements up to Airtable — BATCHED (10 records/request) to save API calls
   const upMap=new Map();
-  for(const t of tasks){ const s=A(t.id).section; if(s && t.sectionRemote!==s){ t.sectionRemote=s; upMap.set(t.id,{Section:s}); } }
+  // Airtable is the source of truth. A stale local placement used to be pushed back up here, which is how
+  // removed items (Eli GTO) reappeared. Now only a change made on this device in the last 3 minutes is re-sent.
+  for(const t of tasks){ const a=A(t.id), s=a.section; if(!s) continue;
+    const recent=(Date.now()-(a.secAt||0))<180000;
+    if(recent && t.sectionRemote!==s && !(s===t.slotRemote&&!t.sectionRemote)){ t.sectionRemote=s; upMap.set(t.id,s==='morning'||s==='afternoon'?{MeetingSlot:s,Section:''}:{Section:s}); }
+    else if(!recent) a.section=null; }
   for(const t of tasks){ if((A(t.id).section==='incoming'||t.sectionRemote==='incoming') && daysOpen(t)>0){ A(t.id).section=null; t.sectionRemote=''; upMap.set(t.id,{Section:''}); } }
   saveAug();
   if(upMap.size) atPatchMany([...upMap].map(([id,fields])=>({id,fields})));
@@ -890,7 +922,7 @@ function dailyReset(){
   if(meta.lastReset===today) return;
   // These sections persist across the daily reset: priorities, Sunday, and any custom category.
   // Now/Focus is deliberately NOT kept — it blanks every morning (see below).
-  const keep=new Set(['bigticket','nextup','sunday',...((meta.customCats||[]).map(c=>c.id))]);
+  const keep=new Set(['bigticket','nextup','sunday','parked',...((meta.customCats||[]).map(c=>c.id))]);   // parked items stay parked across days
   if(meta.lastReset){ // log the day that just ended
     const snap=Object.keys(aug).filter(id=>aug[id].section).map(id=>({id,section:aug[id].section}));
     meta.resetLog=meta.resetLog||{}; meta.resetLog[meta.lastReset]=snap;
@@ -1009,11 +1041,25 @@ async function undoLast(){
 
 /* ---------- Filtering ---------- */
 function visible(t){
+  if(isParked(t)) return false;                     // parked = purgatory, hidden from every list
   if(filters.project && !hasVal(t,'project',filters.project)) return false;
   if(filters.lead && !hasVal(t,'lead',filters.lead)) return false;
   if(filters.sub && !hasVal(t,'sub',filters.sub)) return false;
   return true;
 }
+// ── 🅿️ Park = set aside in purgatory (Section='parked'): hidden everywhere but not gone. ──
+function isParked(t){ return sectionOf(t)==='parked'; }
+function parkedList(){ return tasks.filter(t=>t.status==='Open'&&isParked(t)).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0)); }
+function park(id){ const t=tasks.find(x=>x.id===id); A(id).section='parked'; if(t)t.sectionRemote='parked'; saveAug(); if(cfg.apiKey)atPatch(id,{Section:'parked'}); }
+function unpark(id){ const t=tasks.find(x=>x.id===id); A(id).section=null; if(t)t.sectionRemote=''; saveAug(); if(cfg.apiKey)atPatch(id,{Section:''}); }   // clears Section → falls back to its slot/normal views
+function parkTask(id){ const t=tasks.find(x=>x.id===id); const prev={sec:A(id).section,secR:t?t.sectionRemote:''};
+  pushUndo('park: '+(t?cleanName(t):id),async()=>{ A(id).section=prev.sec; if(t)t.sectionRemote=prev.secR; saveAug(); await atPatch(id,{Section:prev.secR||prev.sec||''}); render(); });
+  park(id); toast('🅿️ Parked — see the Parked panel'); render(); }
+function massPark(label,items){ items=(items||[]).filter(t=>!isParked(t)); if(!items.length){ toast('Nothing to park'); return; }
+  const snap=items.map(t=>({id:t.id,sec:A(t.id).section,secR:t.sectionRemote}));
+  pushUndo('park '+snap.length+' · '+label,async()=>{ snap.forEach(x=>{ A(x.id).section=x.sec; const t=tasks.find(y=>y.id===x.id); if(t)t.sectionRemote=x.secR; atPatch(x.id,{Section:x.secR||''}); }); saveAug(); render(); });
+  items.forEach(t=>park(t.id)); toast('🅿️ Parked '+snap.length+' — ⌘Z to undo'); render(); }
+function restoreAllParked(){ const items=parkedList(); if(!items.length)return; items.forEach(t=>unpark(t.id)); toast('↩ Restored '+items.length); render(); }
 
 /* "Still open?" = aging & untouched, likely dead/irrelevant */
 function stillOpenItems(){
@@ -1027,9 +1073,10 @@ const expanded = new Set();   // ephemeral: which capped sections are showing al
 function orderedPanels(){
   const custom=((meta.customCats||[]).map(c=>c.id));
   // to-send / from-outside / improvements are now folded INTO the Triage pane.
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','scratch','automations',...STUBS.map(s=>s.id)];
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
   if(!ord.includes('automations')) ord.unshift('automations');   // always-on status panel: first time it appears at the top
+  if(!ord.includes('computer')){ const i=Math.max(ord.indexOf('morning'),ord.indexOf('afternoon'),ord.indexOf('calls')); ord.splice(i<0?0:i+1,0,'computer'); }   // 🖥 right after the call panels
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
   return ord.filter(id=>def.includes(id) && id!=='backlog');   // backlog hidden
 }
@@ -1110,7 +1157,9 @@ function render(){
     else if(id==='respond') board.appendChild(respondPanel());
     else if(id==='tosend') board.appendChild(outboxPanel());
     else if(id==='scratch') board.appendChild(scratchPanel());
+    else if(id==='parked') board.appendChild(parkedPanel());
     else if(id==='automations') board.appendChild(automationsPanel());
+    else if(id==='computer'){ const cp=computerPanel(); if(cp) board.appendChild(cp); }   // hidden only when empty
     else if(stub) board.appendChild(stubPanel(stub));
     else { const cc=(meta.customCats||[]).find(c=>c.id===id); const b=BUCKETS.find(x=>x.id===id)||cc; if(!b)return;
       let items = openVisible.filter(t=>sectionOf(t)===b.id);
@@ -1360,6 +1409,7 @@ function bulbPanel(){
               : tasks.filter(t=>t.status==='Open'&&hasVal(t,dim,val));
   // review views deliberately show EVERYTHING, snoozed included
   const showAll = isCat && ['allopen','backlog','uncat','stillopen'].includes(val);
+  items=items.filter(t=>!isParked(t));   // parked items live only in the 🅿️ Parked panel
   if(!showAll) items=items.filter(notSnoozed);
   // Morning/Afternoon call lists default to newest-first (oldest at the bottom), matching the on-screen panels.
   if(isCat && (val==='morning'||val==='afternoon') && !bulbSort) items=items.slice().sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0));
@@ -1373,10 +1423,12 @@ function bulbPanel(){
     `<select class="dp-sort" title="Sort by">${sortOpts.map(o=>`<option value="${o[0]}"${bulbSort===o[0]?' selected':''}>${o[1]}</option>`).join('')}</select>`+
     `<button class="phead-ctrl" data-rev title="Review this list 10 at a time">⛶</button>`+
     (isCat&&items.length?`<button class="phead-ctrl" data-clrall title="Clear this category — tasks stay open">⊘</button>`:'')+
+    (items.length?`<button class="phead-ctrl" data-park title="Park all these — hide until you restore them">🅿️</button>`:'')+
     `<button class="mini send-list" title="Send this list">⤴</button><span class="count">${items.length}</span><button class="phead-ctrl" data-close title="Close">✕</button>`;
   head.querySelector('.dp-sort').onchange=e=>{ bulbSort=e.target.value; render(); };
   head.querySelector('[data-rev]').onclick=()=>openReview(title,items);
   const ca=head.querySelector('[data-clrall]'); if(ca)ca.onclick=()=>clearCategory(val,title,items);
+  { const pk=head.querySelector('[data-park]'); if(pk)pk.onclick=()=>massPark(isCat?label:(dim+': '+val),items); }
   head.querySelector('.send-list').onclick=()=>sendList(isCat?label:(dim+': '+val),items);
   head.querySelector('[data-close]').onclick=()=>{activeBulb=null;render();};
   const cycle=delta=>{
@@ -1912,6 +1964,14 @@ function layoutGrid(board){
   panels.forEach(p=>{ const id=p.dataset.section; let s=meta.slots[id];
     if(s==null||s<0||s>=total||used.has(s)) s=null;
     if(s!=null)used.add(s); meta.slots[id]=s; });
+  // 🖥 @Computer – Claude: the first time it shows up, put it in the top-left cell (whatever was there moves to the first open cell)
+  // 🖥 @Computer – Claude sits right AFTER the call panels: one-time swap into the cell after Morning/Afternoon
+  if(!meta.compPlaced2 && panels.some(p=>p.dataset.section==='computer')){
+    const after=Math.max(meta.slots['morning']??-1, meta.slots['afternoon']??-1); let t0=after+1; while((reserved.has(t0))&&t0<total)t0++;
+    if(after>=0 && t0<total){ const old=meta.slots['computer']; const occ=Object.keys(meta.slots).find(k=>k!=='computer'&&meta.slots[k]===t0&&panels.some(p=>p.dataset.section===k));
+      if(occ){ meta.slots[occ]=(old!=null?old:null); if(old==null) used.delete(t0); } else if(old!=null) used.delete(old);
+      meta.slots['computer']=t0; used.add(t0); if(occ&&meta.slots[occ]!=null) used.add(meta.slots[occ]); }
+    meta.compPlaced2=1; saveMeta(); }
   panels.forEach(p=>{ const id=p.dataset.section; if(meta.slots[id]==null){ let f=0; while(used.has(f)&&f<total)f++; meta.slots[id]=(f<total?f:0); used.add(meta.slots[id]); } });
   panels.forEach(p=>{ const id=p.dataset.section; const {x,y}=slotXY(meta.slots[id],d);
     p.style.position='absolute'; p.style.left=x+'px'; p.style.top=y+'px';
@@ -1978,6 +2038,7 @@ function headCtrls(id,title,items){
     (anyBlink?`<button class="phead-ctrl" data-blinkoff title="Stop all blinking in this pane">🔕</button>`:'')+
     (items&&items.length&&isRealSection(id)?`<button class="phead-ctrl" data-bulk title="Move all these to another category">⇄</button>`:'')+
     (items&&items.length?`<button class="phead-ctrl" data-clr title="Clear this category — tasks stay open, just unfiled">⊘</button>`:'')+
+    (items&&items.length?`<button class="phead-ctrl" data-park title="Park all these — hide until you restore them (🅿️ Parked panel)">🅿️</button>`:'')+
     (items?`<button class="phead-ctrl" data-m title="Max shown">#${(meta.max&&meta.max[id])||''}</button>`:'')+
     (items?`<button class="mini send-list" title="Send this list">⤴</button>`:'')+
     (items?`<button class="phead-ctrl" data-pop title="Float this out to its own window">⧉</button>`:'')+
@@ -2320,6 +2381,33 @@ async function dnArchive(){
 // if the dashboard stays open past midnight, flip the panel to the new (blank) day — yesterday's text is already saved under yesterday
 let dnShownToday=dnToday();
 setInterval(()=>{ if(dnToday()!==dnShownToday){ dnShownToday=dnToday(); meta.dnArchivedOn=''; dnArchive(); if(scratchDay===null) try{ render(); }catch(e){} } },60000);
+// 🅿️ Parked — items you set aside (purgatory). Hidden everywhere else; restore from here.
+function parkedPanel(){
+  const items=parkedList();
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='parked';
+  const head=document.createElement('div'); head.className='panel-head';
+  head.innerHTML=`<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>🅿️ Parked</h3>`+
+    (items.length?`<button class="phead-ctrl" data-restoreall title="Restore everything back to its lists">↩ all</button>`:'')+
+    `<span class="count">${items.length}</span>`;
+  p.appendChild(head); wirePanel(p,head,'parked');
+  const ra=head.querySelector('[data-restoreall]'); if(ra)ra.onclick=()=>restoreAllParked();
+  const body=document.createElement('div'); body.className='panel-body';
+  if(!items.length){ const e=document.createElement('div'); e.className='empty'; e.textContent='Nothing parked. Tap 🅿️ on a task, or 🅿️ in a panel header to set a whole list aside here.'; body.appendChild(e); }
+  items.forEach(t=>{
+    const row=document.createElement('div'); row.className='parkrow';
+    const nm=document.createElement('div'); nm.className='parkname';
+    nm.innerHTML=(t.project?`<span class="projbadge">${esc(String(t.project).split(',')[0].trim())}</span> `:'')+esc(cleanName(t));
+    nm.title='Open'; nm.onclick=()=>openDetail(t); row.appendChild(nm);
+    const rb=document.createElement('button'); rb.className='cardbtn'; rb.textContent='↩ Restore'; rb.title='Put it back where it was'; rb.onclick=()=>{ unpark(t.id); toast('↩ Restored'); render(); }; row.appendChild(rb);
+    body.appendChild(row);
+  });
+  p.appendChild(body);
+  p.addEventListener('dragover',e=>{ if(e.dataTransfer.types.includes('text/plain')) e.preventDefault(); });
+  p.addEventListener('drop',e=>{ const d=e.dataTransfer.getData('text/plain');
+    if(d&&d.startsWith('panel:')) reorderPanels(d.slice(6),'parked');
+    else if(d&&d!=='chip'&&tasks.find(x=>x.id===d)){ e.preventDefault(); park(d); toast('🅿️ Parked'); render(); } });
+  return p;
+}
 function scratchPanel(){
   dnMigrate(); dnArchive();
   const day=scratchDay||dnToday(), isToday=day===dnToday();
@@ -2364,6 +2452,30 @@ function fetchAutos(force){
 function autoAgo(iso){ if(!iso) return '—'; const t=Date.parse(iso); if(isNaN(t)) return iso; const m=Math.round((Date.now()-t)/60000);
   if(m<0){ const h=Math.round(-m/60); return h<24?'in '+h+'h':'in '+Math.round(h/24)+'d'; } return m<60?m+'m ago':m<1440?Math.round(m/60)+'h ago':Math.round(m/1440)+'d ago'; }
 const AUTO_C={OK:'#3a8f5f',Failing:'#c2553f',Missed:'#e0a458',Paused:'#6f6861',Manual:'#5b8fb0',Unknown:'#a8a29a'};
+// 🖥 @Computer – Claude — every open item that needs Roni at the Mac (Project "@Computer – Claude").
+// Standing panel; hidden only when empty. ✓ marks it Done in Airtable (undoable).
+const isComputerItem=t=>/@computer/i.test(t.project||'')||/@computer/i.test(t.sectionRemote||'');
+function computerPanel(){
+  const items=tasks.filter(t=>t.status==='Open'&&isComputerItem(t)).sort((a,b)=>new Date(a.createdTime||0)-new Date(b.createdTime||0));
+  if(!items.length) return null;
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='computer';
+  const head=document.createElement('div'); head.className='panel-head';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>🖥 @Computer – Claude</h3>'
+    +'<span style="font-size:12px;font-weight:800;border-radius:10px;padding:2px 8px;background:var(--accent);color:#1a0e07">'+items.length+'</span>'
+    +'<span class="scratch-stat">needs you at the Mac</span>';
+  p.appendChild(head); wirePanel(p,head,'computer');
+  const body=document.createElement('div'); body.className='panel-body'; const hp=heightPx('computer'); if(hp) body.style.maxHeight=hp;
+  items.forEach(t=>{ const ns=A(t.id).nextStep||t.nextStepRemote||'';
+    const r=document.createElement('div'); r.style.cssText='display:flex;gap:8px;align-items:flex-start;padding:6px 2px;border-bottom:1px solid var(--line)';
+    r.innerHTML='<button class="mini" title="Mark done" style="flex:none;min-width:30px;font-weight:900">✓</button><div style="min-width:0;flex:1"><div style="font-weight:700;font-size:13px">'+esc(cleanName(t))+'</div>'
+      +(ns?'<div style="color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(ns)+'">→ '+esc(ns)+'</div>':'')+'</div>'
+      +'<span style="color:var(--muted);font-size:11px;flex:none">'+daysOpen(t)+'d</span>';
+    r.querySelector('button').onclick=e=>{ e.stopPropagation(); markDone(t); };
+    body.appendChild(r); });
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'computer');});
+  return p;
+}
 function automationsPanel(){
   fetchAutos(false);
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='automations';
@@ -2398,6 +2510,8 @@ function automationsPanel(){
   return p;
 }
 setInterval(()=>fetchAutos(false),10*60000);
+// Call panels (Morning / Afternoon / Calls) are compact LISTS and render identically (same row height, one-line next step).
+const CALL_LISTS=new Set(['morning','afternoon','calls']);
 function panelEl(sectionId,title,items,isDrop){
   const p=document.createElement('div'); p.className='panel'; p.dataset.section=sectionId;
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls(sectionId,title,items);
@@ -2405,6 +2519,7 @@ function panelEl(sectionId,title,items,isDrop){
   head.querySelector('.send-list').onclick=()=>sendList(title,items);
   head.querySelector('[data-m]').onclick=()=>setMax(sectionId);
   const clr=head.querySelector('[data-clr]'); if(clr)clr.onclick=()=>clearCategory(sectionId,title,items);
+  const pk=head.querySelector('[data-park]'); if(pk)pk.onclick=()=>massPark(title,items);
   const bk=head.querySelector('[data-blinkoff]'); if(bk)bk.onclick=()=>stopBlinks(items,sectionId);
   const bm=head.querySelector('[data-bulk]'); if(bm)bm.onclick=()=>bulkMove(sectionId,title,items);
   const pb=head.querySelector('[data-pop]'); if(pb)pb.onclick=()=>popOut(sectionId,title);
@@ -2446,7 +2561,7 @@ function panelEl(sectionId,title,items,isDrop){
 
 function taskEl(t,sectionId){
   const a=A(t.id); const el=document.createElement('div');
-  el.className='task'+((a.blink||autoBlinkOn(t,sectionId))?' blink':'')+(sectionOf(t)==='bigticket'?' bigtix':''); el.draggable=true;
+  el.className=(CALL_LISTS.has(sectionId)?'task callrow':'task')+((a.blink||autoBlinkOn(t,sectionId))?' blink':'')+(sectionOf(t)==='bigticket'?' bigtix':''); el.draggable=true;
   el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',t.id);el.classList.add('dragging');});
   el.addEventListener('dragend',()=>el.classList.remove('dragging'));
   // Card-level reorder ONLY in real bucket sections. In the filter/added pane the
@@ -2485,12 +2600,13 @@ function taskEl(t,sectionId){
   act('✓','done','Mark done',()=>markDone(t));
   act(a.blink?'🔔':'🔕', a.blink?'on':'', a.blink?'Ringing — tap to silence':'Ring bell (jumps to top)', ()=>{const aa=A(t.id); aa.blink=!aa.blink; if(aa.blink)bumpTop(t.id); saveAug(); render();});
   act('📌', a.pin?'on':'', a.pin?'Pinned — survives daily reset':'Pin — keep until done', ()=>{const aa=A(t.id);aa.pin=!aa.pin;saveAug();render();toast(aa.pin?'📌 Pinned':'Unpinned');});
+  act('🅿️','','Park — hide it until you restore it',()=>parkTask(t.id));
   const inPriority = sectionId==='priority' || (sectionId==='bulb' && activeBulb && activeBulb.val==='priority');
   const inStillOpen = sectionId==='stillopen' || (sectionId==='bulb' && activeBulb && activeBulb.val==='stillopen');
   if(inPriority) act('⬇','','Downgrade — lower priority',()=>{const aa=A(t.id);aa.priAdj=(aa.priAdj||0)-25;aa.blink=false;saveAug();toast('⬇ Downgraded');render();});
   if(inStillOpen) act('👍','','Still relevant — keep it',()=>{touch(t.id);toast('👍 Kept');render();});
   const inCatPane = isRealSection(sectionId) || (sectionId==='bulb' && activeBulb && isRealSection(activeBulb.val));
-  if(inCatPane && sectionOf(t) && sectionOf(t)!=='backlog') act('⊘','','Remove from this category (stays open)',()=>clearFromSection(t));
+  if(sectionOf(t) && sectionOf(t)!=='backlog') act('⊘','','Remove from category ('+sectionOf(t)+') — stays open',()=>unfile(t));
   const mas=document.createElement('div'); mas.className='mas';
   const mk=(ltr,title,fn,on)=>{const b=document.createElement('button');b.className='masb'+(on?' on':'');b.textContent=ltr;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;};
   mas.appendChild(mk('M','Add to morning call',()=>setSlot(t.id,'morning'), sectionOf(t)==='morning'));
@@ -2574,17 +2690,11 @@ function clearCategory(sectionId,title,items){
   const list=(items||[]).filter(t=>t.status==='Open');
   if(!list.length){ toast('Nothing to clear'); return; }
   if(!confirm('Clear '+list.length+' item'+(list.length===1?'':'s')+' out of '+title+'?\nThey stay open — just no longer in this section.')) return;
-  const snap=list.map(t=>({id:t.id,sec:A(t.id).section,secR:t.sectionRemote}));
-  pushUndo('clear '+title,async()=>{ for(const s of snap){ A(s.id).section=s.sec; const t=tasks.find(x=>x.id===s.id); if(t)t.sectionRemote=s.secR; await atPatch(s.id,{Section:s.secR||s.sec||''}); } });
-  for(const t of list){ A(t.id).section=null; t.sectionRemote=''; atPatch(t.id,{Section:''}); }
-  saveAug(); render(); toast('⊘ Cleared '+list.length+' from '+title);
+  for(const t of list) unfile(t,true);
+  saveAug(); render(); toast('⊘ Cleared '+list.length+' from '+title+' — ↩ Undo in the top bar');
 }
 // Pull ONE task out of its section (stays open, unfiled).
-function clearFromSection(t){
-  const prev={sec:A(t.id).section,secR:t.sectionRemote};
-  pushUndo('unfile: '+cleanName(t),async()=>{ A(t.id).section=prev.sec; t.sectionRemote=prev.secR; await atPatch(t.id,{Section:prev.secR||prev.sec||''}); });
-  A(t.id).section=null; t.sectionRemote=''; saveAug(); atPatch(t.id,{Section:''}); render(); toast('⊘ Removed from section');
-}
+function clearFromSection(t){ unfile(t); }
 // ── Review: a QUARTER-screen window, 10 at a time, with a reshuffle button ──
 const REV_PAGE=10;   // short attention span: ten at a time, then reshuffle
 function openReview(title,items){
@@ -2727,7 +2837,7 @@ function openDatePicker(t){
 }
 function setDoDate(id,dateStr){ const a=A(id); a.doDate=dateStr||''; const t=tasks.find(x=>x.id===id); if(t)t.doDate=dateStr||''; saveAug(); atPatch(id,{DoDate:dateStr||''}); }
 function todayPlan(){ const td=todayISO(); return tasks.filter(t=>t.status==='Open' && notSnoozed(t) && doDateOf(t) && doDateOf(t)<=td).sort((a,b)=>doDateOf(a).localeCompare(doDateOf(b))); }
-function isCallTask(t){ return t.typeRemote==='call' || t.sectionRemote==='calls' || A(t.id).type==='call' || /^\s*call\b/i.test(t.name||''); }
+function isCallTask(t){ if(sectionOf(t)==='backlog'&&t.sectionRemote==='backlog') return false; return t.typeRemote==='call' || t.sectionRemote==='calls' || A(t.id).type==='call' || /^\s*call\b/i.test(t.name||''); }
 // Calls you already handled, so you can look back at previous days' call lists.
 function pastCalls(){ const cut=Date.now()-14*86400000;
   return tasks.filter(t=>t.status==='Done' && isCallTask(t) && t.updatedAt && new Date(t.updatedAt).getTime()>=cut)
@@ -2736,7 +2846,7 @@ function pastCalls(){ const cut=Date.now()-14*86400000;
 /* ---------- Filters UI ---------- */
 function countsFor(dim){
   // counts match what the pane shows: open AND not snoozed
-  const counts={}; tasks.filter(t=>t.status==='Open'&&notSnoozed(t)).forEach(t=>valsOf(t,dim).forEach(v=>{if(!optHidden(dim,v))counts[v]=(counts[v]||0)+1;}));
+  const counts={}; tasks.filter(t=>t.status==='Open'&&notSnoozed(t)&&!isParked(t)).forEach(t=>valsOf(t,dim).forEach(v=>{if(!optHidden(dim,v))counts[v]=(counts[v]||0)+1;}));
   return counts;
 }
 function orderedVals(dim,counts){
