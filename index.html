@@ -407,7 +407,7 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 
 <script>
 "use strict";
-const BUILD='2026-10-08 09:31';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-08 09:50';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-08 · iPhone-style polish + history', d:'Desktop restyled to feel more like the iPhone app — rounder panels & cards, more breathing room, soft depth/shadows, crisper type, thin iOS scrollbars, warm gradient on the main buttons (same colors/layout, just nicer). Plus: 🕘 on the 🎯 Now/Focus and 📥 Incoming panels to browse PAST days — see what you focused on / added each day (with Re-focus and day ‹ › nav).'},
@@ -1105,17 +1105,19 @@ function histRow(t,name,extra,action){ const row=document.createElement('div'); 
   n.innerHTML=(t&&t.project?'<span class="projbadge">'+esc(String(t.project).split(',')[0].trim())+'</span> ':'')+esc(name)+(extra?' <span style="color:var(--muted);font-size:11px">'+esc(extra)+'</span>':'');
   if(t){ n.style.cursor='pointer'; n.onclick=()=>{ const b=n.closest('.backdrop'); if(b)b.remove(); openDetail(t); }; } row.appendChild(n);
   if(action){ const b=document.createElement('button'); b.className='cardbtn'; b.textContent=action.label; b.title=action.title||''; b.onclick=action.fn; row.appendChild(b); } return row; }
-function focusHistory(){
-  const {box}=histModal('🎯 Now/Focus — past days','What you had in Now/Focus each day (kept ~14 days). Re-focus puts an item back.');
+function sectionHistory(sec,title,sub,actLabel,actTitle,toastMsg){
+  const {box}=histModal(title,sub);
   const list=document.createElement('div'); list.style.cssText='max-height:62vh;overflow:auto;margin-top:4px'; box.appendChild(list);
   const log=meta.resetLog||{}; const days=Object.keys(log).sort().reverse(); let any=false;
-  for(const day of days){ const items=(log[day]||[]).filter(x=>x.section==='focus'); if(!items.length) continue; any=true;
+  for(const day of days){ const items=(log[day]||[]).filter(x=>x.section===sec); if(!items.length) continue; any=true;
     const h=document.createElement('div'); h.style.cssText='font-weight:800;margin:10px 0 3px;color:var(--accent)'; h.textContent=dayLabelISO(day)+' · '+items.length; list.appendChild(h);
     items.forEach(x=>{ const t=tasks.find(z=>z.id===x.id); const nm=x.name||(t?cleanName(t):'(completed or removed)');
-      list.appendChild(histRow(t,nm,'', t?{label:'🎯 Re-focus',title:'Put back in Now/Focus',fn:()=>{setSection(t.id,'focus');toast('🎯 Back in Now/Focus');render();}}:null)); }); }
-  if(!any){ const e=document.createElement('div'); e.className='empty'; e.textContent='No Now/Focus history yet — it fills in as days pass.'; list.appendChild(e); }
+      list.appendChild(histRow(t,nm,'', t?{label:actLabel,title:actTitle,fn:()=>{setSection(t.id,sec);toast(toastMsg);render();}}:null)); }); }
+  if(!any){ const e=document.createElement('div'); e.className='empty'; e.textContent='No history yet — it fills in as days pass.'; list.appendChild(e); }
   const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>box.closest('.backdrop').remove(); box.appendChild(act);
 }
+function focusHistory(){ sectionHistory('focus','🎯 Now/Focus — past days','What you had in Now/Focus each day (kept ~14 days). Re-focus puts an item back.','🎯 Re-focus','Put back in Now/Focus','🎯 Back in Now/Focus'); }
+function nextUpHistory(){ sectionHistory('nextup','⏭ Next Up — past days','What was in Next Up each day (kept ~14 days). Re-add puts an item back.','⏭ Re-add','Put back in Next Up','⏭ Back in Next Up'); }
 function incomingHistory(day){
   day=day||todayISO(); const isToday=day===todayISO();
   const {box}=histModal('📥 Added — '+dayLabelISO(day),'What you added that day. ‹ › to move between days.');
@@ -2112,6 +2114,7 @@ function headCtrls(id,title,items){
     (items&&items.length?`<button class="phead-ctrl" data-clr title="Clear this category — tasks stay open, just unfiled">⊘</button>`:'')+
     (items&&items.length?`<button class="phead-ctrl" data-park title="Park all these — hide until you restore them (🅿️ Parked panel)">🅿️</button>`:'')+
     (id==='focus'?`<button class="phead-ctrl" data-fhist title="See Now/Focus from past days">🕘</button>`:'')+
+    (id==='nextup'?`<button class="phead-ctrl" data-nhist title="See Next Up from past days">🕘</button>`:'')+
     (id==='incoming'?`<button class="phead-ctrl" data-ihist title="See what you added on past days">🕘</button>`:'')+
     (items?`<button class="phead-ctrl" data-m title="Max shown">#${(meta.max&&meta.max[id])||''}</button>`:'')+
     (items?`<button class="mini send-list" title="Send this list">⤴</button>`:'')+
@@ -2595,6 +2598,7 @@ function panelEl(sectionId,title,items,isDrop){
   const clr=head.querySelector('[data-clr]'); if(clr)clr.onclick=()=>clearCategory(sectionId,title,items);
   const pk=head.querySelector('[data-park]'); if(pk)pk.onclick=()=>massPark(title,items);
   { const fh=head.querySelector('[data-fhist]'); if(fh)fh.onclick=()=>focusHistory();
+    const nh=head.querySelector('[data-nhist]'); if(nh)nh.onclick=()=>nextUpHistory();
     const ih=head.querySelector('[data-ihist]'); if(ih)ih.onclick=()=>incomingHistory(); }
   const bk=head.querySelector('[data-blinkoff]'); if(bk)bk.onclick=()=>stopBlinks(items,sectionId);
   const bm=head.querySelector('[data-bulk]'); if(bm)bm.onclick=()=>bulkMove(sectionId,title,items);
