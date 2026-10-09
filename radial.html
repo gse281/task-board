@@ -62,7 +62,8 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 </div>
 <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:8px">
   <button id="reset" style="background:none;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:600 11px ui-monospace,Menlo;letter-spacing:2px;cursor:pointer">⟲ RESET LAYOUT</button>
-  <a href="./" style="color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font:600 11px ui-monospace,Menlo;letter-spacing:2px">⌂ DASHBOARD</a>
+  <button id="homeToggle" style="background:none;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:600 11px ui-monospace,Menlo;letter-spacing:2px;cursor:pointer"></button>
+  <a href="./?grid=1" style="color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font:600 11px ui-monospace,Menlo;letter-spacing:2px">⌂ DASHBOARD</a>
 </div>
 <script>
 "use strict";
@@ -182,14 +183,14 @@ function makeDraggable(el,key){
       let nx=Math.max(4,Math.min(innerWidth-BUB-4,ox+dx)), ny=Math.max(58,Math.min(innerHeight-BUB-4,oy+dy));
       el.style.left=nx+'px'; el.style.top=ny+'px'; updateLinks(); };
     const up=()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up); el.style.transition=''; el.style.zIndex=''; el.style.cursor='grab';
-      if(moved) savePos(key, el.offsetLeft/innerWidth, el.offsetTop/innerHeight); };
+      if(moved){ savePos(key, el.offsetLeft/innerWidth, el.offsetTop/innerHeight); window.__sc=Date.now(); } };
     document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); e.preventDefault(); };
   el.style.cursor='grab'; el.addEventListener('pointerdown',down);
 }
 function resetLayout(){ radPos={}; try{localStorage.removeItem('tb.radialPos');}catch(e){} place(); }
 let coreEl;
 function place(){
-  if(!coreEl){ coreEl=document.createElement('div'); coreEl.className='core'; $('#stage').appendChild(coreEl); coreEl.onclick=()=>location.href='./'; }
+  if(!coreEl){ coreEl=document.createElement('div'); coreEl.className='core'; $('#stage').appendChild(coreEl); coreEl.onclick=()=>location.href='./?view=focus'; }
   coreEl.style.width=coreEl.style.height=CORE+'px'; coreEl.style.left=(CX-CORE/2)+'px'; coreEl.style.top=(CY-CORE/2)+'px';
   const F=feeds(); const n=F.length;
   bubEls.forEach(b=>b.el.remove()); bubEls=[];
@@ -197,6 +198,9 @@ function place(){
     if(radPos[f.key]){ left=Math.max(4,Math.min(innerWidth-BUB-4, radPos[f.key].x*innerWidth)); top=Math.max(58,Math.min(innerHeight-BUB-4, radPos[f.key].y*innerHeight)); }
     else { const a=i/n*2*Math.PI-Math.PI/2; left=CX+RAD*Math.cos(a)-BUB/2; top=CY+RAD*Math.sin(a)-BUB/2; }
     const el=document.createElement('div'); el.className='bub'+(f.hot?' hot':''); el.style.width=el.style.height=BUB+'px'; el.style.left=left+'px'; el.style.top=top+'px';
+    el.addEventListener('click',()=>{ if(Date.now()-(window.__sc||0)<300)return;   // ignore the click that ends a drag
+      const b=bubEls.find(x=>x.el===el); if(!b)return; const it=b.feed.items.length?b.feed.items[b.idx%b.feed.items.length]:null;
+      const q='?view='+encodeURIComponent(b.feed.key)+(it&&it.id&&!it._mtg?('&task='+encodeURIComponent(it.id)):''); location.href='./'+q; });
     $('#stage').appendChild(el); makeDraggable(el,f.key); bubEls.push({el,feed:f,idx:0}); }
   renderCore(); bubEls.forEach(renderBub); updateLinks();
 }
@@ -232,5 +236,8 @@ addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setTimeout(
 $('#keygo').onclick=()=>{ const k=$('#keyin').value.trim(); if(!k)return; cfg.apiKey=k; try{const c=JSON.parse(localStorage.getItem('tb.cfg')||'{}');c.apiKey=k;localStorage.setItem('tb.cfg',JSON.stringify(c));}catch(e){} $('#setup').style.display='none'; fetchAll().then(()=>{if(!cycled){cycled=true;startCycles();}}); };
 $('#demo').onclick=()=>{ $('#setup').style.display='none'; demoData(); render(); if(!cycled){cycled=true;startCycles();} };
 $('#reset').onclick=resetLayout;
+function updHome(){ const b=$('#homeToggle'); const isFocus=localStorage.getItem('tb.landing')!=='grid'; b.textContent=isFocus?'★ HOME: FOCUS':'☆ HOME: GRID'; b.style.color=isFocus?'var(--cyan)':'var(--dim)'; b.style.borderColor=isFocus?'rgba(57,199,223,.5)':'var(--line)'; }
+$('#homeToggle').onclick=()=>{ if(localStorage.getItem('tb.landing')!=='grid')localStorage.setItem('tb.landing','grid'); else localStorage.removeItem('tb.landing'); updHome(); };
+updHome();
 boot();
 </script></body></html>

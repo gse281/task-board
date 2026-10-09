@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Task Dashboard</title>
+<script>/* Focus Core is home by default — open the radial HUD unless viewing the grid (?grid), following a deep-link (?view/?task), or the user pinned Grid as home. */
+try{ if(localStorage.getItem('tb.landing')!=='grid' && !/[?&](grid|view|task)=/.test(location.search)) location.replace('radial.html'); }catch(e){}</script>
 <style>
 :root{
   --bg:#14110f; --panel:#1d1916; --panel2:#241f1b; --ink:#f5f3ee; --muted:#a8a29a;
@@ -406,6 +408,25 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 .nnchip b{font-size:10px;letter-spacing:.8px;color:#c9c3bb}.nnchip.now{border-color:#e5533a}.nnchip.now b{color:#ff7a5c}
 .nnchip .joinbtn{margin:0;padding:3px 9px;font-size:12px}
 @media(max-width:640px){ .meetnn{display:none} }
+
+/* ───────── HUD skin: cyan sci-fi chrome (Focus Core feel) over the grid; warm accents kept for tasks ───────── */
+:root{ --hud:#39c7df; }
+body::before{ content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.55;
+  background:
+   radial-gradient(70% 60% at 50% 34%, rgba(57,199,223,.055), transparent 72%),
+   repeating-radial-gradient(circle at 50% 36%, transparent 0 64px, rgba(57,199,223,.035) 64px 65px); }
+.panel{ border-color:rgba(57,199,223,.16); box-shadow:0 6px 22px rgba(0,0,0,.34), 0 0 0 1px rgba(57,199,223,.04) inset, 0 0 22px rgba(57,199,223,.04); }
+.panel-head{ border-bottom-color:rgba(57,199,223,.12) }
+.panel-head h3{ font-family:ui-monospace,Menlo,monospace; letter-spacing:.5px; color:#cdeef5; text-shadow:0 0 10px rgba(57,199,223,.25) }
+.panel-head .count{ border-color:rgba(57,199,223,.3); color:#9fdbe7; font-family:ui-monospace,Menlo,monospace }
+.phead-ctrl{ border-color:rgba(57,199,223,.16) } .phead-ctrl:hover{ color:var(--hud); border-color:var(--hud) }
+.topbar{ border-bottom-color:rgba(57,199,223,.14) }
+.chip,.fbub{ border-color:rgba(57,199,223,.16) }
+.findbar,.search{ border-color:rgba(57,199,223,.18) }
+#focusCoreBtn{ border-color:rgba(57,199,223,.5); color:#bfeaf2; box-shadow:0 0 14px rgba(57,199,223,.18) }
+#focusCoreBtn:hover{ color:var(--hud); border-color:var(--hud); box-shadow:0 0 20px rgba(57,199,223,.35) }
+.projbadge{ box-shadow:0 0 0 1px rgba(57,199,223,.05) }
+kbd{ border-color:rgba(57,199,223,.3) }
 </style>
 </head>
 <body>
@@ -445,9 +466,10 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 
 <script>
 "use strict";
-const BUILD='2026-10-09 13:30';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-09 13:53';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
   {v:'2026-10-09 · ⌨️ Shortcuts cheat-sheet', d:'New ⌨️ button in the top bar (or press ?) opens your living keyboard-shortcut cheat-sheet — your F-key macros, Excel, and macOS, searchable and grouped, with ★ favorites. Add/edit/delete any shortcut right there (saved to Airtable), and I can tune it for you over time.'},
   {v:'2026-10-08 · Focus clears at 11 PM', d:'🎯 Now/Focus no longer empties when you open the app in the morning — it now stays put all day and clears at ~11 PM (its leftovers still jump to the top of 🔥 Priority, nothing lost). If the app is closed at 11 PM it catches up next time you open it. So things you put in Focus during the day actually stay there.'},
   {v:'2026-10-08 · iPhone-style polish + history', d:'Desktop restyled to feel more like the iPhone app — rounder panels & cards, more breathing room, soft depth/shadows, crisper type, thin iOS scrollbars, warm gradient on the main buttons (same colors/layout, just nicer). Plus: 🕘 on the 🎯 Now/Focus and 📥 Incoming panels to browse PAST days — see what you focused on / added each day (with Re-focus and day ‹ › nav).'},
@@ -3873,10 +3895,21 @@ if(cfg.apiKey){
   try{ outbox=JSON.parse(localStorage.getItem('tb.outbox')||'[]'); }catch(e){}
   try{ emails=JSON.parse(localStorage.getItem('tb.emails')||'[]'); }catch(e){}
   try{ respond=JSON.parse(localStorage.getItem('tb.respond')||'[]'); }catch(e){}
-  render();
-  atFetch();
+  render(); applyLaunchParams();
+  atFetch().then(applyLaunchParams);
 }
-else { tasks=demoTasks(); render(); toast('⚠️ DEMO data — paste your Airtable key to load your real tasks'); openSettings(); }
+else { tasks=demoTasks(); render(); applyLaunchParams(); toast('⚠️ DEMO data — paste your Airtable key to load your real tasks'); }
+// Deep-links from the Focus Core HUD: ?view=<category> opens that list, ?task=<id> opens the task.
+let _lpView=false,_lpTask=false;
+function applyLaunchParams(){
+  const p=new URLSearchParams(location.search), view=p.get('view'), task=p.get('task');
+  if(view && !_lpView){ _lpView=true;
+    const map={priority:'priority',calls:'calls',morning:'morning',afternoon:'afternoon',incoming:'incoming',nextup:'nextup',bigticket:'bigticket',sunday:'sunday',backlog:'backlog',still:'stillopen',focus:'focus'};
+    if(view==='meeting'){ try{meetingsModal();}catch(e){} }
+    else if(view==='respond'){ const el=document.querySelector('[data-section="respond"]'); if(el)el.scrollIntoView({behavior:'smooth',block:'center'}); }
+    else if(map[view]){ const c=(typeof CATEGORIES!=='undefined')&&CATEGORIES.find(x=>x.id===map[view]); activeBulb={dim:'category',val:map[view],label:c?c.name:map[view]}; try{render();}catch(e){} } }
+  if(task && !_lpTask){ const t=tasks.find(x=>x.id===task); if(t){ _lpTask=true; try{openDetail(t);}catch(e){} } }
+}
 </script>
 <script>
 /* iPhone only: small pill linking to the native-style phone app at ./m/ (desktop never sees it; ✕ hides it for good). */
