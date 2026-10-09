@@ -495,6 +495,11 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .carslide .nnt b{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.2}
 .carslide .nnt .who{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;font-size:14.5px}
 .carslide .nnjoin{padding:0 12px}.carslide .nntag{padding:4px 5px;font-size:10px}
+.lkup{margin:8px 2px 4px}.lkh{font-size:13px;font-weight:700;color:var(--gold);margin:4px 2px 8px}
+.lkb{display:flex;flex-wrap:wrap;gap:6px}
+.lk{display:inline-flex;align-items:center;height:36px;padding:0 11px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-size:13.5px;font-weight:600;text-decoration:none}
+.lkup.big .lk{height:44px;font-size:15px;padding:0 14px;flex:1 1 40%;justify-content:center}
+.lk.save{color:var(--callg);border-color:#2b5a3a}
 /* @Computer – Claude */
 .compbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px;margin:0 0 12px;background:#1f1a14;border:1px solid #4a3522;border-radius:16px;font-weight:800;font-size:15px;text-align:left}
 .compbtn>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -558,7 +563,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-09 13:56';   // stamped by deploy.sh
+const BUILD='2026-10-09 17:39';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -799,7 +804,9 @@ function pickCallContact(t,after){
     <div class="row2"><button class="pill" data-man>✎ Enter number manually</button><button class="pill" data-clr>Clear</button></div>`,(sh,close)=>{
     const q=sh.querySelector('#pcq'), L=sh.querySelector('[data-pcl]'); let list=[];
     const draw=()=>{ const v=q.value.trim(); list=v?searchContacts(v).filter(c=>(c.p||[]).length).slice(0,25):callSuggest(t);
-      L.innerHTML=(v?'':'<div class="pch">Suggested</div>')+(list.length?list.map((c,ci)=>c.p.map((p,pi)=>`<button class="pcr" data-c="${ci}" data-p="${pi}"><b>${pi?'':esc(c.n)}</b>${!pi&&c.o?`<span>${esc(c.o)}</span>`:''}<i>${esc(p)}</i></button>`).join('')).join(''):`<div class="pch">${contacts.length?'No match':'Loading contacts…'}</div>`); };
+      L.innerHTML=(v?'':'<div class="pch">Suggested</div>')+(list.length?list.map((c,ci)=>c.p.map((p,pi)=>`<button class="pcr" data-c="${ci}" data-p="${pi}"><b>${pi?'':esc(c.n)}</b>${!pi&&c.o?`<span>${esc(c.o)}</span>`:''}<i>${esc(p)}</i></button>`).join('')).join(''):`<div class="pch">${contacts.length?'No match':'Loading contacts…'}</div>`)
+        +lookupHTML(v||t.lead||cleanName(t).replace(/^\s*call\s+/i,''),!!v&&!list.length);
+      wireLookup(L,(nm,ph)=>{ setCallContact(t,nm,ph); close(); toast('📞 '+nm+' saved'); after&&after(); }); };
     L.onclick=e=>{ const b=e.target.closest('.pcr'); if(!b) return; const c=list[+b.dataset.c]; setCallContact(t,c.n,c.p[+b.dataset.p]); buzz(10); close(); toast('📞 '+c.n+' saved'); after&&after(); };
     q.addEventListener('input',draw); draw(); if(!contacts.length&&contactsTry()) loadContacts().then(draw);
     sh.querySelector('[data-man]').onclick=()=>{ close(); setTimeout(()=>sheet(`<h3>Enter number</h3><input class="field" id="mn" placeholder="Name" autocomplete="off" value="${esc(t.callWho&&t.callWho!=='-'?t.callWho:(t.lead||''))}"><input class="field" id="mp" inputmode="tel" placeholder="Phone number" autocomplete="off" value="${esc(t.phone||'')}"><div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Save</button></div>`,(s2,c2)=>{
@@ -1063,6 +1070,24 @@ function paintIncoming(s){
 /* ---------- 🌅/☀️ CALL LIST — morning/afternoon as a list with ✓ done + ✕ remove per row ---------- */
 // 🔍 Call-someone search (Calls screen + home): compact Call / Text rows from Contacts
 let homeQ='';
+// 🔎 Not in Contacts? Look elsewhere: Gmail app (web fallback), Google, Claude (prefilled). iOS has no Messages-search link, so no Texts button.
+const GMAIL_ACCT='rbenjamini@gmail.com';
+function lookupHTML(q,big){ const e=encodeURIComponent(q);
+  return `<div class="lkup${big?' big':''}">${big?'<div class="lkh">Not in Contacts — look it up:</div>':''}<div class="lkb">
+    <a class="lk" data-gmail="${esc(q)}" href="https://mail.google.com/mail/u/?authuser=${encodeURIComponent(GMAIL_ACCT)}#search/${e}" target="_blank" rel="noopener">📧 Gmail</a>
+    <a class="lk" href="https://www.google.com/search?q=${encodeURIComponent(q+' phone')}" target="_blank" rel="noopener">🌐 Web</a>
+    <a class="lk" href="https://claude.ai/new?q=${encodeURIComponent('Find the phone number for '+q+' — check my email and contacts')}" target="_blank" rel="noopener">✨ Ask Claude</a>
+    <button class="lk save" data-savenum="${esc(q)}">＋ Save number</button></div></div>`; }
+function wireLookup(root,onSaved){
+  root.querySelectorAll('[data-gmail]').forEach(a=>a.onclick=ev=>{ ev.preventDefault(); ev.stopPropagation(); const web=a.href; let left=false;
+    const hid=()=>{ left=true; }; document.addEventListener('visibilitychange',hid,{once:true});
+    location.href='googlegmail:///search?q='+encodeURIComponent(a.dataset.gmail);   // Gmail app; if it isn't there, open Gmail on the web
+    setTimeout(()=>{ document.removeEventListener('visibilitychange',hid); if(!left&&!document.hidden) window.open(web,'_blank'); },1200); });
+  root.querySelectorAll('[data-savenum]').forEach(b=>b.onclick=ev=>{ ev.stopPropagation(); const q=b.dataset.savenum;
+    sheet(`<h3>Save a number</h3><input class="field" id="sn" placeholder="Name" autocomplete="off" value="${esc(q)}"><input class="field" id="sp" inputmode="tel" placeholder="Phone number" autocomplete="off"><div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Save</button></div>`,(sh,close)=>{
+      const pi=sh.querySelector('#sp'); setTimeout(()=>pi.focus(),300);
+      sh.querySelector('[data-ok]').onclick=()=>{ const ph=pi.value.trim(), nm=sh.querySelector('#sn').value.trim()||ph; if(ph.replace(/\D/g,'').length<7){ toast('Enter a phone number'); return; }
+        close(); onSaved?onSaved(nm,ph):(useContact(nm,ph),toast('⭐ Saved '+nm+' to Frequent')); }; }); }); }
 function wireDialer(root,keepQ){ const ci=root.querySelector('.cxsearch'), cr=root.querySelector('[data-cxresults]'); if(!ci||!cr) return;
   if(keepQ) ci.value=homeQ;
   const drawCx=()=>{ const q=ci.value.trim(); if(keepQ) homeQ=ci.value;
@@ -1071,7 +1096,8 @@ function wireDialer(root,keepQ){ const ci=root.querySelector('.cxsearch'), cr=ro
     cr.innerHTML=hits.length?hits.map(c=>(c.p||[]).map((p,i)=>{ const d=p.replace(/[^\d+]/g,'');
         return '<div class="cxrow'+(i?' more':'')+'"><div class="cxinfo">'+(i?'':'<b>'+esc(c.n)+'</b>'+(c.o?'<span class="cxsub">'+esc(c.o)+'</span>':''))+'<span class="cxp">'+esc(p)+'</span></div>'
           +'<div class="cxbtns"><a class="cxb cxcall" href="tel:'+esc(d)+'"'+cuA(c.n)+'>📞 Call</a><a class="cxb" href="sms:'+esc(d)+'"'+cuA(c.n)+' aria-label="Text">💬</a></div></div>'; }).join('')).join('')
-      :'<div class="cxhint">'+(contacts.length?'No match':'Loading contacts…')+'</div>'; };
+      :'<div class="cxhint">'+(contacts.length?'No match':'Loading contacts…')+'</div>';
+    cr.insertAdjacentHTML('beforeend',lookupHTML(q,!hits.length)); wireLookup(cr,null); };
   ci.addEventListener('input',drawCx); drawCx(); if(!contacts.length&&contactsTry()) loadContacts().then(drawCx);
   root.querySelectorAll('[data-cxclear]').forEach(b=>b.onclick=()=>{ ci.value=''; drawCx(); ci.focus(); });
 }
