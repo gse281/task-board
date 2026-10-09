@@ -500,6 +500,15 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .lk{display:inline-flex;align-items:center;height:36px;padding:0 11px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);color:var(--ink);font-size:13.5px;font-weight:600;text-decoration:none}
 .lkup.big .lk{height:44px;font-size:15px;padding:0 14px;flex:1 1 40%;justify-content:center}
 .lk.save{color:var(--callg);border-color:#2b5a3a}
+.frqcard{display:block;margin-bottom:12px;padding:10px 12px}
+.fqhd{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:13px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin-bottom:2px}
+.fqall{color:var(--blue);font-weight:800;font-size:13px;text-transform:none;letter-spacing:0;padding:6px 2px}
+.fqrow{display:flex;align-items:center;gap:6px;padding:6px 0;border-top:1px solid var(--line)}.fqhd+.fqrow{border-top:0}
+.fqi{flex:1;min-width:0;display:flex;flex-direction:column;text-align:left;padding:2px 0}
+.fqi b{font-size:15.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fqi span{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fqc{flex:none;height:40px;display:inline-flex;align-items:center;padding:0 12px;border-radius:11px;background:var(--callg);color:var(--callink);font-weight:800;font-size:14px;text-decoration:none}
+.fqt{flex:none;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border-radius:11px;background:var(--panel2);text-decoration:none;font-size:16px}
+.fqe{flex:none;min-width:32px;height:40px;color:var(--muted);font-size:18px;padding:0 6px}
 /* @Computer – Claude */
 .compbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px;margin:0 0 12px;background:#1f1a14;border:1px solid #4a3522;border-radius:16px;font-weight:800;font-size:15px;text-align:left}
 .compbtn>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -563,7 +572,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-09 17:39';   // stamped by deploy.sh
+const BUILD='2026-10-09 17:42';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -738,6 +747,20 @@ const cuA=(name)=>` data-cu="${esc(name||'')}"`;   // add to any tel:/sms: link 
 document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[data-cu]'); if(!a) return; const h=a.getAttribute('href')||''; const ph=decodeURIComponent(h.replace(/^(tel:|sms:)/i,'').split(/[?&]/)[0]); if(ph) useContact(a.dataset.cu,ph); },true);
 function freqHTML(){ const F=frequent(8); if(!F.length) return '';
   return `<div class="frqh">⭐ Frequent</div><div class="frq">${F.map(([k,r])=>`<div class="frc${r.pinned?' pin':''}"><button class="frn" data-frk="${k}">${r.pinned?'📌 ':''}${esc((r.name||r.phone).split(' ').slice(0,2).join(' '))}</button><a class="frb frcall" href="${esc(telOf(r.phone))}"${cuA(r.name)} aria-label="Call">📞</a><a class="frb" href="${esc(smsOf(r.phone))}"${cuA(r.name)} aria-label="Text">💬</a></div>`).join('')}</div>`; }
+function cuCompany(ph){ const k=cuKey(ph); const c=contacts.find(c=>(c.p||[]).some(p=>cuKey(p)===k)); return c&&c.o||''; }
+function freqRows(F){ return F.map(([k,r])=>`<div class="fqrow"><button class="fqi" data-frk="${k}"><b>${r.pinned?'📌 ':''}${esc(r.name||r.phone)}</b><span>${esc(cuCompany(r.phone)||r.phone)}</span></button>
+  <a class="fqc" href="${esc(telOf(r.phone))}"${cuA(r.name)} data-join>📞 Call</a><a class="fqt" href="${esc(smsOf(r.phone))}"${cuA(r.name)} data-join aria-label="Text">💬</a><button class="fqe" data-frk="${k}" aria-label="Edit">⋯</button></div>`).join(''); }
+function freqCard(){ const F=frequent(8); const all=Object.values(cu).filter(r=>!r.hidden&&(r.pinned||r.count)).length;
+  return `<div class="review frqcard" data-freqall role="button" tabindex="0"><div class="fqhd"><span>⭐ Frequent</span>${all>0?`<button class="fqall" data-freqall2>See all ${all} ›</button>`:''}</div>
+    ${F.length?freqRows(F):'<div class="ap" style="padding:6px 2px">Call or text someone and they’ll show up here.</div>'}</div>`; }
+function paintFreq(s){ const el=s.el; const keep=el.querySelector('.scroll'); const st=keep?keep.scrollTop:0;
+  const live=Object.entries(cu).filter(([k,r])=>!r.hidden&&(r.pinned||r.count)).sort((a,b)=>((!!b[1].pinned)-(!!a[1].pinned))||(cuNow(b[1])-cuNow(a[1])));
+  const gone=Object.entries(cu).filter(([k,r])=>r.hidden);
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">⭐ Frequent</div><div style="min-width:60px"></div></div>
+    <div class="scroll" style="padding:4px 12px calc(20px + var(--sab))"><div class="review frqcard" style="cursor:default">${live.length?freqRows(live):'<div class="ap">Nobody yet.</div>'}</div>
+    ${gone.length?`<div class="sect" style="margin-top:14px">Removed</div><div class="review frqcard">${gone.map(([k,r])=>`<div class="fqrow"><div class="fqi"><b>${esc(r.name||r.phone)}</b><span>${esc(r.phone)}</span></div><button class="fqe" data-restore="${k}">Restore</button></div>`).join('')}</div>`:''}</div>`;
+  wire(el); wireFreq(el,()=>paintFreq(s)); el.querySelectorAll('[data-restore]').forEach(b=>b.onclick=()=>{ cuSet(b.dataset.restore,{hidden:false}); paintFreq(s); });
+  const sc=el.querySelector('.scroll'); if(keep) sc.scrollTop=st; if(!demo&&cfg.apiKey) fetchUsage(false); }
 function wireFreq(root,redraw){ root.querySelectorAll('[data-frk]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const k=b.dataset.frk, r=cu[k]; if(!r) return;
   sheet(`<h3>${esc(r.name||r.phone)}</h3><div class="ap" style="margin:-4px 2px 12px">${esc(r.phone)} · used ${r.count||0}×</div>
     <div class="row2"><a class="pill acc" href="${esc(telOf(r.phone))}"${cuA(r.name)} data-close style="text-align:center;text-decoration:none">📞 Call</a><a class="pill" href="${esc(smsOf(r.phone))}"${cuA(r.name)} data-close style="text-align:center;text-decoration:none">💬 Text</a></div>
@@ -1091,7 +1114,7 @@ function wireLookup(root,onSaved){
 function wireDialer(root,keepQ){ const ci=root.querySelector('.cxsearch'), cr=root.querySelector('[data-cxresults]'); if(!ci||!cr) return;
   if(keepQ) ci.value=homeQ;
   const drawCx=()=>{ const q=ci.value.trim(); if(keepQ) homeQ=ci.value;
-    if(!q){ cr.innerHTML=freqHTML()+(keepQ?'':'<div class="cxhint">'+(contacts.length?contacts.length+' contacts · type a name to call':'Loading contacts…')+'</div>'); wireFreq(cr,drawCx); return; }
+    if(!q){ cr.innerHTML=(keepQ?'':freqHTML())+(keepQ?'':'<div class="cxhint">'+(contacts.length?contacts.length+' contacts · type a name to call':'Loading contacts…')+'</div>'); wireFreq(cr,drawCx); return; }
     const hits=searchContacts(q).slice(0,keepQ?8:40);
     cr.innerHTML=hits.length?hits.map(c=>(c.p||[]).map((p,i)=>{ const d=p.replace(/[^\d+]/g,'');
         return '<div class="cxrow'+(i?' more':'')+'"><div class="cxinfo">'+(i?'':'<b>'+esc(c.n)+'</b>'+(c.o?'<span class="cxsub">'+esc(c.o)+'</span>':''))+'<span class="cxp">'+esc(p)+'</span></div>'
@@ -1407,7 +1430,7 @@ function pop(){
 function syncLayers(){ stack.forEach((x,i)=>{ const isTop=i===stack.length-1; x.el.classList.toggle('under',!isTop); if(isTop){ x.el.classList.remove('enter','leave'); x.el.style.transform=''; } }); }
 function goHome(){ while(stack.length>1){ const s=stack.pop(); s.el.remove(); } syncLayers(); paint(stack[0]); }
 function render(){ stack.forEach(paint); }
-function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='wx') paintWx(s); else if(r.type==='parked') paintParked(s); else if(r.type==='autos') paintAutos(s); else if(r.type==='comp') paintComp(s); else if(r.type==='invite') paintInvite(s); else if(r.type==='leadrev') paintLeadRev(s); else if(r.type==='meetings') paintMeetings(s); }
+function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='wx') paintWx(s); else if(r.type==='parked') paintParked(s); else if(r.type==='autos') paintAutos(s); else if(r.type==='comp') paintComp(s); else if(r.type==='invite') paintInvite(s); else if(r.type==='leadrev') paintLeadRev(s); else if(r.type==='meetings') paintMeetings(s); else if(r.type==='freq') paintFreq(s); }
 // iOS-style swipe from the left edge to go back
 function edgeSwipe(el){
   let sx=null,sy=0,dx=0;
@@ -1518,6 +1541,7 @@ function paintHome(s){
         <button class="call pm slim" data-slot="afternoon" aria-label="Afternoon call"><span class="rot" data-rot="${(rotTask('afternoon')||{}).id||''}">${esc(rotTask('afternoon')?cleanName(rotTask('afternoon')):'Nothing queued')}</span></button>
       </div>
       <div class="dialer homedial"><div class="hdwrap"><input class="cxsearch" type="search" enterkeyhint="search" placeholder="🔍 Call someone — type a name…" autocomplete="off"><button class="hdx" data-cxclear aria-label="Clear">✕</button></div><div class="cxresults" data-cxresults></div></div>
+      ${freqCard()}
       ${(()=>{ const {now,next}=nowNext(calendar,todayISO()); const j=(e,lbl)=>{ const h=joinHref(e); return h?`<span class="nnj"><a class="nnjoin${h.indexOf('tel:')===0?' tel':''}" href="${esc(h)}"${h.indexOf('tel:')===0?'':' target="_blank" rel="noopener"'} data-join>${h.indexOf('tel:')===0?'📞 Dial':'▶ Join'}</a>${e.dial?`<a class="nndial" href="${e.dial}" data-join>dial-in</a>`:''}</span>`:''; };
         const row=(tag,e)=>`<div class="nnrow"><span class="nntag ${tag==='NOW'?'now':''}">${tag}</span><div class="nnt"><b>${esc(e.title||'(untitled)')}</b><span>${esc(e.when||hhmm(e.start))}</span></div>${j(e)}</div>`;
         return `<div class="review meetcard" data-meet role="button" tabindex="0" style="margin-bottom:12px;display:block">
@@ -1574,6 +1598,7 @@ function paintHome(s){
   el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=e=>{ const sl=b.dataset.slot; const r=e.target.closest('[data-rot]');
     push({type:'slotlist',slot:sl}); });   // tap = open that call list
   wireCars(el);
+  { const fc=el.querySelector('.frqcard'); if(fc){ wireFreq(fc,()=>paintHome(s)); fc.onclick=e=>{ if(e.target.closest('[data-join],[data-frk]')) return; push({type:'freq'}); }; } }
   el.querySelectorAll('[data-dim]').forEach(b=>b.onclick=()=>push({type:'groups',dim:b.dataset.dim}));
   el.querySelector('[data-review]').onclick=()=>{ const l=groups('project').map(g=>g.k); push({type:'board',dim:'project',list:l,idx:0}); };
   el.querySelector('[data-q="today"]').onclick=()=>push({type:'deck',kind:'today',title:'Due today'});

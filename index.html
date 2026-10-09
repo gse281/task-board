@@ -126,6 +126,9 @@ kbd{display:inline-block;background:var(--panel2);border:1px solid var(--line);b
 .plsline{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px}
 .plsline .plsrow{margin-top:0}
 .plsline .cardacts{margin:0 0 0 auto}
+.fqrow{display:flex;align-items:center;gap:6px;padding:6px 2px;border-bottom:1px solid var(--line)}.fqi{flex:1;min-width:0;display:flex;flex-direction:column}
+.fqi b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fqi span{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fqb{margin-top:0;font-size:12.5px;padding:4px 10px}
 .whobtn{font-size:15px;font-weight:600;color:#f4efe9;text-decoration:none;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .whobtn i{font-style:normal;color:var(--muted);font-weight:400;font-size:12px}.whobtn.guess b{color:#f0b44c;font-weight:800}
 .whobtn.guess small{color:#f0b44c;font-size:11px;font-weight:700;border:1px solid #6b5422;border-radius:6px;padding:0 4px;margin-left:3px}
@@ -466,7 +469,7 @@ kbd{ border-color:rgba(57,199,223,.3) }
 
 <script>
 "use strict";
-const BUILD='2026-10-09 17:39';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-09 17:42';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -1226,10 +1229,11 @@ const expanded = new Set();   // ephemeral: which capped sections are showing al
 function orderedPanels(){
   const custom=((meta.customCats||[]).map(c=>c.id));
   // to-send / from-outside / improvements are now folded INTO the Triage pane.
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer','leadrev','callinvite',...STUBS.map(s=>s.id)];
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer','leadrev','callinvite','frequent',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
   if(!ord.includes('automations')) ord.unshift('automations');   // always-on status panel: first time it appears at the top
   ['leadrev','callinvite'].forEach(id=>{ if(!ord.includes(id)){ const i=ord.indexOf('computer'); ord.splice(i<0?0:i+1,0,id); } });   // right after @Computer
+  if(!ord.includes('frequent')){ const i=ord.indexOf('calls'); ord.splice(i<0?0:i+1,0,'frequent'); }   // ⭐ right under Calls
   if(!ord.includes('computer')){ const i=Math.max(ord.indexOf('morning'),ord.indexOf('afternoon'),ord.indexOf('calls')); ord.splice(i<0?0:i+1,0,'computer'); }   // 🖥 right after the call panels
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
   return ord.filter(id=>def.includes(id) && id!=='backlog');   // backlog hidden
@@ -1328,6 +1332,7 @@ function render(){
     else if(id==='computer'){ const cp=computerPanel(); if(cp) board.appendChild(cp); }   // hidden only when empty
     else if(id==='leadrev'){ const lp=leadRevPanel(); if(lp) board.appendChild(lp); }      // only when today has drafts
     else if(id==='callinvite') board.appendChild(callInvitePanel());
+    else if(id==='frequent') board.appendChild(frequentPanel());
     else if(stub) board.appendChild(stubPanel(stub));
     else { const cc=(meta.customCats||[]).find(c=>c.id===id); const b=BUCKETS.find(x=>x.id===id)||cc; if(!b)return;
       let items = openVisible.filter(t=>sectionOf(t)===b.id);
@@ -2832,6 +2837,37 @@ function callInvitePanel(){
   p.addEventListener('drop',e=>{const dd=e.dataTransfer.getData('text/plain');if(dd&&dd.startsWith('panel:'))reorderPanels(dd.slice(6),'callinvite');});
   return p;
 }
+/* ⭐ Frequent — people Roni calls/texts most (Airtable ContactUsage, shared with the iPhone). Pinned first, then recent-weighted use (14-day half-life). */
+let fqRows=[], fqAt=0, fqBusy=false, fqAll=false;
+function fetchFQ(force){ if(!cfg.apiKey||fqBusy||(!force&&Date.now()-fqAt<30*60000)) return; fqBusy=true;
+  const base='https://api.airtable.com/v0/'+cfg.baseId+'/tblxPMZa78C8n0U4t'; let out=[];
+  const page=off=>{ const u=new URL(base); u.searchParams.set('pageSize','100'); if(off) u.searchParams.set('offset',off);
+    return fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():{}).then(d=>{ out=out.concat(d.records||[]); return d.offset?page(d.offset):null; }); };
+  page().then(()=>{ fqRows=out.map(x=>{ const f=x.fields; return {id:x.id,key:f.Key||'',name:f.Name||'',phone:f.Phone||'',count:+f.Count||0,score:+f.Score||0,last:f.LastUsed?Date.parse(f.LastUsed):0,pinned:!!f.Pinned,hidden:!!f.Hidden}; }); fqAt=Date.now(); fqBusy=false; render(); }).catch(()=>{ fqBusy=false; }); }
+const fqNow=r=>r.score*Math.pow(0.5,(Date.now()-r.last)/(14*86400000));
+function fqCompany(ph){ const k=String(ph).replace(/\D/g,'').slice(-10); try{ const c=added.concat(contacts).find(c=>(c.p||[]).some(p=>String(p).replace(/\D/g,'').slice(-10)===k)); return c&&c.o||''; }catch(e){ return ''; } }
+function fqPatch(r,fields){ Object.assign(r,{pinned:fields.Pinned??r.pinned,hidden:fields.Hidden??r.hidden}); fetch('https://api.airtable.com/v0/'+cfg.baseId+'/tblxPMZa78C8n0U4t/'+r.id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields})}).catch(()=>{}); render(); }
+function frequentPanel(){ fetchFQ(false);
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='frequent';
+  const L=fqRows.filter(r=>!r.hidden&&(r.pinned||r.count)).sort((a,b)=>((+b.pinned)-(+a.pinned))||(fqNow(b)-fqNow(a)));
+  const head=document.createElement('div'); head.className='panel-head';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>⭐ Frequent</h3><span class="scratch-stat">'+L.length+' people</span>'+(L.length>10?'<button class="mini" data-fqall style="margin-left:auto">'+(fqAll?'Top 10':'See all')+'</button>':'');
+  p.appendChild(head); wirePanel(p,head,'frequent');
+  const fa=head.querySelector('[data-fqall]'); if(fa) fa.onclick=e=>{ e.stopPropagation(); fqAll=!fqAll; render(); };
+  const body=document.createElement('div'); body.className='panel-body'; const hp=heightPx('frequent'); if(hp) body.style.maxHeight=hp;
+  if(!L.length) body.innerHTML='<div class="note" style="padding:6px">Call or text someone from the board or the iPhone and they’ll show up here.</div>';
+  (fqAll?L:L.slice(0,10)).forEach(r=>{ const d=String(r.phone).replace(/[^\d+]/g,''), co=fqCompany(r.phone);
+    const row=document.createElement('div'); row.className='fqrow';
+    row.innerHTML='<div class="fqi"><b>'+(r.pinned?'📌 ':'')+esc(r.name||r.phone)+'</b><span>'+esc(co||r.phone)+'</span></div>'
+      +'<a class="joinbtn callg fqb" href="tel:'+d+'" data-cu="'+esc(r.name)+'">📞 Call</a><a class="joinbtn fqb" href="sms:'+d+'" data-cu="'+esc(r.name)+'">💬</a>'
+      +'<button class="cardbtn" data-pin title="'+(r.pinned?'Unpin':'Pin to top')+'">'+(r.pinned?'📌':'📍')+'</button><button class="cardbtn" data-rm title="Remove from Frequent">✕</button>';
+    row.querySelector('[data-pin]').onclick=()=>fqPatch(r,{Pinned:!r.pinned});
+    row.querySelector('[data-rm]').onclick=()=>fqPatch(r,{Hidden:true,Pinned:false});
+    body.appendChild(row); });
+  p.appendChild(body);
+  p.addEventListener('dragover',e=>e.preventDefault());
+  p.addEventListener('drop',e=>{const dd=e.dataTransfer.getData('text/plain');if(dd&&dd.startsWith('panel:'))reorderPanels(dd.slice(6),'frequent');});
+  return p; }
 /* 📞 calls: who to call (task Phone → roster → Contacts fuzzy match) + NOW/NEXT */
 const CALL_STOP_D=new Set(['call','calls','re','about','with','the','and','to','for','back','text','follow','up','followup','fu','on','in','of','at','pm','am','me','him','her','them','ask','check','tell','get','x2','x3','asap','today','tomorrow','again']);
 function callMatchD(t){ if(t.callWho==='-') return null; const ph=phoneFor(t); if(ph) return {phone:ph,who:t.callWho||t.lead||'',sure:true};
