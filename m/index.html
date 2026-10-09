@@ -301,8 +301,26 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .qadd::placeholder{color:var(--dim)}
 .qaddb{flex:0 0 auto;width:48px;background:var(--gold);border:none;color:#14110f;border-radius:11px;font-size:23px;font-weight:800}
 .clact.restore{color:var(--gold)}
+/* 📇 Calls dialer */
+.dialer{margin:10px 0 6px}
+.cxsearch{width:100%;box-sizing:border-box;background:var(--panel2);border:1px solid var(--line);color:var(--ink);border-radius:12px;padding:13px 14px;font-size:17px;-webkit-appearance:none}
+.cxsearch::placeholder{color:var(--dim)}
+.cxresults{margin-top:6px}
+.cxhint{color:var(--dim);font-size:13px;padding:8px 4px}
+.cxrow{padding:10px 4px;border-bottom:1px solid var(--line)}
+.cxname{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.cxname b{font-size:16px;font-weight:700}
+.cxname span{color:var(--dim);font-size:12px}
+.cxnum{display:flex;align-items:center;gap:8px;margin-top:4px}
+.cxp{flex:1;min-width:0;color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cxb{flex:0 0 auto;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px;font-weight:700;text-decoration:none;color:var(--ink)}
+.cxb.call{background:var(--green);border-color:var(--green);color:#fff}
 .wxrow{display:grid;grid-template-columns:1fr auto auto 54px;align-items:center;gap:10px;padding:11px 6px;border-bottom:1px solid var(--line)}
 .wxrow.now{background:var(--panel)}
+.wxrow{border-radius:10px;margin:3px 0;border:1px solid transparent}
+.wxrow.wet{background:rgba(224,164,88,.14);border-color:var(--accent)}
+.wxrow.wet .wxp{color:var(--accent);font-weight:800}
+.wxrow.now{box-shadow:inset 0 0 0 1px var(--accent)}
 .wxrow .wxd{font-weight:600;font-size:15px}
 .wxrow .wxe{font-size:20px}
 .wxrow .wxt{font-weight:800;font-size:16px;min-width:44px;text-align:right}
@@ -349,6 +367,31 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .swrm{background:#c2553f}.swsz{background:#b07a1c}
 .swr.open .swacts{opacity:1}
 .swhint{color:var(--dim);font:600 11px ui-monospace,Menlo,monospace;padding:0 6px 6px}
+/* invites + lead review */
+.invbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:50px;padding:0 14px;margin:6px 0 10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;font-weight:800;font-size:15px;text-align:left}
+.invbtn>span:first-of-type{flex:1;min-width:0;color:var(--muted);font-weight:600;font-size:12.5px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dialin{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;margin:4px 0 6px}
+.dialin>div{flex:1}.dialin b{font:800 17px ui-monospace,Menlo,monospace}
+.invall{display:flex;align-items:center;justify-content:center;min-height:52px;border-radius:14px;background:linear-gradient(135deg,#FF6B35,#E85D04);color:#fff;font-weight:800;font-size:16px;text-decoration:none}
+.ccrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+.ccrow:last-child{border-bottom:0}
+.ccinv{background:var(--green);color:#fff;font-weight:800;font-size:14px;border-radius:12px;padding:9px 14px;text-decoration:none}
+.ccrm{width:34px;height:34px;border-radius:17px;color:var(--dim);font-size:15px}
+.ccok{color:#6fdc9c;font-size:11.5px;font-weight:700}
+.revbtn{background:#1b2230;border-color:#2f4466}
+.ldcard{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:12px;margin-bottom:12px}
+.ldcard.st-Approved,.ldcard.st-Sent{border-color:#2c5a3e}.ldcard.locked{opacity:.75}
+.ldh{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;flex-wrap:wrap}.ldh b{font-size:17px}
+.ldst{margin-left:auto;font:700 11px ui-monospace,Menlo,monospace;color:var(--gold)}
+.ldl{display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-top:1px solid var(--line)}
+.ldn{width:22px;height:22px;border-radius:11px;background:var(--panel2);display:grid;place-items:center;font-size:12px;font-weight:800;color:var(--muted);flex:none;margin-top:1px}
+.ldt{flex:1;min-width:0;font-size:15px;line-height:1.35}
+.ldl button{flex:none;width:36px;height:36px;border-radius:12px;background:var(--panel2);font-size:15px}
+.ldacts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.ldacts button{min-height:42px;padding:0 12px;border-radius:12px;background:var(--panel2);font-weight:700;font-size:13.5px}
+.ldacts .ldok{margin-left:auto;background:var(--green);color:#fff;padding:0 18px}
+.ldprev{margin-top:8px}.ldprev summary{color:var(--dim);font-size:12px;cursor:pointer}
+.ldprev pre{white-space:pre-wrap;font:13px/1.4 -apple-system,system-ui;color:#d8d2ca;background:#171412;border-radius:10px;padding:10px;margin:6px 0 0}
 /* @Computer – Claude */
 .compbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px;margin:0 0 12px;background:#1f1a14;border:1px solid #4a3522;border-radius:16px;font-weight:800;font-size:15px;text-align:left}
 .compbtn>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -412,7 +455,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-08 13:18';   // stamped by deploy.sh
+const BUILD='2026-10-09 10:19';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -461,7 +504,7 @@ const SLOTS={ morning:{label:'Morning call', em:'🌅'}, afternoon:{label:'After
 
 /* ---------- Airtable ---------- */
 const atUrl=()=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+encodeURIComponent(cfg.tableId);
-const FIELDS=['Task','Project','SBLead','Sub','Status','MeetingSlot','Section','DoDate','Phone','NextStep','Notes','Priority','Type','UpdatedAt'];
+const FIELDS=['Task','Project','SBLead','Sub','Status','MeetingSlot','Section','DoDate','Phone','NextStep','Notes','Priority','Type','UpdatedAt','TextExclude','LeadStatus','RoniFlag','TextCount'];
 async function fetchAll(){
   if(!cfg.apiKey){ if(!tasks.length){ tasks=demoTasks(); demo=true; } render(); return; }
   if(syncing) return; syncing=true; paintSync();
@@ -479,14 +522,15 @@ async function fetchAll(){
         id:rec.id, createdTime:rec.createdTime, name:flat(f.Task), project:flat(f.Project).trim(), lead:flat(f.SBLead).trim(), sub:flat(f.Sub).trim(),
         status:flat(f.Status)||'Open', slotRemote:flat(f.MeetingSlot).toLowerCase(), sectionRemote:flat(f.Section).toLowerCase(),
         doDate:flat(f.DoDate).slice(0,10), phone:flat(f.Phone), next:flat(f.NextStep), notes:flat(f.Notes),
-        priorityRemote:+flat(f.Priority)||0, type:flat(f.Type).toLowerCase(), updatedAt:flat(f.UpdatedAt) }; }));
+        priorityRemote:+flat(f.Priority)||0, type:flat(f.Type).toLowerCase(), updatedAt:flat(f.UpdatedAt),
+        textEx:!!f.TextExclude, leadStatus:flat(f.LeadStatus), flag:!!f.RoniFlag, textCount:+f.TextCount||0 }; }));
       offset=d.offset;
       if(!offset){ tasks=out; demo=false; lastSync=Date.now(); save(LS_CACHE,tasks); localStorage.setItem(LS_TS,lastSync);
         for(const t of tasks){ const a=aug[t.id]; if(a&&a.section&&!((Date.now()-(a.secAt||0))<180000)) a.section=null; } saveAug(); }
     }while(offset && ++guard<60);
   }catch(e){ toast('Offline — showing saved list'); }
   syncing=false; render();
-  sweepNotes(false); dnArchive(); fetchAutos(false);
+  sweepNotes(false); dnArchive(); fetchAutos(false); fetchDrafts(); fetchCallContacts();
 }
 
 /* ---------- ⚙️ AUTOMATIONS — always on the home screen (feed: Airtable Automations table, refreshed every 2h
@@ -503,6 +547,147 @@ async function fetchAutos(force){
         last:f.LastRun||'',next:f.NextRun||'',status:flat(f.Status)||'Unknown',detail:f.Detail||'',sent:f.Sent||0,replied:f.Replied||0,noreply:f.NoReply||0,updated:f.Updated||''}; });
       save('m.autos',autoRows); localStorage.setItem('m.autosAt',Date.now()); } }catch(e){}
   autoBusy=false; stack.forEach(x=>{ if(x.route.type==='home') paintHome(x); if(x.route.type==='autos') paintAutos(x); });
+}
+/* ============================================================
+   👥 CALL INVITES — contacts for the daily calls (Airtable CallContacts), one tap = text them the dial-in.
+   Invite opens Messages with the text prefilled (you press Send). Invite all = one group text.
+   ============================================================ */
+const CC_TABLE='tblLl5Wb4vJK8xGBs';
+const DIAL_IN_DEFAULT='917-268-3365';
+let DIAL_IN=localStorage.getItem('m.dialin2')||DIAL_IN_DEFAULT;
+const dialTel=()=>'tel:+1'+DIAL_IN.replace(/\D/g,'').slice(-10);
+let callCts=load('m.callcts',[]), ccBusy=false;
+const ccUrl=()=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+CC_TABLE;
+async function fetchCallContacts(force){
+  if(demo||!cfg.apiKey||ccBusy) return; if(!force&&Date.now()-(+localStorage.getItem('m.callctsAt')||0)<30*60000) return; ccBusy=true;
+  try{ const u=new URL(ccUrl()); u.searchParams.set('pageSize','100'); const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}});
+    if(r.ok){ const d=await r.json(); callCts=(d.records||[]).map(x=>({id:x.id,name:x.fields.Name||'',phone:x.fields.Phone||'',slots:x.fields.Slots||[],active:!!x.fields.Active}));
+      save('m.callcts',callCts); localStorage.setItem('m.callctsAt',Date.now()); } }catch(e){}
+  ccBusy=false; stack.forEach(x=>{ if(x.route.type==='invite') paintInvite(x); });
+}
+const callContacts=slot=>callCts.filter(c=>c.active&&c.slots.includes(slot)).sort((a,b)=>a.name.localeCompare(b.name));
+/* ---------- 📇 Full contacts (ContactsData JSON chunks + ContactsAdded) — for the Calls dialer ---------- */
+const CONTACTS_TABLE='tbla8W2IjHCJMXgY5', CONTACTS_ADD_TABLE='tblMz61uZtH5DeDl1';
+const atTbl=id=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+id;
+const onlyDigits=s=>(''+(s||'')).replace(/\D/g,'');
+let contacts=load('m.contacts',[]);
+async function loadContacts(force){
+  const fresh=(Date.now()-(+localStorage.getItem('m.contacts.ts')||0))<12*3600*1000;
+  if(contacts.length&&fresh&&!force) return contacts;
+  if(!cfg.apiKey) return contacts;
+  try{
+    let rows=[],off,g=0;
+    do{ const u=new URL(atTbl(CONTACTS_TABLE)); u.searchParams.set('pageSize','100'); if(off)u.searchParams.set('offset',off);
+      const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok)break; const d=await r.json();
+      rows=rows.concat(d.records||[]); off=d.offset; }while(off&&++g<20);
+    let base=[];
+    if(rows.length){ const sorted=rows.map(r=>({idx:+flat(r.fields.Idx)||0,data:flat(r.fields.Data)||''})).sort((a,b)=>a.idx-b.idx);
+      try{ const arr=JSON.parse(sorted.map(r=>r.data).join('')); if(arr&&arr.length) base=arr; }catch(e){} }
+    let add=[];
+    try{ const ua=new URL(atTbl(CONTACTS_ADD_TABLE)); ua.searchParams.set('pageSize','100');
+      const ra=await fetch(ua,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(ra.ok){ const da=await ra.json();
+        add=(da.records||[]).map(r=>({n:flat(r.fields.Name),o:flat(r.fields.Org),p:(flat(r.fields.Phones)||'').split(/[,\n]/).map(s=>s.trim()).filter(Boolean)})).filter(c=>c.n&&c.p.length); } }catch(e){}
+    if(base.length||add.length){ contacts=add.concat(base); save('m.contacts',contacts); localStorage.setItem('m.contacts.ts',String(Date.now())); }
+  }catch(e){}
+  return contacts;
+}
+function searchContacts(q){ q=(q||'').trim().toLowerCase(); if(!q) return []; const dq=onlyDigits(q); const out=[];
+  for(const c of contacts){ const name=(c.n||'').toLowerCase(), org=(c.o||'').toLowerCase(); let hit=name.includes(q)||(org&&org.includes(q));
+    if(!hit&&dq.length>=3){ for(const ph of (c.p||[])){ if(onlyDigits(ph).includes(dq)){hit=true;break;} } }
+    if(hit){ out.push(c); if(out.length>=40) break; } } return out; }
+// Phone numbers are auto-linked by Messages; the tel: link makes it one tap to dial on any phone.
+const inviteText=slot=>'Please join the call: '+DIAL_IN+' (no PIN) — tap to dial: '+dialTel();
+const smsOne=(ph,body)=>'sms:'+ph.replace(/[^\d+]/g,'')+'&body='+encodeURIComponent(body);
+const smsMany=(phs,body)=>'sms://open?addresses='+phs.map(p=>p.replace(/[^\d+]/g,'')).join(',')+'&body='+encodeURIComponent(body);
+function paintInvite(s){
+  const r=s.route, el=s.el, slot=r.slot, S=SLOTS[slot]; const list=callContacts(slot); const sent=load('m.invited.'+todayISO(),{});
+  el.innerHTML=`<div class="nav">${backBtn(S.label)}<div class="ttl">👥 Invite · ${esc(S.label)}</div><button class="icon" data-ccadd aria-label="Add contact">＋</button></div>
+    <div class="scroll" style="padding:0 12px calc(20px + var(--sab))">
+      <div class="dialin"><div><div class="ap">Dial-in · no PIN</div><a href="${dialTel()}" style="color:inherit;text-decoration:none"><b>${esc(DIAL_IN)}</b></a></div><button class="pill" data-dial style="min-height:40px;padding:0 12px">Edit</button></div>
+      <div class="ap" style="margin:4px 4px 10px">Message: “${esc(inviteText(slot))}”</div>
+      ${list.length?`<a class="invall" href="${smsMany(list.map(c=>c.phone),inviteText(slot))}" data-all>📣 Invite all ${list.length}</a>`:''}
+      <div class="glist" style="margin-top:12px">${list.map(c=>`<div class="ccrow" data-id="${c.id}"><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${sent[c.id]?' <span class="ccok">✓ invited</span>':''}</div><div class="cx">${esc(c.phone)}</div></div>
+        <a class="ccinv" href="${smsOne(c.phone,inviteText(slot))}" data-inv="${c.id}">Invite</a><button class="ccrm" data-ccrm="${c.id}" aria-label="Remove">✕</button></div>`).join('')
+        ||'<div class="ap" style="padding:18px">No one on this call yet — tap ＋ to add.</div>'}</div>
+      <div class="foot">Tap Invite → Messages opens with the text ready → press Send.</div></div>`;
+  wire(el);
+  const mark=ids=>{ const m=load('m.invited.'+todayISO(),{}); ids.forEach(i=>m[i]=1); save('m.invited.'+todayISO(),m); setTimeout(()=>paintInvite(s),600); };
+  el.querySelectorAll('[data-inv]').forEach(a=>a.addEventListener('click',()=>{ buzz(8); mark([a.dataset.inv]); }));
+  { const a=el.querySelector('[data-all]'); if(a) a.addEventListener('click',()=>{ buzz(12); mark(list.map(c=>c.id)); }); }
+  el.querySelector('[data-dial]').onclick=()=>sheet(`<h3>Conference dial-in</h3><input class="field" id="di" value="${esc(DIAL_IN)}"><div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Save</button></div>`,(sh,close)=>{
+    sh.querySelector('[data-ok]').onclick=()=>{ DIAL_IN=sh.querySelector('#di').value.trim()||DIAL_IN_DEFAULT; localStorage.setItem('m.dialin2',DIAL_IN); close(); paintInvite(s); }; });
+  el.querySelectorAll('[data-ccrm]').forEach(b=>b.onclick=async()=>{ const c=callCts.find(x=>x.id===b.dataset.ccrm); if(!c) return;
+    const left=c.slots.filter(x=>x!==slot); c.slots=left; save('m.callcts',callCts); paintInvite(s);
+    toast('Removed '+c.name+' from '+S.label.toLowerCase(), async()=>{ c.slots=[...left,slot]; save('m.callcts',callCts); paintInvite(s); await ccPatch(c.id,{Slots:c.slots}); });
+    await ccPatch(c.id,{Slots:left}); });
+  el.querySelector('[data-ccadd]').onclick=()=>sheet(`<h3>Add to ${esc(S.label.toLowerCase())}</h3><input class="field" id="cn" placeholder="Name" autocomplete="off"><input class="field" id="cp" placeholder="Mobile number" inputmode="tel" autocomplete="off">
+    <div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Add</button></div>`,(sh,close)=>{ setTimeout(()=>sh.querySelector('#cn').focus(),300);
+      sh.querySelector('[data-ok]').onclick=async()=>{ const name=sh.querySelector('#cn').value.trim(), ph=sh.querySelector('#cp').value.trim(); if(!name||!ph) return; close();
+        const ex=callCts.find(c=>c.phone.replace(/\D/g,'').slice(-10)===ph.replace(/\D/g,'').slice(-10));
+        if(ex){ ex.slots=[...new Set([...ex.slots,slot])]; ex.active=true; save('m.callcts',callCts); paintInvite(s); await ccPatch(ex.id,{Slots:ex.slots,Active:true}); return; }
+        const c={id:'tmp'+Date.now(),name,phone:ph,slots:[slot],active:true}; callCts.push(c); save('m.callcts',callCts); paintInvite(s);
+        if(cfg.apiKey){ try{ const r=await fetch(ccUrl(),{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({records:[{fields:{Name:name,Phone:ph,Slots:[slot],Active:true,Source:'iPhone app'}}],typecast:true})});
+          if(r.ok){ const d=await r.json(); c.id=d.records[0].id; save('m.callcts',callCts); } }catch(e){} } }; });
+}
+async function ccPatch(id,fields){ if(demo||!cfg.apiKey||String(id).startsWith('tmp')) return; try{ await fetch(ccUrl()+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields,typecast:true})}); }catch(e){} }
+
+/* ============================================================
+   📲 REVIEW LEAD TEXTS — the 7:20 AM drafter writes each lead's top 3 to Airtable LeadDrafts (Pending review).
+   Here Roni swaps / re-rolls / edits / drops items, skips a lead, or approves. The sender task (every 15 min,
+   7–11:45 AM) sends ONLY Approved drafts. Anything still pending at noon expires and is never sent.
+   ============================================================ */
+const LD_TABLE='tblHzC255a8nJGJjp';
+let drafts=load('m.drafts',[]), ldBusy=false;
+const ldUrl=()=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+LD_TABLE;
+const pastNoon=()=>new Date().getHours()>=12;
+const draftsPending=()=>drafts.filter(d=>d.day===todayISO()&&d.status==='Pending review'&&!pastNoon());
+async function fetchDrafts(force){
+  if(demo||!cfg.apiKey||ldBusy) return; if(!force&&Date.now()-(+localStorage.getItem('m.draftsAt')||0)<5*60000) return; ldBusy=true;
+  try{ const u=new URL(ldUrl()); u.searchParams.set('pageSize','100'); u.searchParams.set('filterByFormula',"{Day}='"+todayISO()+"'");
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}});
+    if(r.ok){ const d=await r.json(); drafts=(d.records||[]).map(x=>{ const f=x.fields; let lines=[]; try{ lines=JSON.parse(f.Lines||'[]'); }catch(e){}
+      return {id:x.id,lead:f.Lead||'',first:f.FirstName||'',phone:f.Phone||'',day:f.Day||'',status:flat(f.Status)||'Pending review',lines,message:f.Message||'',sentAt:f.SentAt||''}; });
+      save('m.drafts',drafts); localStorage.setItem('m.draftsAt',Date.now()); } }catch(e){}
+  ldBusy=false; stack.forEach(x=>{ if(x.route.type==='home') paintHome(x); if(x.route.type==='leadrev') paintLeadRev(x); });
+}
+function draftMessage(d){ return 'Good morning '+(d.first||d.lead)+' — today’s top '+(d.lines.length===3?'3':d.lines.length)+':\n'+d.lines.map((l,i)=>(i+1)+'. '+(l.flag?'⭐ ':'')+l.text).join('\n')+'\nReply with the # and a quick update (e.g. "1 done", "2 waiting on X"). Thanks – Roni'; }
+const lineFor=t=>{ const p=(t.project||'').split(',')[0].trim(); return (p?p+' – ':'')+(t.next||cleanName(t))+(t.textCount>=2?' (follow-up #'+t.textCount+')':''); };
+function leadPool(d){ const used=new Set(d.lines.map(l=>l.id)); return tasks.filter(t=>isOpen(t)&&t.lead===d.lead&&!t.textEx&&t.leadStatus!=='Says done'&&!used.has(t.id)).sort((a,b)=>(b.next?1:0)-(a.next?1:0)||((b.flag?200:0)+(b.priorityRemote||30))-((a.flag?200:0)+(a.priorityRemote||30))); }
+async function saveDraft(d,extra){
+  d.message=draftMessage(d); save('m.drafts',drafts);
+  if(demo||!cfg.apiKey) return;
+  const fields=Object.assign({Lines:JSON.stringify(d.lines),Message:d.message,Items:d.lines.map(l=>l.id).filter(x=>/^rec/.test(x))},extra||{});
+  try{ const r=await fetch(ldUrl()+'/'+d.id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields,typecast:true})}); if(!r.ok) toast('Save failed '+r.status); }catch(e){ toast('Offline — not saved'); }
+}
+function setDraftStatus(d,st){ d.status=st; const extra={Status:st}; if(st==='Approved') extra.ApprovedAt=new Date().toISOString(); saveDraft(d,extra); }
+function paintLeadRev(s){
+  const el=s.el; const today=drafts.filter(d=>d.day===todayISO()); const keep=el.querySelector('.scroll'); const st=keep?keep.scrollTop:0;
+  const pending=today.filter(d=>d.status==='Pending review'); const late=pastNoon();
+  const card=d=>{ const locked=d.status!=='Pending review'||late; const tag={'Pending review':late?'expired at noon':'waiting for you',Approved:'✓ approved — sends shortly',Skipped:'skipped today',Sent:'✓ sent',Failed:'⚠︎ failed',Expired:'expired'}[d.status]||d.status;
+    return `<div class="ldcard ${locked?'locked':''} st-${d.status.replace(/\s/g,'')}" data-d="${d.id}"><div class="ldh"><b>${esc(d.first||d.lead)}</b><span class="ap">${esc(d.lead)} · ${esc(d.phone)}</span><span class="ldst">${esc(tag)}</span></div>
+      ${d.lines.map((l,i)=>`<div class="ldl" data-i="${i}"><span class="ldn">${i+1}</span><div class="ldt" ${locked?'':'data-edit'}>${l.flag?'⭐ ':''}${esc(l.text)}</div>${locked?'':`<button data-swap title="Swap">⇄</button><button data-drop title="Drop">✕</button>`}</div>`).join('')}
+      ${locked?'':`<div class="ldacts"><button data-addl>＋ Item</button><button data-roll>🎲 Re-roll</button><button data-skip>Skip today</button><button class="ldok" data-ok>✓ Approve</button></div>`}
+      <details class="ldprev"><summary>Preview text</summary><pre>${esc(draftMessage(d))}</pre></details></div>`; };
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">📲 Lead texts</div>${pending.length&&!late?'<button class="statsbtn" data-okall>APPROVE ALL</button>':''}<button class="icon" data-ld aria-label="Reload">↻</button></div>
+    <div class="scroll" style="padding:0 12px calc(20px + var(--sab))"><div class="ap" style="margin:2px 4px 12px">${late?'After noon — anything not approved has expired and will not be sent.':'Nothing goes out until you approve it. Approved texts send within 15 min (until 11:45 AM).'}</div>
+    ${today.length?today.map(card).join(''):'<div class="empty" style="padding-top:50px"><div class="big2">📲</div><h2>No drafts today</h2><p style="color:var(--dim);padding:0 24px">Drafts appear around 7:20 AM on weekdays.</p></div>'}</div>`;
+  wire(el); const sc=el.querySelector('.scroll'); if(keep) sc.scrollTop=st;
+  el.querySelector('[data-ld]').onclick=()=>{ toast('Reloading…'); fetchDrafts(true); };
+  { const a=el.querySelector('[data-okall]'); if(a) a.onclick=()=>{ pending.forEach(d=>{ if(d.lines.length) setDraftStatus(d,'Approved'); }); buzz(15); celebrate(innerWidth/2,innerHeight/3,16); paintLeadRev(s); paintHome(stack[0]); }; }
+  el.querySelectorAll('.ldcard').forEach(c=>{ const d=drafts.find(x=>x.id===c.dataset.d); if(!d) return; const redraw=()=>{ saveDraft(d); paintLeadRev(s); };
+    c.querySelectorAll('[data-edit]').forEach(t=>t.onclick=()=>{ const i=+t.closest('.ldl').dataset.i; sheet(`<h3>Edit wording</h3><textarea class="field" rows="4">${esc(d.lines[i].text)}</textarea><div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Save</button></div>`,(sh,close)=>{
+      const ta=sh.querySelector('textarea'); setTimeout(()=>ta.focus(),300); sh.querySelector('[data-ok]').onclick=()=>{ const v=ta.value.trim(); if(v) d.lines[i].text=v; close(); redraw(); }; }); });
+    c.querySelectorAll('[data-drop]').forEach(b=>b.onclick=()=>{ const i=+b.closest('.ldl').dataset.i; const gone=d.lines.splice(i,1)[0]; redraw(); toast('Dropped', ()=>{ d.lines.splice(i,0,gone); redraw(); }); });
+    const pick=(title,cb)=>{ const pool=leadPool(d); sheet(`<h3>${title}</h3>${pool.length?pool.slice(0,40).map(t=>`<button class="sbtn" data-p="${t.id}" style="min-height:52px;font-size:14.5px;font-weight:600"><span class="si">${t.flag?'⭐':t.next?'•':'·'}</span>${esc(lineFor(t))}</button>`).join(''):'<div class="ap" style="padding:12px">No other open items for this lead.</div>'}<button class="sbtn cancel" data-close>Cancel</button>`,(sh,close)=>{
+      sh.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{ const t=tasks.find(x=>x.id===b.dataset.p); close(); if(t) cb({id:t.id,text:lineFor(t),flag:!!t.flag}); }); }); };
+    c.querySelectorAll('[data-swap]').forEach(b=>b.onclick=()=>{ const i=+b.closest('.ldl').dataset.i; pick('Swap item '+(i+1)+' for…',ln=>{ d.lines[i]=ln; redraw(); }); });
+    { const a=c.querySelector('[data-addl]'); if(a) a.onclick=()=>{ if(d.lines.length>=5){ toast('Keep it short — 5 max'); return; } pick('Add an item',ln=>{ d.lines.push(ln); redraw(); }); }; }
+    { const a=c.querySelector('[data-roll]'); if(a) a.onclick=()=>{ const keepF=d.lines.filter(l=>l.flag); const pool=leadPool(d).filter(t=>t.next); for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+      const fresh=[...keepF,...pool.map(t=>({id:t.id,text:lineFor(t),flag:!!t.flag}))].slice(0,3); if(!fresh.length){ toast('No other items with a next step'); return; } const prev=d.lines; d.lines=fresh; buzz(8); redraw(); toast('🎲 New mix', ()=>{ d.lines=prev; redraw(); }); }; }
+    { const a=c.querySelector('[data-skip]'); if(a) a.onclick=()=>{ setDraftStatus(d,'Skipped'); paintLeadRev(s); paintHome(stack[0]); toast('Skipped '+(d.first||d.lead)+' today', ()=>{ setDraftStatus(d,'Pending review'); paintLeadRev(s); paintHome(stack[0]); }); }; }
+    { const a=c.querySelector('[data-ok]'); if(a) a.onclick=()=>{ if(!d.lines.length){ toast('Add at least one item, or Skip'); return; } setDraftStatus(d,'Approved'); buzz(12); paintLeadRev(s); paintHome(stack[0]);
+      toast('✓ Approved '+(d.first||d.lead), ()=>{ setDraftStatus(d,'Pending review'); paintLeadRev(s); paintHome(stack[0]); }); }; }
+  });
 }
 function paintComp(s){
   const el=s.el, ci=computerItems();
@@ -659,10 +844,21 @@ function paintSlotList(s){
     :`<div class="empty" style="padding-top:50px"><div class="big2">${S.em}</div><h2>No ${esc(S.label.toLowerCase())} items</h2><p style="color:var(--dim);padding:0 24px">Add one above${isCalls?'':', or tap '+S.em+' on any task'}.</p></div>`;
   el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">${S.em} ${esc(S.label)}</div>${items.length?'<button class="statsbtn" data-clear>CLEAR</button>':''}<button class="statsbtn" data-run>▶ RUN</button><button class="icon" data-add aria-label="Add">＋</button></div>
     <div class="scroll" style="padding:0 10px calc(20px + var(--sab))">
+      ${isCalls?`<div class="dialer"><input class="cxsearch" type="search" enterkeyhint="search" placeholder="🔍 Call someone — type a name…" autocomplete="off"><div class="cxresults" data-cxresults></div></div>`:''}
+      ${isCalls?'':`<button class="invbtn" data-invite>👥 Invite to the call<span>${callContacts(slot).length} people · ${esc(DIAL_IN)}</span><span class="chev">›</span></button>`}
       <div class="addbar"><input class="qadd" type="text" enterkeyhint="done" placeholder="Add to ${esc(S.label.toLowerCase())}…" autocomplete="off"><button class="qaddb" data-qadd>＋</button></div>
       ${items.length?'<div class="swhint">swipe → done · ← remove / snooze · tap to open</div>':''}
       <div data-list>${body}</div></div>`;
   wire(el);
+  { const ib=el.querySelector('[data-invite]'); if(ib) ib.onclick=()=>push({type:'invite',slot}); }
+  if(isCalls){ const ci=el.querySelector('.cxsearch'), cr=el.querySelector('[data-cxresults]');
+    const drawCx=()=>{ const q=ci.value.trim();
+      if(!q){ cr.innerHTML='<div class="cxhint">'+(contacts.length?contacts.length+' contacts · type a name to call':'Loading contacts…')+'</div>'; return; }
+      const hits=searchContacts(q);
+      cr.innerHTML=hits.length?hits.map(c=>'<div class="cxrow"><div class="cxname"><b>'+esc(c.n)+'</b>'+(c.o?'<span>'+esc(c.o)+'</span>':'')+'</div>'+
+        (c.p||[]).map(p=>{const d=p.replace(/[^\d+]/g,'');return '<div class="cxnum"><span class="cxp">'+esc(p)+'</span><a class="cxb call" href="tel:'+esc(d)+'">📞 Call</a><a class="cxb" href="sms:'+esc(d)+'">💬</a></div>';}).join('')+'</div>').join('')
+        :'<div class="cxhint">No match</div>'; };
+    ci.addEventListener('input',drawCx); drawCx(); loadContacts().then(drawCx); }
   el.querySelector('[data-run]').onclick=()=>{ if(!items.length){ toast('Nothing to run'); return; } push(isCalls?{type:'deck',kind:'calls',title:'📞 Calls'}:{type:'deck',kind:'slot',slot,title:S.label}); };
   { const cb=el.querySelector('[data-clear]'); if(cb) cb.onclick=()=>{ if(!items.length) return;
     const snap=items.map(t=>({id:t.id,s:A(t.id).section,sr:t.sectionRemote})); items.forEach(park); buzz(12); paintSlotList(s);
@@ -905,7 +1101,7 @@ function pop(){
 function syncLayers(){ stack.forEach((x,i)=>{ const isTop=i===stack.length-1; x.el.classList.toggle('under',!isTop); if(isTop){ x.el.classList.remove('enter','leave'); x.el.style.transform=''; } }); }
 function goHome(){ while(stack.length>1){ const s=stack.pop(); s.el.remove(); } syncLayers(); paint(stack[0]); }
 function render(){ stack.forEach(paint); }
-function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='wx') paintWx(s); else if(r.type==='parked') paintParked(s); else if(r.type==='autos') paintAutos(s); else if(r.type==='comp') paintComp(s); }
+function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='wx') paintWx(s); else if(r.type==='parked') paintParked(s); else if(r.type==='autos') paintAutos(s); else if(r.type==='comp') paintComp(s); else if(r.type==='invite') paintInvite(s); else if(r.type==='leadrev') paintLeadRev(s); }
 // iOS-style swipe from the left edge to go back
 function edgeSwipe(el){
   let sx=null,sy=0,dx=0;
@@ -929,7 +1125,8 @@ function paintWx(s){
   const el=s.el; const td=todayISO();
   const row=w=>{ const d=new Date(w.date+'T12:00:00'); const nm=w.date===td?'Today':d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
     const tcls=w.hi>=95?'xhot':w.hi>=90?'hot':w.hi<=20?'xcold':w.hi<=32?'cold':''; const rain=w.pr>0.02?(w.pr.toFixed(2).replace(/^0/,'')+'″'):'';
-    return `<div class="wxrow${w.date===td?' now':''}"><span class="wxd">${esc(nm)}</span><span class="wxe">${wxEmoji(w.code)}</span><span class="wxt ${tcls}">${w.hi}°</span><span class="wxp">${rain}</span></div>`; };
+    // Same rules as the desktop strip: rain day = >0.08in (amber box), extremes ≥90 warm / ≥95 hot / ≤32 cold / ≤20 freezing, today ringed.
+    return `<div class="wxrow${w.date===td?' now':''}${w.pr>0.08?' wet':''}"><span class="wxd">${esc(nm)}</span><span class="wxe">${wxEmoji(w.code)}</span><span class="wxt ${tcls}">${w.hi}°</span><span class="wxp">${rain}</span></div>`; };
   el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">🌤 Weather</div><div style="min-width:60px"></div></div>
     <div class="scroll" style="padding:4px 14px calc(20px + var(--sab))">${wx.length?wx.map(row).join(''):'<div style="padding:50px;text-align:center;color:var(--dim)">Loading forecast…</div>'}</div>`;
   wire(el); if(!wx.length) fetchWx();
@@ -964,7 +1161,7 @@ function paintHome(s){
   el.innerHTML=`
     <div class="nav"><div class="homesync" style="padding-left:10px;color:var(--muted);font-size:13px"><span class="sync ${syncing?'busy':(cfg.apiKey?'':'off')}"></span>${syncing?'Syncing…':(demo?'Demo data':(lastSync?'Updated '+ago(lastSync):'Not synced'))}</div>
       ${streakHTML()}${(()=>{const x=sess();const n=x.done+x.snz;return n?`<span class="score">&nbsp;${x.done}✓ ${x.snz}😴</span>`:''})()}
-      <button class="statsbtn" data-snap>LIST</button><button class="statsbtn" data-stats>STATS</button><button class="icon" data-add aria-label="Add task">＋</button><button class="icon" data-cfg aria-label="Settings">⚙︎</button></div>
+      <button class="icon" data-add aria-label="Add task">＋</button><button class="statsbtn" data-snap>LIST</button><button class="statsbtn" data-stats>STATS</button><button class="icon" data-cfg aria-label="Settings">⚙︎</button></div>
     <div class="scroll">
       <div class="ptr"></div>
       <div class="big">Tasks</div><div class="sub">${esc(dateStr)} · <span style="color:var(--gold);font:600 12px ui-monospace,Menlo,monospace">build ${esc(BUILD)}</span></div>
@@ -976,6 +1173,7 @@ function paintHome(s){
         <button class="mini" data-calls><b>${callTasks().length}</b><span>📞 Calls</span></button>
         <button class="mini" data-incoming><b>${incomingToday().length}</b><span>📥 Incoming</span></button>
       </div>
+      ${(()=>{ const p=draftsPending(); return p.length?`<button class="compbtn revbtn" data-leadrev><span>📲 Review lead texts</span><b>${p.length}</b><span class="chev">›</span></button>`:''; })()}
       ${computerItems().length?`<button class="compbtn" data-comp><span>🖥 @Computer – Claude</span><b>${computerItems().length}</b><span class="chev">›</span></button>`:''}
       <div class="minirow">
         <button class="mini" data-notesbtn><b>🗒</b><span>Notes</span></button>
@@ -1017,6 +1215,7 @@ function paintHome(s){
   el.querySelectorAll('[data-dsel]').forEach(b=>b.onclick=()=>{ localStorage.setItem('m.drillSel',b.dataset.dsel); buzz(5); el.querySelectorAll('[data-dsel]').forEach(x=>x.classList.toggle('on',x===b)); });
   el.querySelector('[data-drill]').onclick=()=>{ const v=localStorage.getItem('m.drillSel')||'*'; push({type:'deck',kind:'drill',val:v,title:v==='*'?'Drill · all':v||'No project'}); };
   { const cb=el.querySelector('[data-comp]'); if(cb) cb.onclick=()=>push({type:'comp'}); }
+  { const lr=el.querySelector('[data-leadrev]'); if(lr) lr.onclick=()=>push({type:'leadrev'}); }
   el.querySelector('[data-autos]').onclick=()=>push({type:'autos'});
   el.querySelector('[data-calls]').onclick=()=>push({type:'slotlist',slot:'calls'});
   el.querySelector('[data-incoming]').onclick=()=>push({type:'incoming',day:null});
@@ -1520,6 +1719,9 @@ function routeFromHash(){ const h=(location.hash||'').slice(1).toLowerCase(); if
   else if(h==='review'){ push({type:'board',dim:'project',list:groups('project').map(g=>g.k),idx:0}); }
   else if(h==='notes'){ push({type:'notes',q:'',range:'all'}); }
   else if(h==='automations'||h==='autos'){ push({type:'autos'}); }
+  else if(h==='leadtexts'||h==='review-texts'){ push({type:'leadrev'}); }
+  else if(h==='invite'||h==='invite-am'){ push({type:'invite',slot:'morning'}); }
+  else if(h==='invite-pm'){ push({type:'invite',slot:'afternoon'}); }
   else if(h==='today'||h==='daynotes'){ push({type:'day',day:null}); }
   else if(h==='snapshot'||h==='list'){ push({type:'snap',mode:localStorage.getItem('m.snapMode')||'group'}); } }
 routeFromHash(); addEventListener('hashchange',routeFromHash);

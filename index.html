@@ -370,6 +370,19 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 .panel-body::-webkit-scrollbar-thumb,.board::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.13);border-radius:999px; }
 .panel-body::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.22); }
 .panel-body::-webkit-scrollbar-track,.board::-webkit-scrollbar-track{ background:transparent; }
+/* ── P/S/L/C + filter chips: high-contrast states (WCAG AA ≥4.5:1) ──
+   selected/lit = SOLID orange #e8683c with near-black bold text (#111 on #e8683c ≈ 6.4:1);
+   unselected = light text on dark (#f5f3ee on #1d1916 ≈ 15:1; muted #c9c3bb ≈ 10:1); dimmed no longer fades text out. */
+.mfbtn{color:var(--ink);background:var(--panel);border-color:#3a332d}
+.mfbtn.on,.mfbtn:active{background:#e8683c!important;border-color:#e8683c!important;color:#111!important;font-weight:900}
+.chip{color:#c9c3bb;border-color:#3a332d}
+.chip.on,.chip.on .n{background:#e8683c!important;background-image:none!important;border-color:#e8683c!important;color:#111!important;font-weight:800;opacity:1}
+.chip.lit,.fbub.lit{background:#e8683c!important;border-color:#e8683c!important;color:#111!important;box-shadow:none}
+.chip.lit .n,.fbub.lit .n{color:#111!important;opacity:.8}
+.chip.dimmed,.fbub.dimmed{opacity:.6}
+.plstag{color:#c9c3bb;border-color:#3a332d}
+.plstag.s{color:#5cc48a}.plstag.l{color:#7fb0d0}.plstag.p{color:#f08a5f}
+.plstag:hover,.plstag:focus-visible{background:#e8683c;color:#111;border-color:#e8683c}
 </style>
 </head>
 <body>
@@ -407,7 +420,7 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 
 <script>
 "use strict";
-const BUILD='2026-10-08 13:18';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-09 10:19';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-08 · Focus clears at 11 PM', d:'🎯 Now/Focus no longer empties when you open the app in the morning — it now stays put all day and clears at ~11 PM (its leftovers still jump to the top of 🔥 Priority, nothing lost). If the app is closed at 11 PM it catches up next time you open it. So things you put in Focus during the day actually stay there.'},
@@ -722,7 +735,8 @@ async function atFetch(){
       sectionRemote:(flat(rec.fields.Section)||'').toLowerCase(),
       priorityRemote:+flat(rec.fields.Priority)||0,
       doDate:(flat(rec.fields.DoDate)||'').slice(0,10),
-      updatedAt:flat(rec.fields.UpdatedAt)
+      updatedAt:flat(rec.fields.UpdatedAt),
+      textEx:!!rec.fields.TextExclude, leadStatus:flat(rec.fields.LeadStatus), flag:!!rec.fields.RoniFlag, textCount:+rec.fields.TextCount||0
     })));
     offset=d.offset;
   }while(offset&&++g<50);
@@ -1164,9 +1178,10 @@ const expanded = new Set();   // ephemeral: which capped sections are showing al
 function orderedPanels(){
   const custom=((meta.customCats||[]).map(c=>c.id));
   // to-send / from-outside / improvements are now folded INTO the Triage pane.
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer',...STUBS.map(s=>s.id)];
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer','leadrev','callinvite',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
   if(!ord.includes('automations')) ord.unshift('automations');   // always-on status panel: first time it appears at the top
+  ['leadrev','callinvite'].forEach(id=>{ if(!ord.includes(id)){ const i=ord.indexOf('computer'); ord.splice(i<0?0:i+1,0,id); } });   // right after @Computer
   if(!ord.includes('computer')){ const i=Math.max(ord.indexOf('morning'),ord.indexOf('afternoon'),ord.indexOf('calls')); ord.splice(i<0?0:i+1,0,'computer'); }   // 🖥 right after the call panels
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
   return ord.filter(id=>def.includes(id) && id!=='backlog');   // backlog hidden
@@ -1251,6 +1266,8 @@ function render(){
     else if(id==='parked') board.appendChild(parkedPanel());
     else if(id==='automations') board.appendChild(automationsPanel());
     else if(id==='computer'){ const cp=computerPanel(); if(cp) board.appendChild(cp); }   // hidden only when empty
+    else if(id==='leadrev'){ const lp=leadRevPanel(); if(lp) board.appendChild(lp); }      // only when today has drafts
+    else if(id==='callinvite') board.appendChild(callInvitePanel());
     else if(stub) board.appendChild(stubPanel(stub));
     else { const cc=(meta.customCats||[]).find(c=>c.id===id); const b=BUCKETS.find(x=>x.id===id)||cc; if(!b)return;
       let items = openVisible.filter(t=>sectionOf(t)===b.id);
@@ -1579,9 +1596,15 @@ function renderMobile(board){
   const top=document.createElement('div'); top.id='mTop';
   const fb=document.createElement('div'); fb.className='mfilters';
   [['project','P'],['sub','S'],['lead','L'],['category','C']].forEach(([dim,lbl])=>{
-    const b=document.createElement('button'); b.className='mfbtn'; b.textContent=lbl; b.title=dim; b.onclick=()=>openPicker(dim); fb.appendChild(b);
+    const b=document.createElement('button'); const act=(dim!=='category'&&filters[dim])||(activeBulb&&activeBulb.dim===dim);
+    b.className='mfbtn'+(act?' on':''); b.textContent=lbl; b.title=dim; b.onclick=()=>openPicker(dim); fb.appendChild(b);
   });
-  const addcat=document.createElement('button'); addcat.className='mfbtn'; addcat.textContent='＋'; addcat.title='Add a category'; addcat.onclick=addCategory; fb.appendChild(addcat);
+  // ＋ (add task) sits on the LEFT of P / S / L / C
+  const addt=document.createElement('button'); addt.className='mfbtn'; addt.textContent='＋'; addt.title='Add a task';
+  addt.style.cssText='background:var(--accent);color:#14110f;border-color:var(--accent);font-weight:900';
+  addt.onclick=()=>{ const f=document.querySelector('#mTop .madd input')||document.querySelector('.mpane-top .madd input'); if(f){ f.scrollIntoView({block:'center'}); f.focus(); } else { const v=(prompt('New task:')||'').trim(); if(v) atCreate(v).then(t=>{ if(t){A(t.id).section='incoming';saveAug();render();} }); } };
+  fb.insertBefore(addt, fb.firstChild);
+  const addcat=document.createElement('button'); addcat.className='mfbtn'; addcat.textContent='＋C'; addcat.title='Add a category'; addcat.onclick=addCategory; fb.appendChild(addcat);
   top.appendChild(fb);
   top.appendChild(findBubbles());   // inline find bar + P/S/L bubbles that light up as you type
   const qa=document.createElement('div'); qa.className='madd';
@@ -2568,6 +2591,88 @@ function computerPanel(){
     body.appendChild(r); });
   p.appendChild(body);
   p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'computer');});
+  return p;
+}
+/* 📲 LEAD TEXTS REVIEW (desktop) — same Airtable LeadDrafts the iPhone uses. Nothing is sent until Approved;
+   lead-texts-sender sends approved drafts every 15 min 7–11:45 AM; pending ones expire at noon. */
+const LD_TABLE='tblHzC255a8nJGJjp';
+let ldRows=(meta.ldRows||[]), ldBusy=false;
+function fetchDraftsD(force){
+  if(!cfg.apiKey||ldBusy) return; if(!force&&Date.now()-(meta.ldAt||0)<5*60000) return; ldBusy=true;
+  const u=new URL(AT+cfg.baseId+'/'+LD_TABLE); u.searchParams.set('pageSize','100'); u.searchParams.set('filterByFormula',"{Day}='"+todayISO()+"'");
+  fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{ ldBusy=false; if(!d) return;
+    ldRows=(d.records||[]).map(x=>{ const f=x.fields; let lines=[]; try{ lines=JSON.parse(f.Lines||'[]'); }catch(e){} return {id:x.id,lead:f.Lead||'',first:f.FirstName||'',phone:f.Phone||'',day:f.Day||'',status:flat(f.Status)||'Pending review',lines}; });
+    meta.ldRows=ldRows; meta.ldAt=Date.now(); saveMeta(); try{ render(); }catch(e){} }).catch(()=>{ ldBusy=false; });
+}
+setInterval(()=>fetchDraftsD(false),5*60000);
+const ldMsg=d=>'Good morning '+(d.first||d.lead)+' — today’s top '+(d.lines.length===3?'3':d.lines.length)+':\n'+d.lines.map((l,i)=>(i+1)+'. '+(l.flag?'⭐ ':'')+l.text).join('\n')+'\nReply with the # and a quick update (e.g. "1 done", "2 waiting on X"). Thanks – Roni';
+const ldLine=t=>{ const p=(t.project||'').split(',')[0].trim(); const ns=A(t.id).nextStep||t.nextStepRemote||cleanName(t); return (p?p+' – ':'')+ns+(t.textCount>=2?' (follow-up #'+t.textCount+')':''); };
+const ldPool=d=>{ const used=new Set(d.lines.map(l=>l.id)); return tasks.filter(t=>t.status==='Open'&&t.lead===d.lead&&!t.textEx&&t.leadStatus!=='Says done'&&!used.has(t.id)); };
+function ldSave(d,extra){ const f=Object.assign({Lines:JSON.stringify(d.lines),Message:ldMsg(d),Items:d.lines.map(l=>l.id).filter(x=>/^rec/.test(x))},extra||{});
+  meta.ldRows=ldRows; saveMeta(); if(!cfg.apiKey) return;
+  fetch(AT+cfg.baseId+'/'+LD_TABLE+'/'+d.id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:f,typecast:true})}).then(r=>{ if(!r.ok) toast('Save failed '+r.status); }); }
+function ldStatus(d,st){ d.status=st; const x={Status:st}; if(st==='Approved') x.ApprovedAt=new Date().toISOString(); ldSave(d,x); render(); }
+function leadRevPanel(){
+  fetchDraftsD(false);
+  const today=ldRows.filter(d=>d.day===todayISO()); if(!today.length) return null;
+  const late=new Date().getHours()>=12; const pend=today.filter(d=>d.status==='Pending review');
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='leadrev';
+  const head=document.createElement('div'); head.className='panel-head';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>📲 Lead texts</h3>'+(pend.length&&!late?'<span style="font-size:12px;font-weight:800;border-radius:10px;padding:2px 8px;background:#5b8fb0;color:#fff">'+pend.length+'</span><button class="mini" data-okall title="Approve all">✓ all</button>':'')+'<span class="scratch-stat">'+(late?'pending ones expired at noon':'nothing sends until approved')+'</span><button class="mini" data-ldr title="Reload">↻</button>';
+  p.appendChild(head); wirePanel(p,head,'leadrev');
+  head.querySelector('[data-ldr]').onclick=e=>{ e.stopPropagation(); fetchDraftsD(true); };
+  const oa=head.querySelector('[data-okall]'); if(oa) oa.onclick=e=>{ e.stopPropagation(); pend.forEach(d=>{ if(d.lines.length) ldStatus(d,'Approved'); }); toast('✓ Approved '+pend.length); };
+  const body=document.createElement('div'); body.className='panel-body'; body.style.fontSize='12.5px'; const hp=heightPx('leadrev'); if(hp) body.style.maxHeight=hp;
+  today.forEach(d=>{ const locked=d.status!=='Pending review'||late;
+    const c=document.createElement('div'); c.style.cssText='border-bottom:1px solid var(--line);padding:6px 2px 8px';
+    c.innerHTML='<div style="display:flex;gap:6px;align-items:baseline"><b>'+esc(d.first||d.lead)+'</b><span style="color:var(--muted)">'+esc(d.lead)+'</span><span style="margin-left:auto;font-size:11px;font-weight:800;color:'+(d.status==='Approved'||d.status==='Sent'?'#3a8f5f':'#e0a458')+'">'+esc(late&&d.status==='Pending review'?'Expired':d.status)+'</span></div>';
+    d.lines.forEach((l,i)=>{ const r=document.createElement('div'); r.style.cssText='display:flex;gap:4px;align-items:center;margin-top:4px';
+      r.innerHTML='<span style="color:var(--muted);width:14px">'+(i+1)+'</span>'+(locked?'<span style="flex:1">'+(l.flag?'⭐ ':'')+esc(l.text)+'</span>':'<input class="inp" style="flex:1;padding:3px 6px;font-size:12px" value="'+esc(l.text)+'"><select class="inp" style="width:28px;padding:2px" title="Swap for another item"><option value="">⇄</option>'+ldPool(d).slice(0,40).map(t=>'<option value="'+t.id+'">'+esc(ldLine(t).slice(0,80))+'</option>').join('')+'</select><button class="mini" title="Drop">✕</button>');
+      if(!locked){ const inp=r.querySelector('input'); inp.addEventListener('change',()=>{ l.text=inp.value.trim()||l.text; ldSave(d); });
+        r.querySelector('select').onchange=ev=>{ const t=tasks.find(x=>x.id===ev.target.value); if(t){ d.lines[i]={id:t.id,text:ldLine(t),flag:!!t.flag}; ldSave(d); render(); } };
+        r.querySelector('button').onclick=()=>{ d.lines.splice(i,1); ldSave(d); render(); }; }
+      c.appendChild(r); });
+    if(!locked){ const a=document.createElement('div'); a.style.cssText='display:flex;gap:4px;margin-top:6px;flex-wrap:wrap';
+      a.innerHTML='<button class="mini" data-roll>🎲 Re-roll</button><button class="mini" data-skip>Skip today</button><button class="mini" data-ok style="margin-left:auto;background:#3a8f5f;color:#fff">✓ Approve</button>';
+      a.querySelector('[data-roll]').onclick=()=>{ const pool=ldPool(d).filter(t=>t.nextStepRemote||A(t.id).nextStep).sort(()=>Math.random()-.5); const nf=[...d.lines.filter(l=>l.flag),...pool.map(t=>({id:t.id,text:ldLine(t),flag:!!t.flag}))].slice(0,3); if(nf.length){ d.lines=nf; ldSave(d); render(); } };
+      a.querySelector('[data-skip]').onclick=()=>ldStatus(d,'Skipped');
+      a.querySelector('[data-ok]').onclick=()=>{ if(!d.lines.length){ toast('Add an item or Skip'); return; } ldStatus(d,'Approved'); };
+      c.appendChild(a); }
+    body.appendChild(c); });
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{const dd=e.dataTransfer.getData('text/plain');if(dd&&dd.startsWith('panel:'))reorderPanels(dd.slice(6),'leadrev');});
+  return p;
+}
+/* 👥 CALL INVITES (desktop) — Airtable CallContacts; Invite opens Messages with the dial-in prefilled. */
+const CC_TABLE='tblLl5Wb4vJK8xGBs', DIAL_IN='917-268-3365';
+let ccRows=(meta.ccRows||[]), ccBusy=false;
+function fetchCC(force){ if(!cfg.apiKey||ccBusy) return; if(!force&&Date.now()-(meta.ccAt||0)<30*60000) return; ccBusy=true;
+  const u=new URL(AT+cfg.baseId+'/'+CC_TABLE); u.searchParams.set('pageSize','100');
+  fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{ ccBusy=false; if(!d) return; ccRows=(d.records||[]).map(x=>({id:x.id,name:x.fields.Name||'',phone:x.fields.Phone||'',slots:x.fields.Slots||[],active:!!x.fields.Active}));
+    meta.ccRows=ccRows; meta.ccAt=Date.now(); saveMeta(); try{ render(); }catch(e){} }).catch(()=>{ ccBusy=false; }); }
+const ccMsg='Please join the call: '+DIAL_IN+' (no PIN) — tap to dial: tel:+19172683365';
+function ccPatchD(id,fields){ if(!cfg.apiKey) return; fetch(AT+cfg.baseId+'/'+CC_TABLE+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields,typecast:true})}); }
+function callInvitePanel(){
+  fetchCC(false);
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='callinvite';
+  const head=document.createElement('div'); head.className='panel-head';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>👥 Call invites</h3><span class="scratch-stat">dial-in <a href="tel:+19172683365" style="color:inherit">'+DIAL_IN+'</a> · no PIN</span>';
+  p.appendChild(head); wirePanel(p,head,'callinvite');
+  const body=document.createElement('div'); body.className='panel-body'; body.style.fontSize='12.5px'; const hp=heightPx('callinvite'); if(hp) body.style.maxHeight=hp;
+  [['morning','🌅 Morning'],['afternoon','☀️ Afternoon']].forEach(([slot,lbl])=>{ const list=ccRows.filter(c=>c.active&&c.slots.includes(slot)).sort((a,b)=>a.name.localeCompare(b.name));
+    const h=document.createElement('div'); h.style.cssText='display:flex;align-items:center;gap:6px;margin:6px 0 2px;font-weight:800';
+    h.innerHTML=lbl+' <span style="color:var(--muted);font-weight:600">'+list.length+'</span>'+(list.length?'<a class="mini" style="margin-left:auto;text-decoration:none" href="sms://open?addresses='+list.map(c=>c.phone.replace(/[^\d+]/g,'')).join(',')+'&body='+encodeURIComponent(ccMsg)+'">📣 Invite all</a>':'')+'<button class="mini" title="Add someone">＋</button>';
+    h.querySelector('button').onclick=()=>{ const name=(prompt('Name for the '+lbl.slice(3)+' call:')||'').trim(); if(!name) return; const ph=(prompt('Mobile number for '+name+':')||'').trim(); if(!ph) return;
+      const ex=ccRows.find(c=>c.phone.replace(/\D/g,'').slice(-10)===ph.replace(/\D/g,'').slice(-10));
+      if(ex){ ex.slots=[...new Set([...ex.slots,slot])]; ex.active=true; ccPatchD(ex.id,{Slots:ex.slots,Active:true}); render(); return; }
+      if(cfg.apiKey) fetch(AT+cfg.baseId+'/'+CC_TABLE,{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({records:[{fields:{Name:name,Phone:ph,Slots:[slot],Active:true,Source:'Desktop'}}],typecast:true})}).then(()=>fetchCC(true)); };
+    body.appendChild(h);
+    list.forEach(c=>{ const r=document.createElement('div'); r.style.cssText='display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--line)';
+      r.innerHTML='<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>'+esc(c.name)+'</b> <span style="color:var(--muted)">'+esc(c.phone)+'</span></span><a class="mini" style="text-decoration:none;background:#3a8f5f;color:#fff" href="sms:'+c.phone.replace(/[^\d+]/g,'')+'&body='+encodeURIComponent(ccMsg)+'">Invite</a><button class="mini" title="Remove from this call">✕</button>';
+      r.querySelector('button').onclick=()=>{ c.slots=c.slots.filter(x=>x!==slot); ccPatchD(c.id,{Slots:c.slots}); render(); toast('Removed '+c.name); };
+      body.appendChild(r); }); });
+  p.appendChild(body);
+  p.addEventListener('drop',e=>{const dd=e.dataTransfer.getData('text/plain');if(dd&&dd.startsWith('panel:'))reorderPanels(dd.slice(6),'callinvite');});
   return p;
 }
 function automationsPanel(){
