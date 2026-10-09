@@ -7,7 +7,7 @@
 <style>
 :root{
   --bg:#14110f; --panel:#1d1916; --panel2:#241f1b; --ink:#f5f3ee; --muted:#a8a29a;
-  --line:#2c2723; --accent:#e8683c; --green:#3a8f5f; --red:#c2553f; --blue:#5b8fb0;
+  --line:#2c2723; --accent:#e8683c; --green:#3a8f5f; --callg:#30D158; --callink:#0b1a10; --red:#c2553f; --blue:#5b8fb0;
   --radius:14px;
 }
 *{box-sizing:border-box}
@@ -59,6 +59,18 @@ button{font:inherit;color:inherit;cursor:pointer}
 .parkrow{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--line)}
 .parkname{flex:1;min-width:0;font-size:13px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .parkrow .cardbtn{flex:0 0 auto}
+/* ⌨️ Shortcuts cheat-sheet */
+.sc-modal{width:min(720px,94vw)}
+.sc-results{max-height:60vh;overflow:auto;margin-top:2px}
+.sc-cat{font-weight:800;color:var(--accent);margin:12px 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.sc-row{display:grid;grid-template-columns:minmax(120px,auto) 1fr auto auto;gap:10px;align-items:center;padding:6px 2px;border-bottom:1px solid var(--line)}
+.sc-keys{display:flex;gap:3px;flex-wrap:wrap;align-items:center}
+.sc-act{min-width:0;font-size:14px}
+.sc-note{color:var(--muted);font-size:12px}
+.sc-fav{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:2px 5px;border-radius:6px}
+.sc-fav:hover{color:var(--ink);background:var(--panel2)}
+kbd{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px;font:600 12px ui-monospace,Menlo,monospace;color:var(--ink);white-space:nowrap;line-height:1.5}
+.kbdp{color:var(--muted);font-size:11px;margin:0 1px}
 .mcall.rm{color:#e0774f}
 .panel.drop-hover{outline:2px dashed var(--accent);outline-offset:-4px}
 .panel.stub .panel-body{align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:18px}
@@ -205,7 +217,7 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 #ptr{position:fixed;top:-56px;left:50%;transform:translateX(-50%);z-index:60;background:var(--panel);border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:7px 16px;font-size:13px;font-weight:700;transition:top .15s ease}
 .mfold{text-align:center;color:var(--muted);font-size:12px;margin:12px 0 6px;border-top:1px dashed var(--line);padding-top:8px}
 .mnum{font-weight:400;font-size:12px;color:var(--muted);margin-top:2px}
-.mcall{background:var(--green);color:#fff;border:none;border-radius:10px;padding:9px 15px;font-size:18px;text-decoration:none;display:inline-block}
+.mcall{background:var(--callg);color:var(--callink);border:none;border-radius:10px;padding:9px 15px;font-size:18px;text-decoration:none;display:inline-block}
 .mcall.add{background:var(--panel);color:var(--muted);border:1px solid var(--line);font-size:14px}
 .mcall.done2{background:var(--panel);color:var(--green);border:1px solid var(--line)}
 .mrow-inner{display:flex;align-items:center;gap:7px;transition:transform .12s ease}
@@ -261,6 +273,7 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .calrefresh{margin:0 0 0 6px;border:none;cursor:pointer;font-size:13px;line-height:1;padding:3px 8px}
 .calrefresh.spin{animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.joinbtn.callg{background:var(--callg);color:var(--callink)}
 .joinbtn{display:inline-block;margin-top:4px;background:var(--blue);color:#14110f;text-decoration:none;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:800}
 .search-results{position:fixed;top:58px;left:50%;transform:translateX(-50%);width:min(536px,92vw);max-height:56vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;z-index:45;box-shadow:0 14px 36px rgba(0,0,0,.55)}
 .search-results .sr{padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
@@ -383,6 +396,11 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 .plstag{color:#c9c3bb;border-color:#3a332d}
 .plstag.s{color:#5cc48a}.plstag.l{color:#7fb0d0}.plstag.p{color:#f08a5f}
 .plstag:hover,.plstag:focus-visible{background:#e8683c;color:#111;border-color:#e8683c}
+.meetnn{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
+.nnchip{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px 4px 3px 8px;font-size:12px;color:#c9c3bb;white-space:nowrap}
+.nnchip b{font-size:10px;letter-spacing:.8px;color:#c9c3bb}.nnchip.now{border-color:#e5533a}.nnchip.now b{color:#ff7a5c}
+.nnchip .joinbtn{margin:0;padding:3px 9px;font-size:12px}
+@media(max-width:640px){ .meetnn{display:none} }
 </style>
 </head>
 <body>
@@ -396,11 +414,12 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
   <div class="ctrlrow">
     <div class="wxstrip" id="wx"></div>
     <button class="tb-btn" id="bulkBtn" title="Bulk add — paste a list">📋 Bulk</button>
-    <button class="tb-btn" id="meetBtn" title="Today's meetings">📅 Meetings</button>
+    <button class="tb-btn" id="meetBtn" title="Today's meetings">📅 Meetings</button><span id="meetNN" class="meetnn"></span>
     <button class="tb-btn" id="gridBtn" title="Toggle reference grid">▦ Grid</button>
     <button class="tb-btn" id="picBtn" title="Photo → list">📷</button>
     <button class="tb-btn" id="undoBtn" title="Undo last action (⌘Z)">↩ Undo</button>
     <button class="tb-btn" id="contactsBtn" title="Contacts search">👤</button>
+    <button class="tb-btn" id="scBtn" title="⌨️ Shortcuts cheat-sheet (press ?)">⌨️</button>
     <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
     <input class="search" id="search" placeholder="Search tasks…">
     <button class="tb-btn" id="settingsBtn">⚙︎</button>
@@ -420,9 +439,10 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 
 <script>
 "use strict";
-const BUILD='2026-10-09 10:48';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-09 12:39';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
+  {v:'2026-10-09 · ⌨️ Shortcuts cheat-sheet', d:'New ⌨️ button in the top bar (or press ?) opens your living keyboard-shortcut cheat-sheet — your F-key macros, Excel, and macOS, searchable and grouped, with ★ favorites. Add/edit/delete any shortcut right there (saved to Airtable), and I can tune it for you over time.'},
   {v:'2026-10-08 · Focus clears at 11 PM', d:'🎯 Now/Focus no longer empties when you open the app in the morning — it now stays put all day and clears at ~11 PM (its leftovers still jump to the top of 🔥 Priority, nothing lost). If the app is closed at 11 PM it catches up next time you open it. So things you put in Focus during the day actually stay there.'},
   {v:'2026-10-08 · iPhone-style polish + history', d:'Desktop restyled to feel more like the iPhone app — rounder panels & cards, more breathing room, soft depth/shadows, crisper type, thin iOS scrollbars, warm gradient on the main buttons (same colors/layout, just nicer). Plus: 🕘 on the 🎯 Now/Focus and 📥 Incoming panels to browse PAST days — see what you focused on / added each day (with Re-focus and day ‹ › nav).'},
   {v:'2026-10-08 · park / purgatory', d:'🅿️ Park — set things aside without losing them. Tap 🅿️ on any task, or 🅿️ in a panel/🔍-search header to park the WHOLE list at once ("make it all go away, focus on one thing"). Parked items vanish from every list (Priority, Still-open, project/lead/sub, counts) and wait in the new 🅿️ Parked panel — Restore one, Restore all, or drag a task onto it. ⌘Z undoes a park. Separate from ⊘ Clear (which just unfiles to Backlog).'},
@@ -488,7 +508,7 @@ addEventListener('touchmove',()=>{userScrolled=true;},{passive:true});
 addEventListener('wheel',()=>{userScrolled=true;},{passive:true});
 let incomingSort = localStorage.getItem('incomingSort') || 'new';   // Incoming auto-sort
 let psFind = '';   // live find text for the Project/Sub/Lead bubbles
-let tmrOpen = false;   // Meetings "🌙 Tomorrow" group — collapsed by default
+let tmrOpen = true;   // Meetings "🌙 Tomorrow" group — shown by default
 function sortItems(items,mode){
   const a=[...items];
   if(mode==='days') a.sort((x,y)=>daysOpen(y)-daysOpen(x));
@@ -736,7 +756,7 @@ async function atFetch(){
       priorityRemote:+flat(rec.fields.Priority)||0,
       doDate:(flat(rec.fields.DoDate)||'').slice(0,10),
       updatedAt:flat(rec.fields.UpdatedAt),
-      textEx:!!rec.fields.TextExclude, leadStatus:flat(rec.fields.LeadStatus), flag:!!rec.fields.RoniFlag, textCount:+rec.fields.TextCount||0
+      listOrder:loFresh(rec.id,(rec.fields.ListOrder==null?null:+rec.fields.ListOrder)), textEx:!!rec.fields.TextExclude, leadStatus:flat(rec.fields.LeadStatus), flag:!!rec.fields.RoniFlag, textCount:+rec.fields.TextCount||0
     })));
     offset=d.offset;
   }while(offset&&++g<50);
@@ -1194,7 +1214,12 @@ function reorderPanels(fromId,toId){
 }
 function heightPx(id){ const h=meta.height&&meta.height[id]; return h?({1:'150px',2:'400px',3:'700px'})[h]:null; }
 // Manual within-section task ordering (drag a task onto another to resort).
+// A just-dragged ListOrder beats a stale Airtable read for 3 min (the save may not have landed yet)
+function loMap(){ try{ return JSON.parse(localStorage.getItem('loLocal')||'{}'); }catch(e){ return {}; } }
+function loFresh(id,v){ const m=loMap(), e=m[id]; return (e&&Date.now()-e.at<180000)?e.v:v; }
 function orderRows(items,sec){
+  // Calls / Morning / Afternoon: shared drag order from Airtable ListOrder (same as the iPhone ≡ handle)
+  if(sec==='calls'||sec==='morning'||sec==='afternoon'){ if(items.some(t=>t.listOrder!=null)) return items.map((t,i)=>({t,i})).sort((a,b)=>((a.t.listOrder??1e9)-(b.t.listOrder??1e9))||a.i-b.i).map(x=>x.t); }
   const ord=meta.taskOrder&&meta.taskOrder[sec]; if(!ord)return items;
   return [...items].sort((a,b)=>{const ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);return (ia<0?1e9:ia)-(ib<0?1e9:ib);});
 }
@@ -1205,7 +1230,14 @@ function reorderTask(sec,fromId,beforeId){
   if(ord){ const inOrd=ord.filter(x=>ids.includes(x)); ids=[...inOrd,...ids.filter(x=>!inOrd.includes(x))]; }
   ids=ids.filter(x=>x!==fromId);
   const i=ids.indexOf(beforeId); ids.splice(i<0?ids.length:i,0,fromId);
-  meta.taskOrder[sec]=ids; saveMeta(); touch(fromId); saveAug(); render();
+  meta.taskOrder[sec]=ids; saveMeta(); touch(fromId); saveAug();
+  if(sec==='calls'||sec==='morning'||sec==='afternoon'){   // persist to Airtable so the iPhone shows the same order
+    const cur=orderRows(tasks.filter(t=>t.status==='Open'&&sectionOf(t)===sec),sec).map(t=>t.id).filter(x=>x!==fromId);
+    const j=cur.indexOf(beforeId); cur.splice(j<0?cur.length:j,0,fromId);
+    const ups=[]; cur.forEach((id,i)=>{ const t=tasks.find(x=>x.id===id); if(t&&t.listOrder!==i*10){ t.listOrder=i*10; ups.push({id,fields:{ListOrder:i*10}}); } });
+    { const m=loMap(), now=Date.now(); for(const k in m) if(now-m[k].at>180000) delete m[k]; ups.forEach(u=>m[u.id]={v:u.fields.ListOrder,at:now}); try{ localStorage.setItem('loLocal',JSON.stringify(m)); }catch(e){} }
+    atPatchMany(ups); }
+  render();
 }
 // Move a task to the TOP of its section's manual order (used when you ring its bell).
 function bumpTop(id){
@@ -1463,6 +1495,79 @@ function openAddContact(onSaved){
   cancelB.onclick=()=>bd.remove();
   bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
   setTimeout(()=>ta.focus(),40);
+}
+/* ---------- ⌨️ Shortcuts — a living cheat-sheet (Airtable Shortcuts table), editable + searchable ---------- */
+const SHORTCUTS_TABLE='tblD5XnAycBjDTqzY';
+const scUrl=id=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+SHORTCUTS_TABLE+(id?('/'+id):'');
+let shortcuts=[]; try{ shortcuts=JSON.parse(localStorage.getItem('tb.shortcuts')||'[]'); }catch(e){}
+function loadShortcuts(force){
+  const fresh=(Date.now()-(+localStorage.getItem('tb.shortcuts.ts')||0))<30*60*1000;
+  if(shortcuts.length&&fresh&&!force) return Promise.resolve(shortcuts);
+  if(!cfg.apiKey) return Promise.resolve(shortcuts);
+  const u=new URL(scUrl()); u.searchParams.set('pageSize','100');
+  return fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{
+    if(d&&d.records){ shortcuts=d.records.map(r=>({id:r.id,keys:flat(r.fields.Keys),action:flat(r.fields.Action),cat:flat(r.fields.Category)||'Other',notes:flat(r.fields.Notes),fav:!!r.fields.Fav,sort:+flat(r.fields.Sort)||0,source:flat(r.fields.Source)}));
+      try{ localStorage.setItem('tb.shortcuts',JSON.stringify(shortcuts)); localStorage.setItem('tb.shortcuts.ts',String(Date.now())); }catch(e){} }
+    return shortcuts;
+  }).catch(()=>shortcuts);
+}
+function scSave(fields,id){ if(!cfg.apiKey) return Promise.resolve(null);
+  const o={method:id?'PATCH':'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
+    body:JSON.stringify(id?{fields,typecast:true}:{records:[{fields}],typecast:true})};
+  return fetch(scUrl(id),o).then(r=>r.ok?r.json():null).then(d=>d?(id?d:d.records[0]):null); }
+function scDelete(id){ if(!cfg.apiKey||!id) return Promise.resolve(); return fetch(scUrl(id),{method:'DELETE',headers:{Authorization:'Bearer '+cfg.apiKey}}).catch(()=>{}); }
+function kbd(keys){ return esc(keys||'').split('+').map(k=>'<kbd>'+esc(k.trim())+'</kbd>').join('<span class="kbdp">+</span>'); }
+function openShortcuts(){
+  const bd=document.createElement('div'); bd.className='backdrop';
+  const box=document.createElement('div'); box.className='modal sc-modal'; box.innerHTML='<h3>⌨️ Shortcuts</h3>';
+  const bar=document.createElement('div'); bar.style.cssText='display:flex;gap:6px;margin:6px 0 4px';
+  const inp=document.createElement('input'); inp.className='inp'; inp.type='search'; inp.placeholder='Search keys or action…'; inp.style.flex='1';
+  const addB=document.createElement('button'); addB.className='btn primary'; addB.textContent='＋ Add'; addB.style.flex='0 0 auto';
+  bar.appendChild(inp); bar.appendChild(addB); box.appendChild(bar);
+  const results=document.createElement('div'); results.className='sc-results'; box.appendChild(results);
+  const edit=document.createElement('div'); edit.style.display='none'; box.appendChild(edit);
+  const draw=()=>{
+    const q=inp.value.trim().toLowerCase(); results.innerHTML='';
+    if(!shortcuts.length){ results.innerHTML='<div class="empty">No shortcuts yet — tap ＋ Add.</div>'; return; }
+    let list=shortcuts.filter(s=>!q||[s.keys,s.action,s.cat,s.notes].join(' ').toLowerCase().includes(q));
+    const cats=[...new Set(list.map(s=>s.cat))];
+    const favFirst=list.filter(s=>s.fav).sort((a,b)=>a.sort-b.sort);
+    if(!q && favFirst.length){ const h=document.createElement('div'); h.className='sc-cat'; h.textContent='★ Favorites'; results.appendChild(h); favFirst.forEach(s=>results.appendChild(scRow(s))); }
+    cats.forEach(cat=>{ const g=list.filter(s=>s.cat===cat && (q||!s.fav)).sort((a,b)=>(b.fav-a.fav)||a.sort-b.sort); if(!g.length)return;
+      const h=document.createElement('div'); h.className='sc-cat'; h.textContent=cat; results.appendChild(h); g.forEach(s=>results.appendChild(scRow(s))); });
+    if(!results.children.length) results.innerHTML='<div class="empty">No match.</div>';
+  };
+  const scRow=s=>{ const row=document.createElement('div'); row.className='sc-row';
+    const k=document.createElement('div'); k.className='sc-keys'; k.innerHTML=kbd(s.keys); row.appendChild(k);
+    const a=document.createElement('div'); a.className='sc-act'; a.innerHTML=esc(s.action)+(s.notes?' <span class="sc-note">· '+esc(s.notes)+'</span>':''); row.appendChild(a);
+    const f=document.createElement('button'); f.className='sc-fav'; f.textContent=s.fav?'★':'☆'; f.title='Favorite'; f.onclick=()=>{ s.fav=!s.fav; f.textContent=s.fav?'★':'☆'; scSave({Fav:s.fav},s.id); try{localStorage.setItem('tb.shortcuts',JSON.stringify(shortcuts));}catch(e){} }; row.appendChild(f);
+    const e=document.createElement('button'); e.className='sc-fav'; e.textContent='✎'; e.title='Edit'; e.onclick=()=>openEdit(s); row.appendChild(e);
+    return row; };
+  const openEdit=s=>{ s=s||{cat:'My Macros',keys:'',action:'',notes:''};
+    results.style.display='none'; bar.style.display='none'; edit.style.display='block';
+    edit.innerHTML='<h4 style="margin:4px 0 8px">'+(s.id?'Edit':'New')+' shortcut</h4>';
+    const mk=(lbl,val)=>{ const w=document.createElement('label'); w.style.cssText='display:block;font-size:11px;color:var(--muted);margin:6px 0 2px'; w.textContent=lbl;
+      const i=document.createElement('input'); i.className='inp'; i.value=val||''; i.style.width='100%'; i.style.boxSizing='border-box'; edit.appendChild(w); edit.appendChild(i); return i; };
+    const ck=mk('Keys (use + between keys, e.g. Ctrl+Shift+Enter)',s.keys), ca=mk('Action',s.action), cc=mk('Category',s.cat), cn=mk('Notes (optional)',s.notes);
+    const row=document.createElement('div'); row.className='modal-actions'; row.style.marginTop='10px';
+    const save=document.createElement('button'); save.className='btn primary'; save.textContent='Save';
+    const del=document.createElement('button'); del.className='btn'; del.textContent=s.id?'Delete':''; if(!s.id)del.style.display='none'; del.style.color='var(--red)';
+    const cancel=document.createElement('button'); cancel.className='btn'; cancel.textContent='Cancel';
+    row.appendChild(save); row.appendChild(del); row.appendChild(cancel); edit.appendChild(row);
+    const back=()=>{ edit.style.display='none'; edit.innerHTML=''; results.style.display=''; bar.style.display='flex'; draw(); };
+    cancel.onclick=back;
+    del.onclick=()=>{ scDelete(s.id); shortcuts=shortcuts.filter(x=>x!==s); try{localStorage.setItem('tb.shortcuts',JSON.stringify(shortcuts));}catch(e){} back(); };
+    save.onclick=()=>{ const f={Keys:ck.value.trim(),Action:ca.value.trim(),Category:cc.value.trim()||'Other',Notes:cn.value.trim()}; if(!f.Keys&&!f.Action){back();return;}
+      if(s.id){ Object.assign(s,{keys:f.Keys,action:f.Action,cat:f.Category,notes:f.Notes}); scSave(f,s.id); }
+      else { f.Sort=(Math.max(0,...shortcuts.filter(x=>x.cat===f.Category).map(x=>x.sort))+1); scSave(f).then(rec=>{ if(rec){shortcuts.push({id:rec.id,keys:f.Keys,action:f.Action,cat:f.Category,notes:f.Notes,fav:false,sort:f.Sort,source:''}); try{localStorage.setItem('tb.shortcuts',JSON.stringify(shortcuts));}catch(e){} back();} }); return; }
+      try{localStorage.setItem('tb.shortcuts',JSON.stringify(shortcuts));}catch(e){} back(); };
+    setTimeout(()=>ck.focus(),30);
+  };
+  addB.onclick=()=>openEdit(null);
+  inp.addEventListener('input',draw);
+  const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>bd.remove(); box.appendChild(act);
+  bd.appendChild(box); bd.addEventListener('click',e=>{if(e.target===bd)bd.remove();}); document.body.appendChild(bd);
+  loadShortcuts().then(draw); draw(); setTimeout(()=>inp.focus(),40);
 }
 function openContacts(prefill){
   const bd=document.createElement('div'); bd.className='backdrop';
@@ -2206,7 +2311,31 @@ function appJoinURL(url){
   if(gm) return 'https://meet.google.com/'+gm[1];   // Meet has no reliable desktop scheme; direct room URL
   return '';
 }
+
+// ── NOW / NEXT meeting (shared logic: Airtable Calendar table + the two daily conference calls) ──
+// Sort = start minutes from midnight; end parsed from "When" (e.g. "11:30 AM–12:00 PM"), else start+30.
+// Weekday 8:30 AM and 3:00 PM conference calls (▶ Join = Dialpad room; small dial-in 917-268-3365, no PIN) are added unless the calendar already has a meeting then.
+const CONF_TEL='tel:+19172683365';
+const CONF_ROOM='https://meetings.dialpad.com/room/rbenjamini';
+const CONF_CALLS=[[510,540,'🌅 8:30 conference call','8:30–9:00 AM'],[900,930,'☀️ Afternoon call','3:00–3:30 PM']];   // weekday 8:30 AM + 3:00 PM
+function mtgEnd(e){ const m=String(e.when||'').split(/[–—-]/)[1]; if(m){ const r=m.match(/(\d{1,2})(?::(\d\d))?\s*(AM|PM)?/i); if(r){ let h=+r[1]%12, mm=+(r[2]||0); const ap=(r[3]||'').toUpperCase(); if(ap==='PM'||(!ap&&h<7)) h+=12; const v=h*60+mm; if(v>(e.sort||0)) return v; } } return (e.sort||0)+30; }
+function meetingsToday(cal,day){
+  const list=cal.filter(e=>e.date===day).map(e=>Object.assign({},e,{start:+e.sort||0,end:mtgEnd(e)}));
+  const dw=new Date(day+'T12:00:00').getDay();
+  if(dw>=1&&dw<=5){ CONF_CALLS.forEach(([s,e,t,when])=>{
+    // Dedupe: a calendar meeting overlapping the slot, or a Dialpad-room meeting within 90 min, IS this call → show it once, with Join → Dialpad.
+    const isDp=x=>/dialpad/i.test((x.link||'')+' '+(x.location||''));
+    const hit=list.find(x=>x.start<e&&x.end>s)||list.find(x=>isDp(x)&&Math.abs(x.start-s)<=90);
+    if(hit){ if(!hit.link||isDp(hit)||/^tel:/i.test(hit.link)){ hit.link=CONF_ROOM; hit.dial=CONF_TEL; hit.conf=1; } return; }
+    list.push({title:t,when,date:day,sort:s,start:s,end:e,location:'Dialpad · dial-in 917-268-3365 (no PIN)',link:CONF_ROOM,dial:CONF_TEL,conf:1}); }); }
+  return list.sort((a,b)=>a.start-b.start);
+}
+function nowNext(cal,day){ const d=new Date(), cur=d.getHours()*60+d.getMinutes(); const L=meetingsToday(cal,day);
+  const now=L.filter(e=>e.start-5<=cur&&cur<e.end); const next=L.find(e=>e.start>cur&&!now.includes(e)); return {now,next,cur}; }
+const hhmm=m=>{ let h=Math.floor(m/60), mm=m%60; const ap=h>=12?'PM':'AM'; h=h%12||12; return h+(mm?':'+String(mm).padStart(2,'0'):'')+' '+ap; };
 function meetingLink(e){
+  if(e.dial) return `<a class="joinbtn" href="${esc(e.link)}" target="_blank" rel="noopener">▶ Join</a><a href="${e.dial}" style="font-size:11px;color:var(--muted);margin-left:4px" title="Dial-in 917-268-3365, no PIN">dial-in</a>`;
+  if(e.link&&/^tel:/i.test(e.link)) return `<a class="joinbtn" href="${e.link}">📞 Dial</a>`;
   const url=(e.link&&/^https?:/i.test(e.link))?e.link:'';
   if(url){
     const app=appJoinURL(url);
@@ -2214,7 +2343,7 @@ function meetingLink(e){
     return `<a class="joinbtn" href="${esc(app||url)}" target="_blank" rel="noopener">▶ Join</a>`;
   }
   const digits=(e.location||'').replace(/[^\d]/g,'');
-  if(digits.length>=10) return `<a class="joinbtn" href="tel:${digits}">📞 Call</a>`;
+  if(digits.length>=10) return `<a class="joinbtn callg" href="tel:${digits}">📞 Call</a>`;
   return '';
 }
 // ── Mail triage: reply (→ send queue), turn into a task, open in Superhuman, clear ──
@@ -2301,7 +2430,7 @@ function calRefreshBtn(){
 }
 function calendarPanel(){
   const today=todayISO();
-  const evs=calendar.filter(e=>e.date===today).sort((a,b)=>a.sort-b.sort);
+  const evs=meetingsToday(calendar,today);   // includes the weekday 8:30 AM / 3 PM conference calls (📞 Dial)
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='calendar';
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls('calendar','📅 Today',null)+`<span class="count">${evs.length}</span>`;
   p.appendChild(head); wirePanel(p,head,'calendar'); head.appendChild(calRefreshBtn());
@@ -2324,7 +2453,7 @@ function calendarPanel(){
   }
   // Tomorrow's schedule, below today's
   const tmr=tomorrowISO();
-  const tev=calendar.filter(e=>e.date===tmr).sort((a,b)=>a.sort-b.sort);
+  const tev=meetingsToday(calendar,tmr);
   if(tev.length){ const h=document.createElement('div'); h.className='ack-h tmr-head'; h.style.cssText='margin:8px 0 4px;cursor:pointer;user-select:none'; h.textContent=(tmrOpen?'▾':'▸')+' 🌙 Tomorrow ('+tev.length+')'; body.appendChild(h);
     const list=document.createElement('div'); if(!tmrOpen)list.style.display='none';
     tev.forEach(e=>{const d=document.createElement('div');d.className='cal-ev';d.style.opacity='.8';
@@ -2650,7 +2779,7 @@ function fetchCC(force){ if(!cfg.apiKey||ccBusy) return; if(!force&&Date.now()-(
   const u=new URL(AT+cfg.baseId+'/'+CC_TABLE); u.searchParams.set('pageSize','100');
   fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{ ccBusy=false; if(!d) return; ccRows=(d.records||[]).map(x=>({id:x.id,name:x.fields.Name||'',phone:x.fields.Phone||'',slots:x.fields.Slots||[],active:!!x.fields.Active}));
     meta.ccRows=ccRows; meta.ccAt=Date.now(); saveMeta(); try{ render(); }catch(e){} }).catch(()=>{ ccBusy=false; }); }
-const ccMsg='Please join the call: '+DIAL_IN+' (no PIN) — tap to dial: tel:+19172683365';
+const ccMsg='Please join the call: https://meetings.dialpad.com/room/rbenjamini or dial '+DIAL_IN+' (no PIN)';
 function ccPatchD(id,fields){ if(!cfg.apiKey) return; fetch(AT+cfg.baseId+'/'+CC_TABLE+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields,typecast:true})}); }
 function callInvitePanel(){
   fetchCC(false);
@@ -2675,6 +2804,17 @@ function callInvitePanel(){
   p.addEventListener('drop',e=>{const dd=e.dataTransfer.getData('text/plain');if(dd&&dd.startsWith('panel:'))reorderPanels(dd.slice(6),'callinvite');});
   return p;
 }
+/* 📞 calls: who to call (task Phone → roster → Contacts fuzzy match) + NOW/NEXT */
+const CALL_STOP_D=new Set(['call','calls','re','about','with','the','and','to','for','back','text','follow','up','followup','fu','on','in','of','at','pm','am','me','him','her','them','ask','check','tell','get','x2','x3','asap','today','tomorrow','again']);
+function callMatchD(t){ const ph=phoneFor(t); if(ph) return {phone:ph,who:t.lead||''};
+  try{ if(!contacts.length&&!added.length){ if(Date.now()-(window._ctTryD||0)>60000){ window._ctTryD=Date.now(); loadContacts(); } return null; } }catch(e){ return null; }
+  const words=cleanName(t).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!CALL_STOP_D.has(w)&&!/^\d+$/.test(w));
+  const qs=[]; if(t.lead) qs.push(t.lead.toLowerCase()); for(let i=0;i<words.length-1;i++) qs.push(words[i]+' '+words[i+1]); words.forEach(w=>qs.push(w));
+  for(const q of qs){ const hits=searchContacts(q).filter(c=>(c.p||[]).length); if(!hits.length) continue;
+    const exact=hits.find(c=>(c.n||'').toLowerCase().split(/\s+/)[0]===q.split(' ')[0]);
+    if(hits.length<=3||exact){ const c=exact||hits[0]; return {phone:c.p[0],who:c.n}; } }
+  return null; }
+function callWhenD(t){ return {day:doDateOf(t)||'',min:null}; }
 function automationsPanel(){
   fetchAutos(false);
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='automations';
@@ -2809,6 +2949,11 @@ function taskEl(t,sectionId){
   if(inStillOpen) act('👍','','Still relevant — keep it',()=>{touch(t.id);toast('👍 Kept');render();});
   const inCatPane = isRealSection(sectionId) || (sectionId==='bulb' && activeBulb && isRealSection(activeBulb.val));
   if(sectionOf(t) && sectionOf(t)!=='backlog') act('⊘','','Remove from category ('+sectionOf(t)+') — stays open',()=>unfile(t));
+  // 📞 Calls pane: one-tap Call / Text, matched to Contacts (or Add number)
+  if(sectionId==='calls'){ const m=callMatchD(t);
+    if(m){ const c=document.createElement('a'); c.className='cardbtn'; c.href='tel:'+m.phone.replace(/[^\d+]/g,''); c.textContent='📞'; c.title='Call '+(m.who||m.phone)+' '+m.phone; c.onclick=e=>e.stopPropagation(); acts.appendChild(c);
+      const x=document.createElement('a'); x.className='cardbtn'; x.href='sms:'+m.phone.replace(/[^\d+]/g,''); x.textContent='💬'; x.title='Text '+(m.who||m.phone); x.onclick=e=>e.stopPropagation(); acts.appendChild(x); }
+    else act('＋#','','Add a phone number',()=>askPhone(t)); }
   const mas=document.createElement('div'); mas.className='mas';
   const mk=(ltr,title,fn,on)=>{const b=document.createElement('button');b.className='masb'+(on?' on':'');b.textContent=ltr;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;};
   mas.appendChild(mk('M','Add to morning call',()=>setSlot(t.id,'morning'), sectionOf(t)==='morning'));
@@ -3640,6 +3785,9 @@ document.addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='z'&
 document.getElementById('refreshBtn').onclick=()=>{ meta.lastSecondary=0; saveMeta(); location.reload(); };   // manual refresh = force a FULL pull (incl. Emails/Texts/Outbox/Improvements)
 document.getElementById('settingsBtn').onclick=openSettings;
 { const cb=document.getElementById('contactsBtn'); if(cb)cb.onclick=()=>openContacts(); }
+{ const sb=document.getElementById('scBtn'); if(sb)sb.onclick=()=>openShortcuts(); }
+// Press "?" (Shift+/) anywhere outside an input to pop the Shortcuts cheat-sheet.
+document.addEventListener('keydown',e=>{ if(e.key==='?' && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName||'')) && !e.target.isContentEditable && !document.querySelector('.sc-modal')){ e.preventDefault(); openShortcuts(); } });
 loadContacts();   // warm the on-device contacts cache
 setInterval(rotateStill, 30000);   // Still Open: quietly rotate the ambient card every 30s (paused on hover)
 // Desktop add bubble at the top of the task pane → adds to Incoming.
@@ -3650,6 +3798,14 @@ setInterval(rotateStill, 30000);   // Still Open: quietly rotate the ambient car
 document.getElementById('addBtn').onclick=addTask;
 document.getElementById('picBtn').onclick=()=>document.getElementById('picInput').click();
 document.getElementById('meetBtn').onclick=meetingsModal;
+// 📅 NOW / NEXT next to the Meetings button — one-tap Join (Zoom/Teams/Meet/Dialpad) or Dial for the conference calls
+function renderNowNext(){ const el=document.getElementById('meetNN'); if(!el) return; const {now,next}=nowNext(calendar,todayISO());
+  const chip=(tag,e)=>'<span class="nnchip'+(tag==='NOW'?' now':'')+'" title="'+esc((e.when||'')+' · '+(e.title||''))+'"><b>'+tag+'</b> '+esc((e.title||'').slice(0,26))+(tag==='NEXT'?' · '+esc(hhmm(e.start)):'')+' '+meetingLink(e)+'</span>';
+  el.innerHTML=now.map(e=>chip('NOW',e)).join('')+(next?chip('NEXT',next):'');
+  // calls due today (DoDate ≤ today) → CALL chip with one-tap dial
+  const due=orderRows(tasks.filter(t=>t.status==='Open'&&visible(t)&&notSnoozed(t)&&sectionOf(t)==='calls'),'calls').slice(0,2);   // = top 2 of the Calls panel, in drag order
+  due.forEach(t=>{ const m=callMatchD(t); el.insertAdjacentHTML('beforeend','<span class="nnchip" title="'+esc(cleanName(t))+'"><b>CALL</b> '+esc(cleanName(t).slice(0,22))+(m?' <a class="joinbtn callg" href="tel:'+m.phone.replace(/[^\d+]/g,'')+'">📞</a><a class="joinbtn" href="sms:'+m.phone.replace(/[^\d+]/g,'')+'">💬</a>':'')+'</span>'); }); }
+renderNowNext(); setInterval(renderNowNext,60000); { const _r=render; render=function(){ const x=_r.apply(this,arguments); try{ renderNowNext(); }catch(e){} return x; }; }
 document.getElementById('bulkBtn').onclick=bulkAdd;
 document.getElementById('picInput').onchange=e=>{if(e.target.files[0])photoToList(e.target.files[0]);};
 document.getElementById('gridBtn').onclick=()=>{const g=document.getElementById('grid');g.classList.toggle('on');document.getElementById('gridBtn').classList.toggle('on',g.classList.contains('on'));if(g.classList.contains('on'))buildGrid();};

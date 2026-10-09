@@ -28,7 +28,7 @@
    ============================================================ */
 :root{
   --bg:#14110f; --panel:#1d1916; --panel2:#262019; --ink:#f5f3ee; --muted:#a8a29a; --dim:#6f6861;
-  --line:#2c2723; --accent:#e8683c; --gold:#e0a458; --green:#3a8f5f; --red:#c2553f; --blue:#5b8fb0;
+  --line:#2c2723; --accent:#e8683c; --gold:#e0a458; --green:#3a8f5f; --callg:#30D158; --callink:#0b1a10; --red:#c2553f; --blue:#5b8fb0;
   --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
   --ease:cubic-bezier(.2,.8,.2,1);
 }
@@ -61,17 +61,17 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .sub{color:var(--muted);font-size:15px;margin:0 4px 16px}
 
 /* ---------- home ---------- */
-.calls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:26px}
-.call{position:relative;border-radius:22px;padding:16px 16px 14px;min-height:150px;display:flex;flex-direction:column;justify-content:space-between;
+.calls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:14px}
+.call{position:relative;border-radius:16px;padding:8px 10px;min-height:54px;display:flex;flex-direction:row;align-items:center;gap:7px;
   text-align:left;overflow:hidden;transition:transform .12s}
 .call:active{transform:scale(.97)}
 .call.am{background:linear-gradient(150deg,#f0a35c 0%,#e8683c 55%,#b8452a 100%);color:#1a0e07}
 .call.pm{background:linear-gradient(150deg,#f3d27a 0%,#e0a458 55%,#a8742f 100%);color:#1a1207}
-.call .em{font-size:30px;line-height:1}
-.call .lbl{font-weight:800;font-size:19px;letter-spacing:-.2px}
-.call .n{font-size:44px;font-weight:800;line-height:1;letter-spacing:-1px}
+.call .em{font-size:20px;line-height:1;flex:none}
+.call .lbl{font-weight:800;font-size:15px;letter-spacing:-.2px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.call .n{font-size:26px;font-weight:800;line-height:1;letter-spacing:-1px;flex:none}
 .call .hint{font-size:13px;font-weight:600;opacity:.72}
-.call.now::after{content:'NOW';position:absolute;top:14px;right:14px;font-size:11px;font-weight:800;letter-spacing:.8px;
+.call.now::after{content:'NOW';position:static;flex:none;font-size:10px;font-weight:800;letter-spacing:.8px;
   background:rgba(0,0,0,.78);color:#fff;border-radius:8px;padding:3px 7px}
 .sect{color:var(--muted);font-size:13px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;margin:0 4px 10px}
 .views{display:flex;flex-direction:column;gap:12px;margin-bottom:26px}
@@ -132,7 +132,7 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .tcard .quick{display:flex;gap:8px;margin-top:12px}
 .qbtn{flex:1;white-space:nowrap;padding:0 6px;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:14px;min-height:50px;font-weight:700;font-size:16px;background:#efe9df;color:#3b322b;text-decoration:none}
 .qbtn:active{filter:brightness(.92)}
-.qbtn.call{background:#2f7a52;color:#fff}
+.qbtn.qcall{background:var(--callg);color:var(--callink)}
 .stamp{display:none;position:absolute;top:26px;font-size:24px;font-weight:900;letter-spacing:1px;padding:6px 14px;border-radius:12px;border:4px solid;opacity:0;pointer-events:none;transform:rotate(-12deg)}
 .stamp.done{left:22px;color:var(--green);border-color:var(--green)}
 .stamp.snz{right:22px;color:#b07a1c;border-color:#b07a1c;transform:rotate(12deg)}
@@ -314,7 +314,17 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .cxnum{display:flex;align-items:center;gap:8px;margin-top:4px}
 .cxp{flex:1;min-width:0;color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cxb{flex:0 0 auto;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px;font-weight:700;text-decoration:none;color:var(--ink)}
-.cxb.call{background:var(--green);border-color:var(--green);color:#fff}
+.cxb.cxcall{background:var(--callg);border-color:var(--callg);color:var(--callink)}
+/* contact search results: one compact row per number — info stacked left, fixed 44px buttons right, centered */
+.cxrow{display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line)}
+.cxinfo{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.cxinfo b{font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cxinfo .cxsub{color:var(--dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cxinfo .cxp{flex:none;color:var(--muted);font-size:13.5px}
+.cxbtns{flex:none;display:flex;align-items:center;gap:6px}
+.cxbtns .cxb{height:44px;min-height:0;display:inline-flex;align-items:center;justify-content:center;padding:0 14px;box-sizing:border-box;line-height:1}
+.cxbtns .cxb:not(.cxcall){width:44px;padding:0}
+.cxrow.more{border-top:0;padding-top:0}
 /* 📅 Meetings */
 .mtgh{font-weight:800;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 4px}
 .mtg{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
@@ -322,8 +332,8 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .mtgb{flex:1;min-width:0}
 .mtgt{font-size:15px;font-weight:600;line-height:1.25}
 .mtgl{font-size:12px;color:var(--dim);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mtgjoin{flex:0 0 auto;background:var(--accent);border:none;border-radius:10px;padding:9px 13px;font-size:14px;font-weight:800;text-decoration:none;color:#14110f;white-space:nowrap}
-.mtgjoin.tel{background:var(--green);color:#fff}
+.mtgjoin{flex:0 0 auto;background:#5b8fb0;border:none;border-radius:10px;padding:9px 13px;font-size:14px;font-weight:800;text-decoration:none;color:#14110f;white-space:nowrap}
+.mtgjoin.tel{background:var(--callg);color:var(--callink)}
 .wxrow{display:grid;grid-template-columns:1fr auto auto 54px;align-items:center;gap:10px;padding:11px 6px;border-bottom:1px solid var(--line)}
 .wxrow.now{background:var(--panel)}
 .wxrow{border-radius:10px;margin:3px 0;border:1px solid transparent}
@@ -384,7 +394,7 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .invall{display:flex;align-items:center;justify-content:center;min-height:52px;border-radius:14px;background:linear-gradient(135deg,#FF6B35,#E85D04);color:#fff;font-weight:800;font-size:16px;text-decoration:none}
 .ccrow{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)}
 .ccrow:last-child{border-bottom:0}
-.ccinv{background:var(--green);color:#fff;font-weight:800;font-size:14px;border-radius:12px;padding:9px 14px;text-decoration:none}
+.ccinv{height:44px;display:inline-flex;align-items:center;box-sizing:border-box;flex:none;background:var(--green);color:#fff;font-weight:800;font-size:14px;border-radius:12px;padding:9px 14px;text-decoration:none}
 .ccrm{width:34px;height:34px;border-radius:17px;color:var(--dim);font-size:15px}
 .ccok{color:#6fdc9c;font-size:11.5px;font-weight:700}
 .revbtn{background:#1b2230;border-color:#2f4466}
@@ -401,6 +411,53 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .ldacts .ldok{margin-left:auto;background:var(--green);color:#fff;padding:0 18px}
 .ldprev{margin-top:8px}.ldprev summary{color:var(--dim);font-size:12px;cursor:pointer}
 .ldprev pre{white-space:pre-wrap;font:13px/1.4 -apple-system,system-ui;color:#d8d2ca;background:#171412;border-radius:10px;padding:10px;margin:6px 0 0}
+/* NOW / NEXT meeting on the home Meetings card */
+.meetcard .nnrow{display:flex;align-items:center;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.nntag{flex:none;font:800 10.5px ui-monospace,Menlo,monospace;letter-spacing:1px;border-radius:7px;padding:4px 7px;background:var(--panel2);color:var(--muted)}
+.nntag.now{background:#e5533a;color:#fff}
+.nnt{flex:1;min-width:0;display:flex;flex-direction:column}.nnt b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nnt span{color:var(--muted);font-size:12.5px}
+.nnjoin{flex:none;height:44px;display:inline-flex;align-items:center;padding:0 16px;border-radius:12px;background:#5b8fb0;color:#14110f;font-weight:800;font-size:14.5px;text-decoration:none}
+.nnjoin.tel{background:var(--callg);color:var(--callink)}   /* Call = call-pane green everywhere; Join = website blue */
+.nnj{flex:none;display:flex;flex-direction:column;align-items:center;gap:2px}.nndial{font-size:11px;color:var(--muted);text-decoration:underline}
+.nntmh{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);font-weight:800;font-size:13px;color:var(--muted)}
+.meetcard .nnrow.sm{border-top:0;margin-top:6px;padding-top:0}
+.meetcard .nnrow.sm .nntag{min-width:62px;text-align:center}
+/* calls pane rows + NOW/NEXT calls card */
+.nntxt{flex:none;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:12px;background:var(--panel2);text-decoration:none;font-size:17px}
+.sl.clr{display:flex;align-items:center;gap:8px;cursor:pointer}
+.sl.clr .clt{flex:1;min-width:0;display:flex;flex-direction:column}
+.sl.clr .cls{color:var(--dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.clb{flex:none;height:40px;display:inline-flex;align-items:center;justify-content:center;padding:0 11px;border-radius:11px;background:var(--panel2);color:var(--ink);font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap}
+.clb.clcall{background:var(--callg);color:var(--callink)}.clb.add{color:var(--gold);border:1px dashed #6b5640;background:none}
+.clgh{display:flex;justify-content:space-between;margin:14px 6px 6px;font-weight:800;font-size:13px;color:var(--muted)}
+/* home status row (bottom, scrolls with page) */
+.homebar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:22px 0 4px;padding:10px 4px;border-top:1px solid var(--line)}
+.hbstat{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:13px;min-width:0}
+.hbbtns{display:flex;align-items:center;gap:6px;margin-left:auto;flex:none}
+.hbbtns .icon{color:var(--accent);min-width:40px;height:40px;font-size:21px;display:grid;place-items:center;border-radius:12px}
+/* ≡ drag handle for reordering call lists */
+.sl.slf{display:flex;align-items:center;gap:8px}.sl.slf .tk{flex:1;min-width:0}
+.dragh{flex:none;width:28px;height:36px;display:grid;place-items:center;color:var(--dim);font-size:18px;touch-action:none;-webkit-user-select:none;user-select:none;margin-left:-4px}
+.swr.dragging{z-index:5;box-shadow:0 10px 30px rgba(0,0,0,.55);opacity:.95}.swr.dragging .sl{background:var(--panel2)}
+.amseg{display:flex;gap:4px;margin:0 12px 8px;padding:3px;background:var(--panel);border:1px solid var(--line);border-radius:12px;flex:none}
+.amseg button{flex:1;min-height:38px;border-radius:9px;font-weight:800;font-size:14px;color:var(--muted)}
+.amseg button b{font-size:12px;opacity:.8;margin-left:3px}
+.amseg button.on{background:var(--panel2);color:var(--ink)}
+.swmv{background:#5b8fb0;color:#14110f!important}
+.homedial{margin:0 0 14px}
+.homedial .cxsearch{border:1.5px solid #2f6b4c;background:#18201b;font-size:17px;padding:14px 40px 14px 14px}
+.hdwrap{position:relative}.hdx{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:16px;color:var(--dim);font-size:14px}
+.homedial .cxresults{background:var(--panel);border-radius:14px;margin-top:6px}.homedial .cxresults:empty{display:none}
+.hwx{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:6px;margin:0 0 12px;text-align:center}
+.hwx:active{background:var(--panel2)}
+.hwxh{grid-column:1/-1;padding:10px;font-weight:700}.hwxh span{color:var(--muted);font-weight:400}
+.hwd{min-width:0;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:4px 1px;line-height:1.25}
+.hwday{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.2px}
+.hwic{font-size:18px}
+.hwt{font-size:12px;font-weight:800;display:inline-block}
+.hwmm{font-size:10px;color:var(--blue);font-weight:700}
+.hwd.wet{background:rgba(224,164,88,.14);border-color:var(--accent)}.hwd.wet .hwmm{color:var(--accent)}
+.hwd.today{box-shadow:inset 0 0 0 1px var(--accent)}
 /* @Computer – Claude */
 .compbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px;margin:0 0 12px;background:#1f1a14;border:1px solid #4a3522;border-radius:16px;font-weight:800;font-size:15px;text-align:left}
 .compbtn>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -464,7 +521,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-09 10:48';   // stamped by deploy.sh
+const BUILD='2026-10-09 12:39';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -513,7 +570,7 @@ const SLOTS={ morning:{label:'Morning call', em:'🌅'}, afternoon:{label:'After
 
 /* ---------- Airtable ---------- */
 const atUrl=()=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+encodeURIComponent(cfg.tableId);
-const FIELDS=['Task','Project','SBLead','Sub','Status','MeetingSlot','Section','DoDate','Phone','NextStep','Notes','Priority','Type','UpdatedAt','TextExclude','LeadStatus','RoniFlag','TextCount'];
+const FIELDS=['Task','Project','SBLead','Sub','Status','MeetingSlot','Section','DoDate','Phone','NextStep','Notes','Priority','Type','UpdatedAt','TextExclude','LeadStatus','RoniFlag','TextCount','ReminderAt','ListOrder'];
 async function fetchAll(){
   if(!cfg.apiKey){ if(!tasks.length){ tasks=demoTasks(); demo=true; } render(); return; }
   if(syncing) return; syncing=true; paintSync();
@@ -532,10 +589,10 @@ async function fetchAll(){
         status:flat(f.Status)||'Open', slotRemote:flat(f.MeetingSlot).toLowerCase(), sectionRemote:flat(f.Section).toLowerCase(),
         doDate:flat(f.DoDate).slice(0,10), phone:flat(f.Phone), next:flat(f.NextStep), notes:flat(f.Notes),
         priorityRemote:+flat(f.Priority)||0, type:flat(f.Type).toLowerCase(), updatedAt:flat(f.UpdatedAt),
-        textEx:!!f.TextExclude, leadStatus:flat(f.LeadStatus), flag:!!f.RoniFlag, textCount:+f.TextCount||0 }; }));
+        remindAt:flat(f.ReminderAt), listOrder:(f.ListOrder==null?null:+f.ListOrder), textEx:!!f.TextExclude, leadStatus:flat(f.LeadStatus), flag:!!f.RoniFlag, textCount:+f.TextCount||0 }; }));
       offset=d.offset;
       if(!offset){ tasks=out; demo=false; lastSync=Date.now(); save(LS_CACHE,tasks); localStorage.setItem(LS_TS,lastSync);
-        for(const t of tasks){ const a=aug[t.id]; if(a&&a.section&&!((Date.now()-(a.secAt||0))<180000)) a.section=null; } saveAug(); }
+        for(const t of tasks){ const a=aug[t.id]; if(a&&a.section&&!((Date.now()-(a.secAt||0))<180000)) a.section=null; if(a&&a.loAt){ if(Date.now()-a.loAt<180000) t.listOrder=a.lo; else { delete a.lo; delete a.loAt; } } } save(LS_CACHE,tasks); saveAug(); }
     }while(offset && ++guard<60);
   }catch(e){ toast('Offline — showing saved list'); }
   syncing=false; render();
@@ -580,7 +637,29 @@ async function fetchCalendar(){
   return calendar;
 }
 const todayMeetings=()=>calendar.filter(e=>e.date===todayISO()).sort((a,b)=>a.sort-b.sort);
-function joinHref(e){ if(e.link&&/^https?:/i.test(e.link)) return e.link; const digits=(e.location||'').replace(/[^\d]/g,''); return digits.length>=10?'tel:'+digits:''; }
+
+// ── NOW / NEXT meeting (shared logic: Airtable Calendar table + the two daily conference calls) ──
+// Sort = start minutes from midnight; end parsed from "When" (e.g. "11:30 AM–12:00 PM"), else start+30.
+// Weekday 8:30 AM and 3:00 PM conference calls (▶ Join = Dialpad room; small dial-in 917-268-3365, no PIN) are added unless the calendar already has a meeting then.
+const CONF_TEL='tel:+19172683365';
+const CONF_ROOM='https://meetings.dialpad.com/room/rbenjamini';
+const CONF_CALLS=[[510,540,'🌅 8:30 conference call','8:30–9:00 AM'],[900,930,'☀️ Afternoon call','3:00–3:30 PM']];   // weekday 8:30 AM + 3:00 PM
+function mtgEnd(e){ const m=String(e.when||'').split(/[–—-]/)[1]; if(m){ const r=m.match(/(\d{1,2})(?::(\d\d))?\s*(AM|PM)?/i); if(r){ let h=+r[1]%12, mm=+(r[2]||0); const ap=(r[3]||'').toUpperCase(); if(ap==='PM'||(!ap&&h<7)) h+=12; const v=h*60+mm; if(v>(e.sort||0)) return v; } } return (e.sort||0)+30; }
+function meetingsToday(cal,day){
+  const list=cal.filter(e=>e.date===day).map(e=>Object.assign({},e,{start:+e.sort||0,end:mtgEnd(e)}));
+  const dw=new Date(day+'T12:00:00').getDay();
+  if(dw>=1&&dw<=5){ CONF_CALLS.forEach(([s,e,t,when])=>{
+    // Dedupe: a calendar meeting overlapping the slot, or a Dialpad-room meeting within 90 min, IS this call → show it once, with Join → Dialpad.
+    const isDp=x=>/dialpad/i.test((x.link||'')+' '+(x.location||''));
+    const hit=list.find(x=>x.start<e&&x.end>s)||list.find(x=>isDp(x)&&Math.abs(x.start-s)<=90);
+    if(hit){ if(!hit.link||isDp(hit)||/^tel:/i.test(hit.link)){ hit.link=CONF_ROOM; hit.dial=CONF_TEL; hit.conf=1; } return; }
+    list.push({title:t,when,date:day,sort:s,start:s,end:e,location:'Dialpad · dial-in 917-268-3365 (no PIN)',link:CONF_ROOM,dial:CONF_TEL,conf:1}); }); }
+  return list.sort((a,b)=>a.start-b.start);
+}
+function nowNext(cal,day){ const d=new Date(), cur=d.getHours()*60+d.getMinutes(); const L=meetingsToday(cal,day);
+  const now=L.filter(e=>e.start-5<=cur&&cur<e.end); const next=L.find(e=>e.start>cur&&!now.includes(e)); return {now,next,cur}; }
+const hhmm=m=>{ let h=Math.floor(m/60), mm=m%60; const ap=h>=12?'PM':'AM'; h=h%12||12; return h+(mm?':'+String(mm).padStart(2,'0'):'')+' '+ap; };
+function joinHref(e){ if(e.link&&/^(https?:|tel:)/i.test(e.link)) return e.link; const digits=(e.location||'').replace(/[^\d]/g,''); return digits.length>=10?'tel:'+digits:''; }
 let callCts=load('m.callcts',[]), ccBusy=false;
 const ccUrl=()=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+CC_TABLE;
 async function fetchCallContacts(force){
@@ -616,12 +695,41 @@ async function loadContacts(force){
   }catch(e){}
   return contacts;
 }
+/* ---------- 📞 calls: when + who ----------
+   Time = ReminderAt (if set) else DoDate (day only). Phone = task Phone, else fuzzy match lead / name words to Contacts. */
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+function callWhen(t){ if(t.remindAt){ const d=new Date(t.remindAt); if(!isNaN(d)) return {day:ymd(d),min:d.getHours()*60+d.getMinutes()}; } return {day:t.doDate||'',min:null}; }
+const CALL_STOP=new Set(['call','calls','re','about','with','the','and','to','for','back','text','follow','up','followup','fu','on','in','of','at','pm','am','me','him','her','them','ask','check','tell','get','x2','x3','asap','today','tomorrow','again']);
+function callMatch(t){
+  if(t.phone) return {phone:t.phone,who:t.lead||'',sure:true};
+  if(!contacts.length) return null;
+  const words=cleanName(t).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!CALL_STOP.has(w)&&!/^\d+$/.test(w));
+  const qs=[]; if(t.lead) qs.push(t.lead.toLowerCase()); for(let i=0;i<words.length-1;i++) qs.push(words[i]+' '+words[i+1]); words.forEach(w=>qs.push(w));
+  for(const q of qs){ const hits=searchContacts(q).filter(c=>(c.p||[]).length); if(!hits.length) continue;
+    const exact=hits.find(c=>(c.n||'').toLowerCase().split(/\s+/)[0]===q.split(' ')[0]);
+    if(hits.length<=3||exact){ const c=exact||hits[0]; return {phone:c.p[0],who:c.n,sure:hits.length===1}; } }
+  return null;
+}
+// one contacts load attempt per minute — prevents a repaint→load→repaint loop when contacts can't load (no token / offline)
+let _ctTry=0; const contactsTry=()=>{ if(Date.now()-_ctTry<60000) return false; _ctTry=Date.now(); return true; };
+const telOf=p=>'tel:'+String(p).replace(/[^\d+]/g,''), smsOf=p=>'sms:'+String(p).replace(/[^\d+]/g,'');
+// The Calls pane's exact order (groups Today → Tomorrow → Anytime → Later, each by ListOrder). Home reads the same list.
+function callGroups(){ const td=todayISO(), tm=tomorrowISO(); const G={Today:[],Tomorrow:[],Anytime:[],Later:[]};
+  callTasksAll().forEach(t=>{ const d=callWhen(t).day; (d&&d<=td?G.Today:d===tm?G.Tomorrow:!d?G.Anytime:G.Later).push(t); });
+  G.Today.sort((a,b)=>(callWhen(a).min??-1)-(callWhen(b).min??-1)); G.Today=byListOrder(G.Today); return G; }
+function callPaneOrder(){ const G=callGroups(); return [...G.Today,...G.Tomorrow,...G.Anytime,...G.Later]; }
+function callsNowNext(){ const td=todayISO(); const P=callPaneOrder();   // home card = the pane's top two, in Roni's drag order
+  const first=P[0], w=first&&callWhen(first); const due=first&&w.day&&w.day<=td;
+  const now=due?[first]:[], next=due?P[1]:first;
+  const shown=new Set([first,P[1]].filter(Boolean));
+  const tmr=callTasksAll().filter(t=>callWhen(t).day===tomorrowISO()&&!shown.has(t)); return {now,next,tmr}; }
 function searchContacts(q){ q=(q||'').trim().toLowerCase(); if(!q) return []; const dq=onlyDigits(q); const out=[];
   for(const c of contacts){ const name=(c.n||'').toLowerCase(), org=(c.o||'').toLowerCase(); let hit=name.includes(q)||(org&&org.includes(q));
     if(!hit&&dq.length>=3){ for(const ph of (c.p||[])){ if(onlyDigits(ph).includes(dq)){hit=true;break;} } }
     if(hit){ out.push(c); if(out.length>=40) break; } } return out; }
 // Phone numbers are auto-linked by Messages; the tel: link makes it one tap to dial on any phone.
-const inviteText=slot=>'Please join the call: '+DIAL_IN+' (no PIN) — tap to dial: '+dialTel();
+const DIALPAD_ROOM='https://meetings.dialpad.com/room/rbenjamini';
+const inviteText=slot=>'Please join the call: '+DIALPAD_ROOM+' or dial '+DIAL_IN+' (no PIN)';
 const smsOne=(ph,body)=>'sms:'+ph.replace(/[^\d+]/g,'')+'&body='+encodeURIComponent(body);
 const smsMany=(phs,body)=>'sms://open?addresses='+phs.map(p=>p.replace(/[^\d+]/g,'')).join(',')+'&body='+encodeURIComponent(body);
 function paintInvite(s){
@@ -857,17 +965,38 @@ function paintIncoming(s){
   else { el.querySelector('.scroll').innerHTML='<div style="padding:46px;text-align:center;color:var(--dim)">Loading…</div>'; fetchIncoming(day).then(fill); }
 }
 /* ---------- 🌅/☀️ CALL LIST — morning/afternoon as a list with ✓ done + ✕ remove per row ---------- */
+// 🔍 Call-someone search (Calls screen + home): compact Call / Text rows from Contacts
+let homeQ='';
+function wireDialer(root,keepQ){ const ci=root.querySelector('.cxsearch'), cr=root.querySelector('[data-cxresults]'); if(!ci||!cr) return;
+  if(keepQ) ci.value=homeQ;
+  const drawCx=()=>{ const q=ci.value.trim(); if(keepQ) homeQ=ci.value;
+    if(!q){ cr.innerHTML=keepQ?'':'<div class="cxhint">'+(contacts.length?contacts.length+' contacts · type a name to call':'Loading contacts…')+'</div>'; return; }
+    const hits=searchContacts(q).slice(0,keepQ?8:40);
+    cr.innerHTML=hits.length?hits.map(c=>(c.p||[]).map((p,i)=>{ const d=p.replace(/[^\d+]/g,'');
+        return '<div class="cxrow'+(i?' more':'')+'"><div class="cxinfo">'+(i?'':'<b>'+esc(c.n)+'</b>'+(c.o?'<span class="cxsub">'+esc(c.o)+'</span>':''))+'<span class="cxp">'+esc(p)+'</span></div>'
+          +'<div class="cxbtns"><a class="cxb cxcall" href="tel:'+esc(d)+'">📞 Call</a><a class="cxb" href="sms:'+esc(d)+'" aria-label="Text">💬</a></div></div>'; }).join('')).join('')
+      :'<div class="cxhint">'+(contacts.length?'No match':'Loading contacts…')+'</div>'; };
+  ci.addEventListener('input',drawCx); drawCx(); if(!contacts.length&&contactsTry()) loadContacts().then(drawCx);
+  root.querySelectorAll('[data-cxclear]').forEach(b=>b.onclick=()=>{ ci.value=''; drawCx(); ci.focus(); });
+}
 function paintSlotList(s){
   // Same look as 📥 Incoming: single clean rows — rounded project pill · title · lead · muted mono age.
   // Swipe right = ✓ Done · swipe left = reveal ⊘ Remove + 😴 Snooze · tap = open. Morning, Afternoon and Calls all use this.
   const r=s.route, el=s.el, slot=r.slot, isCalls=slot==='calls';
   const S=isCalls?{label:'Calls',em:'📞'}:SLOTS[slot];
-  const items=isCalls?callTasks():slotTasks(slot); const keep=el.querySelector('.scroll'); const st=keep?keep.scrollTop:0;
-  const rowFor=t=>`<div class="swr" data-id="${t.id}"><div class="swbg"><span class="swdone">✓ Done</span><span class="swacts"><button class="swrm" data-rm>⊘ Remove</button><button class="swsz" data-snz>😴 Snooze</button></span></div>
-      <button class="sl" data-open><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="tk">${esc(cleanName(t))}</span><span class="ld">${esc(t.lead||'')}</span><span class="ag">${daysOpen(t)}d</span></button></div>`;
-  const body=items.length?items.map(rowFor).join('')
+  const items=isCalls?callTasksAll():slotTasks(slot); const keep=el.querySelector('.scroll'); const st=keep?keep.scrollTop:0;
+  const rowFor=t=>`<div class="swr" data-id="${t.id}"><div class="swbg"><span class="swdone">✓ Done</span><span class="swacts">${isCalls?'':`<button class="swmv" data-mv>${slot==='morning'?'→ PM':'→ AM'}</button>`}<button class="swrm" data-rm>⊘ Remove</button><button class="swsz" data-snz>😴 Snooze</button></span></div>
+      <button class="sl slf" data-open><span class="dragh" data-drag aria-label="Hold and drag to reorder">≡</span><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="tk">${esc(cleanName(t))}</span><span class="ld">${esc(t.lead||'')}</span><span class="ag">${daysOpen(t)}d</span></button></div>`;
+  const callRow=t=>{ const m=callMatch(t), w=callWhen(t);
+    return `<div class="swr" data-id="${t.id}"><div class="swbg"><span class="swdone">✓ Done</span><span class="swacts"><button class="swrm" data-rm>⊘ Remove</button><button class="swsz" data-snz>😴 Snooze</button></span></div>
+      <div class="sl clr" data-open role="button"><span class="dragh" data-drag aria-label="Hold and drag to reorder">≡</span><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="clt"><span class="tk">${esc(cleanName(t))}</span><span class="cls">${esc([w.min!=null?hhmm(w.min):'',m?(m.sure?'':'≈ ')+m.who:(t.lead||'')].filter(Boolean).join(' · '))}</span></span>
+        ${m?`<a class="clb clcall" href="${esc(telOf(m.phone))}" data-join>📞 Call</a><a class="clb" href="${esc(smsOf(m.phone))}" data-join aria-label="Text">💬 Text</a>`:`<button class="clb add" data-addnum>＋ Add number</button>`}</div></div>`; };
+  const grp=()=>{ const G=callGroups();
+    return Object.entries(G).filter(([k,v])=>v.length).map(([k,v])=>`<div class="clgh">${k==='Today'?'📞 Today':k==='Tomorrow'?'🌙 Tomorrow':k==='Later'?'🗓 Later':'Anytime'} <span>${v.length}</span></div>`+v.map(t=>callRow(t).replace('<div class="swr" ','<div class="swr" data-g="'+k+'" ')).join('')).join(''); };
+  const body=items.length?(isCalls?grp():items.map(rowFor).join(''))
     :`<div class="empty" style="padding-top:50px"><div class="big2">${S.em}</div><h2>No ${esc(S.label.toLowerCase())} items</h2><p style="color:var(--dim);padding:0 24px">Add one above${isCalls?'':', or tap '+S.em+' on any task'}.</p></div>`;
   el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">${S.em} ${esc(S.label)}</div>${items.length?'<button class="statsbtn" data-clear>CLEAR</button>':''}<button class="statsbtn" data-run>▶ RUN</button><button class="icon" data-add aria-label="Add">＋</button></div>
+    ${isCalls?'':`<div class="amseg" data-amseg><button class="${slot==='morning'?'on':''}" data-seg="morning">🌅 AM <b>${slotTasks('morning').length}</b></button><button class="${slot==='afternoon'?'on':''}" data-seg="afternoon">☀️ PM <b>${slotTasks('afternoon').length}</b></button></div>`}
     <div class="scroll" style="padding:0 10px calc(20px + var(--sab))">
       ${isCalls?`<div class="dialer"><input class="cxsearch" type="search" enterkeyhint="search" placeholder="🔍 Call someone — type a name…" autocomplete="off"><div class="cxresults" data-cxresults></div></div>`:''}
       ${isCalls?'':`<button class="invbtn" data-invite>👥 Invite to the call<span>${callContacts(slot).length} people · ${esc(DIAL_IN)}</span><span class="chev">›</span></button>`}
@@ -876,14 +1005,8 @@ function paintSlotList(s){
       <div data-list>${body}</div></div>`;
   wire(el);
   { const ib=el.querySelector('[data-invite]'); if(ib) ib.onclick=()=>push({type:'invite',slot}); }
-  if(isCalls){ const ci=el.querySelector('.cxsearch'), cr=el.querySelector('[data-cxresults]');
-    const drawCx=()=>{ const q=ci.value.trim();
-      if(!q){ cr.innerHTML='<div class="cxhint">'+(contacts.length?contacts.length+' contacts · type a name to call':'Loading contacts…')+'</div>'; return; }
-      const hits=searchContacts(q);
-      cr.innerHTML=hits.length?hits.map(c=>'<div class="cxrow"><div class="cxname"><b>'+esc(c.n)+'</b>'+(c.o?'<span>'+esc(c.o)+'</span>':'')+'</div>'+
-        (c.p||[]).map(p=>{const d=p.replace(/[^\d+]/g,'');return '<div class="cxnum"><span class="cxp">'+esc(p)+'</span><a class="cxb call" href="tel:'+esc(d)+'">📞 Call</a><a class="cxb" href="sms:'+esc(d)+'">💬</a></div>';}).join('')+'</div>').join('')
-        :'<div class="cxhint">No match</div>'; };
-    ci.addEventListener('input',drawCx); drawCx(); loadContacts().then(drawCx); }
+  if(isCalls&&!contacts.length&&contactsTry()) loadContacts().then(()=>{ if(contacts.length&&stack[stack.length-1]===s) paintSlotList(s); });
+  if(isCalls) wireDialer(el);
   el.querySelector('[data-run]').onclick=()=>{ if(!items.length){ toast('Nothing to run'); return; } push(isCalls?{type:'deck',kind:'calls',title:'📞 Calls'}:{type:'deck',kind:'slot',slot,title:S.label}); };
   { const cb=el.querySelector('[data-clear]'); if(cb) cb.onclick=()=>{ if(!items.length) return;
     const snap=items.map(t=>({id:t.id,s:A(t.id).section,sr:t.sectionRemote})); items.forEach(park); buzz(12); paintSlotList(s);
@@ -895,14 +1018,35 @@ function paintSlotList(s){
     if(t){ if(isCalls){ t.type='call'; t.sectionRemote='calls'; } else { t.slotRemote=slot; t.sectionRemote=''; } save(LS_CACHE,tasks); } buzz(8); paintSlotList(s); };
   el.querySelector('[data-qadd]').onclick=addNow; qa.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); addNow(); } });
   const sc=el.querySelector('.scroll'); if(keep) sc.scrollTop=st;
-  const OPEN=-176; let openRow=null;
+  const OPEN=isCalls?-176:-264; let openRow=null;
+  const other=slot==='morning'?'afternoon':'morning';
+  el.querySelectorAll('[data-seg]').forEach(b=>b.onclick=()=>{ if(b.dataset.seg===slot) return; r.slot=b.dataset.seg; buzz(6); el.querySelector('.scroll').scrollTop=0; paintSlotList(s); });
   const closeRow=w=>{ if(!w) return; const b=w.querySelector('.sl'); b.style.transition='transform .2s var(--ease)'; b.style.transform=''; w.classList.remove('open'); if(openRow===w) openRow=null; };
+  // ≡ long-press (250 ms) then drag up/down to reorder; saved to Airtable ListOrder so it sticks on every device
+  el.querySelectorAll('[data-drag]').forEach(h=>{ const w=h.closest('.swr'); let timer=null, on=false, y0=0, off=0;
+    const grp=()=>[...w.parentElement.querySelectorAll(':scope > .swr')].filter(x=>(x.dataset.g||'')===(w.dataset.g||''));
+    h.addEventListener('click',e=>{ e.stopPropagation(); e.preventDefault(); });
+    h.addEventListener('touchstart',e=>{ e.stopPropagation(); y0=e.touches[0].clientY; off=y0-w.getBoundingClientRect().top; timer=setTimeout(()=>{ on=true; buzz(15); w.classList.add('dragging'); },250); },{passive:true});
+    h.addEventListener('touchmove',e=>{ e.stopPropagation(); const y=e.touches[0].clientY; if(!on){ if(Math.abs(y-y0)>8) clearTimeout(timer); return; } e.preventDefault();
+      const sib=grp().filter(x=>x!==w); const below=sib.find(x=>{ const r=x.getBoundingClientRect(); return y<r.top+r.height/2; });
+      if(below){ if(below!==w.nextElementSibling) w.parentElement.insertBefore(w,below); } else { const last=sib[sib.length-1]; if(last&&last.nextElementSibling!==w) last.after(w); }
+      w.style.transform=''; const nat=w.getBoundingClientRect().top; w.style.transform=`translateY(${(y-off)-nat}px)`; },{passive:false});
+    const end=ev=>{ clearTimeout(timer); if(!on) return; on=false; w.classList.remove('dragging'); w.style.transform='';
+      if(!isCalls&&ev&&ev.changedTouches&&ev.changedTouches[0]){ const tb=el.querySelector('[data-seg="'+(slot==='morning'?'afternoon':'morning')+'"]'); const pt=ev.changedTouches[0]; if(tb){ const rr=tb.getBoundingClientRect();
+        if(pt.clientY<rr.bottom+10&&pt.clientX>rr.left&&pt.clientX<rr.right){ const t=tasks.find(x=>x.id===w.dataset.id); if(t){ w.classList.add('gone'); setSlot(t,slot==='morning'?'afternoon':'morning'); setTimeout(()=>paintSlotList(s),260); return; } } } }
+      const ids=grp().map(x=>x.dataset.id); const ups=[]; ids.forEach((id,i)=>{ const t=tasks.find(x=>x.id===id); if(t&&t.listOrder!==i*10){ t.listOrder=i*10; A(t.id).lo=i*10; A(t.id).loAt=Date.now(); ups.push({id,fields:{ListOrder:i*10}}); } });
+      save(LS_CACHE,tasks); saveAug(); patchMany(ups); buzz(8); if(stack[0]) paintHome(stack[0]); };
+    h.addEventListener('touchend',end); h.addEventListener('touchcancel',end); });
   el.querySelectorAll('.swr').forEach(w=>{ const t=tasks.find(x=>x.id===w.dataset.id); if(!t) return; const row=w.querySelector('.sl');
     const gone=kind=>{ w.classList.add('gone'); setTimeout(()=>paintSlotList(s),260); };
-    row.onclick=()=>{ if(row._moved) return; if(w.classList.contains('open')){ closeRow(w); return; } if(openRow){ closeRow(openRow); return; } buzz(5);
+    { const an=w.querySelector('[data-addnum]'); if(an) an.onclick=ev=>{ ev.stopPropagation(); sheet(`<h3>Number for ${esc(t.lead||cleanName(t))}</h3><input class="field" id="np" inputmode="tel" placeholder="Mobile number" autocomplete="off"><div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Save</button></div>`,(sh,close)=>{
+      const i=sh.querySelector('#np'); setTimeout(()=>i.focus(),300); sh.querySelector('[data-ok]').onclick=()=>{ const v=i.value.trim(); if(!v) return; t.phone=v; save(LS_CACHE,tasks); patch(t.id,{Phone:v}); close(); toast('📞 Saved'); paintSlotList(s); }; }); }; }
+    w.querySelectorAll('[data-join]').forEach(a=>a.addEventListener('click',ev=>ev.stopPropagation()));
+    row.onclick=ev=>{ if(ev&&ev.target.closest('[data-join],[data-addnum]')) return; if(row._moved) return; if(w.classList.contains('open')){ closeRow(w); return; } if(openRow){ closeRow(openRow); return; } buzz(5);
       push(isCalls?{type:'deck',kind:'calls',title:'📞 Calls',startId:t.id}:{type:'deck',kind:'slot',slot,title:S.label,startId:t.id}); };
     w.querySelector('[data-rm]').onclick=e=>{ e.stopPropagation(); gone(); unfile(t); };
     w.querySelector('[data-snz]').onclick=e=>{ e.stopPropagation(); gone(); snooze(t,10); };
+    { const mv=w.querySelector('[data-mv]'); if(mv) mv.onclick=e=>{ e.stopPropagation(); gone(); setSlot(t,other); }; }   // MeetingSlot updated in Airtable, toast has Undo
     let x0=null,y0=0,dx=0,lock=null,base=0;
     row.addEventListener('touchstart',e=>{ x0=e.touches[0].clientX; y0=e.touches[0].clientY; dx=0; lock=null; row._moved=false; base=w.classList.contains('open')?OPEN:0; row.style.transition='none'; if(openRow&&openRow!==w) closeRow(openRow); },{passive:true});
     row.addEventListener('touchmove',e=>{ if(x0==null) return; const mx=e.touches[0].clientX-x0, my=e.touches[0].clientY-y0;
@@ -918,6 +1062,7 @@ function paintSlotList(s){
   });
 }
 // app left open past midnight → today's page flips to a fresh blank one (yesterday's text is already saved under yesterday)
+setInterval(()=>{ if(stack[0]&&stack.length===1&&!document.hidden) paintHome(stack[0]); },60000);
 let dnShown=todayISO();
 setInterval(()=>{ if(todayISO()!==dnShown){ dnShown=todayISO(); localStorage.removeItem('m.dnArchivedOn'); dnArchive(); incomingCache={}; stack.forEach(x=>{ if(x.route.type==='day'&&!x.route.day) paintDay(x); if(x.route.type==='incoming'&&!x.route.day) paintIncoming(x); }); if(stack[0]) paintHome(stack[0]); } },60000);
 
@@ -998,6 +1143,8 @@ async function sweepNotes(force){
     localStorage.setItem('m.sweepAt',Date.now());
   }finally{ sweeping=false; if(stack[0]) paintHome(stack[0]); }
 }
+async function patchMany(ups){ if(demo||!cfg.apiKey||!ups.length) return; ups=ups.filter(u=>/^rec/.test(u.id));
+  for(let i=0;i<ups.length;i+=10){ try{ await fetch(atUrl(),{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({records:ups.slice(i,i+10),typecast:true})}); }catch(e){} } }
 async function patch(id,fields){
   if(demo||!cfg.apiKey||String(id).startsWith('tmp')) return true;
   try{ const r=await fetch(atUrl()+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields,typecast:true})});
@@ -1072,7 +1219,9 @@ function setSlot(t,slot){
 }
 
 /* ---------- queries ---------- */
-function slotTasks(slot){ return tasks.filter(t=>liveCall(t)&&slotOf(t)===slot).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0)); } // newest first (matches desktop)
+// ≡ drag order (Airtable ListOrder) wins; items never dragged keep their default order after the ordered ones
+function byListOrder(arr){ return arr.map((t,i)=>({t,i})).sort((a,b)=>((a.t.listOrder??1e9)-(b.t.listOrder??1e9))||a.i-b.i).map(x=>x.t); }
+function slotTasks(slot){ return byListOrder(tasks.filter(t=>liveCall(t)&&slotOf(t)===slot).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0))); } // newest first, then your drag order
 function groups(dim){
   const m=new Map();
   for(const t of tasks){ if(!live(t)) continue; const k=t[dim]||''; m.set(k,(m.get(k)||0)+1); }
@@ -1084,6 +1233,8 @@ function allLive(){ return tasks.filter(live).sort((a,b)=>score(b)-score(a)); }
 function currentSlot(){ const h=new Date().getHours(); return h<12?'morning':(h<18?'afternoon':''); }
 // 📞 Calls = call-type tasks (Type="call" or the name starts with "call"), newest/most-urgent first.
 function isCallTask(t){ const sec=(A(t.id).section||t.sectionRemote||'').toLowerCase(); if(sec==='backlog') return false; return sec==='calls' || t.type==='call' || /^\s*call\b/i.test(t.name||''); }
+// calls incl. ones dated for a future day (live() hides future DoDates) — used for the Calls pane + Tomorrow
+function callTasksAll(){ return byListOrder(tasks.filter(t=>isOpen(t)&&isCallTask(t)&&!isParked(t)&&!(A(t.id).snoozeUntil>Date.now())).sort((a,b)=>score(b)-score(a))); }
 function callTasks(){ return tasks.filter(t=>live(t)&&isCallTask(t)).sort((a,b)=>score(b)-score(a)); }
 // 📥 Incoming = what you ADDED on a given day (by created date). Today is derived live from the
 // loaded list (blanks every morning); past days are fetched on demand (includes completed items).
@@ -1146,6 +1297,15 @@ function wxEmoji(c){ if(c===0) return '☀️'; if(c>=95) return '⛈️'; if((c
 async function fetchWx(){ try{ const r=await fetch(WX_URL); if(!r.ok) return; const d=await r.json(); const D=d.daily;
   wx=D.time.map((t,i)=>({date:t,code:D.weathercode[i],hi:Math.round(D.temperature_2m_max[i]),pr:+D.precipitation_sum[i]||0})); save('m.wx',wx);
   stack.forEach(x=>{ if(x.route.type==='home') paintHome(x); if(x.route.type==='wx') paintWx(x); }); }catch(e){} }
+// Home weather card — mirrors the Mac strip: day / emoji+high / rain", amber rain days, extreme-temp chips, today ringed
+function wxStrip(){ const td=todayISO();
+  if(!wx.length) return `<button class="hwx" data-wx><div class="hwxh">🌤 Weather <span>loading…</span></div></button>`;
+  const days=wx.filter(w=>w.date>=td).slice(0,7);
+  const cell=w=>{ const nm=w.date===td?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(w.date+'T12:00:00').getDay()];
+    const tcls=w.hi>=95?' xhot':w.hi>=90?' hot':w.hi<=20?' xcold':w.hi<=32?' cold':'';
+    const amt=w.pr>0.02?w.pr.toFixed(2).replace(/^0/,'')+'"':'&nbsp;';
+    return `<div class="hwd${w.pr>0.08?' wet':''}${w.date===td?' today':''}"><div class="hwday">${nm}</div><div class="hwic">${wxEmoji(w.code)}</div><div class="hwt wxt${tcls}">${w.hi}°</div><div class="hwmm">${amt}</div></div>`; };
+  return `<button class="hwx" data-wx>${days.map(cell).join('')}</button>`; }
 function paintWx(s){
   const el=s.el; const td=todayISO();
   const row=w=>{ const d=new Date(w.date+'T12:00:00'); const nm=w.date===td?'Today':d.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
@@ -1196,33 +1356,39 @@ function paintMeetings(s){
 }
 /* ---------- HOME ---------- */
 function paintHome(s){
+  if(s.el&&s.el.contains(document.activeElement)&&document.activeElement.classList&&document.activeElement.classList.contains('cxsearch')) return;   // don't wipe the search while typing
   const el=s.el, am=slotTasks('morning').length, pm=slotTasks('afternoon').length, now=currentSlot();
   const d=new Date(); const dateStr=d.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
   const gc=k=>groups(k).filter(g=>g.k).length;
   const td=todayTasks().length, all=allLive().length;
   const keep=el.querySelector('.scroll'); const st=keep?keep.scrollTop:0;
   el.innerHTML=`
-    <div class="nav"><div class="homesync" style="padding-left:10px;color:var(--muted);font-size:13px"><span class="sync ${syncing?'busy':(cfg.apiKey?'':'off')}"></span>${syncing?'Syncing…':(demo?'Demo data':(lastSync?'Updated '+ago(lastSync):'Not synced'))}</div>
-      ${streakHTML()}${(()=>{const x=sess();const n=x.done+x.snz;return n?`<span class="score">&nbsp;${x.done}✓ ${x.snz}😴</span>`:''})()}
-      <button class="icon" data-add aria-label="Add task">＋</button><button class="statsbtn" data-snap>LIST</button><button class="statsbtn" data-stats>STATS</button><button class="icon" data-cfg aria-label="Settings">⚙︎</button></div>
-    <div class="scroll">
+    <div class="scroll" style="padding-top:calc(var(--sat) + 6px)">
       <div class="ptr"></div>
-      <div class="big">Tasks</div><div class="sub">${esc(dateStr)} · <span style="color:var(--gold);font:600 12px ui-monospace,Menlo,monospace">build ${esc(BUILD)}</span></div>
+      ${wxStrip()}
       <div class="calls">
-        <button class="call am ${now==='morning'?'now':''}" data-slot="morning"><span class="em">🌅</span><span><div class="n">${am}</div><div class="lbl">Morning call</div><div class="hint">Tap to open · run inside</div></span></button>
-        <button class="call pm ${now==='afternoon'?'now':''}" data-slot="afternoon"><span class="em">☀️</span><span><div class="n">${pm}</div><div class="lbl">Afternoon call</div><div class="hint">Tap to open · run inside</div></span></button>
+        <button class="call am ${now==='morning'?'now':''}" data-slot="morning"><span class="em">🌅</span><b class="n">${am}</b><span class="lbl">Morning</span></button>
+        <button class="call pm ${now==='afternoon'?'now':''}" data-slot="afternoon"><span class="em">☀️</span><b class="n">${pm}</b><span class="lbl">Afternoon</span></button>
       </div>
-      <button class="review" data-meet style="margin-bottom:12px"><span class="ri">📅</span><span style="flex:1;min-width:0"><div class="rn">Meetings</div>
-        <div class="rs">${(()=>{const t=todayMeetings();return t.length?t.length+' today · '+esc((t[0].when||'')+' '+(t[0].title||'')).slice(0,34):'tap to see today & tomorrow';})()}</div></span><span class="chev">›</span></button>
+      <div class="dialer homedial"><div class="hdwrap"><input class="cxsearch" type="search" enterkeyhint="search" placeholder="🔍 Call someone — type a name…" autocomplete="off"><button class="hdx" data-cxclear aria-label="Clear">✕</button></div><div class="cxresults" data-cxresults></div></div>
+      ${(()=>{ const {now,next}=nowNext(calendar,todayISO()); const j=(e,lbl)=>{ const h=joinHref(e); return h?`<span class="nnj"><a class="nnjoin${h.indexOf('tel:')===0?' tel':''}" href="${esc(h)}"${h.indexOf('tel:')===0?'':' target="_blank" rel="noopener"'} data-join>${h.indexOf('tel:')===0?'📞 Dial':'▶ Join'}</a>${e.dial?`<a class="nndial" href="${e.dial}" data-join>dial-in</a>`:''}</span>`:''; };
+        const row=(tag,e)=>`<div class="nnrow"><span class="nntag ${tag==='NOW'?'now':''}">${tag}</span><div class="nnt"><b>${esc(e.title||'(untitled)')}</b><span>${esc(e.when||hhmm(e.start))}</span></div>${j(e)}</div>`;
+        return `<div class="review meetcard" data-meet role="button" tabindex="0" style="margin-bottom:12px;display:block"><div style="display:flex;align-items:center;gap:12px"><span class="ri">📅</span><span style="flex:1;min-width:0"><div class="rn">Meetings</div><div class="rs">${todayMeetings().length} today · tap for the full list</div></span><span class="chev">›</span></div>
+          ${now.map(e=>row('NOW',e)).join('')}${next?row('NEXT',next):(now.length?'':'<div class="nnrow"><span class="nntag">NEXT</span><div class="nnt"><span>Nothing else today</span></div></div>')}
+          ${(()=>{ const tm=meetingsToday(calendar,tomorrowISO()); return tm.length?`<div class="nntmh">🌙 Tomorrow</div>`+tm.map(e=>`<div class="nnrow sm"><span class="nntag">${esc(hhmm(e.start))}</span><div class="nnt"><b>${esc(e.title||'(untitled)')}</b>${e.location?`<span>${esc(e.location)}</span>`:''}</div>${j(e)}</div>`).join(''):''; })()}</div>`; })()}
+      ${(()=>{ const {now,next,tmr}=callsNowNext();
+        const btns=t=>{ const m=callMatch(t); return m?`<a class="nnjoin tel" href="${esc(telOf(m.phone))}" data-join>📞 Call</a><a class="nntxt" href="${esc(smsOf(m.phone))}" data-join aria-label="Text">💬</a>`:''; };
+        const row=(tag,t)=>{ const w=callWhen(t), m=callMatch(t); return `<div class="nnrow"><span class="nntag ${tag==='NOW'?'now':''}">${tag}</span><div class="nnt"><b>${esc(cleanName(t))}</b><span>${esc([w.min!=null?hhmm(w.min):(w.day&&w.day<todayISO()?'overdue':w.day===todayISO()?'today':''),m?m.who:(t.lead||'')].filter(Boolean).join(' · '))}</span></div>${btns(t)}</div>`; };
+        return `<div class="review meetcard" data-calls role="button" tabindex="0" style="margin-bottom:12px;display:block"><div style="display:flex;align-items:center;gap:12px"><span class="ri" style="background:var(--callg)">📞</span><span style="flex:1;min-width:0"><div class="rn">Calls</div><div class="rs">${callTasks().length} open · tap for the full list</div></span><span class="chev">›</span></div>
+          ${now.map(t=>row('NOW',t)).join('')}${next?row('NEXT',next):(now.length?'':'<div class="nnrow"><span class="nntag">NEXT</span><div class="nnt"><span>No calls due</span></div></div>')}
+          ${tmr.length?`<div class="nntmh">🌙 Tomorrow (${tmr.length})</div>`+tmr.slice(0,4).map(t=>row(callWhen(t).min!=null?hhmm(callWhen(t).min):'TMRW',t)).join(''):''}</div>`; })()}
       <div class="minirow">
-        <button class="mini" data-calls><b>${callTasks().length}</b><span>📞 Calls</span></button>
         <button class="mini" data-incoming><b>${incomingToday().length}</b><span>📥 Incoming</span></button>
       </div>
       ${(()=>{ const p=draftsPending(); return p.length?`<button class="compbtn revbtn" data-leadrev><span>📲 Review lead texts</span><b>${p.length}</b><span class="chev">›</span></button>`:''; })()}
       ${computerItems().length?`<button class="compbtn" data-comp><span>🖥 @Computer – Claude</span><b>${computerItems().length}</b><span class="chev">›</span></button>`:''}
       <div class="minirow">
         <button class="mini" data-notesbtn><b>🗒</b><span>Notes</span></button>
-        <button class="mini" data-wx><b>${(()=>{ if(!wx.length) return '🌤'; const w=wx.find(x=>x.date===todayISO())||wx[0]; return w.hi+'°'; })()}</b><span>Weather</span></button>
       </div>
       <button class="view" data-parked style="margin:2px 0 12px"><span class="vi" style="background:#2a241c">🅿️</span><span class="vt"><div class="vn">Parked</div><div class="vs">${parkedTasks().length} set aside · cleared items wait here to restore</div></span><span class="chev">›</span></button>
       ${(()=>{ const A2=autoSummary(); const shown=A2.bad.slice(0,3); const leads=autoRows.filter(r=>r.kind==='Lead');
@@ -1248,13 +1414,17 @@ function paintHome(s){
         <button class="mini" data-q="today"><b>${td}</b><span>📆 Due today</span></button>
         <button class="mini" data-q="all"><b>${all}</b><span>📋 Snapshot · all open</span></button>
       </div>
-      <div class="foot">Build ${esc(BUILD)} · <a href="../">Desktop dashboard</a></div>
+      <!-- status + actions row: at the BOTTOM of home, scrolls with the page (not sticky / fixed) -->
+      <div class="homebar"><span class="hbstat"><span class="sync ${syncing?'busy':(cfg.apiKey?'':'off')}"></span>${syncing?'Syncing…':(demo?'Demo data':(lastSync?'Updated '+ago(lastSync):'Not synced'))}${streakHTML()}${(()=>{const x=sess();const n=x.done+x.snz;return n?`<span class="score">${x.done}✓ ${x.snz}😴</span>`:''})()}</span>
+        <span class="hbbtns"><button class="icon" data-add aria-label="Add task">＋</button><button class="statsbtn" data-snap>LIST</button><button class="statsbtn" data-stats>STATS</button><button class="icon" data-cfg aria-label="Settings">⚙︎</button></span></div>
+      <div class="foot">${esc(dateStr)} · <span style="color:var(--gold);font:600 11px ui-monospace,Menlo,monospace">build ${esc(BUILD)}</span> · <a href="../">Desktop dashboard</a></div>
     </div>`;
   el.querySelector('.scroll').scrollTop=st;
   el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>{ const sl=b.dataset.slot; push({type:'slotlist',slot:sl}); });
   el.querySelectorAll('[data-dim]').forEach(b=>b.onclick=()=>push({type:'groups',dim:b.dataset.dim}));
   el.querySelector('[data-review]').onclick=()=>{ const l=groups('project').map(g=>g.k); push({type:'board',dim:'project',list:l,idx:0}); };
   el.querySelector('[data-q="today"]').onclick=()=>push({type:'deck',kind:'today',title:'Due today'});
+  wireDialer(el.querySelector('.homedial'),true);
   el.querySelector('[data-stats]').onclick=()=>push({type:'stats'});
   el.querySelector('[data-snap]').onclick=()=>push({type:'snap',mode:localStorage.getItem('m.snapMode')||'group'});
   el.querySelectorAll('[data-dsel]').forEach(b=>b.onclick=()=>{ localStorage.setItem('m.drillSel',b.dataset.dsel); buzz(5); el.querySelectorAll('[data-dsel]').forEach(x=>x.classList.toggle('on',x===b)); });
@@ -1262,8 +1432,9 @@ function paintHome(s){
   { const cb=el.querySelector('[data-comp]'); if(cb) cb.onclick=()=>push({type:'comp'}); }
   { const lr=el.querySelector('[data-leadrev]'); if(lr) lr.onclick=()=>push({type:'leadrev'}); }
   el.querySelector('[data-autos]').onclick=()=>push({type:'autos'});
-  el.querySelector('[data-meet]').onclick=()=>push({type:'meetings'});
-  el.querySelector('[data-calls]').onclick=()=>push({type:'slotlist',slot:'calls'});
+  el.querySelector('[data-meet]').onclick=e=>{ if(e.target.closest('[data-join]')) return; push({type:'meetings'}); };
+  el.querySelector('[data-calls]').onclick=e=>{ if(e.target.closest('[data-join]')) return; push({type:'slotlist',slot:'calls'}); };
+  if(!contacts.length&&contactsTry()) loadContacts().then(()=>{ if(contacts.length&&stack[0]&&stack.length===1) paintHome(stack[0]); });
   el.querySelector('[data-incoming]').onclick=()=>push({type:'incoming',day:null});
   el.querySelector('[data-notesbtn]').onclick=()=>push({type:'day',day:null});
   el.querySelector('[data-wx]').onclick=()=>push({type:'wx'});
@@ -1403,7 +1574,7 @@ function cardInner(t,r){
     <div class="meta">${esc(meta)}</div>
     <div class="bodyx">${t.next?`<div class="ns"><b>Next step</b>${esc(t.next)}</div>`:''}${t.notes?`<div class="ns"><b>Notes</b>${esc(t.notes)}</div>`:''}</div>
     <div class="quick">
-      ${ph?`<a class="qbtn call" href="tel:${esc(ph)}" onclick="event.stopPropagation()">📞 Call</a><a class="qbtn" href="sms:${esc(ph)}" onclick="event.stopPropagation()">💬</a>`:''}
+      ${ph?`<a class="qbtn qcall" href="tel:${esc(ph)}" onclick="event.stopPropagation()">📞 Call</a><a class="qbtn" href="sms:${esc(ph)}" onclick="event.stopPropagation()">💬</a>`:''}
       ${isSlotDeck?'':`<button class="qbtn" data-slotbtn="morning" style="${sl==='morning'?'outline:2px solid #e8683c':''}">🌅</button><button class="qbtn" data-slotbtn="afternoon" style="${sl==='afternoon'?'outline:2px solid #e0a458':''}">☀️</button>`}
       <button class="qbtn" data-note>📝 Note</button>
       <button class="qbtn" data-more>•••</button>
