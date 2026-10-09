@@ -315,6 +315,15 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .cxp{flex:1;min-width:0;color:var(--muted);font-size:14px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cxb{flex:0 0 auto;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:14px;font-weight:700;text-decoration:none;color:var(--ink)}
 .cxb.call{background:var(--green);border-color:var(--green);color:#fff}
+/* 📅 Meetings */
+.mtgh{font-weight:800;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 4px}
+.mtg{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.mtgw{flex:0 0 auto;width:68px;font-size:13px;font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
+.mtgb{flex:1;min-width:0}
+.mtgt{font-size:15px;font-weight:600;line-height:1.25}
+.mtgl{font-size:12px;color:var(--dim);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mtgjoin{flex:0 0 auto;background:var(--accent);border:none;border-radius:10px;padding:9px 13px;font-size:14px;font-weight:800;text-decoration:none;color:#14110f;white-space:nowrap}
+.mtgjoin.tel{background:var(--green);color:#fff}
 .wxrow{display:grid;grid-template-columns:1fr auto auto 54px;align-items:center;gap:10px;padding:11px 6px;border-bottom:1px solid var(--line)}
 .wxrow.now{background:var(--panel)}
 .wxrow{border-radius:10px;margin:3px 0;border:1px solid transparent}
@@ -455,7 +464,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-09 10:19';   // stamped by deploy.sh
+const BUILD='2026-10-09 10:48';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -556,6 +565,22 @@ const CC_TABLE='tblLl5Wb4vJK8xGBs';
 const DIAL_IN_DEFAULT='917-268-3365';
 let DIAL_IN=localStorage.getItem('m.dialin2')||DIAL_IN_DEFAULT;
 const dialTel=()=>'tel:+1'+DIAL_IN.replace(/\D/g,'').slice(-10);
+/* ---------- 📅 Meetings (Airtable Calendar table — today + tomorrow, with join links) ---------- */
+const CAL_TABLE='tblTL2OeN8b1k2J8W';
+const tomorrowISO=()=>{const d=new Date();d.setDate(d.getDate()+1);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+let calendar=load('m.calendar',[]);
+async function fetchCalendar(){
+  if(!cfg.apiKey) return calendar;
+  try{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CAL_TABLE); u.searchParams.set('pageSize','100');
+    u.searchParams.set('filterByFormula','OR({Date}="'+todayISO()+'",{Date}="'+tomorrowISO()+'")');
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return calendar; const d=await r.json();
+    calendar=(d.records||[]).map(rec=>({title:flat(rec.fields.Title),when:flat(rec.fields.When),date:flat(rec.fields.Date),sort:+flat(rec.fields.Sort)||0,location:flat(rec.fields.Location),link:flat(rec.fields.Link)}));
+    save('m.calendar',calendar);
+  }catch(e){}
+  return calendar;
+}
+const todayMeetings=()=>calendar.filter(e=>e.date===todayISO()).sort((a,b)=>a.sort-b.sort);
+function joinHref(e){ if(e.link&&/^https?:/i.test(e.link)) return e.link; const digits=(e.location||'').replace(/[^\d]/g,''); return digits.length>=10?'tel:'+digits:''; }
 let callCts=load('m.callcts',[]), ccBusy=false;
 const ccUrl=()=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+CC_TABLE;
 async function fetchCallContacts(force){
@@ -1101,7 +1126,7 @@ function pop(){
 function syncLayers(){ stack.forEach((x,i)=>{ const isTop=i===stack.length-1; x.el.classList.toggle('under',!isTop); if(isTop){ x.el.classList.remove('enter','leave'); x.el.style.transform=''; } }); }
 function goHome(){ while(stack.length>1){ const s=stack.pop(); s.el.remove(); } syncLayers(); paint(stack[0]); }
 function render(){ stack.forEach(paint); }
-function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='wx') paintWx(s); else if(r.type==='parked') paintParked(s); else if(r.type==='autos') paintAutos(s); else if(r.type==='comp') paintComp(s); else if(r.type==='invite') paintInvite(s); else if(r.type==='leadrev') paintLeadRev(s); }
+function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='wx') paintWx(s); else if(r.type==='parked') paintParked(s); else if(r.type==='autos') paintAutos(s); else if(r.type==='comp') paintComp(s); else if(r.type==='invite') paintInvite(s); else if(r.type==='leadrev') paintLeadRev(s); else if(r.type==='meetings') paintMeetings(s); }
 // iOS-style swipe from the left edge to go back
 function edgeSwipe(el){
   let sx=null,sy=0,dx=0;
@@ -1151,6 +1176,24 @@ function paintParked(s){
     r.querySelector('[data-restore]').onclick=()=>{ unpark(t); buzz(8); r.style.opacity='.35'; setTimeout(()=>paintParked(s),200); };
   });
 }
+/* ---------- 📅 MEETINGS — today + tomorrow, one tap to join ---------- */
+function paintMeetings(s){
+  const el=s.el; const td=todayISO(), tm=tomorrowISO();
+  const today=calendar.filter(e=>e.date===td).sort((a,b)=>a.sort-b.sort);
+  const tmrw=calendar.filter(e=>e.date===tm).sort((a,b)=>a.sort-b.sort);
+  const row=e=>{ const h=joinHref(e), isTel=h.indexOf('tel:')===0;
+    return `<div class="mtg"><div class="mtgw">${esc(e.when||'')}</div><div class="mtgb"><div class="mtgt">${esc(e.title||'(untitled)')}</div>${e.location?`<div class="mtgl">📍 ${esc(e.location)}</div>`:''}</div>${h?`<a class="mtgjoin${isTel?' tel':''}" href="${esc(h)}"${isTel?'':' target="_blank" rel="noopener"'}>${isTel?'📞':'▶ Join'}</a>`:''}</div>`; };
+  const sec=(ttl,list,empty)=>`<div class="mtgh">${ttl}</div>`+(list.length?list.map(row).join(''):`<div class="cxhint">${empty}</div>`);
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">📅 Meetings</div><button class="icon" data-sync aria-label="Refresh">↻</button></div>
+    <div class="scroll" style="padding:4px 14px calc(20px + var(--sab))">
+      ${sec('Today',today,'No meetings today.')}
+      ${tmrw.length?sec('Tomorrow',tmrw,''):''}
+      <div class="dialin" style="margin-top:14px"><div><div class="ap">Dial-in · no PIN</div><a href="${dialTel()}" style="color:inherit;text-decoration:none"><b>${esc(DIAL_IN)}</b></a></div></div>
+    </div>`;
+  wire(el);
+  el.querySelector('[data-sync]').onclick=()=>{ toast('Refreshing…'); fetchCalendar().then(()=>paintMeetings(s)); };
+  if(!calendar.length) fetchCalendar().then(c=>{ if(c.length) paintMeetings(s); });
+}
 /* ---------- HOME ---------- */
 function paintHome(s){
   const el=s.el, am=slotTasks('morning').length, pm=slotTasks('afternoon').length, now=currentSlot();
@@ -1169,6 +1212,8 @@ function paintHome(s){
         <button class="call am ${now==='morning'?'now':''}" data-slot="morning"><span class="em">🌅</span><span><div class="n">${am}</div><div class="lbl">Morning call</div><div class="hint">Tap to open · run inside</div></span></button>
         <button class="call pm ${now==='afternoon'?'now':''}" data-slot="afternoon"><span class="em">☀️</span><span><div class="n">${pm}</div><div class="lbl">Afternoon call</div><div class="hint">Tap to open · run inside</div></span></button>
       </div>
+      <button class="review" data-meet style="margin-bottom:12px"><span class="ri">📅</span><span style="flex:1;min-width:0"><div class="rn">Meetings</div>
+        <div class="rs">${(()=>{const t=todayMeetings();return t.length?t.length+' today · '+esc((t[0].when||'')+' '+(t[0].title||'')).slice(0,34):'tap to see today & tomorrow';})()}</div></span><span class="chev">›</span></button>
       <div class="minirow">
         <button class="mini" data-calls><b>${callTasks().length}</b><span>📞 Calls</span></button>
         <button class="mini" data-incoming><b>${incomingToday().length}</b><span>📥 Incoming</span></button>
@@ -1217,6 +1262,7 @@ function paintHome(s){
   { const cb=el.querySelector('[data-comp]'); if(cb) cb.onclick=()=>push({type:'comp'}); }
   { const lr=el.querySelector('[data-leadrev]'); if(lr) lr.onclick=()=>push({type:'leadrev'}); }
   el.querySelector('[data-autos]').onclick=()=>push({type:'autos'});
+  el.querySelector('[data-meet]').onclick=()=>push({type:'meetings'});
   el.querySelector('[data-calls]').onclick=()=>push({type:'slotlist',slot:'calls'});
   el.querySelector('[data-incoming]').onclick=()=>push({type:'incoming',day:null});
   el.querySelector('[data-notesbtn]').onclick=()=>push({type:'day',day:null});
@@ -1727,6 +1773,7 @@ function routeFromHash(){ const h=(location.hash||'').slice(1).toLowerCase(); if
 routeFromHash(); addEventListener('hashchange',routeFromHash);
 fetchAll();
 if(!wx.length || wx[0].date<todayISO()) fetchWx();   // refresh the forecast if missing/stale
+fetchCalendar().then(()=>{ if(stack[0]&&stack[0].route.type==='home') paintHome(stack[0]); });   // today/tomorrow meetings
 // refresh when the app comes back to the foreground (at most every 2 min)
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden && Date.now()-lastSync>120000) fetchAll(); });
 /* ---------- auto-update: never get stuck on an old build ----------
