@@ -466,7 +466,7 @@ kbd{ border-color:rgba(57,199,223,.3) }
 
 <script>
 "use strict";
-const BUILD='2026-10-09 13:53';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-09 13:56';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -3900,7 +3900,7 @@ if(cfg.apiKey){
 }
 else { tasks=demoTasks(); render(); applyLaunchParams(); toast('⚠️ DEMO data — paste your Airtable key to load your real tasks'); }
 // Deep-links from the Focus Core HUD: ?view=<category> opens that list, ?task=<id> opens the task.
-let _lpView=false,_lpTask=false;
+var _lpView=false,_lpTask=false;
 function applyLaunchParams(){
   const p=new URLSearchParams(location.search), view=p.get('view'), task=p.get('task');
   if(view && !_lpView){ _lpView=true;
