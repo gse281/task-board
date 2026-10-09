@@ -480,6 +480,13 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .call .cw .lbl{flex:none}
 .call .rot{font-size:12.5px;font-weight:600;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:3px 0;margin:-3px 0}
 .rot.rotin{animation:rotin .45s var(--ease)}@keyframes rotin{from{opacity:0;transform:translateY(5px)}to{opacity:.85;transform:none}}
+.frqh{font-size:12px;font-weight:800;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin:8px 4px 6px}
+.frq{display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:0 2px 6px;-webkit-overflow-scrolling:touch}.frq::-webkit-scrollbar{display:none}
+.frc{flex:none;display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:3px}
+.frc.pin{border-color:var(--gold)}
+.frn{font-weight:700;font-size:14.5px;padding:0 8px;height:40px;color:var(--ink);white-space:nowrap}
+.frb{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border-radius:11px;background:var(--panel2);text-decoration:none;font-size:16px}
+.frb.frcall{background:var(--callg)}
 /* @Computer – Claude */
 .compbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px;margin:0 0 12px;background:#1f1a14;border:1px solid #4a3522;border-radius:16px;font-weight:800;font-size:15px;text-align:left}
 .compbtn>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -543,7 +550,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-09 13:05';   // stamped by deploy.sh
+const BUILD='2026-10-09 13:08';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -618,7 +625,7 @@ async function fetchAll(){
     }while(offset && ++guard<60);
   }catch(e){ toast('Offline — showing saved list'); }
   syncing=false; render();
-  sweepNotes(false); dnArchive(); fetchAutos(false); fetchDrafts(); fetchCallContacts();
+  sweepNotes(false); dnArchive(); fetchAutos(false); fetchDrafts(); fetchCallContacts(); fetchUsage();
 }
 
 /* ---------- ⚙️ AUTOMATIONS — always on the home screen (feed: Airtable Automations table, refreshed every 2h
@@ -691,6 +698,39 @@ async function fetchCallContacts(force){
       save('m.callcts',callCts); localStorage.setItem('m.callctsAt',Date.now()); } }catch(e){}
   ccBusy=false; stack.forEach(x=>{ if(x.route.type==='invite') paintInvite(x); });
 }
+/* ---------- ⭐ Frequent contacts — learns who Roni calls / texts / picks (call search, Calls pane, home card, invites).
+   Airtable ContactUsage (Key = phone digits): Count, Score (decays, half-life 14 days), LastUsed, Pinned, Hidden. Synced every 30 min + on each use. ---------- */
+const CU_TABLE='tblxPMZa78C8n0U4t', CU_HALF=14*86400000;
+let cu=load('m.cu',{}), cuBusy=false;
+const cuKey=p=>String(p||'').replace(/\D/g,'').slice(-10);
+const cuNow=r=>(r.score||0)*Math.pow(0.5,(Date.now()-(r.last||0))/CU_HALF);
+async function fetchUsage(force){
+  if(demo||!cfg.apiKey||cuBusy) return; if(!force&&Date.now()-(+localStorage.getItem('m.cuAt')||0)<30*60000) return; cuBusy=true;
+  try{ let off,out=[],g=0; do{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CU_TABLE); u.searchParams.set('pageSize','100'); if(off) u.searchParams.set('offset',off);
+      const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) break; const d=await r.json(); out=out.concat(d.records||[]); off=d.offset; }while(off&&++g<20);
+    if(out.length){ const m={}; out.forEach(x=>{ const f=x.fields, k=f.Key||cuKey(f.Phone); if(!k) return; const loc=cu[k];
+        const rec={id:x.id,name:f.Name||'',phone:f.Phone||'',count:+f.Count||0,score:+f.Score||0,last:f.LastUsed?Date.parse(f.LastUsed):0,pinned:!!f.Pinned,hidden:!!f.Hidden};
+        m[k]=(loc&&loc.dirtyAt&&Date.now()-loc.dirtyAt<180000)?Object.assign(loc,{id:x.id}):rec; });
+      Object.keys(cu).forEach(k=>{ if(!m[k]&&cu[k].dirtyAt) m[k]=cu[k]; }); cu=m; save('m.cu',cu); localStorage.setItem('m.cuAt',Date.now()); } }catch(e){}
+  cuBusy=false; }
+async function cuSave(k){ const r=cu[k]; if(!r||demo||!cfg.apiKey) return;
+  const fields={Key:k,Name:r.name,Phone:r.phone,Count:r.count,Score:+r.score.toFixed(3),LastUsed:new Date(r.last||Date.now()).toISOString(),Pinned:!!r.pinned,Hidden:!!r.hidden};
+  try{ await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+CU_TABLE,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
+    body:JSON.stringify({performUpsert:{fieldsToMergeOn:['Key']},typecast:true,records:[{fields}]})}); }catch(e){} }
+function useContact(name,phone){ const k=cuKey(phone); if(k.length<7) return; const r=cu[k]||(cu[k]={name:'',phone:'',count:0,score:0,last:0});
+  r.score=cuNow(r)+1; r.count=(r.count||0)+1; r.last=Date.now(); r.hidden=false; if(name) r.name=name; r.phone=phone; r.dirtyAt=Date.now(); save('m.cu',cu); cuSave(k); }
+function cuSet(k,patch){ const r=cu[k]; if(!r) return; Object.assign(r,patch,{dirtyAt:Date.now()}); save('m.cu',cu); cuSave(k); }
+function frequent(n){ return Object.entries(cu).filter(([k,r])=>!r.hidden&&(r.pinned||r.count)).sort((a,b)=>(b[1].pinned-a[1].pinned)||(cuNow(b[1])-cuNow(a[1]))).slice(0,n||8); }
+const cuA=(name)=>` data-cu="${esc(name||'')}"`;   // add to any tel:/sms: link to count it
+document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[data-cu]'); if(!a) return; const h=a.getAttribute('href')||''; const ph=decodeURIComponent(h.replace(/^(tel:|sms:)/i,'').split(/[?&]/)[0]); if(ph) useContact(a.dataset.cu,ph); },true);
+function freqHTML(){ const F=frequent(8); if(!F.length) return '';
+  return `<div class="frqh">⭐ Frequent</div><div class="frq">${F.map(([k,r])=>`<div class="frc${r.pinned?' pin':''}"><button class="frn" data-frk="${k}">${r.pinned?'📌 ':''}${esc((r.name||r.phone).split(' ').slice(0,2).join(' '))}</button><a class="frb frcall" href="${esc(telOf(r.phone))}"${cuA(r.name)} aria-label="Call">📞</a><a class="frb" href="${esc(smsOf(r.phone))}"${cuA(r.name)} aria-label="Text">💬</a></div>`).join('')}</div>`; }
+function wireFreq(root,redraw){ root.querySelectorAll('[data-frk]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const k=b.dataset.frk, r=cu[k]; if(!r) return;
+  sheet(`<h3>${esc(r.name||r.phone)}</h3><div class="ap" style="margin:-4px 2px 12px">${esc(r.phone)} · used ${r.count||0}×</div>
+    <div class="row2"><a class="pill acc" href="${esc(telOf(r.phone))}"${cuA(r.name)} data-close style="text-align:center;text-decoration:none">📞 Call</a><a class="pill" href="${esc(smsOf(r.phone))}"${cuA(r.name)} data-close style="text-align:center;text-decoration:none">💬 Text</a></div>
+    <div class="row2"><button class="pill" data-pin>${r.pinned?'Unpin':'📌 Pin to front'}</button><button class="pill" data-hide>Remove from Frequent</button></div>`,(sh,close)=>{
+    sh.querySelector('[data-pin]').onclick=()=>{ cuSet(k,{pinned:!r.pinned}); close(); redraw&&redraw(); };
+    sh.querySelector('[data-hide]').onclick=()=>{ cuSet(k,{hidden:true,pinned:false}); close(); toast('Removed from Frequent'); redraw&&redraw(); }; }); }); }
 const callContacts=slot=>callCts.filter(c=>c.active&&c.slots.includes(slot)).sort((a,b)=>a.name.localeCompare(b.name));
 /* ---------- 📇 Full contacts (ContactsData JSON chunks + ContactsAdded) — for the Calls dialer ---------- */
 const CONTACTS_TABLE='tbla8W2IjHCJMXgY5', CONTACTS_ADD_TABLE='tblMz61uZtH5DeDl1';
@@ -742,7 +782,7 @@ function whoHTML(m,id){ const da=id?` data-who="${id}"`:' data-who';
 function callSuggest(t){ const words=cleanName(t).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!CALL_STOP.has(w)&&!/^\d+$/.test(w));
   const qs=[]; if(t.lead) qs.push(t.lead.toLowerCase()); for(let i=0;i<words.length-1;i++) qs.push(words[i]+' '+words[i+1]); words.forEach(w=>qs.push(w));
   const out=[]; for(const q of qs){ for(const c of searchContacts(q)){ if((c.p||[]).length&&!out.includes(c)) out.push(c); if(out.length>=5) return out; } } return out; }
-function setCallContact(t,who,phone){ t.callWho=who; t.phone=phone; save(LS_CACHE,tasks); patch(t.id,{CallContact:who,Phone:phone}); }
+function setCallContact(t,who,phone){ if(phone&&who!=='-') useContact(who,phone); t.callWho=who; t.phone=phone; save(LS_CACHE,tasks); patch(t.id,{CallContact:who,Phone:phone}); }
 // 👤 Pick / fix who to call: search + top 5 suggestions · Enter number manually · Clear. Saved to Airtable (CallContact + Phone).
 function pickCallContact(t,after){
   const m=callMatch(t);
@@ -788,7 +828,7 @@ function paintInvite(s){
       <div class="ap" style="margin:4px 4px 10px">Message: “${esc(inviteText(slot))}”</div>
       ${list.length?`<a class="invall" href="${smsMany(list.map(c=>c.phone),inviteText(slot))}" data-all>📣 Invite all ${list.length}</a>`:''}
       <div class="glist" style="margin-top:12px">${list.map(c=>`<div class="ccrow" data-id="${c.id}"><div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${sent[c.id]?' <span class="ccok">✓ invited</span>':''}</div><div class="cx">${esc(c.phone)}</div></div>
-        <a class="ccinv" href="${smsOne(c.phone,inviteText(slot))}" data-inv="${c.id}">Invite</a><button class="ccrm" data-ccrm="${c.id}" aria-label="Remove">✕</button></div>`).join('')
+        <a class="ccinv" href="${smsOne(c.phone,inviteText(slot))}"${cuA(c.name)} data-inv="${c.id}">Invite</a><button class="ccrm" data-ccrm="${c.id}" aria-label="Remove">✕</button></div>`).join('')
         ||'<div class="ap" style="padding:18px">No one on this call yet — tap ＋ to add.</div>'}</div>
       <div class="foot">Tap Invite → Messages opens with the text ready → press Send.</div></div>`;
   wire(el);
@@ -1018,11 +1058,11 @@ let homeQ='';
 function wireDialer(root,keepQ){ const ci=root.querySelector('.cxsearch'), cr=root.querySelector('[data-cxresults]'); if(!ci||!cr) return;
   if(keepQ) ci.value=homeQ;
   const drawCx=()=>{ const q=ci.value.trim(); if(keepQ) homeQ=ci.value;
-    if(!q){ cr.innerHTML=keepQ?'':'<div class="cxhint">'+(contacts.length?contacts.length+' contacts · type a name to call':'Loading contacts…')+'</div>'; return; }
+    if(!q){ cr.innerHTML=freqHTML()+(keepQ?'':'<div class="cxhint">'+(contacts.length?contacts.length+' contacts · type a name to call':'Loading contacts…')+'</div>'); wireFreq(cr,drawCx); return; }
     const hits=searchContacts(q).slice(0,keepQ?8:40);
     cr.innerHTML=hits.length?hits.map(c=>(c.p||[]).map((p,i)=>{ const d=p.replace(/[^\d+]/g,'');
         return '<div class="cxrow'+(i?' more':'')+'"><div class="cxinfo">'+(i?'':'<b>'+esc(c.n)+'</b>'+(c.o?'<span class="cxsub">'+esc(c.o)+'</span>':''))+'<span class="cxp">'+esc(p)+'</span></div>'
-          +'<div class="cxbtns"><a class="cxb cxcall" href="tel:'+esc(d)+'">📞 Call</a><a class="cxb" href="sms:'+esc(d)+'" aria-label="Text">💬</a></div></div>'; }).join('')).join('')
+          +'<div class="cxbtns"><a class="cxb cxcall" href="tel:'+esc(d)+'"'+cuA(c.n)+'>📞 Call</a><a class="cxb" href="sms:'+esc(d)+'"'+cuA(c.n)+' aria-label="Text">💬</a></div></div>'; }).join('')).join('')
       :'<div class="cxhint">'+(contacts.length?'No match':'Loading contacts…')+'</div>'; };
   ci.addEventListener('input',drawCx); drawCx(); if(!contacts.length&&contactsTry()) loadContacts().then(drawCx);
   root.querySelectorAll('[data-cxclear]').forEach(b=>b.onclick=()=>{ ci.value=''; drawCx(); ci.focus(); });
@@ -1038,7 +1078,7 @@ function paintSlotList(s){
   const callRow=t=>{ const m=callMatch(t), w=callWhen(t);
     return `<div class="swr" data-id="${t.id}"><div class="swbg"><span class="swdone">✓ Done</span><span class="swacts"><button class="swrm" data-rm>⊘ Remove</button><button class="swsz" data-snz>😴 Snooze</button></span></div>
       <div class="sl clr" data-open role="button"><span class="dragh" data-drag aria-label="Hold and drag to reorder">≡</span><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="clt"><span class="tk">${esc(cleanName(t))}</span><span class="cls">${w.min!=null?esc(hhmm(w.min))+' · ':''}${whoHTML(m)}</span></span>
-        ${m?`<a class="clb clcall" href="${esc(telOf(m.phone))}" data-join>📞 Call</a><a class="clb" href="${esc(smsOf(m.phone))}" data-join aria-label="Text">💬 Text</a>`:`<button class="clb add" data-addnum>＋ Add number</button>`}</div></div>`; };
+        ${m?`<a class="clb clcall" href="${esc(telOf(m.phone))}"${cuA(m.who)} data-join>📞 Call</a><a class="clb" href="${esc(smsOf(m.phone))}"${cuA(m.who)} data-join aria-label="Text">💬 Text</a>`:`<button class="clb add" data-addnum>＋ Add number</button>`}</div></div>`; };
   const grp=()=>{ const G=callGroups();
     return Object.entries(G).filter(([k,v])=>v.length).map(([k,v])=>`<div class="clgh">${k==='Today'?'📞 Today':k==='Tomorrow'?'🌙 Tomorrow':k==='Later'?'🗓 Later':'Anytime'} <span>${v.length}</span></div>`+v.map(t=>callRow(t).replace('<div class="swr" ','<div class="swr" data-g="'+k+'" ')).join('')).join(''); };
   const body=items.length?(isCalls?grp():items.map(rowFor).join(''))
@@ -1418,15 +1458,15 @@ function carHTML(key,slides,start){ if(!slides.length) return '';
 const carPos={};   // remembered slide per card, survives the 60s home repaint
 function wireCars(root){ root.querySelectorAll('[data-car]').forEach(c=>{ const tr=c.querySelector('.cartrack'), key=c.dataset.car, n=tr.children.length, pos=c.querySelector('.carpos');
   const at=()=>Math.round(tr.scrollLeft/(tr.children[1]?tr.children[1].offsetLeft-tr.children[0].offsetLeft:tr.clientWidth||1));
-  const go=i=>{ i=Math.max(0,Math.min(n-1,i)); const x=tr.children[i].offsetLeft-tr.children[0].offsetLeft; const from=tr.scrollLeft; tr.scrollTo({left:x,behavior:'smooth'}); carPos[key]=i; if(pos) pos.textContent=(i+1)+' / '+n;
-    setTimeout(()=>{ if(Math.abs(tr.scrollLeft-x)>4&&Math.abs(tr.scrollLeft-from)<4) tr.scrollLeft=x; },450); };   // fallback if smooth scroll didn't run
+  const go=i=>{ i=Math.max(0,Math.min(n-1,i)); const x=tr.children[i].offsetLeft-tr.children[0].offsetLeft; tr._tgt=x; tr.scrollTo({left:x,behavior:'smooth'}); carPos[key]=i; if(pos) pos.textContent=(i+1)+' / '+n;
+    setTimeout(()=>{ if(tr._tgt===x&&Math.abs(tr.scrollLeft-x)>4) tr.scrollLeft=x; },450); };   // fallback if smooth scroll didn't run
   const upd=()=>{ const i=Math.max(0,Math.min(n-1,at())); carPos[key]=i; if(pos) pos.textContent=(i+1)+' / '+n; };
   tr.addEventListener('scroll',()=>{ cancelAnimationFrame(tr._r); tr._r=requestAnimationFrame(upd); },{passive:true});
   const p=c.querySelector('[data-cprev]'), q=c.querySelector('[data-cnext]');
   const cur=()=>carPos[key]!=null?carPos[key]:at();
   if(p) p.onclick=e=>{ e.stopPropagation(); buzz(5); go(cur()-1); }; if(q) q.onclick=e=>{ e.stopPropagation(); buzz(5); go(cur()+1); };
   const i0=carPos[key]!=null?Math.min(carPos[key],n-1):+c.dataset.start||0;
-  requestAnimationFrame(()=>{ const el=tr.children[i0]; if(el) tr.scrollLeft=el.offsetLeft-tr.children[0].offsetLeft; upd(); }); }); }
+  { const el=tr.children[i0]; if(el) tr.scrollLeft=el.offsetLeft-tr.children[0].offsetLeft; carPos[key]=i0; if(pos) pos.textContent=(i0+1)+' / '+n; } }); }
 // Morning / Afternoon slim rows: show one task from that call, rotating every 30 s from data already loaded (no extra Airtable reads); paused while hidden.
 const rotIdx={morning:0,afternoon:0};
 function rotTask(slot){ const L=slotTasks(slot); if(!L.length) return null; return L[rotIdx[slot]%L.length]; }
@@ -1457,7 +1497,7 @@ function paintHome(s){
             return carHTML('meet',L.map(e=>row(now.includes(e)?'NOW':e===next?'NEXT':hhmm(e.start),e)),0); })()}
           ${(()=>{ const tm=meetingsToday(calendar,tomorrowISO()); return tm.length?`<div class="nntmh">🌙 Tomorrow</div>`+tm.map(e=>`<div class="nnrow sm"><span class="nntag">${esc(hhmm(e.start))}</span><div class="nnt"><b>${esc(e.title||'(untitled)')}</b>${e.location?`<span>${esc(e.location)}</span>`:''}</div>${j(e)}</div>`).join(''):''; })()}</div>`; })()}
       ${(()=>{ const {now,next,tmr}=callsNowNext();
-        const btns=t=>{ const m=callMatch(t); return m?`<a class="nnjoin tel" href="${esc(telOf(m.phone))}" data-join>📞 Call</a><a class="nntxt" href="${esc(smsOf(m.phone))}" data-join aria-label="Text">💬</a>`:''; };
+        const btns=t=>{ const m=callMatch(t); return m?`<a class="nnjoin tel" href="${esc(telOf(m.phone))}"${cuA(m.who)} data-join>📞 Call</a><a class="nntxt" href="${esc(smsOf(m.phone))}"${cuA(m.who)} data-join aria-label="Text">💬</a>`:''; };
         const row=(tag,t)=>{ const w=callWhen(t), m=callMatch(t); return `<div class="nnrow"><span class="nntag ${tag==='NOW'?'now':''}">${tag}</span><div class="nnt"><b>${esc(cleanName(t))}</b><span>${(()=>{ const x=w.min!=null?hhmm(w.min):(w.day&&w.day<todayISO()?'overdue':w.day===todayISO()?'today':''); return x?esc(x)+' · ':''; })()}${whoHTML(m,t.id)}</span></div>${btns(t)}</div>`; };
         return `<div class="review meetcard" data-calls role="button" tabindex="0" style="margin-bottom:12px;display:block"><div style="display:flex;align-items:center;gap:12px"><span class="ri" style="background:var(--callg)">📞</span><span style="flex:1;min-width:0"><div class="rn">Calls</div><div class="rs">${callTasks().length} open · tap for the full list</div></span><span class="chev">›</span></div>
           ${(()=>{ const P=callPaneOrder(); if(!P.length) return '<div class="nnrow"><span class="nntag">NEXT</span><div class="nnt"><span>No calls due</span></div></div>';
