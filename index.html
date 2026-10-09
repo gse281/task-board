@@ -124,6 +124,11 @@ kbd{display:inline-block;background:var(--panel2);border:1px solid var(--line);b
 .plsline{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px}
 .plsline .plsrow{margin-top:0}
 .plsline .cardacts{margin:0 0 0 auto}
+.whobtn{font-size:15px;font-weight:600;color:#f4efe9;text-decoration:none;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.whobtn i{font-style:normal;color:var(--muted);font-weight:400;font-size:12px}.whobtn.guess b{color:#f0b44c;font-weight:800}
+.whobtn.guess small{color:#f0b44c;font-size:11px;font-weight:700;border:1px solid #6b5422;border-radius:6px;padding:0 4px;margin-left:3px}
+.whobtn.none{color:#e0a458;font-size:13px}
+.pcrow{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);padding:8px 6px;cursor:pointer;font-size:13px}.pcrow:hover{background:var(--panel2)}
 .cardbtn{background:none;border:1px solid transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:2px 5px;border-radius:6px}
 .cardbtn:hover{border-color:var(--line);color:var(--ink)}
 .cardbtn.done{color:var(--green)} .cardbtn.on{color:var(--accent)}
@@ -439,7 +444,7 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 
 <script>
 "use strict";
-const BUILD='2026-10-09 12:39';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-09 13:03';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ⌨️ Shortcuts cheat-sheet', d:'New ⌨️ button in the top bar (or press ?) opens your living keyboard-shortcut cheat-sheet — your F-key macros, Excel, and macOS, searchable and grouped, with ★ favorites. Add/edit/delete any shortcut right there (saved to Airtable), and I can tune it for you over time.'},
@@ -748,7 +753,7 @@ async function atFetch(){
       name:flat(rec.fields.Task), project:flat(rec.fields.Project),
       lead:flat(rec.fields.SBLead), sub:flat(rec.fields.Sub),
       status:flat(rec.fields.Status)||'Open',
-      phoneRemote:flat(rec.fields.Phone), nextStepRemote:flat(rec.fields.NextStep),
+      phoneRemote:flat(rec.fields.Phone), callWho:flat(rec.fields.CallContact), nextStepRemote:flat(rec.fields.NextStep),
       sourceRemote:flat(rec.fields.Source), notesRemote:flat(rec.fields.Notes),
       typeRemote:(flat(rec.fields.Type)||'').toLowerCase(),
       slotRemote:(flat(rec.fields.MeetingSlot)||'').toLowerCase(),
@@ -2806,14 +2811,33 @@ function callInvitePanel(){
 }
 /* 📞 calls: who to call (task Phone → roster → Contacts fuzzy match) + NOW/NEXT */
 const CALL_STOP_D=new Set(['call','calls','re','about','with','the','and','to','for','back','text','follow','up','followup','fu','on','in','of','at','pm','am','me','him','her','them','ask','check','tell','get','x2','x3','asap','today','tomorrow','again']);
-function callMatchD(t){ const ph=phoneFor(t); if(ph) return {phone:ph,who:t.lead||''};
+function callMatchD(t){ if(t.callWho==='-') return null; const ph=phoneFor(t); if(ph) return {phone:ph,who:t.callWho||t.lead||'',sure:true};
   try{ if(!contacts.length&&!added.length){ if(Date.now()-(window._ctTryD||0)>60000){ window._ctTryD=Date.now(); loadContacts(); } return null; } }catch(e){ return null; }
   const words=cleanName(t).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!CALL_STOP_D.has(w)&&!/^\d+$/.test(w));
   const qs=[]; if(t.lead) qs.push(t.lead.toLowerCase()); for(let i=0;i<words.length-1;i++) qs.push(words[i]+' '+words[i+1]); words.forEach(w=>qs.push(w));
   for(const q of qs){ const hits=searchContacts(q).filter(c=>(c.p||[]).length); if(!hits.length) continue;
     const exact=hits.find(c=>(c.n||'').toLowerCase().split(/\s+/)[0]===q.split(' ')[0]);
-    if(hits.length<=3||exact){ const c=exact||hits[0]; return {phone:c.p[0],who:c.n}; } }
+    if(hits.length<=3||exact){ const c=exact||hits[0]; return {phone:c.p[0],who:c.n,sure:false}; } }
   return null; }
+function callSuggestD(t){ const words=cleanName(t).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!CALL_STOP_D.has(w)&&!/^\d+$/.test(w));
+  const qs=[]; if(t.lead) qs.push(t.lead.toLowerCase()); for(let i=0;i<words.length-1;i++) qs.push(words[i]+' '+words[i+1]); words.forEach(w=>qs.push(w));
+  const out=[]; for(const q of qs){ for(const c of searchContacts(q)){ if((c.p||[]).length&&!out.includes(c)) out.push(c); if(out.length>=5) return out; } } return out; }
+function setCallContactD(t,who,phone){ t.callWho=who; t.phoneRemote=phone; A(t.id).phone=phone||''; saveAug(); atPatch(t.id,{CallContact:who,Phone:phone}); render(); }
+// 👤 Who to call — search + top 5 suggestions, Enter number manually, Clear (saved to Airtable CallContact + Phone; same as iPhone)
+function pickCallContactD(t){ const m=callMatchD(t);
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML=`<div class="modal"><h3>👤 Who to call</h3><div class="note" style="margin-bottom:8px">${esc(cleanName(t))}${m?` · now: <b>${m.sure?'':'≈ '}${esc(m.who||m.phone)}</b>`:''}</div>
+    <input class="inp" id="pc_q" type="search" placeholder="Search contacts…" autocomplete="off"><div id="pc_l" style="max-height:300px;overflow:auto;margin:8px 0"></div>
+    <div class="modal-actions"><button class="btn ghost" data-man>✎ Enter number manually</button><button class="btn ghost" data-clr>Clear</button><button class="btn ghost" data-x>Cancel</button></div></div>`;
+  const q=bd.querySelector('#pc_q'), L=bd.querySelector('#pc_l'); let list=[];
+  const draw=()=>{ const v=q.value.trim(); list=v?searchContacts(v).filter(c=>(c.p||[]).length).slice(0,25):callSuggestD(t);
+    L.innerHTML=(v?'':'<div class="note">Suggested</div>')+(list.length?list.map((c,ci)=>c.p.map((p,pi)=>`<button class="pcrow" data-c="${ci}" data-p="${pi}"><b>${pi?'':esc(c.n)}</b> <span style="color:var(--muted)">${!pi&&c.o?esc(c.o)+' · ':''}${esc(p)}</span></button>`).join('')).join(''):'<div class="note">'+(contacts.length?'No match':'Contacts not loaded')+'</div>'); };
+  L.onclick=e=>{ const b=e.target.closest('.pcrow'); if(!b) return; const c=list[+b.dataset.c]; bd.remove(); setCallContactD(t,c.n,c.p[+b.dataset.p]); toast('📞 '+c.n+' saved'); };
+  q.addEventListener('input',draw); draw();
+  bd.addEventListener('click',e=>{ if(e.target===bd) bd.remove(); }); bd.querySelector('[data-x]').onclick=()=>bd.remove();
+  bd.querySelector('[data-clr]').onclick=()=>{ bd.remove(); setCallContactD(t,'-',''); toast('Contact cleared'); };
+  bd.querySelector('[data-man]').onclick=()=>{ const ph=(prompt('Phone number',phoneFor(t)||'')||'').trim(); if(!ph) return; const nm=(prompt('Name',t.callWho&&t.callWho!=='-'?t.callWho:(t.lead||''))||'').trim(); bd.remove(); setCallContactD(t,nm||ph,ph); };
+  document.body.appendChild(bd); q.focus(); }
 function callWhenD(t){ return {day:doDateOf(t)||'',min:null}; }
 function automationsPanel(){
   fetchAutos(false);
@@ -2953,7 +2977,8 @@ function taskEl(t,sectionId){
   if(sectionId==='calls'){ const m=callMatchD(t);
     if(m){ const c=document.createElement('a'); c.className='cardbtn'; c.href='tel:'+m.phone.replace(/[^\d+]/g,''); c.textContent='📞'; c.title='Call '+(m.who||m.phone)+' '+m.phone; c.onclick=e=>e.stopPropagation(); acts.appendChild(c);
       const x=document.createElement('a'); x.className='cardbtn'; x.href='sms:'+m.phone.replace(/[^\d+]/g,''); x.textContent='💬'; x.title='Text '+(m.who||m.phone); x.onclick=e=>e.stopPropagation(); acts.appendChild(x); }
-    else act('＋#','','Add a phone number',()=>askPhone(t)); }
+    else act('＋#','','Pick who to call',()=>pickCallContactD(t));
+    { const wb=document.createElement('button'); wb.className='cardbtn whobtn'; wb.innerHTML=m?(m.sure?esc(m.who||m.phone)+' <i>✎</i>':'<b>≈</b> '+esc(m.who||m.phone)+' <small>tap to fix</small>'):'👤 pick contact'; wb.classList.add(m?(m.sure?'ok':'guess'):'none'); wb.title='Change who to call'; wb.onclick=e=>{ e.stopPropagation(); pickCallContactD(t); }; acts.appendChild(wb); } }
   const mas=document.createElement('div'); mas.className='mas';
   const mk=(ltr,title,fn,on)=>{const b=document.createElement('button');b.className='masb'+(on?' on':'');b.textContent=ltr;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};return b;};
   mas.appendChild(mk('M','Add to morning call',()=>setSlot(t.id,'morning'), sectionOf(t)==='morning'));
@@ -3804,7 +3829,8 @@ function renderNowNext(){ const el=document.getElementById('meetNN'); if(!el) re
   el.innerHTML=now.map(e=>chip('NOW',e)).join('')+(next?chip('NEXT',next):'');
   // calls due today (DoDate ≤ today) → CALL chip with one-tap dial
   const due=orderRows(tasks.filter(t=>t.status==='Open'&&visible(t)&&notSnoozed(t)&&sectionOf(t)==='calls'),'calls').slice(0,2);   // = top 2 of the Calls panel, in drag order
-  due.forEach(t=>{ const m=callMatchD(t); el.insertAdjacentHTML('beforeend','<span class="nnchip" title="'+esc(cleanName(t))+'"><b>CALL</b> '+esc(cleanName(t).slice(0,22))+(m?' <a class="joinbtn callg" href="tel:'+m.phone.replace(/[^\d+]/g,'')+'">📞</a><a class="joinbtn" href="sms:'+m.phone.replace(/[^\d+]/g,'')+'">💬</a>':'')+'</span>'); }); }
+  due.forEach(t=>{ const m=callMatchD(t); el.insertAdjacentHTML('beforeend','<span class="nnchip" title="'+esc(cleanName(t))+'"><b>CALL</b> '+esc(cleanName(t).slice(0,22))+' <a href="#" class="whobtn '+(m?(m.sure?'ok':'guess'):'none')+'" data-whod="'+t.id+'">'+(m?(m.sure?esc(m.who||m.phone)+' <i>✎</i>':'<b>≈</b> '+esc(m.who||m.phone)+' <small>tap to fix</small>'):'👤 pick contact')+'</a>'+(m?' <a class="joinbtn callg" href="tel:'+m.phone.replace(/[^\d+]/g,'')+'">📞</a><a class="joinbtn" href="sms:'+m.phone.replace(/[^\d+]/g,'')+'">💬</a>':'')+'</span>'); }); }
+document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('[data-whod]'); if(!a) return; e.preventDefault(); e.stopPropagation(); const t=tasks.find(x=>x.id===a.dataset.whod); if(t) pickCallContactD(t); },true);
 renderNowNext(); setInterval(renderNowNext,60000); { const _r=render; render=function(){ const x=_r.apply(this,arguments); try{ renderNowNext(); }catch(e){} return x; }; }
 document.getElementById('bulkBtn').onclick=bulkAdd;
 document.getElementById('picInput').onchange=e=>{if(e.target.files[0])photoToList(e.target.files[0]);};

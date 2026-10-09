@@ -1,0 +1,209 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Focus Core — draft</title>
+<style>
+:root{ --bg:#070c10; --ink:#eaf6fb; --cyan:#39c7df; --cyan2:#1b6e80; --dim:#5e7a84; --orange:#e8683c; --gold:#e0a458; --line:rgba(57,199,223,.22); }
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:radial-gradient(130% 120% at 50% 42%, #0b141a 0%, #070c10 60%, #04070a 100%);color:var(--ink);
+  font:15px/1.4 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+#stage{position:fixed;inset:0;overflow:hidden}
+svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.spin{transform-origin:center;animation:spin 120s linear infinite}
+.spin.rev{animation-duration:180s;animation-direction:reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* top bar */
+.bar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;z-index:10;
+  font:600 12px ui-monospace,Menlo,monospace;letter-spacing:2px;text-transform:uppercase;color:var(--dim)}
+.bar .mid{color:var(--cyan);text-shadow:0 0 14px rgba(57,199,223,.5)}
+.bar a{color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:5px 12px;letter-spacing:1px}
+.bar a:hover{color:var(--cyan);border-color:var(--cyan)}
+.clock{font-size:15px;color:var(--ink)}
+/* core */
+.core{position:absolute;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  background:radial-gradient(circle at 50% 42%, rgba(57,199,223,.14), rgba(7,12,16,.1) 70%);
+  border:1.5px solid rgba(57,199,223,.55);box-shadow:0 0 50px rgba(57,199,223,.22), inset 0 0 60px rgba(57,199,223,.1);
+  padding:18px;cursor:pointer;transition:transform .3s}
+.core:hover{transform:scale(1.02)}
+.core .lbl{font:700 11px ui-monospace,Menlo,monospace;letter-spacing:4px;color:var(--cyan);text-transform:uppercase;opacity:.9}
+.core .cnt{font-weight:800;font-size:13px;color:var(--dim);margin-top:2px;letter-spacing:1px}
+.core .item{margin-top:12px;font-weight:700;font-size:20px;line-height:1.25;max-width:90%;transition:opacity .5s}
+.core .proj{display:inline-block;font:800 11px ui-monospace,Menlo,monospace;color:#07141a;background:var(--cyan);border-radius:6px;padding:1px 7px;margin-bottom:8px;letter-spacing:.5px}
+.core .empty{color:var(--dim);font-size:15px;margin-top:12px}
+/* bubbles */
+.bub{position:absolute;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  background:radial-gradient(circle at 50% 40%, rgba(14,26,32,.92), rgba(9,16,20,.86));
+  border:1px solid rgba(57,199,223,.32);box-shadow:0 0 22px rgba(0,0,0,.5), inset 0 0 26px rgba(57,199,223,.06);
+  padding:12px;cursor:pointer;transition:transform .25s,border-color .25s,box-shadow .25s;overflow:hidden}
+.bub:hover{transform:scale(1.05);border-color:var(--cyan);box-shadow:0 0 30px rgba(57,199,223,.3)}
+.bub .cap{font:700 10px ui-monospace,Menlo,monospace;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);opacity:.95;white-space:nowrap}
+.bub .n{font-weight:800;font-size:11px;color:var(--dim);margin-top:1px}
+.bub .it{margin-top:9px;font-weight:600;font-size:13px;line-height:1.25;color:var(--ink);transition:opacity .45s;max-width:100%;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.bub .pr{display:inline-block;font:800 9px ui-monospace,Menlo,monospace;color:#07141a;background:var(--gold);border-radius:5px;padding:0 5px;margin-bottom:5px}
+.bub.hot{border-color:rgba(232,104,60,.5)} .bub.hot .cap{color:var(--orange)} .bub.hot .pr{background:var(--orange)}
+.bub .dots{display:flex;gap:3px;margin-top:8px;height:5px}
+.bub .dots i{width:5px;height:5px;border-radius:50%;background:rgba(57,199,223,.25)} .bub .dots i.on{background:var(--cyan);box-shadow:0 0 6px var(--cyan)}
+.fade{opacity:0}
+#setup{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:20;background:rgba(4,7,10,.85)}
+#setup input{background:#0d1a20;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:10px 12px;width:min(420px,86vw);font:14px ui-monospace,Menlo}
+#setup button{background:var(--cyan);border:0;color:#07141a;font-weight:800;border-radius:8px;padding:10px 18px;cursor:pointer}
+.hint{color:var(--dim);font-size:12px}
+</style></head>
+<body>
+<div id="stage">
+  <svg class="hud" id="hud" preserveAspectRatio="xMidYMid meet"></svg>
+  <div class="bar"><span>FOCUS CORE <span style="color:var(--orange)">· draft</span></span><span class="mid" id="status">LOADING…</span><span class="clock" id="clock"></span></div>
+</div>
+<div id="setup">
+  <div class="hint">Paste your Airtable key to see live data (or just preview the demo).</div>
+  <input id="keyin" type="password" placeholder="Airtable Personal Access Token (pat…)">
+  <div style="display:flex;gap:8px"><button id="keygo">Connect</button><button id="demo" style="background:#13232b;color:var(--cyan)">Preview demo</button></div>
+  <div class="hint">It reuses the same key your dashboard already saved — you usually won't see this.</div>
+</div>
+<a href="./" style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font:600 11px ui-monospace,Menlo;letter-spacing:2px">⌂ DASHBOARD</a>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const flat=v=>{if(v==null)return'';if(Array.isArray(v))return v.map(x=>x&&typeof x==='object'?(x.name||''):x).filter(Boolean).join(', ');if(typeof v==='object')return v.name||'';return String(v);};
+const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const tomorrowISO=()=>{const d=new Date();d.setDate(d.getDate()+1);return todayISOf(d);};
+function todayISOf(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+const cleanName=t=>(t.name||'').replace(/\s*\(V\d+-\d+\)\s*$/i,'').trim()||'(untitled)';
+let cfg={}; try{cfg=JSON.parse(localStorage.getItem('tb.cfg')||'{}');}catch(e){}
+cfg.baseId=cfg.baseId||'appdDTNBbVrp6hVOv'; cfg.tableId=cfg.tableId||'tblLpOdHqxoP3siYk';
+let aug={}; try{aug=JSON.parse(localStorage.getItem('tb.aug')||'{}');}catch(e){}
+const A=id=>aug[id]||{};
+const CAL_TABLE='tblTL2OeN8b1k2J8W';
+let tasks=[], calendar=[];
+const daysOpen=t=>t.createdTime?Math.floor((Date.now()-new Date(t.createdTime))/864e5):0;
+function sectionOf(t){ const a=A(t.id); return (a.section||t.sectionRemote||'').toLowerCase()||defaultSection(t); }
+function defaultSection(t){ if(t.slotRemote==='morning')return'morning'; if(t.slotRemote==='afternoon')return'afternoon'; if(t.typeRemote==='call'||/^\s*call\b/i.test(t.name||''))return'calls'; return'backlog'; }
+const isOpen=t=>(t.status||'Open')==='Open';
+const snoozed=t=>A(t.id).snoozeUntil>Date.now();
+const live=t=>isOpen(t)&&!snoozed(t)&&sectionOf(t)!=='parked';
+function score(t){ return (t.priorityRemote||0)+(A(t.id).priAdj||0)+daysOpen(t); }
+
+async function fetchAll(){
+  if(!cfg.apiKey){ demoData(); return render(); }
+  $('#status').textContent='SYNCING…';
+  try{
+    let out=[],off,g=0;
+    do{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+encodeURIComponent(cfg.tableId)); u.searchParams.set('pageSize','100');
+      u.searchParams.set('filterByFormula',"OR({Status}='Open',{Status}=BLANK())"); if(off)u.searchParams.set('offset',off);
+      const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok){throw new Error(r.status);} const d=await r.json();
+      out=out.concat((d.records||[]).map(rec=>{const f=rec.fields;return{id:rec.id,createdTime:rec.createdTime,name:flat(f.Task),project:flat(f.Project).trim(),lead:flat(f.SBLead).trim(),sub:flat(f.Sub).trim(),status:flat(f.Status)||'Open',slotRemote:flat(f.MeetingSlot).toLowerCase(),sectionRemote:flat(f.Section).toLowerCase(),doDate:flat(f.DoDate).slice(0,10),priorityRemote:+flat(f.Priority)||0,typeRemote:flat(f.Type).toLowerCase()};}));
+      off=d.offset; }while(off&&++g<40);
+    tasks=out;
+    const cu=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CAL_TABLE); cu.searchParams.set('pageSize','100');
+    cu.searchParams.set('filterByFormula','OR({Date}="'+todayISO()+'",{Date}="'+tomorrowISO()+'")');
+    const cr=await fetch(cu,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(cr.ok){const cd=await cr.json();
+      calendar=(cd.records||[]).map(r=>({title:flat(r.fields.Title),when:flat(r.fields.When),date:flat(r.fields.Date),sort:+flat(r.fields.Sort)||0,link:flat(r.fields.Link)}));}
+    $('#status').textContent='LIVE'; render();
+  }catch(e){ $('#status').textContent='OFFLINE — DEMO'; demoData(); render(); }
+}
+function demoData(){
+  const mk=(n,p,sec,days,pri)=>({id:'d'+Math.random(),createdTime:new Date(Date.now()-days*864e5).toISOString(),name:n,project:p,lead:'',sub:'',status:'Open',slotRemote:sec==='morning'||sec==='afternoon'?sec:'',sectionRemote:sec,priorityRemote:pri||0,typeRemote:sec==='calls'?'call':''});
+  tasks=[mk('Finish the YOSS steel submittal review','YOSS','focus',2,900),mk('Call Mark re: permit timeline','1Oak','calls',4),
+    mk('Approve the Cove Miami change order','COVE','focus',1,900),mk('Sprinkler quote follow-up','Riverside','morning',9),
+    mk('Confirm steel delivery date','1Oak','afternoon',12),mk('Send invoice to Michelle','Admin','morning',0),
+    mk('Kitchen backsplash decision','DOMI','backlog',14),mk('Review Albert drawings','Albert','bigticket',6),
+    mk('Window wall embed coordination','COVE','backlog',218),mk('Insurance payment','Maple','nextup',6,500),
+    mk('Reply to lender package','NHP','backlog',3,500),mk('Draft scope for basement reno','Basement','backlog',5)];
+  calendar=[{title:'1Oak weekly sync',when:'2:00 PM',date:todayISO(),sort:840,link:'https://zoom.us/j/1'},{title:'Cove design review',when:'4:30 PM',date:todayISO(),sort:990,link:''}];
+}
+
+// ---- category feeds (each bubble cycles through its list) ----
+const focusItems=()=>tasks.filter(t=>live(t)&&sectionOf(t)==='focus');
+function feeds(){
+  const L=sec=>tasks.filter(t=>live(t)&&sectionOf(t)===sec);
+  const todayMtg=calendar.filter(e=>e.date===todayISO()).sort((a,b)=>a.sort-b.sort).map(e=>({name:e.title,project:e.when,_mtg:true}));
+  const pri=tasks.filter(t=>live(t)&&!(A(t.id).notPriority)).sort((a,b)=>score(b)-score(a)).slice(0,12);
+  const incoming=tasks.filter(t=>live(t)&&daysOpen(t)===0);
+  const still=tasks.filter(t=>live(t)&&daysOpen(t)>=10&&!t.project&&!t.lead).sort((a,b)=>daysOpen(b)-daysOpen(a));
+  return [
+    {cap:'Priority',   em:'🔥', hot:true, items:pri},
+    {cap:'Next Meeting',em:'📅', items:todayMtg},
+    {cap:'Calls',      em:'📞', items:L('calls')},
+    {cap:'Morning',    em:'🌅', items:L('morning')},
+    {cap:'Afternoon',  em:'☀️', items:L('afternoon')},
+    {cap:'Incoming',   em:'📥', items:incoming},
+    {cap:'Big Ticket', em:'🏔', items:L('bigticket')},
+    {cap:'Still Open', em:'⏳', hot:true, items:still},
+  ];
+}
+
+const hud=$('#hud'); let CX=0,CY=0,RAD=0,CORE=0,BUB=0, bubEls=[];
+function layout(){
+  const W=innerWidth,H=innerHeight; CX=W/2; CY=H/2+6;
+  const m=Math.min(W,H); CORE=Math.max(190,Math.min(300,m*0.26)); BUB=Math.max(118,Math.min(168,m*0.155)); RAD=m*0.37;
+  hud.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  drawHud(W,H); place();
+}
+function drawHud(W,H){
+  const ns='http://www.w3.org/2000/svg'; hud.innerHTML='';
+  const ring=(r,op,w,dash,cls)=>{const c=document.createElementNS(ns,'circle');c.setAttribute('cx',CX);c.setAttribute('cy',CY);c.setAttribute('r',r);c.setAttribute('fill','none');c.setAttribute('stroke','#39c7df');c.setAttribute('stroke-opacity',op);c.setAttribute('stroke-width',w);if(dash)c.setAttribute('stroke-dasharray',dash);if(cls)c.setAttribute('class',cls);return c;};
+  const g=document.createElementNS(ns,'g'); g.setAttribute('class','spin');
+  g.appendChild(ring(RAD+2,.10,1,'2 10')); g.appendChild(ring(CORE/2+30,.14,1,'1 14'));
+  // ticks on outer ring
+  for(let i=0;i<72;i++){const a=i/72*2*Math.PI;const r1=RAD-4,r2=RAD+(i%6===0?10:4);const l=document.createElementNS(ns,'line');
+    l.setAttribute('x1',CX+r1*Math.cos(a));l.setAttribute('y1',CY+r1*Math.sin(a));l.setAttribute('x2',CX+r2*Math.cos(a));l.setAttribute('y2',CY+r2*Math.sin(a));
+    l.setAttribute('stroke','#39c7df');l.setAttribute('stroke-opacity',i%6===0?.3:.12);l.setAttribute('stroke-width',1);g.appendChild(l);}
+  hud.appendChild(g);
+  const g2=document.createElementNS(ns,'g'); g2.setAttribute('class','spin rev'); g2.appendChild(ring(RAD-26,.08,1,'22 10')); hud.appendChild(g2);
+  hud.appendChild(ring(CORE/2+6,.3,1.3));
+  // connector lines center → each bubble (static layer)
+  const n=feeds().length; const lg=document.createElementNS(ns,'g'); lg.setAttribute('id','links');
+  for(let i=0;i<n;i++){const a=i/n*2*Math.PI-Math.PI/2;const bx=CX+RAD*Math.cos(a),by=CY+RAD*Math.sin(a);
+    const x1=CX+(CORE/2+8)*Math.cos(a),y1=CY+(CORE/2+8)*Math.sin(a);const x2=bx-(BUB/2)*Math.cos(a),y2=by-(BUB/2)*Math.sin(a);
+    const l=document.createElementNS(ns,'line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('stroke','#39c7df');l.setAttribute('stroke-opacity',.28);l.setAttribute('stroke-width',1);lg.appendChild(l);
+    const dot=document.createElementNS(ns,'circle');dot.setAttribute('cx',x2);dot.setAttribute('cy',y2);dot.setAttribute('r',2.5);dot.setAttribute('fill','#39c7df');dot.setAttribute('fill-opacity',.8);lg.appendChild(dot);}
+  hud.appendChild(lg);
+}
+let coreEl;
+function place(){
+  // core
+  if(!coreEl){ coreEl=document.createElement('div'); coreEl.className='core'; $('#stage').appendChild(coreEl); coreEl.onclick=()=>location.href='./'; }
+  coreEl.style.width=coreEl.style.height=CORE+'px'; coreEl.style.left=(CX-CORE/2)+'px'; coreEl.style.top=(CY-CORE/2)+'px';
+  // bubbles
+  const F=feeds(); const n=F.length;
+  bubEls.forEach(b=>b.el.remove()); bubEls=[];
+  for(let i=0;i<n;i++){ const a=i/n*2*Math.PI-Math.PI/2; const x=CX+RAD*Math.cos(a), y=CY+RAD*Math.sin(a);
+    const el=document.createElement('div'); el.className='bub'+(F[i].hot?' hot':''); el.style.width=el.style.height=BUB+'px'; el.style.left=(x-BUB/2)+'px'; el.style.top=(y-BUB/2)+'px';
+    $('#stage').appendChild(el); bubEls.push({el,feed:F[i],idx:0}); }
+  renderCore(); bubEls.forEach(renderBub);
+}
+let coreIdx=0;
+function renderCore(){ const f=focusItems(); const it=f.length?f[coreIdx%f.length]:null;
+  coreEl.innerHTML='<div class="lbl">◎ Now / Focus</div><div class="cnt">'+(f.length?((coreIdx%f.length)+1)+' / '+f.length:'clear')+'</div>'+
+    (it?'<div class="item">'+(it.project?'<span class="proj">'+esc(it.project.split(',')[0])+'</span><br>':'')+esc(cleanName(it))+'</div>'
+       :'<div class="empty">Nothing in focus.<br><span style="font-size:12px">Add something to zero in on.</span></div>'); }
+function renderBub(b){ const list=b.feed.items; const it=list.length?list[b.idx%list.length]:null;
+  const dots=list.length>1?'<div class="dots">'+list.slice(0,8).map((_,i)=>'<i class="'+((i===b.idx%list.length)?'on':'')+'"></i>').join('')+'</div>':'';
+  b.el.innerHTML='<div class="cap">'+b.feed.em+' '+esc(b.feed.cap)+'</div><div class="n">'+list.length+'</div>'+
+    (it?'<div class="it">'+(it.project&&!it._mtg?'<span class="pr">'+esc(it.project.split(',')[0])+'</span>':'')+(it._mtg&&it.project?'<span class="pr">'+esc(it.project)+'</span><br>':'')+esc(it._mtg?it.name:cleanName(it))+'</div>'
+       :'<div class="it" style="color:var(--dim)">—</div>')+dots; }
+
+function fadeSwap(el,fn){ const t=el.querySelector('.it, .item'); if(t){t.classList.add('fade'); setTimeout(()=>{fn();},460);} else fn(); }
+function render(){ layout(); }
+
+// cycle: each bubble flips every 30s, staggered; core flips every 12s
+function startCycles(){
+  setInterval(()=>{ const f=focusItems(); if(f.length>1){ const t=coreEl.querySelector('.item'); if(t)t.classList.add('fade'); setTimeout(()=>{coreIdx++;renderCore();},460);} },12000);
+  bubEls.forEach((b,i)=>{ setTimeout(()=>{ setInterval(()=>{ if(b.feed.items.length>1){ const t=b.el.querySelector('.it'); if(t)t.classList.add('fade'); setTimeout(()=>{b.idx++;renderBub(b);},440);} }, 30000); }, i*3500); });
+}
+let cycled=false;
+function boot(){
+  $('#clock').textContent=new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  setInterval(()=>{$('#clock').textContent=new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});},20000);
+  if(!cfg.apiKey){ $('#setup').style.display='flex'; }
+  fetchAll().then(()=>{ if(!cycled){cycled=true;startCycles();} });
+  // refresh data every 5 min
+  setInterval(()=>fetchAll(),5*60000);
+}
+addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setTimeout(layout,150); });
+$('#keygo').onclick=()=>{ const k=$('#keyin').value.trim(); if(!k)return; cfg.apiKey=k; try{const c=JSON.parse(localStorage.getItem('tb.cfg')||'{}');c.apiKey=k;localStorage.setItem('tb.cfg',JSON.stringify(c));}catch(e){} $('#setup').style.display='none'; fetchAll().then(()=>{if(!cycled){cycled=true;startCycles();}}); };
+$('#demo').onclick=()=>{ $('#setup').style.display='none'; demoData(); render(); if(!cycled){cycled=true;startCycles();} };
+boot();
+</script></body></html>

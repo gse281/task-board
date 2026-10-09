@@ -437,8 +437,10 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .hbbtns .icon{color:var(--accent);min-width:40px;height:40px;font-size:21px;display:grid;place-items:center;border-radius:12px}
 /* ≡ drag handle for reordering call lists */
 .sl.slf{display:flex;align-items:center;gap:8px}.sl.slf .tk{flex:1;min-width:0}
-.dragh{flex:none;width:28px;height:36px;display:grid;place-items:center;color:var(--dim);font-size:18px;touch-action:none;-webkit-user-select:none;user-select:none;margin-left:-4px}
-.swr.dragging{z-index:5;box-shadow:0 10px 30px rgba(0,0,0,.55);opacity:.95}.swr.dragging .sl{background:var(--panel2)}
+.dragh{flex:none;width:44px;height:44px;margin-right:-6px;display:grid;place-items:center;color:var(--dim);font-size:18px;touch-action:none;-webkit-user-select:none;user-select:none;margin-left:-4px}
+.swr.dragging{z-index:5;box-shadow:0 14px 36px rgba(0,0,0,.6);opacity:.97;border-radius:14px;transition:box-shadow .15s}
+.swr .sl{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.amseg button.droptgt{outline:2px solid var(--accent);background:rgba(232,104,60,.18)}.swr.dragging .sl{background:var(--panel2)}
 .amseg{display:flex;gap:4px;margin:0 12px 8px;padding:3px;background:var(--panel);border:1px solid var(--line);border-radius:12px;flex:none}
 .amseg button{flex:1;min-height:38px;border-radius:9px;font-weight:800;font-size:14px;color:var(--muted)}
 .amseg button b{font-size:12px;opacity:.8;margin-left:3px}
@@ -458,6 +460,26 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .hwmm{font-size:10px;color:var(--blue);font-weight:700}
 .hwd.wet{background:rgba(224,164,88,.14);border-color:var(--accent)}.hwd.wet .hwmm{color:var(--accent)}
 .hwd.today{box-shadow:inset 0 0 0 1px var(--accent)}
+.nnt .who,.cls .who,.who{display:inline-block;font-size:15.5px;font-weight:600;color:#f4efe9;padding:6px 0;margin:-4px 0;line-height:1.25}
+.who i{font-style:normal;color:var(--dim);font-size:13px;font-weight:400}
+.nnt .who.guess,.cls .who.guess{color:#f4efe9}.who.guess b{color:#f0b44c;font-weight:800}.who.guess small{color:#f0b44c;font-size:11.5px;font-weight:700;border:1px solid #6b5422;border-radius:6px;padding:1px 5px;margin-left:4px;vertical-align:1px}
+.nnt .who.none,.cls .who.none{color:var(--gold);font-size:14px}
+.pcl{max-height:46vh;overflow:auto;margin:8px 0}.pch{color:var(--dim);font-size:12px;font-weight:700;text-transform:uppercase;margin:6px 4px}
+.pcr{display:grid;grid-template-columns:1fr auto;width:100%;text-align:left;padding:11px 8px;border-bottom:1px solid var(--line);gap:0 8px}
+.pcr b{grid-column:1}.pcr span{grid-column:1;color:var(--muted);font-size:12px}.pcr i{grid-column:2;grid-row:1/3;align-self:center;font-style:normal;color:var(--muted);font-size:13px}
+.pcr:active{background:var(--panel2)}
+.car{margin-top:10px;border-top:1px solid var(--line);padding-top:4px}
+.cartrack{display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:10px;touch-action:pan-x pan-y}
+.cartrack::-webkit-scrollbar{display:none}
+.carslide{flex:0 0 88%;min-width:0;scroll-snap-align:start}.carslide:only-child{flex-basis:100%}
+.meetcard .carslide .nnrow{border-top:0;margin-top:6px;padding-top:0}
+.carnav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:6px}
+.carb{width:44px;height:32px;border-radius:10px;background:var(--panel2);color:var(--ink);font-size:20px;line-height:1}
+.carpos{font:700 12px ui-monospace,Menlo,monospace;color:var(--muted);min-width:52px;text-align:center}
+.call .cw{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.call .cw .lbl{flex:none}
+.call .rot{font-size:12.5px;font-weight:600;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:3px 0;margin:-3px 0}
+.rot.rotin{animation:rotin .45s var(--ease)}@keyframes rotin{from{opacity:0;transform:translateY(5px)}to{opacity:.85;transform:none}}
 /* @Computer – Claude */
 .compbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px;margin:0 0 12px;background:#1f1a14;border:1px solid #4a3522;border-radius:16px;font-weight:800;font-size:15px;text-align:left}
 .compbtn>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -521,7 +543,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-09 12:39';   // stamped by deploy.sh
+const BUILD='2026-10-09 13:03';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -570,7 +592,7 @@ const SLOTS={ morning:{label:'Morning call', em:'🌅'}, afternoon:{label:'After
 
 /* ---------- Airtable ---------- */
 const atUrl=()=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+encodeURIComponent(cfg.tableId);
-const FIELDS=['Task','Project','SBLead','Sub','Status','MeetingSlot','Section','DoDate','Phone','NextStep','Notes','Priority','Type','UpdatedAt','TextExclude','LeadStatus','RoniFlag','TextCount','ReminderAt','ListOrder'];
+const FIELDS=['Task','Project','SBLead','Sub','Status','MeetingSlot','Section','DoDate','Phone','NextStep','Notes','Priority','Type','UpdatedAt','TextExclude','LeadStatus','RoniFlag','TextCount','ReminderAt','ListOrder','CallContact'];
 async function fetchAll(){
   if(!cfg.apiKey){ if(!tasks.length){ tasks=demoTasks(); demo=true; } render(); return; }
   if(syncing) return; syncing=true; paintSync();
@@ -587,7 +609,7 @@ async function fetchAll(){
       out=out.concat((d.records||[]).map(rec=>{ const f=rec.fields; return {
         id:rec.id, createdTime:rec.createdTime, name:flat(f.Task), project:flat(f.Project).trim(), lead:flat(f.SBLead).trim(), sub:flat(f.Sub).trim(),
         status:flat(f.Status)||'Open', slotRemote:flat(f.MeetingSlot).toLowerCase(), sectionRemote:flat(f.Section).toLowerCase(),
-        doDate:flat(f.DoDate).slice(0,10), phone:flat(f.Phone), next:flat(f.NextStep), notes:flat(f.Notes),
+        doDate:flat(f.DoDate).slice(0,10), phone:flat(f.Phone), callWho:flat(f.CallContact), next:flat(f.NextStep), notes:flat(f.Notes),
         priorityRemote:+flat(f.Priority)||0, type:flat(f.Type).toLowerCase(), updatedAt:flat(f.UpdatedAt),
         remindAt:flat(f.ReminderAt), listOrder:(f.ListOrder==null?null:+f.ListOrder), textEx:!!f.TextExclude, leadStatus:flat(f.LeadStatus), flag:!!f.RoniFlag, textCount:+f.TextCount||0 }; }));
       offset=d.offset;
@@ -701,15 +723,41 @@ const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+Stri
 function callWhen(t){ if(t.remindAt){ const d=new Date(t.remindAt); if(!isNaN(d)) return {day:ymd(d),min:d.getHours()*60+d.getMinutes()}; } return {day:t.doDate||'',min:null}; }
 const CALL_STOP=new Set(['call','calls','re','about','with','the','and','to','for','back','text','follow','up','followup','fu','on','in','of','at','pm','am','me','him','her','them','ask','check','tell','get','x2','x3','asap','today','tomorrow','again']);
 function callMatch(t){
-  if(t.phone) return {phone:t.phone,who:t.lead||'',sure:true};
+  if(t.callWho==='-') return null;                                   // cleared: no contact, no guess
+  if(t.phone) return {phone:t.phone,who:t.callWho||t.lead||'',sure:true};
   if(!contacts.length) return null;
   const words=cleanName(t).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!CALL_STOP.has(w)&&!/^\d+$/.test(w));
   const qs=[]; if(t.lead) qs.push(t.lead.toLowerCase()); for(let i=0;i<words.length-1;i++) qs.push(words[i]+' '+words[i+1]); words.forEach(w=>qs.push(w));
   for(const q of qs){ const hits=searchContacts(q).filter(c=>(c.p||[]).length); if(!hits.length) continue;
     const exact=hits.find(c=>(c.n||'').toLowerCase().split(/\s+/)[0]===q.split(' ')[0]);
-    if(hits.length<=3||exact){ const c=exact||hits[0]; return {phone:c.p[0],who:c.n,sure:hits.length===1}; } }
+    if(hits.length<=3||exact){ const c=exact||hits[0]; return {phone:c.p[0],who:c.n,sure:false}; } }   // any Contacts match is a guess until picked/saved
   return null;
 }
+// Who-to-call line: confirmed = bold bright name ✎ · guess = amber ≈ name + "tap to fix" · none = 👤 pick contact
+function whoHTML(m,id){ const da=id?` data-who="${id}"`:' data-who';
+  if(!m) return `<span class="who none"${da}>👤 pick contact</span>`;
+  return m.sure?`<span class="who ok"${da}>${esc(m.who||m.phone)} <i>✎</i></span>`
+    :`<span class="who guess"${da}><b>≈</b> ${esc(m.who||m.phone)} <small>tap to fix</small></span>`; }
+// Up to 5 likely contacts for a call task (same word logic as callMatch) — for the 👤 picker
+function callSuggest(t){ const words=cleanName(t).toLowerCase().replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>2&&!CALL_STOP.has(w)&&!/^\d+$/.test(w));
+  const qs=[]; if(t.lead) qs.push(t.lead.toLowerCase()); for(let i=0;i<words.length-1;i++) qs.push(words[i]+' '+words[i+1]); words.forEach(w=>qs.push(w));
+  const out=[]; for(const q of qs){ for(const c of searchContacts(q)){ if((c.p||[]).length&&!out.includes(c)) out.push(c); if(out.length>=5) return out; } } return out; }
+function setCallContact(t,who,phone){ t.callWho=who; t.phone=phone; save(LS_CACHE,tasks); patch(t.id,{CallContact:who,Phone:phone}); }
+// 👤 Pick / fix who to call: search + top 5 suggestions · Enter number manually · Clear. Saved to Airtable (CallContact + Phone).
+function pickCallContact(t,after){
+  const m=callMatch(t);
+  sheet(`<h3>Who to call</h3><div class="ap" style="margin:-4px 2px 10px">${esc(cleanName(t))}${m?` · now: <b>${m.sure?'':'≈ '}${esc(m.who||m.phone)}</b>`:''}</div>
+    <input class="field" id="pcq" type="search" placeholder="🔍 Search contacts…" autocomplete="off"><div class="pcl" data-pcl></div>
+    <div class="row2"><button class="pill" data-man>✎ Enter number manually</button><button class="pill" data-clr>Clear</button></div>`,(sh,close)=>{
+    const q=sh.querySelector('#pcq'), L=sh.querySelector('[data-pcl]'); let list=[];
+    const draw=()=>{ const v=q.value.trim(); list=v?searchContacts(v).filter(c=>(c.p||[]).length).slice(0,25):callSuggest(t);
+      L.innerHTML=(v?'':'<div class="pch">Suggested</div>')+(list.length?list.map((c,ci)=>c.p.map((p,pi)=>`<button class="pcr" data-c="${ci}" data-p="${pi}"><b>${pi?'':esc(c.n)}</b>${!pi&&c.o?`<span>${esc(c.o)}</span>`:''}<i>${esc(p)}</i></button>`).join('')).join(''):`<div class="pch">${contacts.length?'No match':'Loading contacts…'}</div>`); };
+    L.onclick=e=>{ const b=e.target.closest('.pcr'); if(!b) return; const c=list[+b.dataset.c]; setCallContact(t,c.n,c.p[+b.dataset.p]); buzz(10); close(); toast('📞 '+c.n+' saved'); after&&after(); };
+    q.addEventListener('input',draw); draw(); if(!contacts.length&&contactsTry()) loadContacts().then(draw);
+    sh.querySelector('[data-man]').onclick=()=>{ close(); setTimeout(()=>sheet(`<h3>Enter number</h3><input class="field" id="mn" placeholder="Name" autocomplete="off" value="${esc(t.callWho&&t.callWho!=='-'?t.callWho:(t.lead||''))}"><input class="field" id="mp" inputmode="tel" placeholder="Phone number" autocomplete="off" value="${esc(t.phone||'')}"><div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Save</button></div>`,(s2,c2)=>{
+      const p2=s2.querySelector('#mp'); setTimeout(()=>p2.focus(),300); s2.querySelector('[data-ok]').onclick=()=>{ const ph=p2.value.trim(); if(!ph) return; setCallContact(t,s2.querySelector('#mn').value.trim()||ph,ph); c2(); toast('📞 Saved'); after&&after(); }; }),340); };
+    sh.querySelector('[data-clr]').onclick=()=>{ setCallContact(t,'-',''); close(); toast('Contact cleared'); after&&after(); };
+  }); }
 // one contacts load attempt per minute — prevents a repaint→load→repaint loop when contacts can't load (no token / offline)
 let _ctTry=0; const contactsTry=()=>{ if(Date.now()-_ctTry<60000) return false; _ctTry=Date.now(); return true; };
 const telOf=p=>'tel:'+String(p).replace(/[^\d+]/g,''), smsOf=p=>'sms:'+String(p).replace(/[^\d+]/g,'');
@@ -989,7 +1037,7 @@ function paintSlotList(s){
       <button class="sl slf" data-open><span class="dragh" data-drag aria-label="Hold and drag to reorder">≡</span><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="tk">${esc(cleanName(t))}</span><span class="ld">${esc(t.lead||'')}</span><span class="ag">${daysOpen(t)}d</span></button></div>`;
   const callRow=t=>{ const m=callMatch(t), w=callWhen(t);
     return `<div class="swr" data-id="${t.id}"><div class="swbg"><span class="swdone">✓ Done</span><span class="swacts"><button class="swrm" data-rm>⊘ Remove</button><button class="swsz" data-snz>😴 Snooze</button></span></div>
-      <div class="sl clr" data-open role="button"><span class="dragh" data-drag aria-label="Hold and drag to reorder">≡</span><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="clt"><span class="tk">${esc(cleanName(t))}</span><span class="cls">${esc([w.min!=null?hhmm(w.min):'',m?(m.sure?'':'≈ ')+m.who:(t.lead||'')].filter(Boolean).join(' · '))}</span></span>
+      <div class="sl clr" data-open role="button"><span class="dragh" data-drag aria-label="Hold and drag to reorder">≡</span><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="clt"><span class="tk">${esc(cleanName(t))}</span><span class="cls">${w.min!=null?esc(hhmm(w.min))+' · ':''}${whoHTML(m)}</span></span>
         ${m?`<a class="clb clcall" href="${esc(telOf(m.phone))}" data-join>📞 Call</a><a class="clb" href="${esc(smsOf(m.phone))}" data-join aria-label="Text">💬 Text</a>`:`<button class="clb add" data-addnum>＋ Add number</button>`}</div></div>`; };
   const grp=()=>{ const G=callGroups();
     return Object.entries(G).filter(([k,v])=>v.length).map(([k,v])=>`<div class="clgh">${k==='Today'?'📞 Today':k==='Tomorrow'?'🌙 Tomorrow':k==='Later'?'🗓 Later':'Anytime'} <span>${v.length}</span></div>`+v.map(t=>callRow(t).replace('<div class="swr" ','<div class="swr" data-g="'+k+'" ')).join('')).join(''); };
@@ -1022,39 +1070,47 @@ function paintSlotList(s){
   const other=slot==='morning'?'afternoon':'morning';
   el.querySelectorAll('[data-seg]').forEach(b=>b.onclick=()=>{ if(b.dataset.seg===slot) return; r.slot=b.dataset.seg; buzz(6); el.querySelector('.scroll').scrollTop=0; paintSlotList(s); });
   const closeRow=w=>{ if(!w) return; const b=w.querySelector('.sl'); b.style.transition='transform .2s var(--ease)'; b.style.transform=''; w.classList.remove('open'); if(openRow===w) openRow=null; };
-  // ≡ long-press (250 ms) then drag up/down to reorder; saved to Airtable ListOrder so it sticks on every device
-  el.querySelectorAll('[data-drag]').forEach(h=>{ const w=h.closest('.swr'); let timer=null, on=false, y0=0, off=0;
+  // Hold anywhere on a row (~0.35 s; ≡ handle 0.2 s) → it lifts, then drag up/down to reorder (or onto the AM/PM tab to move it).
+  // Saved to Airtable ListOrder so it sticks on every device. A quick swipe/scroll moves >8px first and cancels the hold.
+  const dragFor=w=>{ let on=false, off=0;
     const grp=()=>[...w.parentElement.querySelectorAll(':scope > .swr')].filter(x=>(x.dataset.g||'')===(w.dataset.g||''));
-    h.addEventListener('click',e=>{ e.stopPropagation(); e.preventDefault(); });
-    h.addEventListener('touchstart',e=>{ e.stopPropagation(); y0=e.touches[0].clientY; off=y0-w.getBoundingClientRect().top; timer=setTimeout(()=>{ on=true; buzz(15); w.classList.add('dragging'); },250); },{passive:true});
-    h.addEventListener('touchmove',e=>{ e.stopPropagation(); const y=e.touches[0].clientY; if(!on){ if(Math.abs(y-y0)>8) clearTimeout(timer); return; } e.preventDefault();
-      const sib=grp().filter(x=>x!==w); const below=sib.find(x=>{ const r=x.getBoundingClientRect(); return y<r.top+r.height/2; });
+    const lift=y=>{ on=true; off=y-w.getBoundingClientRect().top; buzz(15); w.classList.add('dragging'); w.style.transform='scale(1.03)'; };
+    const move=y=>{ const sib=grp().filter(x=>x!==w); const below=sib.find(x=>{ const r=x.getBoundingClientRect(); return y<r.top+r.height/2; });
       if(below){ if(below!==w.nextElementSibling) w.parentElement.insertBefore(w,below); } else { const last=sib[sib.length-1]; if(last&&last.nextElementSibling!==w) last.after(w); }
-      w.style.transform=''; const nat=w.getBoundingClientRect().top; w.style.transform=`translateY(${(y-off)-nat}px)`; },{passive:false});
-    const end=ev=>{ clearTimeout(timer); if(!on) return; on=false; w.classList.remove('dragging'); w.style.transform='';
-      if(!isCalls&&ev&&ev.changedTouches&&ev.changedTouches[0]){ const tb=el.querySelector('[data-seg="'+(slot==='morning'?'afternoon':'morning')+'"]'); const pt=ev.changedTouches[0]; if(tb){ const rr=tb.getBoundingClientRect();
-        if(pt.clientY<rr.bottom+10&&pt.clientX>rr.left&&pt.clientX<rr.right){ const t=tasks.find(x=>x.id===w.dataset.id); if(t){ w.classList.add('gone'); setSlot(t,slot==='morning'?'afternoon':'morning'); setTimeout(()=>paintSlotList(s),260); return; } } } }
+      w.style.transform=''; const nat=w.getBoundingClientRect().top; w.style.transform=`translateY(${(y-off)-nat}px) scale(1.03)`;
+      const tb=!isCalls&&el.querySelector('[data-seg="'+other+'"]'); if(tb){ const rr=tb.getBoundingClientRect(); tb.classList.toggle('droptgt',y<rr.bottom+10); } };
+    const drop=pt=>{ if(!on) return false; on=false; w.classList.remove('dragging'); w.style.transform='';
+      const tb=!isCalls&&el.querySelector('[data-seg="'+other+'"]'); if(tb) tb.classList.remove('droptgt');
+      if(tb&&pt){ const rr=tb.getBoundingClientRect();
+        if(pt.clientY<rr.bottom+10&&pt.clientX>rr.left-20&&pt.clientX<rr.right+20){ const t=tasks.find(x=>x.id===w.dataset.id); if(t){ w.classList.add('gone'); setSlot(t,other); setTimeout(()=>paintSlotList(s),260); return true; } } }
       const ids=grp().map(x=>x.dataset.id); const ups=[]; ids.forEach((id,i)=>{ const t=tasks.find(x=>x.id===id); if(t&&t.listOrder!==i*10){ t.listOrder=i*10; A(t.id).lo=i*10; A(t.id).loAt=Date.now(); ups.push({id,fields:{ListOrder:i*10}}); } });
-      save(LS_CACHE,tasks); saveAug(); patchMany(ups); buzz(8); if(stack[0]) paintHome(stack[0]); };
-    h.addEventListener('touchend',end); h.addEventListener('touchcancel',end); });
+      save(LS_CACHE,tasks); saveAug(); patchMany(ups); buzz(8); if(stack[0]) paintHome(stack[0]); return true; };
+    return {lift,move,drop,get on(){ return on; }}; };
   el.querySelectorAll('.swr').forEach(w=>{ const t=tasks.find(x=>x.id===w.dataset.id); if(!t) return; const row=w.querySelector('.sl');
     const gone=kind=>{ w.classList.add('gone'); setTimeout(()=>paintSlotList(s),260); };
-    { const an=w.querySelector('[data-addnum]'); if(an) an.onclick=ev=>{ ev.stopPropagation(); sheet(`<h3>Number for ${esc(t.lead||cleanName(t))}</h3><input class="field" id="np" inputmode="tel" placeholder="Mobile number" autocomplete="off"><div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Save</button></div>`,(sh,close)=>{
-      const i=sh.querySelector('#np'); setTimeout(()=>i.focus(),300); sh.querySelector('[data-ok]').onclick=()=>{ const v=i.value.trim(); if(!v) return; t.phone=v; save(LS_CACHE,tasks); patch(t.id,{Phone:v}); close(); toast('📞 Saved'); paintSlotList(s); }; }); }; }
+    { const wh=w.querySelector('[data-who]'); if(wh) wh.addEventListener('click',ev=>{ ev.stopPropagation(); if(row._moved) return; pickCallContact(t,()=>paintSlotList(s)); }); }
+    { const an=w.querySelector('[data-addnum]'); if(an) an.onclick=ev=>{ ev.stopPropagation(); pickCallContact(t,()=>paintSlotList(s)); }; }
     w.querySelectorAll('[data-join]').forEach(a=>a.addEventListener('click',ev=>ev.stopPropagation()));
     row.onclick=ev=>{ if(ev&&ev.target.closest('[data-join],[data-addnum]')) return; if(row._moved) return; if(w.classList.contains('open')){ closeRow(w); return; } if(openRow){ closeRow(openRow); return; } buzz(5);
       push(isCalls?{type:'deck',kind:'calls',title:'📞 Calls',startId:t.id}:{type:'deck',kind:'slot',slot,title:S.label,startId:t.id}); };
     w.querySelector('[data-rm]').onclick=e=>{ e.stopPropagation(); gone(); unfile(t); };
     w.querySelector('[data-snz]').onclick=e=>{ e.stopPropagation(); gone(); snooze(t,10); };
     { const mv=w.querySelector('[data-mv]'); if(mv) mv.onclick=e=>{ e.stopPropagation(); gone(); setSlot(t,other); }; }   // MeetingSlot updated in Airtable, toast has Undo
-    let x0=null,y0=0,dx=0,lock=null,base=0;
-    row.addEventListener('touchstart',e=>{ x0=e.touches[0].clientX; y0=e.touches[0].clientY; dx=0; lock=null; row._moved=false; base=w.classList.contains('open')?OPEN:0; row.style.transition='none'; if(openRow&&openRow!==w) closeRow(openRow); },{passive:true});
+    let x0=null,y0=0,dx=0,lock=null,base=0,hold=null; const D=dragFor(w);
+    { const hd=w.querySelector('[data-drag]'); if(hd) hd.addEventListener('click',e=>{ e.stopPropagation(); e.preventDefault(); }); }
+    row.addEventListener('touchstart',e=>{ x0=e.touches[0].clientX; y0=e.touches[0].clientY; dx=0; lock=null; row._moved=false; base=w.classList.contains('open')?OPEN:0; row.style.transition='none'; if(openRow&&openRow!==w) closeRow(openRow);
+      clearTimeout(hold); if(!w.classList.contains('open')&&!e.target.closest('[data-join],[data-addnum]')){ const yy=y0; hold=setTimeout(()=>{ hold=null; row._moved=true; lock='drag'; D.lift(yy); },e.target.closest('[data-drag]')?200:350); } },{passive:true});
     row.addEventListener('touchmove',e=>{ if(x0==null) return; const mx=e.touches[0].clientX-x0, my=e.touches[0].clientY-y0;
+      if(D.on){ e.preventDefault(); D.move(e.touches[0].clientY); return; }
+      if(hold&&(Math.abs(mx)>8||Math.abs(my)>8)){ clearTimeout(hold); hold=null; }
       if(lock==null&&(Math.abs(mx)>8||Math.abs(my)>8)) lock=Math.abs(mx)>Math.abs(my)?'x':'y'; if(lock!=='x') return;
       row._moved=true; dx=Math.max(OPEN-30,base+mx); row.style.transform=`translateX(${dx}px)`;
       w.querySelector('.swdone').style.opacity=dx>0?Math.min(1,dx/90):0; w.querySelector('.swacts').style.opacity=dx<0?1:0;
-      if(dx>90&&!row._b){ buzz(8); row._b=1; } if(dx<90) row._b=0; },{passive:true});
-    row.addEventListener('touchend',()=>{ if(x0==null) return; x0=null; row.style.transition='transform .2s var(--ease)';
+      if(dx>90&&!row._b){ buzz(8); row._b=1; } if(dx<90) row._b=0; },{passive:false});
+    row.addEventListener('touchcancel',()=>{ clearTimeout(hold); hold=null; if(D.on) D.drop(null); x0=null; setTimeout(()=>{ row._moved=false; },60); });
+    row.addEventListener('contextmenu',e=>e.preventDefault());
+    row.addEventListener('touchend',e=>{ clearTimeout(hold); hold=null; if(D.on){ D.drop(e.changedTouches&&e.changedTouches[0]); x0=null; setTimeout(()=>{ row._moved=false; },60); return; }
+      if(x0==null) return; x0=null; row.style.transition='transform .2s var(--ease)';
       if(dx>90){ row.style.transform='translateX(110%)'; gone(); done(t); }
       else if(dx<-60){ row.style.transform=`translateX(${OPEN}px)`; w.classList.add('open'); openRow=w; }
       else { closeRow(w); }
@@ -1355,6 +1411,26 @@ function paintMeetings(s){
   if(!calendar.length) fetchCalendar().then(c=>{ if(c.length) paintMeetings(s); });
 }
 /* ---------- HOME ---------- */
+// Inline carousel for home cards: one item per slide, next one peeks; swipe or ‹ ›. Scroll is contained inside (no page-wide sideways scroll).
+function carHTML(key,slides,start){ if(!slides.length) return '';
+  return `<div class="car" data-car="${key}" data-start="${start||0}"><div class="cartrack">${slides.map(x=>`<div class="carslide">${x}</div>`).join('')}</div>`
+    +(slides.length>1?`<div class="carnav" data-join><button class="carb" data-cprev aria-label="Previous">‹</button><span class="carpos">1 / ${slides.length}</span><button class="carb" data-cnext aria-label="Next">›</button></div>`:'')+`</div>`; }
+const carPos={};   // remembered slide per card, survives the 60s home repaint
+function wireCars(root){ root.querySelectorAll('[data-car]').forEach(c=>{ const tr=c.querySelector('.cartrack'), key=c.dataset.car, n=tr.children.length, pos=c.querySelector('.carpos');
+  const at=()=>Math.round(tr.scrollLeft/(tr.children[1]?tr.children[1].offsetLeft-tr.children[0].offsetLeft:tr.clientWidth||1));
+  const go=i=>{ i=Math.max(0,Math.min(n-1,i)); const el=tr.children[i]; tr.scrollTo({left:el.offsetLeft-tr.children[0].offsetLeft,behavior:'smooth'}); };
+  const upd=()=>{ const i=Math.max(0,Math.min(n-1,at())); carPos[key]=i; if(pos) pos.textContent=(i+1)+' / '+n; };
+  tr.addEventListener('scroll',()=>{ cancelAnimationFrame(tr._r); tr._r=requestAnimationFrame(upd); },{passive:true});
+  const p=c.querySelector('[data-cprev]'), q=c.querySelector('[data-cnext]');
+  if(p) p.onclick=e=>{ e.stopPropagation(); buzz(5); go(at()-1); }; if(q) q.onclick=e=>{ e.stopPropagation(); buzz(5); go(at()+1); };
+  const i0=carPos[key]!=null?Math.min(carPos[key],n-1):+c.dataset.start||0;
+  requestAnimationFrame(()=>{ const el=tr.children[i0]; if(el) tr.scrollLeft=el.offsetLeft-tr.children[0].offsetLeft; upd(); }); }); }
+// Morning / Afternoon slim rows: show one task from that call, rotating every 30 s from data already loaded (no extra Airtable reads); paused while hidden.
+const rotIdx={morning:0,afternoon:0};
+function rotTask(slot){ const L=slotTasks(slot); if(!L.length) return null; return L[rotIdx[slot]%L.length]; }
+function rotPaint(){ const h=stack[0]; if(!h) return; ['morning','afternoon'].forEach(sl=>{ const b=h.el.querySelector('[data-slot="'+sl+'"] [data-rot]'); if(!b) return; const t=rotTask(sl);
+  b.dataset.rot=t?t.id:''; b.textContent=t?cleanName(t):'Nothing queued'; b.classList.remove('rotin'); void b.offsetWidth; b.classList.add('rotin'); }); }
+setInterval(()=>{ if(document.hidden||!stack[0]||stack.length!==1) return; rotIdx.morning++; rotIdx.afternoon++; rotPaint(); },30000);
 function paintHome(s){
   if(s.el&&s.el.contains(document.activeElement)&&document.activeElement.classList&&document.activeElement.classList.contains('cxsearch')) return;   // don't wipe the search while typing
   const el=s.el, am=slotTasks('morning').length, pm=slotTasks('afternoon').length, now=currentSlot();
@@ -1367,21 +1443,25 @@ function paintHome(s){
       <div class="ptr"></div>
       ${wxStrip()}
       <div class="calls">
-        <button class="call am ${now==='morning'?'now':''}" data-slot="morning"><span class="em">🌅</span><b class="n">${am}</b><span class="lbl">Morning</span></button>
-        <button class="call pm ${now==='afternoon'?'now':''}" data-slot="afternoon"><span class="em">☀️</span><b class="n">${pm}</b><span class="lbl">Afternoon</span></button>
+        <button class="call am ${now==='morning'?'now':''}" data-slot="morning"><span class="em">🌅</span><b class="n">${am}</b><span class="cw"><span class="lbl">Morning</span><span class="rot" data-rot="${(rotTask('morning')||{}).id||''}">${esc(rotTask('morning')?cleanName(rotTask('morning')):'Nothing queued')}</span></span></button>
+        <button class="call pm ${now==='afternoon'?'now':''}" data-slot="afternoon"><span class="em">☀️</span><b class="n">${pm}</b><span class="cw"><span class="lbl">Afternoon</span><span class="rot" data-rot="${(rotTask('afternoon')||{}).id||''}">${esc(rotTask('afternoon')?cleanName(rotTask('afternoon')):'Nothing queued')}</span></span></button>
       </div>
       <div class="dialer homedial"><div class="hdwrap"><input class="cxsearch" type="search" enterkeyhint="search" placeholder="🔍 Call someone — type a name…" autocomplete="off"><button class="hdx" data-cxclear aria-label="Clear">✕</button></div><div class="cxresults" data-cxresults></div></div>
       ${(()=>{ const {now,next}=nowNext(calendar,todayISO()); const j=(e,lbl)=>{ const h=joinHref(e); return h?`<span class="nnj"><a class="nnjoin${h.indexOf('tel:')===0?' tel':''}" href="${esc(h)}"${h.indexOf('tel:')===0?'':' target="_blank" rel="noopener"'} data-join>${h.indexOf('tel:')===0?'📞 Dial':'▶ Join'}</a>${e.dial?`<a class="nndial" href="${e.dial}" data-join>dial-in</a>`:''}</span>`:''; };
         const row=(tag,e)=>`<div class="nnrow"><span class="nntag ${tag==='NOW'?'now':''}">${tag}</span><div class="nnt"><b>${esc(e.title||'(untitled)')}</b><span>${esc(e.when||hhmm(e.start))}</span></div>${j(e)}</div>`;
         return `<div class="review meetcard" data-meet role="button" tabindex="0" style="margin-bottom:12px;display:block"><div style="display:flex;align-items:center;gap:12px"><span class="ri">📅</span><span style="flex:1;min-width:0"><div class="rn">Meetings</div><div class="rs">${todayMeetings().length} today · tap for the full list</div></span><span class="chev">›</span></div>
-          ${now.map(e=>row('NOW',e)).join('')}${next?row('NEXT',next):(now.length?'':'<div class="nnrow"><span class="nntag">NEXT</span><div class="nnt"><span>Nothing else today</span></div></div>')}
+          ${(()=>{ const cur=new Date().getHours()*60+new Date().getMinutes(); const L=meetingsToday(calendar,todayISO()).filter(e=>e.end>cur);
+            if(!L.length) return '<div class="nnrow"><span class="nntag">NEXT</span><div class="nnt"><span>Nothing else today</span></div></div>';
+            return carHTML('meet',L.map(e=>row(now.includes(e)?'NOW':e===next?'NEXT':hhmm(e.start),e)),0); })()}
           ${(()=>{ const tm=meetingsToday(calendar,tomorrowISO()); return tm.length?`<div class="nntmh">🌙 Tomorrow</div>`+tm.map(e=>`<div class="nnrow sm"><span class="nntag">${esc(hhmm(e.start))}</span><div class="nnt"><b>${esc(e.title||'(untitled)')}</b>${e.location?`<span>${esc(e.location)}</span>`:''}</div>${j(e)}</div>`).join(''):''; })()}</div>`; })()}
       ${(()=>{ const {now,next,tmr}=callsNowNext();
         const btns=t=>{ const m=callMatch(t); return m?`<a class="nnjoin tel" href="${esc(telOf(m.phone))}" data-join>📞 Call</a><a class="nntxt" href="${esc(smsOf(m.phone))}" data-join aria-label="Text">💬</a>`:''; };
-        const row=(tag,t)=>{ const w=callWhen(t), m=callMatch(t); return `<div class="nnrow"><span class="nntag ${tag==='NOW'?'now':''}">${tag}</span><div class="nnt"><b>${esc(cleanName(t))}</b><span>${esc([w.min!=null?hhmm(w.min):(w.day&&w.day<todayISO()?'overdue':w.day===todayISO()?'today':''),m?m.who:(t.lead||'')].filter(Boolean).join(' · '))}</span></div>${btns(t)}</div>`; };
+        const row=(tag,t)=>{ const w=callWhen(t), m=callMatch(t); return `<div class="nnrow"><span class="nntag ${tag==='NOW'?'now':''}">${tag}</span><div class="nnt"><b>${esc(cleanName(t))}</b><span>${(()=>{ const x=w.min!=null?hhmm(w.min):(w.day&&w.day<todayISO()?'overdue':w.day===todayISO()?'today':''); return x?esc(x)+' · ':''; })()}${whoHTML(m,t.id)}</span></div>${btns(t)}</div>`; };
         return `<div class="review meetcard" data-calls role="button" tabindex="0" style="margin-bottom:12px;display:block"><div style="display:flex;align-items:center;gap:12px"><span class="ri" style="background:var(--callg)">📞</span><span style="flex:1;min-width:0"><div class="rn">Calls</div><div class="rs">${callTasks().length} open · tap for the full list</div></span><span class="chev">›</span></div>
-          ${now.map(t=>row('NOW',t)).join('')}${next?row('NEXT',next):(now.length?'':'<div class="nnrow"><span class="nntag">NEXT</span><div class="nnt"><span>No calls due</span></div></div>')}
-          ${tmr.length?`<div class="nntmh">🌙 Tomorrow (${tmr.length})</div>`+tmr.slice(0,4).map(t=>row(callWhen(t).min!=null?hhmm(callWhen(t).min):'TMRW',t)).join(''):''}</div>`; })()}
+          ${(()=>{ const P=callPaneOrder(); if(!P.length) return '<div class="nnrow"><span class="nntag">NEXT</span><div class="nnt"><span>No calls due</span></div></div>';
+            const tag=t=>now.includes(t)?'NOW':t===next?'NEXT':(()=>{ const w=callWhen(t); return w.min!=null?hhmm(w.min):w.day===tomorrowISO()?'TMRW':(w.day&&w.day<=todayISO())?'TODAY':'LATER'; })();
+            return carHTML('calls',P.map(t=>row(tag(t),t)),0); })()}
+          </div>`; })()}
       <div class="minirow">
         <button class="mini" data-incoming><b>${incomingToday().length}</b><span>📥 Incoming</span></button>
       </div>
@@ -1420,11 +1500,14 @@ function paintHome(s){
       <div class="foot">${esc(dateStr)} · <span style="color:var(--gold);font:600 11px ui-monospace,Menlo,monospace">build ${esc(BUILD)}</span> · <a href="../">Desktop dashboard</a></div>
     </div>`;
   el.querySelector('.scroll').scrollTop=st;
-  el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=()=>{ const sl=b.dataset.slot; push({type:'slotlist',slot:sl}); });
+  el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=e=>{ const sl=b.dataset.slot; const r=e.target.closest('[data-rot]');
+    if(r&&r.dataset.rot){ push({type:'deck',kind:'slot',slot:sl,title:SLOTS[sl].label,startId:r.dataset.rot}); return; } push({type:'slotlist',slot:sl}); });
+  wireCars(el);
   el.querySelectorAll('[data-dim]').forEach(b=>b.onclick=()=>push({type:'groups',dim:b.dataset.dim}));
   el.querySelector('[data-review]').onclick=()=>{ const l=groups('project').map(g=>g.k); push({type:'board',dim:'project',list:l,idx:0}); };
   el.querySelector('[data-q="today"]').onclick=()=>push({type:'deck',kind:'today',title:'Due today'});
   wireDialer(el.querySelector('.homedial'),true);
+  el.querySelectorAll('[data-who]').forEach(x=>x.addEventListener('click',ev=>{ ev.stopPropagation(); const t=tasks.find(y=>y.id===x.dataset.who); if(t) pickCallContact(t,()=>paintHome(s)); }));
   el.querySelector('[data-stats]').onclick=()=>push({type:'stats'});
   el.querySelector('[data-snap]').onclick=()=>push({type:'snap',mode:localStorage.getItem('m.snapMode')||'group'});
   el.querySelectorAll('[data-dsel]').forEach(b=>b.onclick=()=>{ localStorage.setItem('m.drillSel',b.dataset.dsel); buzz(5); el.querySelectorAll('[data-dsel]').forEach(x=>x.classList.toggle('on',x===b)); });
