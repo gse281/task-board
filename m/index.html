@@ -543,7 +543,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-09 13:03';   // stamped by deploy.sh
+const BUILD='2026-10-09 13:05';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -1418,11 +1418,13 @@ function carHTML(key,slides,start){ if(!slides.length) return '';
 const carPos={};   // remembered slide per card, survives the 60s home repaint
 function wireCars(root){ root.querySelectorAll('[data-car]').forEach(c=>{ const tr=c.querySelector('.cartrack'), key=c.dataset.car, n=tr.children.length, pos=c.querySelector('.carpos');
   const at=()=>Math.round(tr.scrollLeft/(tr.children[1]?tr.children[1].offsetLeft-tr.children[0].offsetLeft:tr.clientWidth||1));
-  const go=i=>{ i=Math.max(0,Math.min(n-1,i)); const el=tr.children[i]; tr.scrollTo({left:el.offsetLeft-tr.children[0].offsetLeft,behavior:'smooth'}); };
+  const go=i=>{ i=Math.max(0,Math.min(n-1,i)); const x=tr.children[i].offsetLeft-tr.children[0].offsetLeft; const from=tr.scrollLeft; tr.scrollTo({left:x,behavior:'smooth'}); carPos[key]=i; if(pos) pos.textContent=(i+1)+' / '+n;
+    setTimeout(()=>{ if(Math.abs(tr.scrollLeft-x)>4&&Math.abs(tr.scrollLeft-from)<4) tr.scrollLeft=x; },450); };   // fallback if smooth scroll didn't run
   const upd=()=>{ const i=Math.max(0,Math.min(n-1,at())); carPos[key]=i; if(pos) pos.textContent=(i+1)+' / '+n; };
   tr.addEventListener('scroll',()=>{ cancelAnimationFrame(tr._r); tr._r=requestAnimationFrame(upd); },{passive:true});
   const p=c.querySelector('[data-cprev]'), q=c.querySelector('[data-cnext]');
-  if(p) p.onclick=e=>{ e.stopPropagation(); buzz(5); go(at()-1); }; if(q) q.onclick=e=>{ e.stopPropagation(); buzz(5); go(at()+1); };
+  const cur=()=>carPos[key]!=null?carPos[key]:at();
+  if(p) p.onclick=e=>{ e.stopPropagation(); buzz(5); go(cur()-1); }; if(q) q.onclick=e=>{ e.stopPropagation(); buzz(5); go(cur()+1); };
   const i0=carPos[key]!=null?Math.min(carPos[key],n-1):+c.dataset.start||0;
   requestAnimationFrame(()=>{ const el=tr.children[i0]; if(el) tr.scrollLeft=el.offsetLeft-tr.children[0].offsetLeft; upd(); }); }); }
 // Morning / Afternoon slim rows: show one task from that call, rotating every 30 s from data already loaded (no extra Airtable reads); paused while hidden.
