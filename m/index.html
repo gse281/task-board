@@ -487,6 +487,13 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .frn{font-weight:700;font-size:14.5px;padding:0 8px;height:40px;color:var(--ink);white-space:nowrap}
 .frb{width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border-radius:11px;background:var(--panel2);text-decoration:none;font-size:16px}
 .frb.frcall{background:var(--callg)}
+.call.slim{padding:9px 12px;min-height:54px}
+.call.slim .rot{flex:1;min-width:0;font-size:15px;font-weight:700;line-height:1.25;opacity:1;white-space:normal;padding:0;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere}
+.call.slim.now::after{display:none}
+.rot.rotin{animation:rotin2 .45s var(--ease)}@keyframes rotin2{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.meetcard .car{margin-top:0;border-top:0;padding-top:0}
+.meetcard .car .carslide .nnrow,.meetcard>.nnrow:first-child{border-top:0;margin-top:0;padding-top:0}
+.carnav{position:relative}.carall{position:absolute;right:0;height:32px;padding:0 10px;border-radius:10px;color:var(--blue);font-weight:800;font-size:13.5px}
 /* @Computer – Claude */
 .compbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px;margin:0 0 12px;background:#1f1a14;border:1px solid #4a3522;border-radius:16px;font-weight:800;font-size:15px;text-align:left}
 .compbtn>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -550,7 +557,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-09 13:08';   // stamped by deploy.sh
+const BUILD='2026-10-09 13:30';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -720,7 +727,7 @@ async function cuSave(k){ const r=cu[k]; if(!r||demo||!cfg.apiKey) return;
 function useContact(name,phone){ const k=cuKey(phone); if(k.length<7) return; const r=cu[k]||(cu[k]={name:'',phone:'',count:0,score:0,last:0});
   r.score=cuNow(r)+1; r.count=(r.count||0)+1; r.last=Date.now(); r.hidden=false; if(name) r.name=name; r.phone=phone; r.dirtyAt=Date.now(); save('m.cu',cu); cuSave(k); }
 function cuSet(k,patch){ const r=cu[k]; if(!r) return; Object.assign(r,patch,{dirtyAt:Date.now()}); save('m.cu',cu); cuSave(k); }
-function frequent(n){ return Object.entries(cu).filter(([k,r])=>!r.hidden&&(r.pinned||r.count)).sort((a,b)=>(b[1].pinned-a[1].pinned)||(cuNow(b[1])-cuNow(a[1]))).slice(0,n||8); }
+function frequent(n){ return Object.entries(cu).filter(([k,r])=>!r.hidden&&(r.pinned||r.count)).sort((a,b)=>((!!b[1].pinned)-(!!a[1].pinned))||(cuNow(b[1])-cuNow(a[1]))).slice(0,n||8); }
 const cuA=(name)=>` data-cu="${esc(name||'')}"`;   // add to any tel:/sms: link to count it
 document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[data-cu]'); if(!a) return; const h=a.getAttribute('href')||''; const ph=decodeURIComponent(h.replace(/^(tel:|sms:)/i,'').split(/[?&]/)[0]); if(ph) useContact(a.dataset.cu,ph); },true);
 function freqHTML(){ const F=frequent(8); if(!F.length) return '';
@@ -1452,9 +1459,9 @@ function paintMeetings(s){
 }
 /* ---------- HOME ---------- */
 // Inline carousel for home cards: one item per slide, next one peeks; swipe or ‹ ›. Scroll is contained inside (no page-wide sideways scroll).
-function carHTML(key,slides,start){ if(!slides.length) return '';
+function carHTML(key,slides,start,all){ if(!slides.length) return '';
   return `<div class="car" data-car="${key}" data-start="${start||0}"><div class="cartrack">${slides.map(x=>`<div class="carslide">${x}</div>`).join('')}</div>`
-    +(slides.length>1?`<div class="carnav" data-join><button class="carb" data-cprev aria-label="Previous">‹</button><span class="carpos">1 / ${slides.length}</span><button class="carb" data-cnext aria-label="Next">›</button></div>`:'')+`</div>`; }
+    +`<div class="carnav" data-join>${slides.length>1?`<button class="carb" data-cprev aria-label="Previous">‹</button><span class="carpos">1 / ${slides.length}</span><button class="carb" data-cnext aria-label="Next">›</button>`:''}${all?`<button class="carall" data-all="${all}">All ›</button>`:''}</div></div>`; }
 const carPos={};   // remembered slide per card, survives the 60s home repaint
 function wireCars(root){ root.querySelectorAll('[data-car]').forEach(c=>{ const tr=c.querySelector('.cartrack'), key=c.dataset.car, n=tr.children.length, pos=c.querySelector('.carpos');
   const at=()=>Math.round(tr.scrollLeft/(tr.children[1]?tr.children[1].offsetLeft-tr.children[0].offsetLeft:tr.clientWidth||1));
@@ -1485,24 +1492,24 @@ function paintHome(s){
       <div class="ptr"></div>
       ${wxStrip()}
       <div class="calls">
-        <button class="call am ${now==='morning'?'now':''}" data-slot="morning"><span class="em">🌅</span><b class="n">${am}</b><span class="cw"><span class="lbl">Morning</span><span class="rot" data-rot="${(rotTask('morning')||{}).id||''}">${esc(rotTask('morning')?cleanName(rotTask('morning')):'Nothing queued')}</span></span></button>
-        <button class="call pm ${now==='afternoon'?'now':''}" data-slot="afternoon"><span class="em">☀️</span><b class="n">${pm}</b><span class="cw"><span class="lbl">Afternoon</span><span class="rot" data-rot="${(rotTask('afternoon')||{}).id||''}">${esc(rotTask('afternoon')?cleanName(rotTask('afternoon')):'Nothing queued')}</span></span></button>
+        <button class="call am slim" data-slot="morning" aria-label="Morning call"><span class="rot" data-rot="${(rotTask('morning')||{}).id||''}">${esc(rotTask('morning')?cleanName(rotTask('morning')):'Nothing queued')}</span></button>
+        <button class="call pm slim" data-slot="afternoon" aria-label="Afternoon call"><span class="rot" data-rot="${(rotTask('afternoon')||{}).id||''}">${esc(rotTask('afternoon')?cleanName(rotTask('afternoon')):'Nothing queued')}</span></button>
       </div>
       <div class="dialer homedial"><div class="hdwrap"><input class="cxsearch" type="search" enterkeyhint="search" placeholder="🔍 Call someone — type a name…" autocomplete="off"><button class="hdx" data-cxclear aria-label="Clear">✕</button></div><div class="cxresults" data-cxresults></div></div>
       ${(()=>{ const {now,next}=nowNext(calendar,todayISO()); const j=(e,lbl)=>{ const h=joinHref(e); return h?`<span class="nnj"><a class="nnjoin${h.indexOf('tel:')===0?' tel':''}" href="${esc(h)}"${h.indexOf('tel:')===0?'':' target="_blank" rel="noopener"'} data-join>${h.indexOf('tel:')===0?'📞 Dial':'▶ Join'}</a>${e.dial?`<a class="nndial" href="${e.dial}" data-join>dial-in</a>`:''}</span>`:''; };
         const row=(tag,e)=>`<div class="nnrow"><span class="nntag ${tag==='NOW'?'now':''}">${tag}</span><div class="nnt"><b>${esc(e.title||'(untitled)')}</b><span>${esc(e.when||hhmm(e.start))}</span></div>${j(e)}</div>`;
-        return `<div class="review meetcard" data-meet role="button" tabindex="0" style="margin-bottom:12px;display:block"><div style="display:flex;align-items:center;gap:12px"><span class="ri">📅</span><span style="flex:1;min-width:0"><div class="rn">Meetings</div><div class="rs">${todayMeetings().length} today · tap for the full list</div></span><span class="chev">›</span></div>
+        return `<div class="review meetcard" data-meet role="button" tabindex="0" style="margin-bottom:12px;display:block">
           ${(()=>{ const cur=new Date().getHours()*60+new Date().getMinutes(); const L=meetingsToday(calendar,todayISO()).filter(e=>e.end>cur);
             if(!L.length) return '<div class="nnrow"><span class="nntag">NEXT</span><div class="nnt"><span>Nothing else today</span></div></div>';
-            return carHTML('meet',L.map(e=>row(now.includes(e)?'NOW':e===next?'NEXT':hhmm(e.start),e)),0); })()}
+            return carHTML('meet',L.map(e=>row(now.includes(e)?'NOW':e===next?'NEXT':hhmm(e.start),e)),0,'meet'); })()}
           ${(()=>{ const tm=meetingsToday(calendar,tomorrowISO()); return tm.length?`<div class="nntmh">🌙 Tomorrow</div>`+tm.map(e=>`<div class="nnrow sm"><span class="nntag">${esc(hhmm(e.start))}</span><div class="nnt"><b>${esc(e.title||'(untitled)')}</b>${e.location?`<span>${esc(e.location)}</span>`:''}</div>${j(e)}</div>`).join(''):''; })()}</div>`; })()}
       ${(()=>{ const {now,next,tmr}=callsNowNext();
         const btns=t=>{ const m=callMatch(t); return m?`<a class="nnjoin tel" href="${esc(telOf(m.phone))}"${cuA(m.who)} data-join>📞 Call</a><a class="nntxt" href="${esc(smsOf(m.phone))}"${cuA(m.who)} data-join aria-label="Text">💬</a>`:''; };
         const row=(tag,t)=>{ const w=callWhen(t), m=callMatch(t); return `<div class="nnrow"><span class="nntag ${tag==='NOW'?'now':''}">${tag}</span><div class="nnt"><b>${esc(cleanName(t))}</b><span>${(()=>{ const x=w.min!=null?hhmm(w.min):(w.day&&w.day<todayISO()?'overdue':w.day===todayISO()?'today':''); return x?esc(x)+' · ':''; })()}${whoHTML(m,t.id)}</span></div>${btns(t)}</div>`; };
-        return `<div class="review meetcard" data-calls role="button" tabindex="0" style="margin-bottom:12px;display:block"><div style="display:flex;align-items:center;gap:12px"><span class="ri" style="background:var(--callg)">📞</span><span style="flex:1;min-width:0"><div class="rn">Calls</div><div class="rs">${callTasks().length} open · tap for the full list</div></span><span class="chev">›</span></div>
+        return `<div class="review meetcard" data-calls role="button" tabindex="0" style="margin-bottom:12px;display:block">
           ${(()=>{ const P=callPaneOrder(); if(!P.length) return '<div class="nnrow"><span class="nntag">NEXT</span><div class="nnt"><span>No calls due</span></div></div>';
             const tag=t=>now.includes(t)?'NOW':t===next?'NEXT':(()=>{ const w=callWhen(t); return w.min!=null?hhmm(w.min):w.day===tomorrowISO()?'TMRW':(w.day&&w.day<=todayISO())?'TODAY':'LATER'; })();
-            return carHTML('calls',P.map(t=>row(tag(t),t)),0); })()}
+            return carHTML('calls',P.map(t=>row(tag(t),t)),0,'calls'); })()}
           </div>`; })()}
       <div class="minirow">
         <button class="mini" data-incoming><b>${incomingToday().length}</b><span>📥 Incoming</span></button>
@@ -1543,8 +1550,9 @@ function paintHome(s){
     </div>`;
   el.querySelector('.scroll').scrollTop=st;
   el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=e=>{ const sl=b.dataset.slot; const r=e.target.closest('[data-rot]');
-    if(r&&r.dataset.rot){ push({type:'deck',kind:'slot',slot:sl,title:SLOTS[sl].label,startId:r.dataset.rot}); return; } push({type:'slotlist',slot:sl}); });
+    push({type:'slotlist',slot:sl}); });   // tap = open that call list
   wireCars(el);
+  el.querySelectorAll('[data-all]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); push(b.dataset.all==='meet'?{type:'meetings'}:{type:'slotlist',slot:'calls'}); });
   el.querySelectorAll('[data-dim]').forEach(b=>b.onclick=()=>push({type:'groups',dim:b.dataset.dim}));
   el.querySelector('[data-review]').onclick=()=>{ const l=groups('project').map(g=>g.k); push({type:'board',dim:'project',list:l,idx:0}); };
   el.querySelector('[data-q="today"]').onclick=()=>push({type:'deck',kind:'today',title:'Due today'});

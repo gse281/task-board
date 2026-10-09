@@ -425,6 +425,7 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
     <button class="tb-btn" id="undoBtn" title="Undo last action (⌘Z)">↩ Undo</button>
     <button class="tb-btn" id="contactsBtn" title="Contacts search">👤</button>
     <button class="tb-btn" id="scBtn" title="⌨️ Shortcuts cheat-sheet (press ?)">⌨️</button>
+    <a class="tb-btn" id="focusCoreBtn" href="radial.html" title="◎ Focus Core — radial HUD view" style="text-decoration:none;color:var(--ink);display:inline-flex;align-items:center">◎ Focus</a>
     <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
     <input class="search" id="search" placeholder="Search tasks…">
     <button class="tb-btn" id="settingsBtn">⚙︎</button>
@@ -444,7 +445,7 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 
 <script>
 "use strict";
-const BUILD='2026-10-09 13:08';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-09 13:30';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ⌨️ Shortcuts cheat-sheet', d:'New ⌨️ button in the top bar (or press ?) opens your living keyboard-shortcut cheat-sheet — your F-key macros, Excel, and macOS, searchable and grouped, with ★ favorites. Add/edit/delete any shortcut right there (saved to Airtable), and I can tune it for you over time.'},
@@ -3831,6 +3832,19 @@ function renderNowNext(){ const el=document.getElementById('meetNN'); if(!el) re
   const due=orderRows(tasks.filter(t=>t.status==='Open'&&visible(t)&&notSnoozed(t)&&sectionOf(t)==='calls'),'calls').slice(0,2);   // = top 2 of the Calls panel, in drag order
   due.forEach(t=>{ const m=callMatchD(t); el.insertAdjacentHTML('beforeend','<span class="nnchip" title="'+esc(cleanName(t))+'"><b>CALL</b> '+esc(cleanName(t).slice(0,22))+' <a href="#" class="whobtn '+(m?(m.sure?'ok':'guess'):'none')+'" data-whod="'+t.id+'">'+(m?(m.sure?esc(m.who||m.phone)+' <i>✎</i>':'<b>≈</b> '+esc(m.who||m.phone)+' <small>tap to fix</small>'):'👤 pick contact')+'</a>'+(m?' <a class="joinbtn callg" href="tel:'+m.phone.replace(/[^\d+]/g,'')+'">📞</a><a class="joinbtn" href="sms:'+m.phone.replace(/[^\d+]/g,'')+'">💬</a>':'')+'</span>'); }); }
 document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('[data-whod]'); if(!a) return; e.preventDefault(); e.stopPropagation(); const t=tasks.find(x=>x.id===a.dataset.whod); if(t) pickCallContactD(t); },true);
+// ⭐ Contact usage (same Airtable ContactUsage table the iPhone's Frequent chips read): every tel:/sms: click on the board counts.
+const CU_TABLE='tblxPMZa78C8n0U4t', CU_HALF=14*86400000;
+async function useContactD(name,phone){ const k=String(phone||'').replace(/\D/g,'').slice(-10); if(k.length<7||!cfg.apiKey) return;
+  try{ const base='https://api.airtable.com/v0/'+cfg.baseId+'/'+CU_TABLE, H={Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'};
+    const u=new URL(base); u.searchParams.set('filterByFormula',"{Key}='"+k+"'"); u.searchParams.set('maxRecords','1');
+    const r=await fetch(u,{headers:H}); const d=r.ok?await r.json():{records:[]}; const f=((d.records||[])[0]||{}).fields||{};
+    const last=f.LastUsed?Date.parse(f.LastUsed):0, sc=(+f.Score||0)*Math.pow(0.5,(Date.now()-last)/CU_HALF)+1;
+    const fields={Key:k,Phone:phone,Count:(+f.Count||0)+1,Score:+sc.toFixed(3),LastUsed:new Date().toISOString(),Hidden:false}; if(name||!f.Name) fields.Name=name||f.Name||'';
+    await fetch(base,{method:'PATCH',headers:H,body:JSON.stringify({performUpsert:{fieldsToMergeOn:['Key']},typecast:true,records:[{fields}]})}); }catch(e){} }
+document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[href^="tel:"],a[href^="sms:"]'); if(!a) return; const h=a.getAttribute('href')||'';
+  if(/19172683365|9172683365/.test(h)||/addresses=/.test(h)) return;   // skip the conference dial-in and group invites
+  const ph=decodeURIComponent(h.replace(/^(tel:|sms:)/i,'').split(/[?&]/)[0]); const nm=a.dataset.cu||((a.title||'').replace(/^(Call|Text)\s+/,'').replace(/\s*\+?[\d\s().-]{7,}$/,'').trim());
+  if(ph) useContactD(nm,ph); },true);
 renderNowNext(); setInterval(renderNowNext,60000); { const _r=render; render=function(){ const x=_r.apply(this,arguments); try{ renderNowNext(); }catch(e){} return x; }; }
 document.getElementById('bulkBtn').onclick=bulkAdd;
 document.getElementById('picInput').onchange=e=>{if(e.target.files[0])photoToList(e.target.files[0]);};

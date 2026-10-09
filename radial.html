@@ -60,7 +60,10 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
   <div style="display:flex;gap:8px"><button id="keygo">Connect</button><button id="demo" style="background:#13232b;color:var(--cyan)">Preview demo</button></div>
   <div class="hint">It reuses the same key your dashboard already saved — you usually won't see this.</div>
 </div>
-<a href="./" style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font:600 11px ui-monospace,Menlo;letter-spacing:2px">⌂ DASHBOARD</a>
+<div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:8px">
+  <button id="reset" style="background:none;color:var(--dim);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:600 11px ui-monospace,Menlo;letter-spacing:2px;cursor:pointer">⟲ RESET LAYOUT</button>
+  <a href="./" style="color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:6px 16px;font:600 11px ui-monospace,Menlo;letter-spacing:2px">⌂ DASHBOARD</a>
+</div>
 <script>
 "use strict";
 const $=s=>document.querySelector(s);
@@ -74,8 +77,10 @@ let cfg={}; try{cfg=JSON.parse(localStorage.getItem('tb.cfg')||'{}');}catch(e){}
 cfg.baseId=cfg.baseId||'appdDTNBbVrp6hVOv'; cfg.tableId=cfg.tableId||'tblLpOdHqxoP3siYk';
 let aug={}; try{aug=JSON.parse(localStorage.getItem('tb.aug')||'{}');}catch(e){}
 const A=id=>aug[id]||{};
-const CAL_TABLE='tblTL2OeN8b1k2J8W';
-let tasks=[], calendar=[];
+const CAL_TABLE='tblTL2OeN8b1k2J8W', RESPOND_TABLE='tblcpvr8BdkjSutU2';
+let tasks=[], calendar=[], respond=[];
+let radPos={}; try{radPos=JSON.parse(localStorage.getItem('tb.radialPos')||'{}');}catch(e){}
+function savePos(k,fx,fy){ radPos[k]={x:fx,y:fy}; try{localStorage.setItem('tb.radialPos',JSON.stringify(radPos));}catch(e){} }
 const daysOpen=t=>t.createdTime?Math.floor((Date.now()-new Date(t.createdTime))/864e5):0;
 function sectionOf(t){ const a=A(t.id); return (a.section||t.sectionRemote||'').toLowerCase()||defaultSection(t); }
 function defaultSection(t){ if(t.slotRemote==='morning')return'morning'; if(t.slotRemote==='afternoon')return'afternoon'; if(t.typeRemote==='call'||/^\s*call\b/i.test(t.name||''))return'calls'; return'backlog'; }
@@ -99,6 +104,9 @@ async function fetchAll(){
     cu.searchParams.set('filterByFormula','OR({Date}="'+todayISO()+'",{Date}="'+tomorrowISO()+'")');
     const cr=await fetch(cu,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(cr.ok){const cd=await cr.json();
       calendar=(cd.records||[]).map(r=>({title:flat(r.fields.Title),when:flat(r.fields.When),date:flat(r.fields.Date),sort:+flat(r.fields.Sort)||0,link:flat(r.fields.Link)}));}
+    try{ const ru=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+RESPOND_TABLE); ru.searchParams.set('pageSize','100');
+      const rr=await fetch(ru,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(rr.ok){const rd=await rr.json();
+        respond=(rd.records||[]).filter(r=>flat(r.fields.Status)!=='Done').map(r=>({name:flat(r.fields.Subject),project:flat(r.fields.From),_mtg:true}));} }catch(e){}
     $('#status').textContent='LIVE'; render();
   }catch(e){ $('#status').textContent='OFFLINE — DEMO'; demoData(); render(); }
 }
@@ -122,21 +130,25 @@ function feeds(){
   const incoming=tasks.filter(t=>live(t)&&daysOpen(t)===0);
   const still=tasks.filter(t=>live(t)&&daysOpen(t)>=10&&!t.project&&!t.lead).sort((a,b)=>daysOpen(b)-daysOpen(a));
   return [
-    {cap:'Priority',  em:'🔥', hot:true, items:pri},
-    {cap:'Meeting',   em:'📅', items:todayMtg},
-    {cap:'Calls',     em:'📞', items:L('calls')},
-    {cap:'Morning',   em:'🌅', items:L('morning')},
-    {cap:'Afternoon', em:'☀️', items:L('afternoon')},
-    {cap:'Incoming',  em:'📥', items:incoming},
-    {cap:'Big Tix',   em:'🏔', items:L('bigticket')},
-    {cap:'Still Open',em:'⏳', hot:true, items:still},
+    {key:'priority', cap:'Priority',  em:'🔥', hot:true, items:pri},
+    {key:'meeting',  cap:'Meeting',   em:'📅', items:todayMtg},
+    {key:'respond',  cap:'Respond',   em:'✍️', items:respond},
+    {key:'calls',    cap:'Calls',     em:'📞', items:L('calls')},
+    {key:'morning',  cap:'Morning',   em:'🌅', items:L('morning')},
+    {key:'afternoon',cap:'Afternoon', em:'☀️', items:L('afternoon')},
+    {key:'incoming', cap:'Incoming',  em:'📥', items:incoming},
+    {key:'nextup',   cap:'Next Up',   em:'⏭', items:L('nextup')},
+    {key:'bigticket',cap:'Big Tix',   em:'🏔', items:L('bigticket')},
+    {key:'sunday',   cap:'Sunday',    em:'📆', items:L('sunday')},
+    {key:'backlog',  cap:'Backlog',   em:'🗂', items:L('backlog')},
+    {key:'still',    cap:'Still Open',em:'⏳', hot:true, items:still},
   ];
 }
 
 const hud=$('#hud'); let CX=0,CY=0,RAD=0,CORE=0,BUB=0, bubEls=[];
 function layout(){
   const W=innerWidth,H=innerHeight; CX=W/2; CY=H/2+6;
-  const m=Math.min(W,H); CORE=Math.max(190,Math.min(300,m*0.26)); BUB=Math.max(118,Math.min(168,m*0.155)); RAD=m*0.37;
+  const m=Math.min(W,H); CORE=Math.max(180,Math.min(290,m*0.25)); BUB=Math.max(108,Math.min(148,m*0.145)); RAD=Math.min(W,H)*0.40;
   hud.setAttribute('viewBox',`0 0 ${W} ${H}`);
   drawHud(W,H); place();
 }
@@ -152,27 +164,41 @@ function drawHud(W,H){
   hud.appendChild(g);
   const g2=document.createElementNS(ns,'g'); g2.setAttribute('class','spin rev'); g2.appendChild(ring(RAD-26,.08,1,'22 10')); hud.appendChild(g2);
   hud.appendChild(ring(CORE/2+6,.3,1.3));
-  // connector lines center → each bubble (static layer)
-  const n=feeds().length; const lg=document.createElementNS(ns,'g'); lg.setAttribute('id','links');
-  for(let i=0;i<n;i++){const a=i/n*2*Math.PI-Math.PI/2;const bx=CX+RAD*Math.cos(a),by=CY+RAD*Math.sin(a);
-    const x1=CX+(CORE/2+8)*Math.cos(a),y1=CY+(CORE/2+8)*Math.sin(a);const x2=bx-(BUB/2)*Math.cos(a),y2=by-(BUB/2)*Math.sin(a);
-    const l=document.createElementNS(ns,'line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
-    l.setAttribute('stroke','#39c7df');l.setAttribute('stroke-opacity',.28);l.setAttribute('stroke-width',1);lg.appendChild(l);
-    const dot=document.createElementNS(ns,'circle');dot.setAttribute('cx',x2);dot.setAttribute('cy',y2);dot.setAttribute('r',2.5);dot.setAttribute('fill','#39c7df');dot.setAttribute('fill-opacity',.8);lg.appendChild(dot);}
-  hud.appendChild(lg);
 }
+// connector lines follow the (possibly dragged) bubble positions
+function updateLinks(){
+  const ns='http://www.w3.org/2000/svg'; let lg=hud.querySelector('#links'); if(lg)lg.remove();
+  lg=document.createElementNS(ns,'g'); lg.setAttribute('id','links');
+  bubEls.forEach(b=>{ const bx=b.el.offsetLeft+BUB/2, by=b.el.offsetTop+BUB/2; const a=Math.atan2(by-CY,bx-CX);
+    const x1=CX+(CORE/2+8)*Math.cos(a),y1=CY+(CORE/2+8)*Math.sin(a), x2=bx-(BUB/2)*Math.cos(a),y2=by-(BUB/2)*Math.sin(a);
+    const l=document.createElementNS(ns,'line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
+    l.setAttribute('stroke','#39c7df');l.setAttribute('stroke-opacity',.26);l.setAttribute('stroke-width',1);lg.appendChild(l);
+    const dot=document.createElementNS(ns,'circle');dot.setAttribute('cx',x2);dot.setAttribute('cy',y2);dot.setAttribute('r',2.5);dot.setAttribute('fill','#39c7df');dot.setAttribute('fill-opacity',.8);lg.appendChild(dot); });
+  hud.insertBefore(lg, hud.firstChild.nextSibling||null);
+}
+function makeDraggable(el,key){
+  const down=e=>{ const p=e; const sx=p.clientX,sy=p.clientY,ox=el.offsetLeft,oy=el.offsetTop; let moved=false; el.style.transition='none'; el.style.zIndex=60; el.style.cursor='grabbing';
+    const move=ev=>{ const dx=ev.clientX-sx,dy=ev.clientY-sy; if(Math.abs(dx)+Math.abs(dy)>4)moved=true;
+      let nx=Math.max(4,Math.min(innerWidth-BUB-4,ox+dx)), ny=Math.max(58,Math.min(innerHeight-BUB-4,oy+dy));
+      el.style.left=nx+'px'; el.style.top=ny+'px'; updateLinks(); };
+    const up=()=>{ document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up); el.style.transition=''; el.style.zIndex=''; el.style.cursor='grab';
+      if(moved) savePos(key, el.offsetLeft/innerWidth, el.offsetTop/innerHeight); };
+    document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); e.preventDefault(); };
+  el.style.cursor='grab'; el.addEventListener('pointerdown',down);
+}
+function resetLayout(){ radPos={}; try{localStorage.removeItem('tb.radialPos');}catch(e){} place(); }
 let coreEl;
 function place(){
-  // core
   if(!coreEl){ coreEl=document.createElement('div'); coreEl.className='core'; $('#stage').appendChild(coreEl); coreEl.onclick=()=>location.href='./'; }
   coreEl.style.width=coreEl.style.height=CORE+'px'; coreEl.style.left=(CX-CORE/2)+'px'; coreEl.style.top=(CY-CORE/2)+'px';
-  // bubbles
   const F=feeds(); const n=F.length;
   bubEls.forEach(b=>b.el.remove()); bubEls=[];
-  for(let i=0;i<n;i++){ const a=i/n*2*Math.PI-Math.PI/2; const x=CX+RAD*Math.cos(a), y=CY+RAD*Math.sin(a);
-    const el=document.createElement('div'); el.className='bub'+(F[i].hot?' hot':''); el.style.width=el.style.height=BUB+'px'; el.style.left=(x-BUB/2)+'px'; el.style.top=(y-BUB/2)+'px';
-    $('#stage').appendChild(el); bubEls.push({el,feed:F[i],idx:0}); }
-  renderCore(); bubEls.forEach(renderBub);
+  for(let i=0;i<n;i++){ const f=F[i]; let left,top;
+    if(radPos[f.key]){ left=Math.max(4,Math.min(innerWidth-BUB-4, radPos[f.key].x*innerWidth)); top=Math.max(58,Math.min(innerHeight-BUB-4, radPos[f.key].y*innerHeight)); }
+    else { const a=i/n*2*Math.PI-Math.PI/2; left=CX+RAD*Math.cos(a)-BUB/2; top=CY+RAD*Math.sin(a)-BUB/2; }
+    const el=document.createElement('div'); el.className='bub'+(f.hot?' hot':''); el.style.width=el.style.height=BUB+'px'; el.style.left=left+'px'; el.style.top=top+'px';
+    $('#stage').appendChild(el); makeDraggable(el,f.key); bubEls.push({el,feed:f,idx:0}); }
+  renderCore(); bubEls.forEach(renderBub); updateLinks();
 }
 let coreIdx=0;
 function renderCore(){ const f=focusItems(); const it=f.length?f[coreIdx%f.length]:null;
@@ -205,5 +231,6 @@ function boot(){
 addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setTimeout(layout,150); });
 $('#keygo').onclick=()=>{ const k=$('#keyin').value.trim(); if(!k)return; cfg.apiKey=k; try{const c=JSON.parse(localStorage.getItem('tb.cfg')||'{}');c.apiKey=k;localStorage.setItem('tb.cfg',JSON.stringify(c));}catch(e){} $('#setup').style.display='none'; fetchAll().then(()=>{if(!cycled){cycled=true;startCycles();}}); };
 $('#demo').onclick=()=>{ $('#setup').style.display='none'; demoData(); render(); if(!cycled){cycled=true;startCycles();} };
+$('#reset').onclick=resetLayout;
 boot();
 </script></body></html>
