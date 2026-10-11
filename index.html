@@ -74,17 +74,17 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .subrow h5:hover{text-decoration:underline}
 /* iPhone-style colored morning/afternoon bubbles (revolving tasks) */
 .slotcards{display:flex;gap:8px}
-.slotcard{flex:1;min-width:0;border-radius:15px;padding:9px 11px;text-align:left;color:#1a0e07;overflow:hidden;min-height:76px;display:flex;flex-direction:column;box-shadow:0 8px 22px rgba(0,0,0,.4);transition:transform .15s}
-.slotcard:hover{transform:translateY(-1px)}
-.slotcard.am{background:linear-gradient(150deg,#f0a35c 0%,#e8683c 55%,#b8452a 100%)}
-.slotcard.pm{background:linear-gradient(150deg,#f3d27a 0%,#e0a458 55%,#a8742f 100%);color:#1a1207}
-.slotcard .sh{display:flex;align-items:center;gap:5px;font:800 11px ui-monospace,Menlo,monospace;letter-spacing:.2px}
+.slotcard{flex:1;min-width:0;border-radius:15px;padding:9px 11px;text-align:left;color:var(--ink);overflow:hidden;min-height:76px;display:flex;flex-direction:column;border:1px solid rgba(57,199,223,.32);box-shadow:0 8px 24px rgba(0,0,0,.35),inset 0 0 26px rgba(57,199,223,.05);backdrop-filter:blur(9px);transition:transform .4s cubic-bezier(.2,.8,.2,1),border-color .4s,box-shadow .4s}
+.slotcard:hover{transform:translateY(-2px);border-color:var(--cyan);box-shadow:0 10px 30px rgba(0,0,0,.4),0 0 24px rgba(57,199,223,.22)}
+.slotcard.am{background:linear-gradient(150deg,rgba(57,199,223,.20) 0%,rgba(27,110,128,.09) 60%,rgba(9,16,20,.45) 100%)}
+.slotcard.pm{background:linear-gradient(150deg,rgba(120,212,236,.17) 0%,rgba(57,160,190,.08) 60%,rgba(9,16,20,.45) 100%)}
+.slotcard .sh{display:flex;align-items:center;gap:5px;font:800 11px ui-monospace,Menlo,monospace;letter-spacing:.6px;text-transform:uppercase;color:var(--cyan)}
 .slotcard .se{font-size:15px}
-.slotcard .sn{margin-left:auto;font-weight:800;font-size:12px;opacity:.8}
-.slotcard .st{margin-top:8px;font-weight:700;font-size:13.5px;line-height:1.2;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;transition:opacity .4s}
+.slotcard .sn{margin-left:auto;font-weight:800;font-size:12px;color:var(--dim)}
+.slotcard .st{margin-top:8px;font-weight:700;font-size:13.5px;line-height:1.2;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;color:var(--ink);transition:opacity .9s cubic-bezier(.2,.8,.2,1)}
 .slotcard .st.fade{opacity:0}
 .slotcard .sdots{display:flex;gap:3px;margin-top:6px;height:4px}
-.slotcard .sdots i{width:4px;height:4px;border-radius:2px;background:rgba(0,0,0,.22)} .slotcard .sdots i.on{background:rgba(0,0,0,.6)}
+.slotcard .sdots i{width:4px;height:4px;border-radius:2px;background:rgba(57,199,223,.22);transition:background .5s} .slotcard .sdots i.on{background:var(--cyan);box-shadow:0 0 6px rgba(57,199,223,.7)}
 /* quick-add bubble on a pane */
 .addrow{display:flex;gap:6px;margin-top:8px}
 .addrow input{flex:1;min-width:0;background:rgba(57,199,223,.06);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:7px 9px;font-size:13px;outline:none}
@@ -411,7 +411,7 @@ let cycled=false;
 function startCycles(){
   setInterval(()=>{ const f=itemsFor('focus'); if(f.length>1){ const t=coreEl.querySelector('.item'); if(t)t.classList.add('fade'); setTimeout(()=>{coreIdx++;renderCore();},460);} },12000);
   setInterval(()=>{ bubEls.forEach(b=>{ const list=itemsFor(b.key); if(list.length>1){ b.idx++; renderBub(b); } }); }, 30000);
-  setInterval(()=>{ ['morning','afternoon'].forEach(slot=>{ if(itemsFor(slot).length>1){ slotIdx[slot]++; updateSlotCard(slot); } }); }, 4500);
+  setInterval(()=>{ ['morning','afternoon'].forEach(slot=>{ if(itemsFor(slot).length>1){ slotIdx[slot]++; updateSlotCard(slot); } }); }, 10000);
 }
 
 /* ====== corners ====== */
@@ -430,7 +430,9 @@ function wireSlotCard(c){ const slot=c.dataset.slot;
   const sh=c.querySelector('.sh'); if(sh) sh.onclick=e=>{ e.stopPropagation(); openList(slot); };
   c.onclick=()=>{ const l=itemsFor(slot); const it=l.length?l[slotIdx[slot]%l.length]:null; if(it) openTask(it.id); else openList(slot); }; }
 function updateSlotCard(slot){ const c=document.querySelector('.slotcard[data-slot="'+slot+'"]'); if(!c)return; const st=c.querySelector('.st'); if(st)st.classList.add('fade');
-  setTimeout(()=>{ const c2=document.querySelector('.slotcard[data-slot="'+slot+'"]'); if(!c2)return; const tmp=document.createElement('div'); tmp.innerHTML=slotCardHTML(slot); const nw=tmp.firstChild; c2.replaceWith(nw); wireSlotCard(nw); },380); }
+  setTimeout(()=>{ const c2=document.querySelector('.slotcard[data-slot="'+slot+'"]'); if(!c2)return; const tmp=document.createElement('div'); tmp.innerHTML=slotCardHTML(slot); const nw=tmp.firstChild;
+    const s0=nw.querySelector('.st'); if(s0)s0.classList.add('fade'); c2.replaceWith(nw); wireSlotCard(nw);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{ const s=nw.querySelector('.st'); if(s)s.classList.remove('fade'); })); },900); }
 function renderCorners(){
   // TOP-LEFT: morning / afternoon as iPhone-style colored bubbles (revolving tasks)
   $('#cTL').innerHTML=`<div class="slotcards">${slotCardHTML('morning')}${slotCardHTML('afternoon')}</div>`;
