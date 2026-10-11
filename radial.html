@@ -426,11 +426,18 @@ function drawHud(W,H){ const ns='http://www.w3.org/2000/svg'; hud.innerHTML='';
 }
 function updateLinks(){ const ns='http://www.w3.org/2000/svg'; let lg=hud.querySelector('#links'); if(lg)lg.remove();
   lg=document.createElementNS(ns,'g'); lg.setAttribute('id','links');
-  bubEls.forEach(b=>{ const bx=b.el.offsetLeft+BUB/2, by=b.el.offsetTop+BUB/2; const a=Math.atan2(by-CY,bx-CX);
+  const rm=reduceMotion();
+  bubEls.forEach((b,i)=>{ const bx=b.el.offsetLeft+BUB/2, by=b.el.offsetTop+BUB/2; const a=Math.atan2(by-CY,bx-CX);
     const x1=CX+(CORE/2+8)*Math.cos(a),y1=CY+(CORE/2+8)*Math.sin(a), x2=bx-(BUB/2)*Math.cos(a),y2=by-(BUB/2)*Math.sin(a);
     const l=document.createElementNS(ns,'line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
     l.setAttribute('stroke','#39c7df');l.setAttribute('stroke-opacity',.26);l.setAttribute('stroke-width',1);lg.appendChild(l);
-    const dot=document.createElementNS(ns,'circle');dot.setAttribute('cx',x2);dot.setAttribute('cy',y2);dot.setAttribute('r',2.5);dot.setAttribute('fill','#39c7df');dot.setAttribute('fill-opacity',.8);lg.appendChild(dot); });
+    const dot=document.createElementNS(ns,'circle');dot.setAttribute('cx',x2);dot.setAttribute('cy',y2);dot.setAttribute('r',2.5);dot.setAttribute('fill','#39c7df');dot.setAttribute('fill-opacity',.8);lg.appendChild(dot);
+    // energy pulse flowing from the bubble INTO the core (faster + brighter when that category is urgent)
+    if(!rm){ const urg=b.el.classList.contains('urgent'); const dur=(urg?1.5:2.5); const beg=(i*0.3)+'s';
+      const p=document.createElementNS(ns,'circle'); p.setAttribute('r',urg?'3':'2.2'); p.setAttribute('fill',urg?'#cdf3ff':'#8fe4f4');
+      const anim=(attr,vals,extra)=>{ const an=document.createElementNS(ns,'animate'); an.setAttribute('attributeName',attr); an.setAttribute('values',vals); an.setAttribute('dur',dur+'s'); an.setAttribute('begin',beg); an.setAttribute('repeatCount','indefinite'); if(extra)for(const k in extra)an.setAttribute(k,extra[k]); return an; };
+      p.appendChild(anim('cx',x2+';'+x1,{calcMode:'linear'})); p.appendChild(anim('cy',y2+';'+y1,{calcMode:'linear'}));
+      p.appendChild(anim('opacity','0;1;1;0',{keyTimes:'0;0.12;0.72;1'})); lg.appendChild(p); } });
   hud.insertBefore(lg, hud.firstChild?hud.firstChild.nextSibling:null);
 }
 function makeDraggable(el,key){
