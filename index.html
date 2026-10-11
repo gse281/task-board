@@ -126,6 +126,14 @@ kbd{display:inline-block;background:var(--panel2);border:1px solid var(--line);b
 .plsline{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:3px}
 .plsline .plsrow{margin-top:0}
 .plsline .cardacts{margin:0 0 0 auto}
+.edmodal{max-width:560px;width:94vw;max-height:88vh;overflow:auto}
+.edr{display:block;margin:0 0 9px}.edl{display:block;font-size:11px;font-weight:800;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin:0 2px 3px}
+.edi{width:100%;box-sizing:border-box;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--ink);font-size:14px;padding:7px 9px;font-family:inherit}
+.ed2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.edchk{display:flex;flex-wrap:wrap;gap:14px;margin:4px 2px 6px;font-size:13.5px;font-weight:600}
+.autosum{font-size:12px;color:var(--muted);font-weight:600;cursor:pointer;white-space:nowrap}.panel.autocond .panel-body{padding-top:0}
+.fqrow{display:flex;align-items:center;gap:6px;padding:6px 2px;border-bottom:1px solid var(--line)}.fqi{flex:1;min-width:0;display:flex;flex-direction:column}
+.fqi b{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.fqi span{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fqb{margin-top:0;font-size:12.5px;padding:4px 10px}
 .whobtn{font-size:15px;font-weight:600;color:#f4efe9;text-decoration:none;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .whobtn i{font-style:normal;color:var(--muted);font-weight:400;font-size:12px}.whobtn.guess b{color:#f0b44c;font-weight:800}
 .whobtn.guess small{color:#f0b44c;font-size:11px;font-weight:700;border:1px solid #6b5422;border-radius:6px;padding:0 4px;margin-left:3px}
@@ -466,7 +474,7 @@ kbd{ border-color:rgba(57,199,223,.3) }
 
 <script>
 "use strict";
-const BUILD='2026-10-09 13:56';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-11 11:18';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -776,7 +784,7 @@ async function atFetch(){
       name:flat(rec.fields.Task), project:flat(rec.fields.Project),
       lead:flat(rec.fields.SBLead), sub:flat(rec.fields.Sub),
       status:flat(rec.fields.Status)||'Open',
-      phoneRemote:flat(rec.fields.Phone), callWho:flat(rec.fields.CallContact), nextStepRemote:flat(rec.fields.NextStep),
+      phoneRemote:flat(rec.fields.Phone), callWho:flat(rec.fields.CallContact), priorityRaw:flat(rec.fields.Priority), remindAt:flat(rec.fields.ReminderAt), nextUp:flat(rec.fields.NextUp).slice(0,10), nuOrder:(rec.fields.NextUpOrder==null?null:+rec.fields.NextUpOrder), sugDate:flat(rec.fields.SuggestedDate).slice(0,10), sugWhy:flat(rec.fields.SuggestReason), nextStepRemote:flat(rec.fields.NextStep),
       sourceRemote:flat(rec.fields.Source), notesRemote:flat(rec.fields.Notes),
       typeRemote:(flat(rec.fields.Type)||'').toLowerCase(),
       slotRemote:(flat(rec.fields.MeetingSlot)||'').toLowerCase(),
@@ -1226,10 +1234,12 @@ const expanded = new Set();   // ephemeral: which capped sections are showing al
 function orderedPanels(){
   const custom=((meta.customCats||[]).map(c=>c.id));
   // to-send / from-outside / improvements are now folded INTO the Triage pane.
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer','leadrev','callinvite',...STUBS.map(s=>s.id)];
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer','leadrev','callinvite','frequent','nupicks','suggested',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
   if(!ord.includes('automations')) ord.unshift('automations');   // always-on status panel: first time it appears at the top
   ['leadrev','callinvite'].forEach(id=>{ if(!ord.includes(id)){ const i=ord.indexOf('computer'); ord.splice(i<0?0:i+1,0,id); } });   // right after @Computer
+  ['suggested','nupicks'].forEach(id=>{ if(!ord.includes(id)) ord.unshift(id); });   // ⏫ Next Up then ✨ Suggested at the top the first time
+  if(!ord.includes('frequent')){ const i=ord.indexOf('calls'); ord.splice(i<0?0:i+1,0,'frequent'); }   // ⭐ right under Calls
   if(!ord.includes('computer')){ const i=Math.max(ord.indexOf('morning'),ord.indexOf('afternoon'),ord.indexOf('calls')); ord.splice(i<0?0:i+1,0,'computer'); }   // 🖥 right after the call panels
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
   return ord.filter(id=>def.includes(id) && id!=='backlog');   // backlog hidden
@@ -1328,6 +1338,9 @@ function render(){
     else if(id==='computer'){ const cp=computerPanel(); if(cp) board.appendChild(cp); }   // hidden only when empty
     else if(id==='leadrev'){ const lp=leadRevPanel(); if(lp) board.appendChild(lp); }      // only when today has drafts
     else if(id==='callinvite') board.appendChild(callInvitePanel());
+    else if(id==='frequent') board.appendChild(frequentPanel());
+    else if(id==='nupicks') board.appendChild(nextUpPanel());
+    else if(id==='suggested'){ const sp=suggestedPanel(); if(sp) board.appendChild(sp); }
     else if(stub) board.appendChild(stubPanel(stub));
     else { const cc=(meta.customCats||[]).find(c=>c.id===id); const b=BUCKETS.find(x=>x.id===id)||cc; if(!b)return;
       let items = openVisible.filter(t=>sectionOf(t)===b.id);
@@ -2832,6 +2845,132 @@ function callInvitePanel(){
   p.addEventListener('drop',e=>{const dd=e.dataTransfer.getData('text/plain');if(dd&&dd.startsWith('panel:'))reorderPanels(dd.slice(6),'callinvite');});
   return p;
 }
+/* ✎ FULL TASK EDITOR (shared by iPhone + desktop) — every meaningful Airtable field, saved the moment it changes, each change undoable.
+   Choices come live from the Airtable schema (meta API, cached 24h; select options) PLUS every value already used in tasks.
+   Type a new value in any combo box → saved with typecast, so Airtable adds the new option. */
+const ED_SCHEMA_KEY='tb.schema.items';
+let edSchema=(()=>{ try{ const x=JSON.parse(localStorage.getItem(ED_SCHEMA_KEY)||'null'); return x&&Date.now()-x.at<864e5?x:null; }catch(e){ return null; } })();
+async function edLoadSchema(){ if(edSchema||!EDA.key()) return; try{
+    const r=await fetch('https://api.airtable.com/v0/meta/bases/'+EDA.base()+'/tables',{headers:{Authorization:'Bearer '+EDA.key()}}); if(!r.ok){ edSchema={at:Date.now(),choices:{}}; return; }
+    const d=await r.json(); const tb=(d.tables||[]).find(x=>x.id===EDA.table()||x.name==='Items'); const ch={};
+    (tb&&tb.fields||[]).forEach(f=>{ const c=f.options&&f.options.choices; if(c) ch[f.name]=c.map(x=>x.name); });
+    edSchema={at:Date.now(),choices:ch}; localStorage.setItem(ED_SCHEMA_KEY,JSON.stringify(edSchema)); }catch(e){ edSchema={at:Date.now(),choices:{}}; } }
+function edValues(field,key){ const set=new Set(((edSchema&&edSchema.choices[field])||[]).filter(Boolean));
+  EDA.all().forEach(t=>{ const v=t[key]; if(v) String(v).split(', ').forEach(x=>x&&set.add(x)); }); return [...set].sort((a,b)=>a.localeCompare(b)); }
+const ED_CATS=[['','🚫 None (no category)'],['morning','🌅 Morning call'],['afternoon','☀️ Afternoon call'],['calls','📞 Calls'],['incoming','📥 Incoming'],['@Computer – Claude','🖥 @Computer – Claude'],['Open Items','📋 Open Items'],['parked','🅿️ Parked']];
+function edCatOptions(){ const seen=new Set(ED_CATS.map(c=>c[0].toLowerCase())); const out=ED_CATS.slice();
+  [...((edSchema&&edSchema.choices.Section)||[]),...EDA.extraCats(),...EDA.all().map(t=>t.sectionRemote)].forEach(v=>{ const k=String(v||'').trim(); if(k&&!seen.has(k.toLowerCase())&&k!=='backlog'){ seen.add(k.toLowerCase()); out.push([k,'🗂 '+(EDA.catLabel(k)||k)]); } });
+  return out; }
+const edLocalDT=iso=>{ if(!iso) return ''; const d=new Date(iso); if(isNaN(d)) return ''; const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes()); };
+function edFormHTML(t){ const e=s=>EDA.esc(s==null?'':String(s)); const dl=(id,vals)=>`<datalist id="${id}">${vals.map(v=>`<option value="${e(v)}">`).join('')}</datalist>`;
+  const g=k=>EDA.get(t,k); const cat=EDA.cat(t);
+  const stat=edValues('Status','status'); ['Open','Done','Disposed'].forEach(x=>{ if(!stat.includes(x)) stat.push(x); });
+  const row=(lbl,inner)=>`<label class="edr"><span class="edl">${lbl}</span>${inner}</label>`;
+  return `<div class="edform">
+    ${row('Task',`<textarea class="edi" data-f="Task" rows="2">${e(g('Task'))}</textarea>`)}
+    ${row('Project',`<input class="edi" data-f="Project" list="edl-p" value="${e(g('Project'))}" placeholder="Pick or type a new one" autocomplete="off">`)}${dl('edl-p',edValues('Project','project'))}
+    ${row('Lead',`<input class="edi" data-f="SBLead" list="edl-l" value="${e(g('SBLead'))}" placeholder="Pick or type a new one" autocomplete="off">`)}${dl('edl-l',edValues('SBLead','lead'))}
+    ${row('Sub',`<input class="edi" data-f="Sub" list="edl-s" value="${e(g('Sub'))}" placeholder="Pick or type a new one" autocomplete="off">`)}${dl('edl-s',edValues('Sub','sub'))}
+    ${row('Category',`<select class="edi" data-cat>${edCatOptions().map(([v,l])=>`<option value="${e(v)}"${v.toLowerCase()===cat.toLowerCase()?' selected':''}>${e(l)}</option>`).join('')}<option value="__new">＋ New category…</option></select>`)}
+    ${row('Status',`<select class="edi" data-f="Status">${stat.map(v=>`<option${v===(g('Status')||'Open')?' selected':''}>${e(v)}</option>`).join('')}</select>`)}
+    ${row('Priority',`<input class="edi" data-f="Priority" list="edl-pr" value="${e(g('Priority'))}" autocomplete="off">`)}${dl('edl-pr',edValues('Priority','priorityRaw'))}
+    <div class="ed2">${row('Do date',`<input class="edi" type="date" data-f="DoDate" value="${e(g('DoDate'))}">`)}${row('Reminder',`<input class="edi" type="datetime-local" data-f="ReminderAt" value="${e(edLocalDT(g('ReminderAt')))}">`)}</div>
+    ${row('Next step',`<input class="edi" data-f="NextStep" value="${e(g('NextStep'))}">`)}
+    ${row('Notes',`<textarea class="edi" data-f="Notes" rows="4">${e(g('Notes'))}</textarea>`)}
+    <div class="ed2">${row('Call contact',`<input class="edi" data-f="CallContact" value="${e(g('CallContact')==='-'?'':g('CallContact'))}">`)}${row('Phone',`<input class="edi" type="tel" data-f="Phone" value="${e(g('Phone'))}">`)}</div>
+    <div class="edchk"><label><input type="checkbox" data-f="RoniFlag"${g('RoniFlag')?' checked':''}> ⭐ Flag</label><label><input type="checkbox" data-f="NextUp"${g('NextUp')?' checked':''}> ⏫ Next Up</label><label><input type="checkbox" data-f="TextExclude"${g('TextExclude')?' checked':''}> 🚫 Don’t text lead</label></div>
+  </div>`; }
+function edWire(root,t){
+  const conv=(f,el)=>{ if(el.type==='checkbox'){ if(f==='NextUp') return el.checked?EDA.today():null; return el.checked; }
+    let v=el.value.trim(); if(f==='ReminderAt') return v?new Date(v).toISOString():null; if(f==='DoDate') return v||null; if(f==='Priority'&&v&&!isNaN(+v)) return v; return v; };
+  root.querySelectorAll('[data-f]').forEach(el=>{ const f=el.dataset.f; let last=JSON.stringify(EDA.get(t,f)??'');
+    const commit=()=>{ const v=conv(f,el); const cur=JSON.stringify(v??''); if(cur===last) return; const prev=EDA.get(t,f);
+      if(f==='Task'&&!v){ el.value=prev; return; }
+      last=cur; const extra=(f==='NextUp'&&v)?{NextUpOrder:EDA.nextOrder()}:{}; EDA.set(t,f,v); if(extra.NextUpOrder!=null) EDA.set(t,'NextUpOrder',extra.NextUpOrder);
+      EDA.patch(t.id,Object.assign({[f]:v===''?null:v},extra)); EDA.refresh();
+      EDA.undo('✎ '+f+' saved',()=>{ EDA.set(t,f,prev); EDA.patch(t.id,{[f]:(prev===''||prev==null)?null:prev}); last=JSON.stringify(prev??''); if(el.type==='checkbox') el.checked=!!prev; else el.value=f==='ReminderAt'?edLocalDT(prev):(prev||''); EDA.refresh(); }); };
+    el.addEventListener('change',commit); if(el.tagName!=='SELECT'&&el.type!=='checkbox'&&el.type!=='date'&&el.type!=='datetime-local') el.addEventListener('blur',commit); });
+  const cs=root.querySelector('[data-cat]'); let lastCat=EDA.cat(t);
+  cs.addEventListener('change',()=>{ let v=cs.value; if(v==='__new'){ v=(prompt('New category name')||'').trim(); if(!v){ cs.value=lastCat; return; } const o=document.createElement('option'); o.value=v; o.textContent='🗂 '+v; o.selected=true; cs.insertBefore(o,cs.lastElementChild); }
+    const prevRaw=EDA.catRaw(t); lastCat=v; EDA.setCat(t,v); EDA.refresh();
+    EDA.undo('✎ Category saved',()=>{ EDA.restoreCat(t,prevRaw); cs.value=EDA.cat(t); lastCat=cs.value; EDA.refresh(); }); });
+}
+
+// adapter: desktop board → editor engine
+const ED_KEYS={Task:'name',Project:'project',SBLead:'lead',Sub:'sub',Status:'status',Priority:'priorityRaw',DoDate:'doDate',ReminderAt:'remindAt',NextStep:'nextStepRemote',Notes:'notesRemote',CallContact:'callWho',Phone:'phoneRemote',RoniFlag:'flag',NextUp:'nextUp',TextExclude:'textEx',NextUpOrder:'nuOrder'};
+const EDA={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.tableId, esc, all:()=>tasks, today:todayISO,
+  extraCats:()=>[...BUCKETS.map(b=>b.id),...((meta.customCats||[]).map(c=>c.id))], catLabel:k=>{ const b=BUCKETS.find(x=>x.id===k)||(meta.customCats||[]).find(x=>x.id===k); return b?b.name.replace(/^\S+\s/,''):''; },
+  get:(t,f)=>{ if(f==='DoDate') return doDateOf(t); if(f==='NextStep') return A(t.id).nextStep||t.nextStepRemote||''; if(f==='Phone') return phoneFor(t)||''; const v=t[ED_KEYS[f]]; return v==null?'':v; },
+  set:(t,f,v)=>{ const a=A(t.id); t[ED_KEYS[f]]=(v==null?'':v); if(f==='DoDate') a.doDate=v||''; if(f==='NextStep') a.nextStep=v||''; if(f==='Phone') a.phone=v||''; if(f==='Priority') t.priorityRemote=+v||0; if(f==='NextUp'&&!v) t.nuOrder=null; saveAug(); },
+  patch:(id,f)=>atPatch(id,f), nextOrder:()=>nextUpListD().reduce((m,x)=>Math.max(m,x.nuOrder||0),0)+10,
+  refresh:()=>render(), undo:(msg,fn)=>{ pushUndo(msg,fn); toast(msg+' — ↶ Undo in the top bar'); },
+  cat:t=>{ const s=sectionOf(t)||''; return s==='backlog'?'':((ED_CATS.find(c=>c[0].toLowerCase()===s.toLowerCase())||[s])[0]); },
+  catRaw:t=>({sec:A(t.id).section,sr:t.sectionRemote||'',m:t.slotRemote||'',ty:t.typeRemote||'',tl:A(t.id).type}),
+  setCat:(t,v)=>{ const a=A(t.id); a.secAt=Date.now(); const f={};
+    if(v==='morning'||v==='afternoon'){ a.section=v; t.slotRemote=v; t.sectionRemote=''; Object.assign(f,{MeetingSlot:v,Section:''}); }
+    else if(v==='calls'){ a.section='calls'; a.type='call'; t.sectionRemote='calls'; t.slotRemote=''; t.typeRemote='call'; Object.assign(f,{Section:'calls',MeetingSlot:'',Type:'call'}); }
+    else if(!v){ a.section='backlog'; t.sectionRemote='backlog'; t.slotRemote=''; Object.assign(f,{Section:'backlog',MeetingSlot:''}); if(t.typeRemote==='call'||a.type==='call'){ t.typeRemote=''; a.type=null; f.Type=null; } }
+    else { const id=v.toLowerCase(); a.section=id; t.sectionRemote=id; t.slotRemote=''; Object.assign(f,{Section:v,MeetingSlot:''}); }
+    saveAug(); atPatch(t.id,f); },
+  restoreCat:(t,p)=>{ const a=A(t.id); a.section=p.sec; a.secAt=Date.now(); a.type=p.tl; t.sectionRemote=p.sr; t.slotRemote=p.m; t.typeRemote=p.ty; saveAug(); atPatch(t.id,Object.assign({Section:p.sr,MeetingSlot:p.m},p.ty==='call'?{Type:'call'}:{})); } };
+function editTaskD(t){ edLoadSchema().then(()=>{});
+  const bd=document.createElement('div'); bd.className='backdrop';
+  bd.innerHTML='<div class="modal edmodal"><h3>✎ Edit task</h3>'+edFormHTML(t)+'<div class="modal-actions"><button class="btn primary" data-x>Done</button></div></div>';
+  bd.addEventListener('click',e=>{ if(e.target===bd) bd.remove(); }); bd.querySelector('[data-x]').onclick=()=>{ document.activeElement&&document.activeElement.blur(); setTimeout(()=>bd.remove(),0); };
+  document.body.appendChild(bd); edWire(bd,t); }
+/* ⏫ Next Up (Airtable NextUp date + NextUpOrder — same list as the iPhone; carries over until done/removed)
+   ✨ Suggested (SuggestedDate=today + SuggestReason, written once a day by the suggested-next-up scheduled task) */
+function nextUpListD(){ return tasks.filter(t=>t.status==='Open'&&t.nextUp).sort((a,b)=>((a.nuOrder??1e9)-(b.nuOrder??1e9))||String(a.nextUp).localeCompare(String(b.nextUp))); }
+function setNextUpD(t,on){ if(on){ t.nextUp=todayISO(); t.nuOrder=nextUpListD().reduce((m,x)=>Math.max(m,x.nuOrder||0),0)+10; atPatch(t.id,{NextUp:t.nextUp,NextUpOrder:t.nuOrder}); toast('⏫ Added to Next Up'); }
+  else { t.nextUp=''; t.nuOrder=null; atPatch(t.id,{NextUp:null,NextUpOrder:null}); toast('Removed from Next Up'); } render(); }
+function nuMoveD(t,dir){ const L=nextUpListD(); const i=L.indexOf(t), j=i+dir; if(i<0||j<0||j>=L.length) return; [L[i],L[j]]=[L[j],L[i]];
+  const ups=[]; L.forEach((x,k)=>{ if(x.nuOrder!==k*10){ x.nuOrder=k*10; ups.push({id:x.id,fields:{NextUpOrder:k*10}}); } }); atPatchMany(ups); render(); }
+function nuPanelShell(id,title,stat){ const p=document.createElement('div'); p.className='panel'; p.dataset.section=id;
+  const head=document.createElement('div'); head.className='panel-head'; head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>'+title+'</h3><span class="scratch-stat">'+stat+'</span>';
+  p.appendChild(head); wirePanel(p,head,id); const body=document.createElement('div'); body.className='panel-body'; const hp=heightPx(id); if(hp) body.style.maxHeight=hp; p.appendChild(body);
+  p.addEventListener('dragover',e=>e.preventDefault()); p.addEventListener('drop',e=>{const dd=e.dataTransfer.getData('text/plain');if(dd&&dd.startsWith('panel:'))reorderPanels(dd.slice(6),id);}); return {p,body}; }
+function nuRowD(t,sub,btns){ const r=document.createElement('div'); r.className='fqrow';
+  r.innerHTML='<div class="fqi"><b>'+esc(cleanName(t))+'</b><span'+(t.sugWhy&&sub===t.sugWhy?' style="color:#b9a8f0;white-space:normal"':'')+'>'+esc(sub||'')+'</span></div>';
+  btns.forEach(([txt,title,fn,cls])=>{ const b=document.createElement('button'); b.className='cardbtn'+(cls?' '+cls:''); b.textContent=txt; b.title=title; b.onclick=e=>{ e.stopPropagation(); fn(); }; r.appendChild(b); }); return r; }
+function nextUpPanel(){ const L=nextUpListD(); const {p,body}=nuPanelShell('nupicks','⏫ Next Up — today',L.length+' picked');
+  if(!L.length) body.innerHTML='<div class="note" style="padding:6px">Hit ⏫ on any card to line it up for today. Picks stay until done or removed.</div>';
+  L.forEach((t,i)=>body.appendChild(nuRowD(t,[t.project,t.lead].filter(Boolean).join(' · '),[...(i?[['↑','Move up',()=>nuMoveD(t,-1)]]:[]),...(i<L.length-1?[['↓','Move down',()=>nuMoveD(t,1)]]:[]),['✓','Done',()=>markDone(t),'done'],['✕','Remove from Next Up',()=>setNextUpD(t,false)]])));
+  return p; }
+function suggestedPanel(){ const td=todayISO(); const L=tasks.filter(t=>t.status==='Open'&&t.sugDate===td).slice(0,5); const {p,body}=nuPanelShell('suggested','✨ Suggested next up',L.length?L.length+' for today':'refreshes 6:30 AM');
+  if(!L.length) body.innerHTML='<div class="note" style="padding:6px">Today’s 5 suggestions appear here after the 6:30 AM run.</div>';
+  L.forEach(t=>body.appendChild(nuRowD(t,t.sugWhy||[t.project,t.lead].filter(Boolean).join(' · '),[...(t.nextUp?[]:[['⏫','Add to Next Up',()=>setNextUpD(t,true)]]),['✓','Done',()=>markDone(t),'done'],['✕','Dismiss',()=>{ t.sugDate=''; atPatch(t.id,{SuggestedDate:null}); render(); }]])));
+  return p; }
+/* ⭐ Frequent — people Roni calls/texts most (Airtable ContactUsage, shared with the iPhone). Pinned first, then recent-weighted use (14-day half-life). */
+let fqRows=[], fqAt=0, fqBusy=false, fqAll=false;
+function fetchFQ(force){ if(!cfg.apiKey||fqBusy||(!force&&Date.now()-fqAt<30*60000)) return; fqBusy=true;
+  const base='https://api.airtable.com/v0/'+cfg.baseId+'/tblxPMZa78C8n0U4t'; let out=[];
+  const page=off=>{ const u=new URL(base); u.searchParams.set('pageSize','100'); if(off) u.searchParams.set('offset',off);
+    return fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():{}).then(d=>{ out=out.concat(d.records||[]); return d.offset?page(d.offset):null; }); };
+  page().then(()=>{ fqRows=out.map(x=>{ const f=x.fields; return {id:x.id,key:f.Key||'',name:f.Name||'',phone:f.Phone||'',count:+f.Count||0,score:+f.Score||0,last:f.LastUsed?Date.parse(f.LastUsed):0,pinned:!!f.Pinned,hidden:!!f.Hidden}; }); fqAt=Date.now(); fqBusy=false; render(); }).catch(()=>{ fqBusy=false; }); }
+const fqNow=r=>r.score*Math.pow(0.5,(Date.now()-r.last)/(14*86400000));
+function fqCompany(ph){ const k=String(ph).replace(/\D/g,'').slice(-10); try{ const c=added.concat(contacts).find(c=>(c.p||[]).some(p=>String(p).replace(/\D/g,'').slice(-10)===k)); return c&&c.o||''; }catch(e){ return ''; } }
+function fqPatch(r,fields){ Object.assign(r,{pinned:fields.Pinned??r.pinned,hidden:fields.Hidden??r.hidden}); fetch('https://api.airtable.com/v0/'+cfg.baseId+'/tblxPMZa78C8n0U4t/'+r.id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields})}).catch(()=>{}); render(); }
+function frequentPanel(){ fetchFQ(false);
+  const p=document.createElement('div'); p.className='panel'; p.dataset.section='frequent';
+  const L=fqRows.filter(r=>!r.hidden&&(r.pinned||r.count)).sort((a,b)=>((+b.pinned)-(+a.pinned))||(fqNow(b)-fqNow(a)));
+  const head=document.createElement('div'); head.className='panel-head';
+  head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>⭐ Frequent</h3><span class="scratch-stat">'+L.length+' people</span>'+(L.length>10?'<button class="mini" data-fqall style="margin-left:auto">'+(fqAll?'Top 10':'See all')+'</button>':'');
+  p.appendChild(head); wirePanel(p,head,'frequent');
+  const fa=head.querySelector('[data-fqall]'); if(fa) fa.onclick=e=>{ e.stopPropagation(); fqAll=!fqAll; render(); };
+  const body=document.createElement('div'); body.className='panel-body'; const hp=heightPx('frequent'); if(hp) body.style.maxHeight=hp;
+  if(!L.length) body.innerHTML='<div class="note" style="padding:6px">Call or text someone from the board or the iPhone and they’ll show up here.</div>';
+  (fqAll?L:L.slice(0,10)).forEach(r=>{ const d=String(r.phone).replace(/[^\d+]/g,''), co=fqCompany(r.phone);
+    const row=document.createElement('div'); row.className='fqrow';
+    row.innerHTML='<div class="fqi"><b>'+(r.pinned?'📌 ':'')+esc(r.name||r.phone)+'</b><span>'+esc(co||r.phone)+'</span></div>'
+      +'<a class="joinbtn callg fqb" href="tel:'+d+'" data-cu="'+esc(r.name)+'">📞 Call</a><a class="joinbtn fqb" href="sms:'+d+'" data-cu="'+esc(r.name)+'">💬</a>'
+      +'<button class="cardbtn" data-pin title="'+(r.pinned?'Unpin':'Pin to top')+'">'+(r.pinned?'📌':'📍')+'</button><button class="cardbtn" data-rm title="Remove from Frequent">✕</button>';
+    row.querySelector('[data-pin]').onclick=()=>fqPatch(r,{Pinned:!r.pinned});
+    row.querySelector('[data-rm]').onclick=()=>fqPatch(r,{Hidden:true,Pinned:false});
+    body.appendChild(row); });
+  p.appendChild(body);
+  p.addEventListener('dragover',e=>e.preventDefault());
+  p.addEventListener('drop',e=>{const dd=e.dataTransfer.getData('text/plain');if(dd&&dd.startsWith('panel:'))reorderPanels(dd.slice(6),'frequent');});
+  return p; }
 /* 📞 calls: who to call (task Phone → roster → Contacts fuzzy match) + NOW/NEXT */
 const CALL_STOP_D=new Set(['call','calls','re','about','with','the','and','to','for','back','text','follow','up','followup','fu','on','in','of','at','pm','am','me','him','her','them','ask','check','tell','get','x2','x3','asap','today','tomorrow','again']);
 function callMatchD(t){ if(t.callWho==='-') return null; const ph=phoneFor(t); if(ph) return {phone:ph,who:t.callWho||t.lead||'',sure:true};
@@ -2870,13 +3009,16 @@ function automationsPanel(){
   const act=tasksA.filter(r=>r.status!=='Paused').sort((a,b)=>(rank[a.status]-rank[b.status])||a.name.localeCompare(b.name));
   const paused=tasksA.filter(r=>r.status==='Paused');
   const bad=tasksA.filter(r=>r.status==='Failing'||r.status==='Missed').length;
+  const nOK=tasksA.filter(r=>r.status==='OK').length, nFail=tasksA.filter(r=>r.status==='Failing').length, nMiss=tasksA.filter(r=>r.status==='Missed').length;
   const fresh=autoRows.reduce((m,r)=>r.updated>m?r.updated:m,'');
+  const open=window._autoOpen!=null?window._autoOpen:false;   // condensed by default; the issues show in the row itself
   const head=document.createElement('div'); head.className='panel-head';
   head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>⚙️ Automations</h3>'
-    +'<span style="font-size:11px;font-weight:700;border-radius:8px;padding:2px 7px;background:'+(bad?'#c2553f':'#3a8f5f')+';color:#fff">'+(bad?bad+' need attention':'all OK')+'</span>'
+    +'<span class="autosum" data-atog title="Tap to '+(open?'collapse':'expand')+'">· '+nOK+' OK'+(nFail?' · <b style="color:#e5533a">'+nFail+' failing</b>':'')+(nMiss?' · <b style="color:#e0a458">'+nMiss+' missed</b>':'')+' '+(open?'▴':'▾')+'</span>'
     +'<span class="scratch-stat" title="Feed refreshed every 2h by the automations-status task">feed '+autoAgo(fresh)+'</span><button class="mini" data-ar title="Reload">↻</button>';
   p.appendChild(head); wirePanel(p,head,'automations');
   head.querySelector('[data-ar]').onclick=e=>{ e.stopPropagation(); fetchAutos(true); };
+  head.querySelector('[data-atog]').onclick=e=>{ e.stopPropagation(); window._autoOpen=!open; render(); };
   const body=document.createElement('div'); body.className='panel-body'; body.style.fontSize='12.5px';
   const hp=heightPx('automations'); if(hp) body.style.maxHeight=hp;
   const row=r=>'<div title="'+esc(r.purpose+(r.detail?'\n'+r.detail:''))+'" style="display:grid;grid-template-columns:10px 1fr auto;gap:6px;align-items:start;padding:5px 2px;border-bottom:1px solid var(--line)">'
@@ -2885,6 +3027,8 @@ function automationsPanel(){
     +(r.detail&&r.status!=='OK'?'<br><span style="color:'+(AUTO_C[r.status]||'#ccc')+'">'+esc(r.detail)+'</span>':'')+'</span>'
     +'<span style="font-weight:800;font-size:11px;color:'+(AUTO_C[r.status]||'#ccc')+'">'+esc(r.status)+'</span></div>';
   let h=autoRows.length?'':'<div class="note">No feed yet — the automations-status task fills this every 2h (add your Airtable key in ⚙︎ if empty).</div>';
+  if(!open){ body.innerHTML=act.filter(r=>r.status==='Failing'||r.status==='Missed').map(row).join(''); if(!body.innerHTML) body.style.display='none'; p.appendChild(body);
+    p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'automations');}); p.classList.add('autocond'); return p; }
   h+=act.map(row).join('');
   if(paused.length) h+='<details style="margin-top:4px"><summary style="cursor:pointer;color:var(--muted);padding:4px 0">Paused ('+paused.length+')</summary>'+paused.map(row).join('')+'</details>';
   if(leads.length) h+='<div style="margin-top:10px;font-weight:800">📲 Lead texts · last 7 days</div>'
@@ -2988,6 +3132,8 @@ function taskEl(t,sectionId){
   const act=(txt,cls,title,fn)=>{const b=document.createElement('button');b.className='cardbtn'+(cls?' '+cls:'');b.textContent=txt;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};acts.appendChild(b);return b;};
   act('✓','done','Mark done',()=>markDone(t));
   act(a.blink?'🔔':'🔕', a.blink?'on':'', a.blink?'Ringing — tap to silence':'Ring bell (jumps to top)', ()=>{const aa=A(t.id); aa.blink=!aa.blink; if(aa.blink)bumpTop(t.id); saveAug(); render();});
+  act('✎','','Edit all fields',()=>editTaskD(t));
+  act('⏫', t.nextUp?'on':'', t.nextUp?'In Next Up — tap to remove':'Add to Next Up (today)', ()=>setNextUpD(t,!t.nextUp));
   act('📌', a.pin?'on':'', a.pin?'Pinned — survives daily reset':'Pin — keep until done', ()=>{const aa=A(t.id);aa.pin=!aa.pin;saveAug();render();toast(aa.pin?'📌 Pinned':'Unpinned');});
   act('🅿️','','Park — hide it until you restore it',()=>parkTask(t.id));
   const inPriority = sectionId==='priority' || (sectionId==='bulb' && activeBulb && activeBulb.val==='priority');
