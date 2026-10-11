@@ -454,6 +454,7 @@ body::before{ opacity:.7 }
 .desk-add button,.add-inline button,.qaddb,.add button{ background:var(--accent)!important; color:#07141a!important; border-color:var(--accent)!important }
 .nnchip.now{ border-color:var(--accent)!important } .nnchip.now b{ color:var(--accent)!important }
 .panel-body::-webkit-scrollbar-thumb,.board::-webkit-scrollbar-thumb{ background:rgba(57,199,223,.18) }
+.demo-banner{ background:rgba(57,199,223,.12)!important }
 </style>
 </head>
 <body>
@@ -493,7 +494,7 @@ body::before{ opacity:.7 }
 
 <script>
 "use strict";
-const BUILD='2026-10-11 15:03';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-11 15:30';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -4081,7 +4082,7 @@ function applyLaunchParams(){
 (function(){ try{
   if(innerWidth>640 || localStorage.getItem('tb.mPill')==='off') return;
   const p=document.createElement('div');
-  p.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));z-index:9999;display:flex;align-items:center;gap:4px;background:#e8683c;color:#1a0e07;border-radius:22px;font-weight:700;font-size:15px;box-shadow:0 8px 24px rgba(0,0,0,.4)';
+  p.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));z-index:9999;display:flex;align-items:center;gap:4px;background:#39c7df;color:#07141a;border-radius:22px;font-weight:700;font-size:15px;box-shadow:0 8px 24px rgba(0,0,0,.4)';
   p.innerHTML='<a href="m/" style="color:inherit;text-decoration:none;padding:10px 4px 10px 16px">📱 Open iPhone app</a><button style="border:0;background:none;color:inherit;font-size:16px;padding:10px 14px 10px 8px">✕</button>';
   p.querySelector('button').onclick=()=>{ localStorage.setItem('tb.mPill','off'); p.remove(); };
   document.body.appendChild(p);

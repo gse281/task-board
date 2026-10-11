@@ -8,7 +8,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Tasks">
-<meta name="theme-color" content="#14110f">
+<meta name="theme-color" content="#0a1216">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
@@ -594,6 +594,32 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 .sync{display:inline-block;width:8px;height:8px;border-radius:4px;background:var(--green);margin-right:6px;vertical-align:1px}
 .sync.off{background:var(--dim)} .sync.busy{background:var(--gold);animation:pulse 1s infinite}
 @keyframes pulse{50%{opacity:.3}}
+/* ═══════════ FOCUS COHESION — cyan/glass to match the Focus command center & dashboard ═══════════ */
+:root{ --bg:#0a1216; --panel:rgba(14,26,31,.72); --panel2:rgba(20,36,42,.7); --ink:#eaf6fb; --muted:#8aa6af; --dim:#64838d; --line:rgba(57,199,223,.2); --accent:#39c7df; --gold:#6fd0e0; }
+body{ background:radial-gradient(130% 120% at 50% 16%, #0d1920 0%, #0a1216 55%, #05090c 100%); color:var(--ink); }
+.screen{ background:transparent }
+#stack{ background:radial-gradient(130% 120% at 50% 16%, #0d1920 0%, #0a1216 55%, #05090c 100%) }
+.view,.mini,.sec,.glist,.autocard,.ldcard,.drill,.scard,.dialin,.invbtn{ -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); border-color:rgba(57,199,223,.18); }
+.view{ background:var(--panel) } .view .vi{ background:rgba(57,199,223,.1) }
+/* home call tiles → cyan glass (match Focus's Morning/Afternoon cards) */
+.call.am{ background:linear-gradient(150deg,rgba(57,199,223,.24) 0%,rgba(27,110,128,.1) 60%,rgba(9,16,20,.5) 100%); color:#eaf6fb; border:1px solid rgba(57,199,223,.36); }
+.call.pm{ background:linear-gradient(150deg,rgba(120,212,236,.22) 0%,rgba(57,160,190,.1) 60%,rgba(9,16,20,.5) 100%); color:#eaf6fb; border:1px solid rgba(120,212,236,.36); }
+.call.now::after{ background:var(--accent); color:#07141a }
+/* warm gradient CTAs → cyan */
+.cta,.invall{ background:linear-gradient(135deg,#45b8d0,#1f7f93)!important; color:#07141a!important }
+.streak.hot{ background:#1f7f93; border-color:var(--accent); color:#eaf6fb }
+.drill .dh{ color:var(--accent) }
+/* keep the focused deck CARD bright (its signature) but cool it + cyan accent chips */
+.tcard{ background:#f3f8fb; color:#17202a }
+.chip{ background:#e2edf1; color:#3a5560 }
+.chip.p{ background:#0e2a33; color:#cdeef5 }
+.chip.slot{ background:#d6eef4; color:#1b6e80 }
+.chip.old{ background:#e8dad4; color:#7a3b2a }
+.ns{ background:#eaf2f5!important } .qbtn{ background:#e2edf1; color:#274049 }
+/* weather extreme-hot chip → cyan (no orange) */
+.wxt.xhot{ background:var(--accent); color:#07141a }
+/* bottom action bar + accents ride on --accent (already cyan) */
+.act.nxt{ color:#9fdbe7 }
 </style>
 </head>
 <body>
@@ -601,7 +627,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-11 15:03';   // stamped by deploy.sh
+const BUILD='2026-10-11 15:30';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -1354,7 +1380,7 @@ function ring(n,goal){ const g=goal||10, p=Math.min(1,n/g), R=19, C=2*Math.PI*R;
   return `<div class="ring"><svg width="44" height="44"><circle cx="22" cy="22" r="${R}" stroke="#2c2723" stroke-width="5" fill="none"/><circle cx="22" cy="22" r="${R}" stroke="#3a8f5f" stroke-width="5" fill="none" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-p)}"/></svg><b>${n}</b></div>`; }
 
 /* ---------- session score (study-drill style): streak = decisions in a row; Next/skip breaks it ---------- */
-const PAL=['#FF6B35','#4ADE80','#67E8F9','#A78BFA','#F87171','#FCD34D','#C084FC','#818CF8','#34D399','#FB923C','#F472B6','#60A5FA'];
+const PAL=['#39c7df','#5eead4','#67E8F9','#60A5FA','#A78BFA','#818CF8','#34D399','#2dd4bf','#7dd3fc','#c4b5fd','#4ADE80','#38bdf8'];
 const projColor=p=>{ if(!p) return '#94A3B8'; let h=0; for(const c of String(p).toUpperCase()) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; };
 function sess(){ let x=load('m.sess',null); if(!x||x.date!==todayISO()) x={date:todayISO(),done:0,snz:0,skip:0,streak:0,best:(x&&x.best)||0,byProj:{},items:[]}; x.items=x.items||[]; if(!Array.isArray(x.sk)){ x.sk=[]; } x.streak=x.sk.length; return x; }   // 🔥 number = exactly the ids in x.sk (one source)
 function sessHit(kind,t,undo){ const x=sess(); const p=(t&&t.project)||'No project'; const bp=x.byProj[p]=x.byProj[p]||{done:0,snz:0,skip:0};
@@ -1906,7 +1932,7 @@ function cardInner(t,r){
     <div class="bodyx">${t.next?`<div class="ns"><b>Next step</b>${esc(t.next)}</div>`:''}${t.notes?`<div class="ns"><b>Notes</b>${esc(t.notes)}</div>`:''}</div>
     <div class="quick">
       ${ph?`<a class="qbtn qcall" href="tel:${esc(ph)}" onclick="event.stopPropagation()">📞 Call</a><a class="qbtn" href="sms:${esc(ph)}" onclick="event.stopPropagation()">💬</a>`:''}
-      ${isSlotDeck?'':`<button class="qbtn" data-slotbtn="morning" style="${sl==='morning'?'outline:2px solid #e8683c':''}">🌅</button><button class="qbtn" data-slotbtn="afternoon" style="${sl==='afternoon'?'outline:2px solid #e0a458':''}">☀️</button>`}
+      ${isSlotDeck?'':`<button class="qbtn" data-slotbtn="morning" style="${sl==='morning'?'outline:2px solid #39c7df':''}">🌅</button><button class="qbtn" data-slotbtn="afternoon" style="${sl==='afternoon'?'outline:2px solid #6fd0e0':''}">☀️</button>`}
       <button class="qbtn" data-edit>✎ Edit</button>
       <button class="qbtn${t.nextUp?' on':''}" data-nu>${t.nextUp?'⏫ In Next Up':'⏫ Next up'}</button>
       <button class="qbtn" data-note>📝 Note</button>
@@ -2006,10 +2032,10 @@ function paintStats(s){
   const days=[...Array(7)].map((_,i)=>isoIn(i-6)); const mx=Math.max(1,...days.map(d=>log[d]||0));
   const rows=Object.entries(x.byProj).sort((a,b)=>(b[1].done+b[1].snz)-(a[1].done+a[1].snz));
   s.el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">Stats</div><div style="min-width:60px"></div></div>
-    <div class="scroll"><div class="sect" style="color:#FF6B35;font-family:ui-monospace,Menlo,monospace;letter-spacing:3px">TODAY'S SESSION</div>
+    <div class="scroll"><div class="sect" style="color:#39c7df;font-family:ui-monospace,Menlo,monospace;letter-spacing:3px">TODAY'S SESSION</div>
     <div class="big" style="font-size:30px">${n?n+' handled':'Nothing yet'}</div>
     <div class="bigstat"><div><b style="color:#22C55E">${x.done}</b><span>done</span></div><div><b style="color:#f5c26b">${x.snz}</b><span>snoozed</span></div>
-      <div><b style="color:#9cc3dc">${x.skip}</b><span>skipped</span></div><div><b style="color:#FF6B35">${rate}%</b><span>decided</span></div><div><b style="color:#FCD34D">🔥${x.best}</b><span>best streak</span></div></div>
+      <div><b style="color:#9cc3dc">${x.skip}</b><span>skipped</span></div><div><b style="color:#39c7df">${rate}%</b><span>decided</span></div><div><b style="color:#FCD34D">🔥${x.best}</b><span>best streak</span></div></div>
     <div class="sect">Done · last 7 days</div>
     <div class="hist">${days.map(d=>`<div><i style="height:${Math.round((log[d]||0)/mx*70)+3}px"></i>${log[d]||0}<br>${new Date(d+'T12:00').toLocaleDateString(undefined,{weekday:'narrow'})}</div>`).join('')}</div>
     <div class="sect">By project · today</div>
