@@ -70,6 +70,25 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .subrow{display:flex;gap:10px}.subrow>div{flex:1;min-width:0}
 .subrow h5{margin:0 0 4px;font:700 10px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:var(--gold);cursor:pointer}
 .subrow h5:hover{text-decoration:underline}
+/* iPhone-style colored morning/afternoon bubbles (revolving tasks) */
+.slotcards{display:flex;gap:8px}
+.slotcard{flex:1;min-width:0;border-radius:15px;padding:9px 11px;text-align:left;color:#1a0e07;overflow:hidden;min-height:76px;display:flex;flex-direction:column;box-shadow:0 8px 22px rgba(0,0,0,.4);transition:transform .15s}
+.slotcard:hover{transform:translateY(-1px)}
+.slotcard.am{background:linear-gradient(150deg,#f0a35c 0%,#e8683c 55%,#b8452a 100%)}
+.slotcard.pm{background:linear-gradient(150deg,#f3d27a 0%,#e0a458 55%,#a8742f 100%);color:#1a1207}
+.slotcard .sh{display:flex;align-items:center;gap:5px;font:800 11px ui-monospace,Menlo,monospace;letter-spacing:.2px}
+.slotcard .se{font-size:15px}
+.slotcard .sn{margin-left:auto;font-weight:800;font-size:12px;opacity:.8}
+.slotcard .st{margin-top:8px;font-weight:700;font-size:13.5px;line-height:1.2;flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;transition:opacity .4s}
+.slotcard .st.fade{opacity:0}
+.slotcard .sdots{display:flex;gap:3px;margin-top:6px;height:4px}
+.slotcard .sdots i{width:4px;height:4px;border-radius:2px;background:rgba(0,0,0,.22)} .slotcard .sdots i.on{background:rgba(0,0,0,.6)}
+/* quick-add bubble on a pane */
+.addrow{display:flex;gap:6px;margin-top:8px}
+.addrow input{flex:1;min-width:0;background:rgba(57,199,223,.06);border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:7px 9px;font-size:13px;outline:none}
+.addrow input:focus{border-color:var(--cyan)}
+.addrow input::placeholder{color:var(--dim)}
+.addrow button{flex:none;background:var(--cyan);color:#07141a;border-radius:9px;padding:0 12px;font-weight:800}
 /* meeting pane */
 .mpane .mtime{font:800 15px ui-monospace,Menlo,monospace;color:var(--gold)}
 .mpane .mtitle{font-weight:700;font-size:14.5px;line-height:1.2;margin-top:2px}
@@ -83,22 +102,31 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .mpane .nxlabel{font:700 9.5px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--dim);text-transform:uppercase}
 .nowtag{display:inline-block;font:800 9px ui-monospace,Menlo,monospace;letter-spacing:1px;background:var(--orange);color:#1a0e07;border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:middle}
 /* weather */
-.wxstrip{display:flex;gap:4px}
-.wxc{flex:1;text-align:center;border-radius:9px;padding:5px 2px;background:rgba(57,199,223,.05)}
+.wxstrip{display:flex;gap:3px}
+.wxc{flex:1;text-align:center;border-radius:6px;padding:3px 1px;background:rgba(57,199,223,.05)}
 .wxc.today{box-shadow:inset 0 0 0 1px var(--cyan)}
 .wxc.wet{background:rgba(224,164,88,.16)}
-.wxc .wd{font:700 9.5px ui-monospace,Menlo,monospace;color:var(--dim)}
-.wxc .we{font-size:17px;line-height:1.3}
-.wxc .wt{font-weight:800;font-size:13px}
-.wxc .wp{font:600 9px ui-monospace,Menlo,monospace;color:var(--gold);min-height:11px}
+.wxc .wd{font:700 8px ui-monospace,Menlo,monospace;color:var(--dim)}
+.wxc .we{font-size:13px;line-height:1.1}
+.wxc .wt{font-weight:800;font-size:10.5px}
+.wxc .wp{font:600 7.5px ui-monospace,Menlo,monospace;color:var(--gold);min-height:8px}
 .wt.hot{color:#ff7a4d}.wt.cold{color:#6fb2d6}
-.wxmore{display:flex;gap:4px;max-height:0;overflow:hidden;transition:max-height .28s;margin-top:0}
-.wxpane:hover .wxmore{max-height:70px;margin-top:4px}
+.wxmore{display:flex;gap:3px;max-height:0;overflow:hidden;transition:max-height .28s;margin-top:0}
+.wxpane:hover .wxmore{max-height:60px;margin-top:3px}
+#cBL{width:min(238px,30vw)}
+.wxpane .ph{margin-bottom:5px}
 /* notes */
-.npane textarea{width:100%;height:76px;resize:none;background:rgba(57,199,223,.05);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13.5px;line-height:1.4;outline:none}
+.npane textarea{width:100%;height:170px;resize:none;background:rgba(57,199,223,.05);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.45;outline:none}
 .npane textarea:focus{border-color:var(--cyan)}
+.npane .nnav{margin-left:auto;display:flex;align-items:center;gap:3px}
+.npane .nnav button{color:var(--cyan);padding:0 5px;font-size:15px;line-height:1}
+.npane .nnav button:disabled{opacity:.3}
+.npane .nnav .nlbl{font:700 9.5px ui-monospace,Menlo,monospace;color:var(--ink);min-width:54px;text-align:center;letter-spacing:0;text-transform:none}
+.npane .nnav .nlbl.past{color:var(--gold)}
+.npane .nnav .nday{font:700 9px ui-monospace,Menlo,monospace;color:var(--cyan);border:1px solid var(--line);border-radius:7px;padding:2px 6px}
 .npane .nfoot{display:flex;align-items:center;gap:8px;margin-top:6px;font:600 11px ui-monospace,Menlo,monospace;color:var(--dim)}
 .npane .nfoot button{color:var(--cyan)}
+#cBR{width:min(320px,34vw)}
 /* overlay (task edit + list panes) */
 #ov{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(3,7,10,.74);backdrop-filter:blur(7px);padding:20px}
 #ov.show{display:flex}
@@ -253,14 +281,25 @@ function wxEmoji(c){ if(c===0) return '☀️'; if(c>=95) return '⛈️'; if((c
 async function fetchWx(){ try{ const r=await fetch(WX_URL); if(!r.ok) return; const d=await r.json(); const D=d.daily;
   wx=D.time.map((t,i)=>({date:t,code:D.weathercode[i],hi:Math.round(D.temperature_2m_max[i]),pr:+D.precipitation_sum[i]||0})); SV('m.wx',wx); renderCorners(); }catch(e){} }
 
-/* ---- notes (today) ---- */
-let noteRid=null;
-async function loadNote(){ if(demo||!cfg.apiKey) return; try{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE); u.searchParams.set('pageSize','1'); u.searchParams.set('filterByFormula',"{Key}='scratch:"+todayISO()+"'");
-  const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return; const d=await r.json(); const rec=(d.records||[])[0];
-  if(rec){ noteRid=rec.id; const ta=document.querySelector('#noteTa'); if(ta&&document.activeElement!==ta) ta.value=rec.fields.Text||''; } }catch(e){} }
-async function saveNote(text){ if(demo||!cfg.apiKey) return; const body={fields:{Key:'scratch:'+todayISO(),Text:text,Updated:new Date().toLocaleString()}}; const H={Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'};
-  try{ if(noteRid){ await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE+'/'+noteRid,{method:'PATCH',headers:H,body:JSON.stringify(body)}); }
-    else { const r=await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE,{method:'POST',headers:H,body:JSON.stringify({records:[body],typecast:true})}); if(r.ok){ const d=await r.json(); noteRid=d.records[0].id; } } }catch(e){} }
+/* ---- notes (day-based, same AppNotes store + feel as the dashboard 🗒 Notes pane) ---- */
+let noteDay=null, noteRids={};   // noteDay null = today
+const dnLabel=day=>day===todayISO()?'Today':new Date(day+'T12:00:00').toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+const dnShift=(day,n)=>{ const d=new Date(day+'T12:00:00'); d.setDate(d.getDate()+n); return isoOf(d); };
+const dnGet=()=>LS('m.days',{});
+const dnPut=(day,txt)=>{ const L=LS('m.days',{}); L[day]=txt; SV('m.days',L); };
+function setNoteStat(s){ const el=$('#noteSt'); if(!el)return; const now=new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  const isToday=(noteDay||todayISO())===todayISO();
+  el.textContent = s==='saving'?'saving…' : s==='saved'?('✓ Saved '+now) : s==='error'?'⚠︎ not saved — retry' : s==='local'?'✓ Saved on this device' : (isToday?'new page every day':'archived day'); }
+async function loadNoteDay(day){ const ta=$('#noteTa'); const L=dnGet(); if(ta&&ta.dataset.day===day&&document.activeElement!==ta) ta.value=L[day]||'';
+  if(demo||!cfg.apiKey){ setNoteStat('init'); return; }
+  try{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE); u.searchParams.set('pageSize','1'); u.searchParams.set('filterByFormula',"{Key}='scratch:"+day+"'");
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return; const d=await r.json(); const rec=(d.records||[])[0];
+    if(rec){ noteRids[day]=rec.id; const txt=rec.fields.Text||''; dnPut(day,txt); const t2=$('#noteTa'); if(t2&&t2.dataset.day===day&&document.activeElement!==t2) t2.value=txt; }
+    setNoteStat('init'); }catch(e){} }
+async function saveNoteDay(day,text){ dnPut(day,text); if(demo||!cfg.apiKey){ setNoteStat('local'); return; }
+  const body={fields:{Key:'scratch:'+day,Text:text,Updated:new Date().toLocaleString()}}; const H={Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'};
+  try{ if(noteRids[day]){ const r=await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE+'/'+noteRids[day],{method:'PATCH',headers:H,body:JSON.stringify(body)}); setNoteStat(r.ok?'saved':'error'); }
+    else { const r=await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE,{method:'POST',headers:H,body:JSON.stringify({records:[body],typecast:true})}); if(r.ok){ const d=await r.json(); noteRids[day]=d.records[0].id; setNoteStat('saved'); } else setNoteStat('error'); } }catch(e){ setNoteStat('error'); } }
 
 /* ---- fetch all ---- */
 async function fetchAll(){
@@ -281,7 +320,7 @@ async function fetchAll(){
       const rr=await fetch(ru,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(rr.ok){const rd=await rr.json();
         respond=(rd.records||[]).filter(r=>flat(r.fields.Status)!=='Done').map(r=>({name:flat(r.fields.Subject),project:flat(r.fields.From),link:flat(r.fields.Link),_mtg:true}));} }catch(e){}
     $('#status').textContent='LIVE';
-    if(!wx.length||wx[0].date<todayISO()) fetchWx(); loadNote();
+    if(!wx.length||wx[0].date<todayISO()) fetchWx(); loadNoteDay(noteDay||todayISO());
     render();
   }catch(e){ $('#status').textContent='OFFLINE — DEMO'; demo=true; demoData(); render(); }
 }
@@ -370,6 +409,7 @@ let cycled=false;
 function startCycles(){
   setInterval(()=>{ const f=itemsFor('focus'); if(f.length>1){ const t=coreEl.querySelector('.item'); if(t)t.classList.add('fade'); setTimeout(()=>{coreIdx++;renderCore();},460);} },12000);
   setInterval(()=>{ bubEls.forEach(b=>{ const list=itemsFor(b.key); if(list.length>1){ b.idx++; renderBub(b); } }); }, 30000);
+  setInterval(()=>{ ['morning','afternoon'].forEach(slot=>{ if(itemsFor(slot).length>1){ slotIdx[slot]++; updateSlotCard(slot); } }); }, 4500);
 }
 
 /* ====== corners ====== */
@@ -380,13 +420,20 @@ function miniRow(t){ const d=daysOpen(t);
     `<button class="tick" data-done="${t.id}" title="Done">✓</button></div>`; }
 function paneList(key,n){ const items=itemsFor(key); const rows=items.slice(0,n).map(miniRow).join('')||'<div class="none">Nothing here.</div>';
   return {count:items.length, html:rows}; }
+let slotIdx={morning:0,afternoon:0};
+function slotCardHTML(slot){ const list=itemsFor(slot); const it=list.length?list[slotIdx[slot]%list.length]:null; const cls=slot==='morning'?'am':'pm'; const em=slot==='morning'?'🌅':'☀️'; const nm=slot==='morning'?'Morning':'Afternoon';
+  const dots=list.length>1?'<div class="sdots">'+list.slice(0,6).map((_,i)=>'<i class="'+((i===slotIdx[slot]%list.length)?'on':'')+'"></i>').join('')+'</div>':'';
+  return `<button class="slotcard ${cls}" data-slot="${slot}"><div class="sh"><span class="se">${em}</span><span class="sl">${nm}</span><span class="sn">${list.length}</span></div><div class="st">${it?esc(cleanName(it)):'—'}</div>${dots}</button>`; }
+function wireSlotCard(c){ const slot=c.dataset.slot;
+  const sh=c.querySelector('.sh'); if(sh) sh.onclick=e=>{ e.stopPropagation(); openList(slot); };
+  c.onclick=()=>{ const l=itemsFor(slot); const it=l.length?l[slotIdx[slot]%l.length]:null; if(it) openTask(it.id); else openList(slot); }; }
+function updateSlotCard(slot){ const c=document.querySelector('.slotcard[data-slot="'+slot+'"]'); if(!c)return; const st=c.querySelector('.st'); if(st)st.classList.add('fade');
+  setTimeout(()=>{ const c2=document.querySelector('.slotcard[data-slot="'+slot+'"]'); if(!c2)return; const tmp=document.createElement('div'); tmp.innerHTML=slotCardHTML(slot); const nw=tmp.firstChild; c2.replaceWith(nw); wireSlotCard(nw); },380); }
 function renderCorners(){
-  // TOP-LEFT: morning / afternoon
-  const m=paneList('morning',4), a=paneList('afternoon',4);
-  $('#cTL').innerHTML=`<div class="pane"><div class="subrow">
-    <div><h5 data-list="morning">🌅 Morning (${m.count})</h5>${m.html}</div>
-    <div><h5 data-list="afternoon">☀️ Afternoon (${a.count})</h5>${a.html}</div></div></div>`;
-  // TOP-RIGHT: next meeting + incoming
+  // TOP-LEFT: morning / afternoon as iPhone-style colored bubbles (revolving tasks)
+  $('#cTL').innerHTML=`<div class="slotcards">${slotCardHTML('morning')}${slotCardHTML('afternoon')}</div>`;
+  document.querySelectorAll('#cTL .slotcard').forEach(wireSlotCard);
+  // TOP-RIGHT: next meeting + incoming (with add bubble)
   const nn=nowNext(todayISO()); const mtg=nn.now||nn.next; const nx=nn.now&&nn.next?nn.next:null;
   let mh='';
   if(mtg){ const h=joinHref(mtg), tel=h.indexOf('tel:')===0;
@@ -398,8 +445,11 @@ function renderCorners(){
   } else mh='<div class="none">No meetings left today.</div>';
   const inc=paneList('incoming',4);
   $('#cTR').innerHTML=`<div class="pane mpane" id="mpane"><div class="ph" data-list="meeting">📅 Next Meeting<span class="pn">${nn.L.length}</span></div>${mh}</div>
-    <div class="pane"><div class="ph" data-list="incoming">📥 Incoming<span class="pn">${inc.count}</span></div>${inc.html}</div>`;
+    <div class="pane"><div class="ph" data-list="incoming">📥 Incoming<span class="pn">${inc.count}</span></div>${inc.html}
+      <div class="addrow"><input id="incAdd" placeholder="➕ Add incoming…"><button id="incAddBtn">Add</button></div></div>`;
   const mp=$('#mpane'); if(mp) mp.querySelector('.mtitle,.none')&&mp.addEventListener('click',e=>{ if(e.target.closest('a'))return; mp.classList.toggle('pin'); });
+  { const ia=$('#incAdd'), ib=$('#incAddBtn'); if(ia){ const go=()=>{ const v=ia.value.trim(); if(!v)return; ia.value=''; createTask('incoming',v); };
+      ib.onclick=go; ia.addEventListener('keydown',e=>{ if(e.key==='Enter')go(); }); } }
   // BOTTOM-LEFT: weather 5-day (+ hover reveal rest)
   const td=todayISO(); const days=wx.filter(w=>w.date>=td);
   const cell=w=>{ const nm=w.date===td?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(w.date+'T12:00:00').getDay()];
@@ -407,13 +457,19 @@ function renderCorners(){
     return `<div class="wxc${w.date===td?' today':''}${w.pr>0.08?' wet':''}"><div class="wd">${nm}</div><div class="we">${wxEmoji(w.code)}</div><div class="wt ${tc}">${w.hi}°</div><div class="wp">${amt}</div></div>`; };
   $('#cBL').innerHTML=`<div class="pane wxpane"><div class="ph" style="cursor:default">🌤 Weather<span class="pn">NYC</span></div>
     ${days.length?`<div class="wxstrip">${days.slice(0,5).map(cell).join('')}</div>${days.length>5?`<div class="wxmore">${days.slice(5,10).map(cell).join('')}</div>`:''}`:'<div class="none">Loading forecast…</div>'}</div>`;
-  // BOTTOM-RIGHT: notes
-  const prev=$('#noteTa'), keepVal=prev?prev.value:null;
-  $('#cBR').innerHTML=`<div class="pane npane"><div class="ph" style="cursor:default">🗒 Today's Notes</div>
-    <textarea id="noteTa" placeholder="Jot anything — saved to your notes.">${keepVal!=null?esc(keepVal):''}</textarea>
-    <div class="nfoot"><span id="noteSt">auto-saves</span></div></div>`;
-  const ta=$('#noteTa'); if(ta){ ta.oninput=()=>{ clearTimeout(window._nt); $('#noteSt').textContent='saving…'; window._nt=setTimeout(async()=>{ await saveNote(ta.value); $('#noteSt').textContent='saved ✓'; },900); }; }
-  if(keepVal==null) loadNote();
+  // BOTTOM-RIGHT: notes (bigger; day nav + save status like the dashboard pane)
+  const day=noteDay||todayISO(), isToday=day===todayISO();
+  const prev=$('#noteTa'), keepVal=(prev&&prev.dataset.day===day)?prev.value:null;
+  $('#cBR').innerHTML=`<div class="pane npane"><div class="ph" style="cursor:default">🗒 ${isToday?"Today's Notes":'Notes'}
+      <span class="nnav"><button data-dp title="Previous day">‹</button><span class="nlbl${isToday?'':' past'}">${esc(dnLabel(day))}</span><button data-dn ${isToday?'disabled':''} title="Next day">›</button>${isToday?'':'<button class="nday" data-dt>Today</button>'}</span></div>
+    <textarea id="noteTa" placeholder="${isToday?'Jot anything — new page every day. ‹ for yesterday.':'Nothing written on '+esc(dnLabel(day))+'.'}">${keepVal!=null?esc(keepVal):esc(dnGet()[day]||'')}</textarea>
+    <div class="nfoot"><span id="noteSt"></span></div></div>`;
+  const ta=$('#noteTa'); if(ta){ ta.dataset.day=day; setNoteStat('init');
+    ta.oninput=()=>{ clearTimeout(window._nt); setNoteStat('saving'); dnPut(day,ta.value); window._nt=setTimeout(()=>saveNoteDay(day,ta.value),700); }; }
+  loadNoteDay(day);
+  { const dp=$('#cBR [data-dp]'); if(dp)dp.onclick=()=>{ noteDay=dnShift(day,-1); renderCorners(); };
+    const dn=$('#cBR [data-dn]'); if(dn)dn.onclick=()=>{ const n=dnShift(day,1); noteDay=n>=todayISO()?null:n; renderCorners(); };
+    const dt=$('#cBR [data-dt]'); if(dt)dt.onclick=()=>{ noteDay=null; renderCorners(); }; }
   // wire corner headers + rows
   document.querySelectorAll('.corner [data-list]').forEach(h=>h.onclick=()=>openList(h.dataset.list));
   wireRows(document.querySelectorAll('.corner'));
@@ -504,6 +560,14 @@ function markDone(id){ const t=tasks.find(x=>x.id===id); if(!t)return; t.status=
 async function delTask(id){ tasks=tasks.filter(x=>x.id!==id); refresh();
   if(demo||!cfg.apiKey||String(id).startsWith('d')) return;
   try{ await fetch(atUrl()+'/'+id,{method:'DELETE',headers:{Authorization:'Bearer '+cfg.apiKey}}); toast('Deleted'); }catch(e){} }
+async function createTask(section,text){ const slot=(section==='morning'||section==='afternoon');
+  const t={id:'d'+Date.now(),createdTime:new Date().toISOString(),name:text,project:'',lead:'',sub:'',status:'Open',slotRemote:slot?section:'',sectionRemote:slot?'':section,priorityRemote:0,typeRemote:'',phone:''};
+  tasks.unshift(t); if(!slot) A(t.id).section=section; saveAug(); refresh(); toast('Added');
+  setTimeout(()=>{ const n=$('#incAdd'); if(n&&section==='incoming') n.focus(); },0);
+  if(demo||!cfg.apiKey) return;
+  const fields=slot?{Task:text,Status:'Open',MeetingSlot:section}:{Task:text,Status:'Open',Section:section};
+  try{ const r=await fetch(atUrl(),{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields,typecast:true})});
+    if(r.ok){ const d=await r.json(); const old=t.id; t.id=d.id; t.createdTime=d.createdTime; if(aug[old]){ aug[d.id]=aug[old]; delete aug[old]; saveAug(); } refresh(); } else toast('Add failed '+r.status); }catch(e){ toast('Offline — not saved'); } }
 
 function refreshBubs(){ renderCore(); bubEls.forEach(renderBub); updateLinks(); }
 function refresh(){ refreshBubs(); renderCorners(); }
