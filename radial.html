@@ -133,6 +133,14 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .slotcard .sh{cursor:pointer}
 .slotcard .pinlock{margin-left:4px;font-size:8px;color:var(--cyan);opacity:0;transition:opacity .2s} .slotcard.pin .pinlock{opacity:1}
 .slotcard.pin{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(57,199,223,.5),0 8px 24px rgba(0,0,0,.35)}
+/* orbit bubble hover-expand popover — same full list + row controls as the panes */
+#pop{position:fixed;z-index:34;width:264px;max-height:min(360px,72vh);display:none;flex-direction:column;background:linear-gradient(180deg,rgba(12,23,29,.97),rgba(7,15,20,.97));border:1px solid rgba(57,199,223,.4);border-radius:16px;box-shadow:0 16px 46px rgba(0,0,0,.55),0 0 30px rgba(57,199,223,.12);backdrop-filter:blur(10px);overflow:hidden;opacity:0;transform:scale(.97);transition:opacity .18s,transform .18s}
+#pop.show{display:flex;opacity:1;transform:scale(1)}
+#pop.pin{border-color:var(--cyan);box-shadow:0 16px 46px rgba(0,0,0,.55),0 0 0 1px var(--cyan)}
+#pop .poph{display:flex;align-items:center;gap:7px;padding:10px 12px;border-bottom:1px solid var(--line);font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1.4px;text-transform:uppercase;color:var(--cyan)}
+#pop .poph .pn{margin-left:auto;color:var(--dim)}
+#pop .popb{overflow:auto;padding:4px 8px 8px}
+#pop .lrow{padding:7px 4px;border-bottom:1px solid rgba(57,199,223,.08)} #pop .lrow:last-child{border-bottom:0}
 /* weather */
 .wxstrip{display:flex;gap:3px}
 .wxc{flex:1;text-align:center;border-radius:5px;padding:2px 1px;background:rgba(57,199,223,.05)}
@@ -417,7 +425,7 @@ function place(){
     else { const a=i/n*2*Math.PI-Math.PI/2; left=CX+RAD*Math.cos(a)-BUB/2; top=CY+RAD*Math.sin(a)-BUB/2; }
     const el=document.createElement('div'); el.className='bub'+(hot?' hot':''); el.style.width=el.style.height=BUB+'px'; el.style.left=left+'px'; el.style.top=top+'px';
     const b={el,key,idx:0}; bubEls.push(b);
-    $('#stage').appendChild(el); makeDraggable(el,key);
+    $('#stage').appendChild(el); makeDraggable(el,key); wireBubHover(el,key);
   }
   renderCore(); bubEls.forEach(renderBub); updateLinks();
 }
@@ -435,9 +443,30 @@ function renderBub(b){ const list=itemsFor(b.key); const it=list.length?list[b.i
   b.el.innerHTML='<div class="cap" data-cap>'+em+' '+esc(cap)+'</div><div class="n">'+list.length+'</div>'+
     (it?'<div class="it">'+(it.project&&!it._mtg?'<span class="pr">'+esc(it.project.split(',')[0])+'</span>':'')+(it._mtg&&it.when?'<span class="pr">'+esc(it.when)+'</span><br>':'')+esc(it._mtg?it.name:cleanName(it))+'</div>'
        :'<div class="it" style="color:var(--dim)">—</div>')+dots;
-  b.el.querySelector('[data-cap]').onclick=e=>{ e.stopPropagation(); if(Date.now()-(window.__sc||0)<300)return; openList(b.key); };
-  b.el.onclick=()=>{ if(Date.now()-(window.__sc||0)<300)return; const cur=itemsFor(b.key); const x=cur.length?cur[b.idx%cur.length]:null;
-    if(x&&x.id&&!x._mtg) openTask(x.id); else if(x&&x._mtg&&x.link) window.open(x.link,'_blank'); else openList(b.key); };
+}
+/* ---- orbit hover-expand popover (hover = whole list, click bubble = hold/pin) ---- */
+const pop=document.createElement('div'); pop.id='pop'; document.body.appendChild(pop);
+let popKey=null, popPinned=false, popHideT=null, popAnchor=null;
+function popHide(force){ if(popPinned&&!force)return; clearTimeout(popHideT); pop.classList.remove('show'); popKey=null; popAnchor=null; }
+function popPosition(){ if(!popAnchor)return; const r=popAnchor.getBoundingClientRect(); const pw=pop.offsetWidth||264, ph=pop.offsetHeight||300;
+  let left=r.right+10; if(left+pw>innerWidth-8) left=r.left-pw-10; left=Math.max(8,Math.min(innerWidth-pw-8,left));
+  let top=r.top+r.height/2-ph/2; top=Math.max(8,Math.min(innerHeight-ph-8,top)); pop.style.left=left+'px'; pop.style.top=top+'px'; }
+function popBody(key){ const items=itemsFor(key);
+  if(key==='meeting') return items.length?items.map(e=>`<div class="lrow"><span class="dot" style="background:${projColor(e.when)}"></span><span class="lt"><span class="ln">${esc(e.name)}</span><span class="lm">${esc(e.when||'')}</span></span>${e.link?`<a class="edlink" style="margin:0;padding:5px 9px" href="${esc(e.link)}" target="_blank" rel="noopener">${e.link.indexOf('tel:')===0?'📞':'▶'}</a>`:''}</div>`).join(''):'<div class="none" style="padding:18px;text-align:center;color:var(--dim)">Nothing here.</div>';
+  if(key==='respond') return items.length?items.map(e=>`<div class="lrow">${e.link?`<a href="${esc(e.link)}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:flex;gap:10px;align-items:center;flex:1;min-width:0">`:'<span style="display:flex;gap:10px;align-items:center;flex:1;min-width:0">'}<span class="dot" style="background:${projColor(e.project)}"></span><span class="lt"><span class="ln">${esc(e.name)}</span><span class="lm">${esc(e.project||'')}</span></span>${e.link?'</a>':'</span>'}</div>`).join(''):'<div class="none" style="padding:18px;text-align:center;color:var(--dim)">No replies.</div>';
+  return items.length?items.map(rowHTML).join(''):'<div class="none" style="padding:18px;text-align:center;color:var(--dim)">Nothing here.</div>'; }
+function popShow(key, anchor, pin){ const em=CAT[key][0], cap=CAT[key][1]; const n=itemsFor(key).length;
+  pop.innerHTML=`<div class="poph">${em} ${esc(cap)}<span class="pn">${n}</span>${pin?'<span class="pinlock" style="opacity:1;margin-left:6px">●</span>':''}</div><div class="popb">${popBody(key)}</div>`;
+  popKey=key; popPinned=!!pin; popAnchor=anchor; pop.classList.toggle('pin',popPinned); pop.classList.add('show');
+  if(key!=='meeting'&&key!=='respond') wireRowEls(pop.querySelector('.popb'), key);
+  popPosition(); requestAnimationFrame(popPosition); }
+pop.addEventListener('mouseenter',()=>clearTimeout(popHideT));
+pop.addEventListener('mouseleave',()=>{ popHideT=setTimeout(()=>popHide(),200); });
+document.addEventListener('click',e=>{ if(popPinned && !pop.contains(e.target) && !(e.target.closest&&e.target.closest('.bub'))){ popPinned=false; popHide(true); } });
+function wireBubHover(el,key){
+  el.addEventListener('mouseenter',()=>{ clearTimeout(popHideT); if(!(popPinned&&popKey===key)) popShow(key,el,popPinned&&popKey===key); });
+  el.addEventListener('mouseleave',()=>{ popHideT=setTimeout(()=>popHide(),200); });
+  el.addEventListener('click',()=>{ if(Date.now()-(window.__sc||0)<300)return; if(popPinned&&popKey===key){ popPinned=false; popHide(true); } else popShow(key,el,true); });
 }
 /* cycles */
 let cycled=false;
@@ -611,7 +640,7 @@ function boot(){ tick(); setInterval(tick,20000);
   fetchAll();
   setInterval(()=>fetchAll(),5*60000);
 }
-addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setTimeout(layout,150); });
+addEventListener('resize',()=>{ popPinned=false; popHide(true); clearTimeout(window._rz); window._rz=setTimeout(layout,150); });
 $('#keygo').onclick=()=>{ const k=$('#keyin').value.trim(); if(!k)return; cfg.apiKey=k; try{const c=JSON.parse(localStorage.getItem('tb.cfg')||'{}');c.apiKey=k;localStorage.setItem('tb.cfg',JSON.stringify(c));}catch(e){} $('#setup').style.display='none'; demo=false; fetchAll(); };
 $('#demo').onclick=()=>{ $('#setup').style.display='none'; demo=true; demoData(); render(); };
 $('#reset').onclick=resetLayout;
