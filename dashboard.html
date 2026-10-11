@@ -435,6 +435,25 @@ body::before{ content:''; position:fixed; inset:0; z-index:-1; pointer-events:no
 #focusCoreBtn:hover{ color:var(--hud); border-color:var(--hud); box-shadow:0 0 20px rgba(57,199,223,.35) }
 .projbadge{ box-shadow:0 0 0 1px rgba(57,199,223,.05) }
 kbd{ border-color:rgba(57,199,223,.3) }
+/* ═══════════ FOCUS COHESION — cyan/glass command-center look to match the Focus page ═══════════ */
+:root{ --accent:#39c7df; --muted:#86a2ab; --line:rgba(57,199,223,.2); --panel:rgba(12,24,29,.6); --panel2:rgba(18,34,40,.58); --red:#d77a68; }
+body{ background:radial-gradient(130% 120% at 50% 32%, #0b141a 0%, #070c10 62%, #04070a 100%); color:#eaf6fb; }
+body::before{ opacity:.7 }
+.topbar{ background:rgba(8,16,20,.62); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px) }
+.panel{ background:var(--panel); border:1px solid rgba(57,199,223,.2); -webkit-backdrop-filter:blur(9px); backdrop-filter:blur(9px); box-shadow:0 10px 30px rgba(0,0,0,.42), 0 0 0 1px rgba(57,199,223,.05) inset }
+.task{ background:rgba(57,199,223,.05); border:1px solid rgba(57,199,223,.12); box-shadow:none }
+.task:hover{ background:rgba(57,199,223,.1); box-shadow:0 5px 16px rgba(0,0,0,.42), 0 0 16px rgba(57,199,223,.1) }
+.task .name{ color:#eaf6fb }
+/* convert the leftover warm-orange accents → cyan */
+.tb-btn.accent,.tb-btn.on,.btn.primary,.fab,#addBtn,
+.chip.on,.chip.on .n,.chip.lit,.fbub.lit,.mfbtn.on,.mfbtn:active{ background:var(--accent)!important; background-image:none!important; border-color:var(--accent)!important; color:#07141a!important; font-weight:800 }
+.chip.lit .n,.fbub.lit .n{ color:#07141a!important }
+.plstag.s{ color:#6fe0b0 } .plstag.l{ color:#8fd3ee } .plstag.p{ color:#9ad0e0 }
+.plstag:hover,.plstag:focus-visible{ background:var(--accent)!important; color:#07141a!important; border-color:var(--accent)!important }
+.desk-add input,.add-inline input,.search,.qadd{ background:rgba(57,199,223,.06)!important; border-color:rgba(57,199,223,.2)!important; color:#eaf6fb }
+.desk-add button,.add-inline button,.qaddb,.add button{ background:var(--accent)!important; color:#07141a!important; border-color:var(--accent)!important }
+.nnchip.now{ border-color:var(--accent)!important } .nnchip.now b{ color:var(--accent)!important }
+.panel-body::-webkit-scrollbar-thumb,.board::-webkit-scrollbar-thumb{ background:rgba(57,199,223,.18) }
 </style>
 </head>
 <body>
@@ -474,7 +493,7 @@ kbd{ border-color:rgba(57,199,223,.3) }
 
 <script>
 "use strict";
-const BUILD='2026-10-11 14:58';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-11 15:03';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
