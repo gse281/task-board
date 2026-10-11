@@ -4,7 +4,7 @@
 <script>/* Focus is the site root. If the user pinned Grid as home, bounce to the grid — unless ?focus=1 (the grid's ◎ Focus button) says to stay here. */
 try{ if(localStorage.getItem('tb.landing')==='grid' && !/[?&]focus=/.test(location.search)) location.replace('grid.html'); }catch(e){}</script>
 <style>
-:root{ --bg:#070c10; --ink:#eaf6fb; --cyan:#39c7df; --cyan2:#1b6e80; --dim:#5e7a84; --orange:#e8683c; --gold:#e0a458; --green:#3a8f5f; --line:rgba(57,199,223,.22); --panel:rgba(10,20,25,.82); }
+:root{ --bg:#070c10; --ink:#eaf6fb; --cyan:#39c7df; --cyan2:#1b6e80; --dim:#5e7a84; --orange:#45b8d0; --gold:#6fd0e0; --green:#3a8f5f; --line:rgba(57,199,223,.22); --panel:rgba(10,22,27,.64); }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 ::-webkit-scrollbar{width:0;height:0} *{scrollbar-width:none}
 html,body{margin:0;height:100%;background:radial-gradient(130% 120% at 50% 42%, #0b141a 0%, #070c10 60%, #04070a 100%);color:var(--ink);
@@ -46,7 +46,7 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .bub .it{margin-top:7px;font-weight:600;font-size:12.5px;line-height:1.22;color:var(--ink);transition:opacity .45s;max-width:100%;
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .bub .pr{display:inline-block;font:800 9px ui-monospace,Menlo,monospace;color:#07141a;background:var(--gold);border-radius:5px;padding:0 5px;margin-bottom:4px}
-.bub.hot{border-color:rgba(232,104,60,.5)} .bub.hot .cap{color:var(--orange)} .bub.hot .pr{background:var(--orange)}
+.bub.hot{border-color:rgba(57,199,223,.5)} .bub.hot .cap{color:#8fe4f4} .bub.hot .pr{background:var(--cyan)}
 .bub .dots{display:flex;gap:3px;margin-top:7px;height:5px}
 .bub .dots i{width:5px;height:5px;border-radius:50%;background:rgba(57,199,223,.25)} .bub .dots i.on{background:var(--cyan);box-shadow:0 0 6px var(--cyan)}
 .fade{opacity:0}
@@ -92,30 +92,62 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .addrow input::placeholder{color:var(--dim)}
 .addrow button{flex:none;background:var(--cyan);color:#07141a;border-radius:9px;padding:0 12px;font-weight:800}
 /* meeting pane */
-.mpane .mtime{font:800 15px ui-monospace,Menlo,monospace;color:var(--gold)}
-.mpane .mtitle{font-weight:700;font-size:14.5px;line-height:1.2;margin-top:2px}
+.mpane{padding:8px 10px 9px}
+.mpane .mrow{display:flex;align-items:baseline;gap:7px}
+.mpane .mtime{font:800 13px ui-monospace,Menlo,monospace;color:var(--gold);flex:none}
+.mpane .mtitle{font-weight:700;font-size:13px;line-height:1.2;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mpane:hover .mtitle,.mpane.pin .mtitle{white-space:normal;overflow:visible}
 .mpane .mwhen{color:var(--dim);font-size:11.5px;margin-top:1px}
 .mpane .mloc{color:var(--dim);font-size:11.5px;margin-top:4px;max-height:0;overflow:hidden;transition:max-height .25s}
 .mpane:hover .mloc,.mpane.pin .mloc{max-height:60px}
-.mpane .mjoin{display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:#2f6a82;color:#eaf6fb;border:1px solid var(--cyan);border-radius:10px;padding:6px 12px;font:700 12.5px ui-monospace,Menlo,monospace;letter-spacing:.5px;text-decoration:none}
+.mpane .mjoin{display:inline-flex;align-items:center;gap:5px;margin-top:7px;background:rgba(57,199,223,.14);color:var(--ink);border:1px solid var(--cyan);border-radius:9px;padding:4px 10px;font:700 11.5px ui-monospace,Menlo,monospace;letter-spacing:.5px;text-decoration:none}
 .mpane .mjoin.tel{background:#1f5a34;border-color:var(--green)}
 .mpane .mnext{margin-top:8px;padding-top:8px;border-top:1px solid var(--line);max-height:0;overflow:hidden;transition:max-height .25s}
 .mpane:hover .mnext,.mpane.pin .mnext{max-height:120px}
 .mpane .nxlabel{font:700 9.5px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--dim);text-transform:uppercase}
-.nowtag{display:inline-block;font:800 9px ui-monospace,Menlo,monospace;letter-spacing:1px;background:var(--orange);color:#1a0e07;border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+.nowtag{display:inline-block;font:800 9px ui-monospace,Menlo,monospace;letter-spacing:1px;background:var(--orange);color:#07141a;border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+/* universal: hover reveals the whole list, click the header holds it open (pin) */
+.clist{max-height:70px;overflow:hidden;transition:max-height .35s cubic-bezier(.2,.8,.2,1)}
+.pane.exp:hover .clist,.pane.pin .clist{max-height:300px;overflow:auto}
+.ph.pinnable{cursor:pointer} .pane.pin{border-color:rgba(57,199,223,.5)}
+.ph .pinlock{margin-left:6px;font-size:10px;color:var(--cyan);opacity:0;transition:opacity .2s} .pane.pin .ph .pinlock{opacity:1}
+/* row controls — standard on every task pane: ⋮⋮ drag, ⊘ remove-from-category, ✓ done */
+.lrow .grip{color:var(--dim);font-size:13px;cursor:grab;flex:none;letter-spacing:-2px;opacity:.5}
+.lrow .grip:hover{opacity:1;color:var(--cyan)}
+.lrow .rmcat{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);color:var(--dim);flex:none;display:grid;place-items:center;font-size:13px;background:none}
+.lrow .rmcat:hover{color:var(--cyan);border-color:var(--cyan)}
+.lrow.drag{opacity:.4} .lrow.over{box-shadow:inset 0 2px 0 var(--cyan)}
+/* PSLC category buttons under morning / afternoon */
+.pslc{display:flex;flex-wrap:wrap;gap:5px;margin-top:2px}
+.pslcb{display:inline-flex;align-items:center;gap:4px;background:rgba(57,199,223,.07);border:1px solid var(--line);border-radius:999px;padding:5px 9px;font:700 10.5px ui-monospace,Menlo,monospace;letter-spacing:.3px;color:var(--ink)}
+.pslcb:hover{border-color:var(--cyan);color:var(--cyan)}
+.pslcb i{font-style:normal;color:var(--dim);font-weight:800}
+.pslcb.empty{opacity:.4}
+/* slot-card full list (revealed on hover / pin) */
+.slotcard .st{cursor:pointer}
+.slotfull{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.2,.8,.2,1)}
+.slotcard:hover .slotfull,.slotcard.pin .slotfull{max-height:220px;overflow:auto;margin-top:7px;border-top:1px solid rgba(57,199,223,.2);padding-top:5px}
+.slotcard:hover .sdots,.slotcard.pin .sdots{display:none}
+.slotcard .slotfull .lrow{padding:4px 2px}
+.slotcard .slotfull .ln{font-size:12px}
+.slotcard .sh{cursor:pointer}
+.slotcard .pinlock{margin-left:4px;font-size:8px;color:var(--cyan);opacity:0;transition:opacity .2s} .slotcard.pin .pinlock{opacity:1}
+.slotcard.pin{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(57,199,223,.5),0 8px 24px rgba(0,0,0,.35)}
 /* weather */
 .wxstrip{display:flex;gap:3px}
-.wxc{flex:1;text-align:center;border-radius:6px;padding:3px 1px;background:rgba(57,199,223,.05)}
+.wxc{flex:1;text-align:center;border-radius:5px;padding:2px 1px;background:rgba(57,199,223,.05)}
 .wxc.today{box-shadow:inset 0 0 0 1px var(--cyan)}
-.wxc.wet{background:rgba(224,164,88,.16)}
-.wxc .wd{font:700 8px ui-monospace,Menlo,monospace;color:var(--dim)}
-.wxc .we{font-size:13px;line-height:1.1}
-.wxc .wt{font-weight:800;font-size:10.5px}
-.wxc .wp{font:600 7.5px ui-monospace,Menlo,monospace;color:var(--gold);min-height:8px}
-.wt.hot{color:#ff7a4d}.wt.cold{color:#6fb2d6}
+.wxc.wet{background:rgba(57,199,223,.15)}
+.wxc .wd{font:700 7px ui-monospace,Menlo,monospace;color:var(--dim)}
+.wxc .we{font-size:11px;line-height:1.05}
+.wxc .wt{font-weight:800;font-size:9.5px}
+.wxc .wp{font:600 6.5px ui-monospace,Menlo,monospace;color:var(--gold);min-height:7px}
+.wt.hot{color:#8ecec9}.wt.cold{color:#6fb2d6}
 .wxmore{display:flex;gap:3px;max-height:0;overflow:hidden;transition:max-height .28s;margin-top:0}
 .wxpane:hover .wxmore{max-height:60px;margin-top:3px}
-#cBL{width:min(238px,30vw)}
+#cTR{width:min(250px,27vw)}
+#cBL{width:min(200px,24vw)}
+.wxpane{padding:6px 7px}
 .wxpane .ph{margin-bottom:5px}
 /* notes */
 .npane textarea{width:100%;height:170px;resize:none;background:rgba(57,199,223,.05);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;line-height:1.45;outline:none}
@@ -128,7 +160,7 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .npane .nnav .nday{font:700 9px ui-monospace,Menlo,monospace;color:var(--cyan);border:1px solid var(--line);border-radius:7px;padding:2px 6px}
 .npane .nfoot{display:flex;align-items:center;gap:8px;margin-top:6px;font:600 11px ui-monospace,Menlo,monospace;color:var(--dim)}
 .npane .nfoot button{color:var(--cyan)}
-#cBR{width:min(320px,34vw)}
+#cBR{width:min(262px,28vw)}
 /* overlay (task edit + list panes) */
 #ov{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(3,7,10,.74);backdrop-filter:blur(7px);padding:20px}
 #ov.show{display:flex}
@@ -232,7 +264,7 @@ const isOpen=t=>(t.status||'Open')==='Open';
 const snoozed=t=>A(t.id).snoozeUntil>Date.now();
 const live=t=>isOpen(t)&&!snoozed(t)&&sectionOf(t)!=='parked';
 function score(t){ return (t.priorityRemote||0)+(A(t.id).priAdj||0)+daysOpen(t); }
-const PAL=['#39c7df','#4ADE80','#67E8F9','#A78BFA','#F87171','#FCD34D','#C084FC','#818CF8','#34D399','#FB923C','#F472B6','#60A5FA'];
+const PAL=['#39c7df','#5eead4','#67E8F9','#60A5FA','#A78BFA','#818CF8','#34D399','#2dd4bf','#7dd3fc','#c4b5fd','#4ADE80','#38bdf8'];
 const projColor=p=>{ if(!p) return '#5e7a84'; let h=0; for(const c of String(p).toUpperCase()) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; };
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),1800); }
 
@@ -248,9 +280,9 @@ function itemsFor(key){
   const L=sec=>tasks.filter(t=>live(t)&&sectionOf(t)===sec);
   switch(key){
     case 'focus': return applyOrder('focus',L('focus'));
-    case 'priority': return tasks.filter(t=>live(t)&&!A(t.id).notPriority).sort((a,b)=>score(b)-score(a)).slice(0,15);
-    case 'incoming': return tasks.filter(t=>live(t)&&daysOpen(t)===0);
-    case 'still': return tasks.filter(t=>live(t)&&daysOpen(t)>=10&&!t.project&&!t.lead).sort((a,b)=>daysOpen(b)-daysOpen(a));
+    case 'priority': return applyOrder('priority', tasks.filter(t=>live(t)&&!A(t.id).notPriority).sort((a,b)=>score(b)-score(a)).slice(0,15));
+    case 'incoming': return applyOrder('incoming', L('incoming'));
+    case 'still': return applyOrder('still', tasks.filter(t=>live(t)&&daysOpen(t)>=10&&!t.project&&!t.lead).sort((a,b)=>daysOpen(b)-daysOpen(a)));
     case 'morning': case 'afternoon': case 'calls': return applyOrder(key, L(key).sort((a,b)=>daysOpen(a)-daysOpen(b))); // oldest last
     case 'respond': return respond;
     case 'meeting': return todayMtgItems();
@@ -258,6 +290,7 @@ function itemsFor(key){
   }
 }
 const ORBIT=['priority','respond','calls','nextup','bigticket','sunday','backlog','still'];
+const PSLC=['calls','priority','nextup','bigticket','sunday','backlog','respond','still'];
 
 /* ---- meetings ---- */
 const CONF_TEL='tel:+19172683365', CONF_ROOM='https://meetings.dialpad.com/room/rbenjamini';
@@ -415,43 +448,54 @@ function startCycles(){
 }
 
 /* ====== corners ====== */
-function miniRow(t){ const d=daysOpen(t);
-  return `<div class="lrow" data-open="${t.id}"><span class="dot" style="background:${projColor(t.project)}"></span>`+
+function removeFromCat(id){ const t=tasks.find(x=>x.id===id); if(!t)return; delete A(id).section; t.sectionRemote=''; t.slotRemote=''; saveAug(); patchTask(id,{Section:'',MeetingSlot:''}); toast('Removed from category'); refresh(); }
+function rowHTML(t){ const d=daysOpen(t);
+  return `<div class="lrow" data-id="${t.id}" draggable="true"><span class="grip">⋮⋮</span><span class="dot" style="background:${projColor(t.project)}"></span>`+
     `<span class="lt"><span class="ln">${esc(cleanName(t))}</span>${t.project||t.lead?`<span class="lm">${esc([t.project,t.lead].filter(Boolean).join(' · '))}</span>`:''}</span>`+
     `<span class="ld${d>=21?' o':''}">${d}d</span>`+
+    `<button class="rmcat" data-rm="${t.id}" title="Remove from category">⊘</button>`+
     `<button class="tick" data-done="${t.id}" title="Done">✓</button></div>`; }
-function paneList(key,n){ const items=itemsFor(key); const rows=items.slice(0,n).map(miniRow).join('')||'<div class="none">Nothing here.</div>';
-  return {count:items.length, html:rows}; }
+function wireRowEls(container,key){ if(!container)return; container.querySelectorAll('.lrow[data-id]').forEach(r=>{ const id=r.dataset.id;
+    const dn=r.querySelector('[data-done]'); if(dn)dn.onclick=e=>{ e.stopPropagation(); markDone(id); r.remove(); };
+    const rm=r.querySelector('[data-rm]'); if(rm)rm.onclick=e=>{ e.stopPropagation(); removeFromCat(id); r.remove(); };
+    r.onclick=e=>{ if(e.target.closest('.tick')||e.target.closest('.rmcat')||e.target.closest('.grip'))return; openTask(id); }; });
+  if(key) enableDrag(container,key); }
+function listHTML(key){ const items=itemsFor(key); return items.length?items.map(rowHTML).join(''):'<div class="none">Nothing here.</div>'; }
 let slotIdx={morning:0,afternoon:0};
+function slotDots(slot,list){ return list.length>1?list.slice(0,6).map((_,i)=>'<i class="'+((i===slotIdx[slot]%list.length)?'on':'')+'"></i>').join(''):''; }
 function slotCardHTML(slot){ const list=itemsFor(slot); const it=list.length?list[slotIdx[slot]%list.length]:null; const cls=slot==='morning'?'am':'pm'; const em=slot==='morning'?'🌅':'☀️'; const nm=slot==='morning'?'Morning':'Afternoon';
-  const dots=list.length>1?'<div class="sdots">'+list.slice(0,6).map((_,i)=>'<i class="'+((i===slotIdx[slot]%list.length)?'on':'')+'"></i>').join('')+'</div>':'';
-  return `<button class="slotcard ${cls}" data-slot="${slot}"><div class="sh"><span class="se">${em}</span><span class="sl">${nm}</span><span class="sn">${list.length}</span></div><div class="st">${it?esc(cleanName(it)):'—'}</div>${dots}</button>`; }
+  return `<div class="slotcard ${cls}" data-slot="${slot}"><div class="sh" data-pin><span class="se">${em}</span><span class="sl">${nm}</span><span class="sn" data-sn>${list.length}</span><span class="pinlock">●</span></div>`+
+    `<div class="st" data-rev>${it?esc(cleanName(it)):'—'}</div><div class="sdots" data-dots>${slotDots(slot,list)}</div>`+
+    `<div class="slotfull">${list.length?list.map(rowHTML).join(''):'<div class="none">Nothing here.</div>'}</div></div>`; }
 function wireSlotCard(c){ const slot=c.dataset.slot;
-  const sh=c.querySelector('.sh'); if(sh) sh.onclick=e=>{ e.stopPropagation(); openList(slot); };
-  c.onclick=()=>{ const l=itemsFor(slot); const it=l.length?l[slotIdx[slot]%l.length]:null; if(it) openTask(it.id); else openList(slot); }; }
-function updateSlotCard(slot){ const c=document.querySelector('.slotcard[data-slot="'+slot+'"]'); if(!c)return; const st=c.querySelector('.st'); if(st)st.classList.add('fade');
-  setTimeout(()=>{ const c2=document.querySelector('.slotcard[data-slot="'+slot+'"]'); if(!c2)return; const tmp=document.createElement('div'); tmp.innerHTML=slotCardHTML(slot); const nw=tmp.firstChild;
-    const s0=nw.querySelector('.st'); if(s0)s0.classList.add('fade'); c2.replaceWith(nw); wireSlotCard(nw);
-    requestAnimationFrame(()=>requestAnimationFrame(()=>{ const s=nw.querySelector('.st'); if(s)s.classList.remove('fade'); })); },900); }
+  const ph=c.querySelector('[data-pin]'); if(ph)ph.onclick=e=>{ e.stopPropagation(); c.classList.toggle('pin'); };
+  const rev=c.querySelector('[data-rev]'); if(rev)rev.onclick=e=>{ e.stopPropagation(); const l=itemsFor(slot); const it=l.length?l[slotIdx[slot]%l.length]:null; if(it)openTask(it.id); };
+  wireRowEls(c.querySelector('.slotfull'), slot); }
+function updateSlotCard(slot){ const c=document.querySelector('.slotcard[data-slot="'+slot+'"]'); if(!c||c.classList.contains('pin')||c.matches(':hover'))return;   // don't flip while the list is open
+  const list=itemsFor(slot); const it=list.length?list[slotIdx[slot]%list.length]:null;
+  const rev=c.querySelector('[data-rev]'), dots=c.querySelector('[data-dots]'), sn=c.querySelector('[data-sn]'); if(sn)sn.textContent=list.length;
+  if(rev){ rev.classList.add('fade'); setTimeout(()=>{ rev.textContent=it?cleanName(it):'—'; if(dots)dots.innerHTML=slotDots(slot,list); requestAnimationFrame(()=>requestAnimationFrame(()=>rev.classList.remove('fade'))); },900); } }
 function renderCorners(){
-  // TOP-LEFT: morning / afternoon as iPhone-style colored bubbles (revolving tasks)
-  $('#cTL').innerHTML=`<div class="slotcards">${slotCardHTML('morning')}${slotCardHTML('afternoon')}</div>`;
+  // TOP-LEFT: morning / afternoon colored cards (hover/click reveals the whole list) + PSLC category buttons
+  $('#cTL').innerHTML=`<div class="slotcards">${slotCardHTML('morning')}${slotCardHTML('afternoon')}</div>
+    <div class="pslc">${PSLC.map(k=>{const n=itemsFor(k).length;return `<button class="pslcb${n?'':' empty'}" data-list="${k}">${CAT[k][0]} ${esc(CAT[k][1])} <i>${n}</i></button>`;}).join('')}</div>`;
   document.querySelectorAll('#cTL .slotcard').forEach(wireSlotCard);
-  // TOP-RIGHT: next meeting + incoming (with add bubble)
+  // TOP-RIGHT: next meeting (title inline, slim) + incoming (hover/pin reveals the whole list; add bubble)
   const nn=nowNext(todayISO()); const mtg=nn.now||nn.next; const nx=nn.now&&nn.next?nn.next:null;
   let mh='';
   if(mtg){ const h=joinHref(mtg), tel=h.indexOf('tel:')===0;
-    mh=`<div class="mtime">${esc(mtg.when||'')}${nn.now?'<span class="nowtag">NOW</span>':''}</div>
-      <div class="mtitle">${esc(mtg.title||'(untitled)')}</div>
+    mh=`<div class="mrow"><span class="mtime">${esc(mtg.when||'')}</span>${nn.now?'<span class="nowtag">NOW</span>':''}<span class="mtitle">${esc(mtg.title||'(untitled)')}</span></div>
       ${mtg.location?`<div class="mloc">📍 ${esc(mtg.location)}</div>`:''}
       ${h?`<a class="mjoin${tel?' tel':''}" href="${esc(h)}"${tel?'':' target="_blank" rel="noopener"'}>${tel?'📞 Call':'▶ Join'}</a>`:''}
-      ${nx?`<div class="mnext"><div class="nxlabel">Next · ${esc(nx.when||'')}</div><div class="mtitle" style="font-size:13px">${esc(nx.title||'')}</div></div>`:''}`;
+      ${nx?`<div class="mnext"><span class="nxlabel">Next</span> <span class="mtime" style="font-size:11px">${esc(nx.when||'')}</span> <span class="mtitle" style="display:inline;font-size:11px">${esc(nx.title||'')}</span></div>`:''}`;
   } else mh='<div class="none">No meetings left today.</div>';
-  const inc=paneList('incoming',4);
-  $('#cTR').innerHTML=`<div class="pane mpane" id="mpane"><div class="ph" data-list="meeting">📅 Next Meeting<span class="pn">${nn.L.length}</span></div>${mh}</div>
-    <div class="pane"><div class="ph" data-list="incoming">📥 Incoming<span class="pn">${inc.count}</span></div>${inc.html}
+  const incN=itemsFor('incoming').length;
+  $('#cTR').innerHTML=`<div class="pane mpane" id="mpane"><div class="ph pinnable" data-pin>📅 Next Meeting<span class="pn">${nn.L.length}</span><span class="pinlock">●</span></div>${mh}</div>
+    <div class="pane exp" id="incpane"><div class="ph pinnable" data-pin>📥 Incoming<span class="pn">${incN}</span><span class="pinlock">●</span></div>
+      <div class="clist">${listHTML('incoming')}</div>
       <div class="addrow"><input id="incAdd" placeholder="➕ Add incoming…"><button id="incAddBtn">Add</button></div></div>`;
-  const mp=$('#mpane'); if(mp) mp.querySelector('.mtitle,.none')&&mp.addEventListener('click',e=>{ if(e.target.closest('a'))return; mp.classList.toggle('pin'); });
+  document.querySelectorAll('#cTR .ph.pinnable[data-pin]').forEach(h=>h.onclick=()=>{ const p=h.closest('.pane'); if(p)p.classList.toggle('pin'); });
+  wireRowEls(document.querySelector('#incpane .clist'), 'incoming');
   { const ia=$('#incAdd'), ib=$('#incAddBtn'); if(ia){ const go=()=>{ const v=ia.value.trim(); if(!v)return; ia.value=''; createTask('incoming',v); };
       ib.onclick=go; ia.addEventListener('keydown',e=>{ if(e.key==='Enter')go(); }); } }
   // BOTTOM-LEFT: weather 5-day (+ hover reveal rest)
@@ -459,8 +503,7 @@ function renderCorners(){
   const cell=w=>{ const nm=w.date===td?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(w.date+'T12:00:00').getDay()];
     const tc=w.hi>=90?'hot':w.hi<=32?'cold':''; const amt=w.pr>0.02?w.pr.toFixed(2).replace(/^0/,'')+'"':'';
     return `<div class="wxc${w.date===td?' today':''}${w.pr>0.08?' wet':''}"><div class="wd">${nm}</div><div class="we">${wxEmoji(w.code)}</div><div class="wt ${tc}">${w.hi}°</div><div class="wp">${amt}</div></div>`; };
-  $('#cBL').innerHTML=`<div class="pane wxpane"><div class="ph" style="cursor:default">🌤 Weather<span class="pn">NYC</span></div>
-    ${days.length?`<div class="wxstrip">${days.slice(0,5).map(cell).join('')}</div>${days.length>5?`<div class="wxmore">${days.slice(5,10).map(cell).join('')}</div>`:''}`:'<div class="none">Loading forecast…</div>'}</div>`;
+  $('#cBL').innerHTML=`<div class="pane wxpane" title="Weather — NYC (hover for more days)">${days.length?`<div class="wxstrip">${days.slice(0,5).map(cell).join('')}</div>${days.length>5?`<div class="wxmore">${days.slice(5,10).map(cell).join('')}</div>`:''}`:'<div class="none">Loading…</div>'}</div>`;
   // BOTTOM-RIGHT: notes (bigger; day nav + save status like the dashboard pane)
   const day=noteDay||todayISO(), isToday=day===todayISO();
   const prev=$('#noteTa'), keepVal=(prev&&prev.dataset.day===day)?prev.value:null;
@@ -474,14 +517,9 @@ function renderCorners(){
   { const dp=$('#cBR [data-dp]'); if(dp)dp.onclick=()=>{ noteDay=dnShift(day,-1); renderCorners(); };
     const dn=$('#cBR [data-dn]'); if(dn)dn.onclick=()=>{ const n=dnShift(day,1); noteDay=n>=todayISO()?null:n; renderCorners(); };
     const dt=$('#cBR [data-dt]'); if(dt)dt.onclick=()=>{ noteDay=null; renderCorners(); }; }
-  // wire corner headers + rows
+  // PSLC category buttons → open that list
   document.querySelectorAll('.corner [data-list]').forEach(h=>h.onclick=()=>openList(h.dataset.list));
-  wireRows(document.querySelectorAll('.corner'));
 }
-function wireRows(roots){ roots.forEach(root=>root.querySelectorAll('.lrow').forEach(r=>{
-  const done=r.querySelector('[data-done]'); if(done) done.onclick=e=>{ e.stopPropagation(); markDone(done.dataset.done); };
-  const id=r.dataset.open; if(id) r.onclick=e=>{ if(e.target.closest('.tick'))return; openTask(id); };
-})); }
 
 /* ====== overlay: task edit + list panes ====== */
 const ov=$('#ov'), ovh=$('#ovh'), ovbody=$('#ovbody');
@@ -523,21 +561,10 @@ function openList(key){ const em=CAT[key][0], cap=CAT[key][1]; const items=items
     ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; return; }
   if(key==='respond'){ ovbody.innerHTML='<div class="plist">'+(items.length?items.map(e=>`<div class="lrow">${e.link?`<a href="${esc(e.link)}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:flex;gap:11px;align-items:center;flex:1;min-width:0">`:'<span style="display:flex;gap:11px;align-items:center;flex:1;min-width:0">'}<span class="dot" style="background:${projColor(e.project)}"></span><span class="lt"><span class="ln">${esc(e.name)}</span><span class="lm">${esc(e.project||'')}</span></span>${e.link?'</a>':'</span>'}</div>`).join(''):'<div class="none">No replies to review.</div>')+'</div>';
     ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; return; }
-  const dragable=['morning','afternoon','calls','focus','nextup','bigticket','sunday','backlog'].includes(key);
-  const row=t=>{ const d=daysOpen(t);
-    return `<div class="lrow" data-id="${t.id}" ${dragable?'draggable="true"':''}>${dragable?'<span class="grip">⋮⋮</span>':''}`+
-      `<span class="dot" style="background:${projColor(t.project)}"></span>`+
-      `<span class="lt"><span class="ln">${esc(cleanName(t))}</span>${t.project||t.lead||t.sub?`<span class="lm">${esc([t.project,t.lead,t.sub].filter(Boolean).join(' · '))}</span>`:''}</span>`+
-      `<span class="ld${d>=21?' o':''}">${d}d</span><button class="tick" data-done="${t.id}">✓</button></div>`; };
-  ovbody.innerHTML=(dragable?'<div class="phint">Drag ⋮⋮ to reorder · tap a task to edit · ✓ to finish</div>':'')+
-    '<div class="plist" id="plist">'+(items.length?items.map(row).join(''):'<div class="none">Nothing here.</div>')+'</div>';
+  ovbody.innerHTML='<div class="phint">Drag ⋮⋮ to reorder · tap to edit · ⊘ remove from category · ✓ finish</div>'+
+    '<div class="plist" id="plist">'+(items.length?items.map(rowHTML).join(''):'<div class="none">Nothing here.</div>')+'</div>';
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv;
-  const pl=$('#plist');
-  pl.querySelectorAll('.lrow').forEach(r=>{ const id=r.dataset.id; if(!id)return;
-    r.querySelector('[data-done]').onclick=e=>{ e.stopPropagation(); markDone(id); r.remove(); };
-    r.onclick=e=>{ if(e.target.closest('.tick')||e.target.closest('.grip'))return; openTask(id); };
-  });
-  if(dragable) enableDrag(pl,key);
+  wireRowEls($('#plist'), key);
 }
 function enableDrag(pl,key){ let dragEl=null;
   pl.querySelectorAll('.lrow[draggable]').forEach(r=>{
