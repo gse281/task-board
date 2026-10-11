@@ -11,8 +11,16 @@ html,body{margin:0;height:100%;background:radial-gradient(130% 120% at 50% 42%, 
   font:15px/1.4 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-select:text}
-#stage{position:fixed;inset:0;overflow:hidden}
-svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#stage{position:fixed;inset:0;overflow:hidden;animation:bootIn .9s cubic-bezier(.2,.8,.2,1)}
+@keyframes bootIn{from{opacity:0;transform:scale(.985)}to{opacity:1;transform:none}}
+.fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.sweep{position:absolute;pointer-events:none;z-index:1;opacity:.55;border-radius:50%;
+  background:conic-gradient(from 0deg, rgba(57,199,223,.22) 0deg, rgba(57,199,223,.05) 26deg, rgba(57,199,223,0) 60deg, rgba(57,199,223,0) 360deg);
+  -webkit-mask:radial-gradient(circle at center, transparent 0 24%, #000 25% 100%); mask:radial-gradient(circle at center, transparent 0 24%, #000 25% 100%);
+  animation:sweepSpin 9s linear infinite; will-change:transform}
+@keyframes sweepSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){ #stage{animation:none} .sweep{animation:none;opacity:.22} }
+svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1}
 .spin{transform-origin:center;animation:spin 120s linear infinite}
 .spin.rev{animation-duration:180s;animation-direction:reverse}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -21,13 +29,17 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .bar{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;padding:12px 18px;z-index:10;
   font:600 12px ui-monospace,Menlo,monospace;letter-spacing:2px;text-transform:uppercase;color:var(--dim);pointer-events:none}
 .bar>*{pointer-events:auto}
-.bar .mid{color:var(--cyan);text-shadow:0 0 14px rgba(57,199,223,.5)}
+.bar>span{min-width:0}
+.bar>#greet{flex:none} .clock{flex:none}
+.bar .mid{flex:1;text-align:center;color:var(--cyan);text-shadow:0 0 14px rgba(57,199,223,.5);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 14px}
 .clock{font-size:15px;color:var(--ink)}
+@media(max-width:720px){ .bar .mid{display:none} }
 /* core */
 .core{position:absolute;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;
   background:radial-gradient(circle at 50% 42%, rgba(57,199,223,.14), rgba(7,12,16,.1) 70%);
-  border:1.5px solid rgba(57,199,223,.55);box-shadow:0 0 50px rgba(57,199,223,.22), inset 0 0 60px rgba(57,199,223,.1);
-  padding:18px;cursor:pointer;transition:transform .3s;z-index:6}
+  border:1.5px solid rgba(57,199,223,.6);box-shadow:0 0 72px rgba(57,199,223,.3), inset 0 0 70px rgba(57,199,223,.13);
+  padding:18px;cursor:pointer;transition:transform .3s,box-shadow .6s;z-index:6;animation:coreBreathe 7s ease-in-out infinite}
+@keyframes coreBreathe{0%,100%{box-shadow:0 0 64px rgba(57,199,223,.26), inset 0 0 66px rgba(57,199,223,.11)}50%{box-shadow:0 0 88px rgba(57,199,223,.38), inset 0 0 78px rgba(57,199,223,.16)}}
 .core:hover{transform:scale(1.02)}
 .core .lbl{font:700 11px ui-monospace,Menlo,monospace;letter-spacing:4px;color:var(--cyan);text-transform:uppercase;opacity:.9}
 .core .cnt{font-weight:800;font-size:12px;color:var(--dim);margin-top:2px;letter-spacing:1px}
@@ -50,6 +62,16 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .bub .dots{display:flex;gap:3px;margin-top:7px;height:5px}
 .bub .dots i{width:5px;height:5px;border-radius:50%;background:rgba(57,199,223,.25)} .bub .dots i.on{background:var(--cyan);box-shadow:0 0 6px var(--cyan)}
 .fade{opacity:0}
+/* hierarchy: urgent things pulse, empty things recede — so the glance means something */
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 22px rgba(0,0,0,.5),inset 0 0 26px rgba(57,199,223,.06)}50%{box-shadow:0 0 36px rgba(57,199,223,.5),inset 0 0 30px rgba(57,199,223,.17)}}
+.bub.urgent{border-color:var(--cyan);animation:pulseGlow 2.8s ease-in-out infinite}
+.bub.urgent .cap{color:#bdefff}
+.bub.empty{opacity:.32;filter:saturate(.5)} .bub.empty:hover{opacity:.72}
+.slotcard.urgent{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(57,199,223,.4),0 8px 24px rgba(0,0,0,.35)}
+.pane.urgent{border-color:var(--cyan);box-shadow:0 10px 30px rgba(0,0,0,.4),0 0 20px rgba(57,199,223,.14)}
+.pslcb.urgent{border-color:var(--cyan);color:#bdefff}
+.pslcb.urgent i{color:#bdefff}
+@media (prefers-reduced-motion:reduce){ .bub.urgent,.core{animation:none} }
 /* corners */
 .corner{position:absolute;z-index:8;width:min(304px,33vw);display:flex;flex-direction:column;gap:10px}
 .tl{top:50px;left:14px}.tr{top:50px;right:14px}.bl{bottom:14px;left:14px}.br{bottom:14px;right:14px}
@@ -220,8 +242,10 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 </style></head>
 <body>
 <div id="stage">
+  <canvas class="fx" id="fx"></canvas>
   <svg class="hud" id="hud" preserveAspectRatio="xMidYMid meet"></svg>
-  <div class="bar"><span>FOCUS</span><span class="mid" id="status">LOADING…</span><span class="clock" id="clock"></span></div>
+  <div class="sweep" id="sweep"></div>
+  <div class="bar"><span id="greet">FOCUS</span><span class="mid" id="status">LOADING…</span><span class="clock" id="clock"></span></div>
   <!-- corners -->
   <div class="corner tl" id="cTL"></div>
   <div class="corner tr" id="cTR"></div>
@@ -283,6 +307,7 @@ const CAT={ focus:['◎','Now / Focus'], priority:['🔥','Priority'], meeting:[
 // sections a task can be moved to from the edit card
 const SECTIONS=[['focus','◎ Focus'],['morning','🌅 Morning'],['afternoon','☀️ Afternoon'],['calls','📞 Calls'],['nextup','⏭ Next Up'],['bigticket','🏔 Big Tix'],['sunday','📆 Sunday'],['backlog','🗂 Backlog'],['parked','🅿️ Parked']];
 
+const hasStale=list=>Array.isArray(list)&&list.some(t=>t&&!t._mtg&&daysOpen(t)>=14);
 function applyOrder(key,list){ const o=order[key]||[]; const ix=id=>{const i=o.indexOf(id);return i<0?1e9:i;}; return list.slice().sort((a,b)=>ix(a.id)-ix(b.id)); }
 function itemsFor(key){
   const L=sec=>tasks.filter(t=>live(t)&&sectionOf(t)===sec);
@@ -383,7 +408,8 @@ function demoData(){
 const hud=$('#hud'); let CX=0,CY=0,RAD=0,CORE=0,BUB=0, bubEls=[], coreEl;
 function layout(){ const W=innerWidth,H=innerHeight; CX=W/2; CY=H/2+6;
   const m=Math.min(W,H); CORE=Math.max(170,Math.min(270,m*0.24)); BUB=Math.max(102,Math.min(140,m*0.135)); RAD=Math.min(W,H)*0.33;
-  hud.setAttribute('viewBox',`0 0 ${W} ${H}`); drawHud(W,H); place(); renderCorners(); }
+  hud.setAttribute('viewBox',`0 0 ${W} ${H}`); drawHud(W,H); place(); renderCorners(); positionSweep(); updateHud(); }
+function positionSweep(){ const s=$('#sweep'); if(!s)return; const S=RAD*2.15; s.style.width=s.style.height=S+'px'; s.style.left=(CX-S/2)+'px'; s.style.top=(CY-S/2)+'px'; }
 function drawHud(W,H){ const ns='http://www.w3.org/2000/svg'; hud.innerHTML='';
   const ring=(r,op,w,dash,cls)=>{const c=document.createElementNS(ns,'circle');c.setAttribute('cx',CX);c.setAttribute('cy',CY);c.setAttribute('r',Math.max(0,r));c.setAttribute('fill','none');c.setAttribute('stroke','#39c7df');c.setAttribute('stroke-opacity',op);c.setAttribute('stroke-width',w);if(dash)c.setAttribute('stroke-dasharray',dash);if(cls)c.setAttribute('class',cls);return c;};
   const g=document.createElementNS(ns,'g'); g.setAttribute('class','spin');
@@ -443,6 +469,7 @@ function renderBub(b){ const list=itemsFor(b.key); const it=list.length?list[b.i
   b.el.innerHTML='<div class="cap" data-cap>'+em+' '+esc(cap)+'</div><div class="n">'+list.length+'</div>'+
     (it?'<div class="it">'+(it.project&&!it._mtg?'<span class="pr">'+esc(it.project.split(',')[0])+'</span>':'')+(it._mtg&&it.when?'<span class="pr">'+esc(it.when)+'</span><br>':'')+esc(it._mtg?it.name:cleanName(it))+'</div>'
        :'<div class="it" style="color:var(--dim)">—</div>')+dots;
+  b.el.classList.toggle('empty', list.length===0); b.el.classList.toggle('urgent', hasStale(list));
 }
 /* ---- orbit hover-expand popover (hover = whole list, click bubble = hold/pin) ---- */
 const pop=document.createElement('div'); pop.id='pop'; document.body.appendChild(pop);
@@ -493,7 +520,7 @@ function listHTML(key){ const items=itemsFor(key); return items.length?items.map
 let slotIdx={morning:0,afternoon:0};
 function slotDots(slot,list){ return list.length>1?list.slice(0,6).map((_,i)=>'<i class="'+((i===slotIdx[slot]%list.length)?'on':'')+'"></i>').join(''):''; }
 function slotCardHTML(slot){ const list=itemsFor(slot); const it=list.length?list[slotIdx[slot]%list.length]:null; const cls=slot==='morning'?'am':'pm'; const em=slot==='morning'?'🌅':'☀️'; const nm=slot==='morning'?'Morning':'Afternoon';
-  return `<div class="slotcard ${cls}" data-slot="${slot}"><div class="sh" data-pin><span class="se">${em}</span><span class="sl">${nm}</span><span class="sn" data-sn>${list.length}</span><span class="pinlock">●</span></div>`+
+  return `<div class="slotcard ${cls}${hasStale(list)?' urgent':''}" data-slot="${slot}"><div class="sh" data-pin><span class="se">${em}</span><span class="sl">${nm}</span><span class="sn" data-sn>${list.length}</span><span class="pinlock">●</span></div>`+
     `<div class="st" data-rev>${it?esc(cleanName(it)):'—'}</div><div class="sdots" data-dots>${slotDots(slot,list)}</div>`+
     `<div class="slotfull">${list.length?list.map(rowHTML).join(''):'<div class="none">Nothing here.</div>'}</div></div>`; }
 function wireSlotCard(c){ const slot=c.dataset.slot;
@@ -507,7 +534,7 @@ function updateSlotCard(slot){ const c=document.querySelector('.slotcard[data-sl
 function renderCorners(){
   // TOP-LEFT: morning / afternoon colored cards (hover/click reveals the whole list) + PSLC category buttons
   $('#cTL').innerHTML=`<div class="slotcards">${slotCardHTML('morning')}${slotCardHTML('afternoon')}</div>
-    <div class="pslc">${PSLC.map(k=>{const n=itemsFor(k).length;return `<button class="pslcb${n?'':' empty'}" data-list="${k}">${CAT[k][0]} ${esc(CAT[k][1])} <i>${n}</i></button>`;}).join('')}</div>`;
+    <div class="pslc">${PSLC.map(k=>{const l=itemsFor(k);const n=l.length;return `<button class="pslcb${n?'':' empty'}${hasStale(l)?' urgent':''}" data-list="${k}">${CAT[k][0]} ${esc(CAT[k][1])} <i>${n}</i></button>`;}).join('')}</div>`;
   document.querySelectorAll('#cTL .slotcard').forEach(wireSlotCard);
   // TOP-RIGHT: next meeting (title inline, slim) + incoming (hover/pin reveals the whole list; add bubble)
   const nn=nowNext(todayISO()); const mtg=nn.now||nn.next; const nx=nn.now&&nn.next?nn.next:null;
@@ -519,8 +546,8 @@ function renderCorners(){
       ${nx?`<div class="mnext"><span class="nxlabel">Next</span> <span class="mtime" style="font-size:11px">${esc(nx.when||'')}</span> <span class="mtitle" style="display:inline;font-size:11px">${esc(nx.title||'')}</span></div>`:''}`;
   } else mh='<div class="none">No meetings left today.</div>';
   const incN=itemsFor('incoming').length;
-  $('#cTR').innerHTML=`<div class="pane mpane" id="mpane"><div class="ph pinnable" data-pin>📅 Next Meeting<span class="pn">${nn.L.length}</span><span class="pinlock">●</span></div>${mh}</div>
-    <div class="pane exp" id="incpane"><div class="ph pinnable" data-pin>📥 Incoming<span class="pn">${incN}</span><span class="pinlock">●</span></div>
+  $('#cTR').innerHTML=`<div class="pane mpane${nn.now?' urgent':''}" id="mpane"><div class="ph pinnable" data-pin>📅 Next Meeting<span class="pn">${nn.L.length}</span><span class="pinlock">●</span></div>${mh}</div>
+    <div class="pane exp${hasStale(itemsFor('incoming'))?' urgent':''}" id="incpane"><div class="ph pinnable" data-pin>📥 Incoming<span class="pn">${incN}</span><span class="pinlock">●</span></div>
       <div class="clist">${listHTML('incoming')}</div>
       <div class="addrow"><input id="incAdd" placeholder="➕ Add incoming…"><button id="incAddBtn">Add</button></div></div>`;
   document.querySelectorAll('#cTR .ph.pinnable[data-pin]').forEach(h=>h.onclick=()=>{ const p=h.closest('.pane'); if(p)p.classList.toggle('pin'); });
@@ -630,17 +657,42 @@ async function createTask(section,text){ const slot=(section==='morning'||sectio
     if(r.ok){ const d=await r.json(); const old=t.id; t.id=d.id; t.createdTime=d.createdTime; if(aug[old]){ aug[d.id]=aug[old]; delete aug[old]; saveAug(); } refresh(); } else toast('Add failed '+r.status); }catch(e){ toast('Offline — not saved'); } }
 
 function refreshBubs(){ renderCore(); bubEls.forEach(renderBub); updateLinks(); }
-function refresh(){ refreshBubs(); renderCorners(); }
+function refresh(){ refreshBubs(); renderCorners(); updateHud(); }
 function render(){ layout(); if(!cycled){cycled=true;startCycles();} }
+/* ---- live HUD readout: greeting + open/urgent counts + next meeting ---- */
+function updateHud(){
+  const h=new Date().getHours(); const g=$('#greet'); if(g) g.textContent=(h<12?'GOOD MORNING':h<17?'GOOD AFTERNOON':'GOOD EVENING')+' ◎';
+  const s=$('#status'); if(!s)return;
+  if(!tasks.length && !calendar.length){ return; }
+  const open=tasks.filter(live).length;
+  let urg=0; ['priority','calls','nextup','bigticket','sunday','backlog','still','morning','afternoon','incoming'].forEach(k=>{ if(hasStale(itemsFor(k))) urg++; });
+  const nn=nowNext(todayISO()); const nxt=nn.now||nn.next;
+  const nstr=nxt?((nn.now?'NOW ':'NEXT ')+(nxt.when||'').replace(/\s*[–—].*/,'')+' · '+String(nxt.title||'').replace(/\s+/g,' ').slice(0,18)):'NO MEETINGS LEFT';
+  const bits=[open+' OPEN']; if(urg) bits.push(urg+' NEED ATTENTION'); bits.push(nstr);
+  s.innerHTML=bits.map((b,i)=>i===bits.length-1&&nn.now?'<span style="color:#bdefff">'+esc(b)+'</span>':esc(b)).join('  ·  ');
+}
+/* ---- ambient particle field (futuristic depth; pauses when hidden / reduced-motion) ---- */
+const fx=$('#fx'); let fxc=fx?fx.getContext('2d'):null, parts=[], fxRun=false;
+const reduceMotion=()=>{ try{ return matchMedia('(prefers-reduced-motion:reduce)').matches; }catch(e){ return false; } };
+function fxResize(){ if(!fxc)return; const dpr=Math.min(2,devicePixelRatio||1); fx.width=innerWidth*dpr; fx.height=innerHeight*dpr; fxc.setTransform(dpr,0,0,dpr,0,0);
+  const N=Math.max(24,Math.min(60,Math.round(innerWidth*innerHeight/34000))); parts=[];
+  for(let i=0;i<N;i++) parts.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.5+.4,vx:(Math.random()-.5)*.14,vy:(Math.random()-.5)*.14,a:Math.random()*.35+.08,tw:Math.random()*6.28}); }
+function fxTick(){ if(!fxRun||!fxc){return;} fxc.clearRect(0,0,innerWidth,innerHeight);
+  for(const p of parts){ p.x+=p.vx; p.y+=p.vy; p.tw+=.02;
+    if(p.x<-2)p.x=innerWidth+2; if(p.x>innerWidth+2)p.x=-2; if(p.y<-2)p.y=innerHeight+2; if(p.y>innerHeight+2)p.y=-2;
+    const a=p.a*(0.6+0.4*Math.sin(p.tw)); fxc.beginPath(); fxc.arc(p.x,p.y,p.r,0,6.2832); fxc.fillStyle='rgba(120,220,240,'+a.toFixed(3)+')'; fxc.fill(); }
+  requestAnimationFrame(fxTick); }
+function fxStart(){ if(!fxc||reduceMotion())return; fxResize(); if(!fxRun){ fxRun=true; requestAnimationFrame(fxTick); } }
+document.addEventListener('visibilitychange',()=>{ if(document.hidden){ fxRun=false; } else if(fxc&&!reduceMotion()){ if(!fxRun){ fxRun=true; requestAnimationFrame(fxTick); } } });
 
 /* ====== boot ====== */
-function tick(){ $('#clock').textContent=new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); }
-function boot(){ tick(); setInterval(tick,20000);
+function tick(){ $('#clock').textContent=new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); updateHud(); }
+function boot(){ tick(); setInterval(tick,20000); fxStart();
   if(!cfg.apiKey){ $('#setup').style.display='flex'; }
   fetchAll();
   setInterval(()=>fetchAll(),5*60000);
 }
-addEventListener('resize',()=>{ popPinned=false; popHide(true); clearTimeout(window._rz); window._rz=setTimeout(layout,150); });
+addEventListener('resize',()=>{ popPinned=false; popHide(true); fxResize(); clearTimeout(window._rz); window._rz=setTimeout(layout,150); });
 $('#keygo').onclick=()=>{ const k=$('#keyin').value.trim(); if(!k)return; cfg.apiKey=k; try{const c=JSON.parse(localStorage.getItem('tb.cfg')||'{}');c.apiKey=k;localStorage.setItem('tb.cfg',JSON.stringify(c));}catch(e){} $('#setup').style.display='none'; demo=false; fetchAll(); };
 $('#demo').onclick=()=>{ $('#setup').style.display='none'; demo=true; demoData(); render(); };
 $('#reset').onclick=resetLayout;
