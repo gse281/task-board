@@ -474,7 +474,7 @@ body::before{ opacity:.7 }
     <button class="tb-btn" id="undoBtn" title="Undo last action (⌘Z)">↩ Undo</button>
     <button class="tb-btn" id="contactsBtn" title="Contacts search">👤</button>
     <button class="tb-btn" id="scBtn" title="⌨️ Shortcuts cheat-sheet (press ?)">⌨️</button>
-    <a class="tb-btn" id="focusCoreBtn" href="./?focus=1" title="◎ Focus — the home screen" style="text-decoration:none;color:var(--ink);display:inline-flex;align-items:center">◎ Focus</a>
+    <a class="tb-btn" id="focusCoreBtn" href="radial.html?focus=1" title="◎ Focus — the home screen" style="text-decoration:none;color:var(--ink);display:inline-flex;align-items:center">◎ Focus</a>
     <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
     <input class="search" id="search" placeholder="Search tasks…">
     <button class="tb-btn" id="settingsBtn">⚙︎</button>
@@ -494,7 +494,7 @@ body::before{ opacity:.7 }
 
 <script>
 "use strict";
-const BUILD='2026-10-11 15:43';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-11 15:50';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},

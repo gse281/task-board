@@ -2,7 +2,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Focus</title>
 <script>/* Focus is the site root. If the user pinned Grid as home, bounce to the grid — unless ?focus=1 (the grid's ◎ Focus button) says to stay here. */
-try{ if(localStorage.getItem('tb.landing')==='grid' && !/[?&]focus=/.test(location.search)) location.replace('grid.html'); }catch(e){}</script>
+try{ if(localStorage.getItem('tb.landing')==='grid' && !/[?&]focus=/.test(location.search)) location.replace('dashboard.html'); }catch(e){}</script>
 <style>
 :root{ --bg:#070c10; --ink:#eaf6fb; --cyan:#39c7df; --cyan2:#1b6e80; --dim:#5e7a84; --orange:#45b8d0; --gold:#6fd0e0; --green:#3a8f5f; --line:rgba(57,199,223,.22); --panel:rgba(10,22,27,.64); }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -150,8 +150,11 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-i
 .slotfull{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.2,.8,.2,1)}
 .slotcard:hover .slotfull,.slotcard.pin .slotfull{max-height:220px;overflow:auto;margin-top:7px;border-top:1px solid rgba(57,199,223,.2);padding-top:5px}
 .slotcard:hover .sdots,.slotcard.pin .sdots{display:none}
-.slotcard .slotfull .lrow{padding:4px 2px}
-.slotcard .slotfull .ln{font-size:12px}
+.slotcard .slotfull .lrow{padding:5px 2px;gap:7px}
+.slotcard .slotfull .lrow .grip,.slotcard .slotfull .lrow .rmcat,.slotcard .slotfull .lrow .ld,.slotcard .slotfull .lrow .lm{display:none}
+.slotcard .slotfull .lrow .lt{flex:1;min-width:0}
+.slotcard .slotfull .ln{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;-webkit-line-clamp:unset}
+.slotcard .slotfull .lrow .tick{width:22px;height:22px;font-size:12px}
 .slotcard .sh{cursor:pointer}
 .slotcard .pinlock{margin-left:4px;font-size:8px;color:var(--cyan);opacity:0;transition:opacity .2s} .slotcard.pin .pinlock{opacity:1}
 .slotcard.pin{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(57,199,223,.5),0 8px 24px rgba(0,0,0,.35)}
@@ -261,7 +264,7 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-i
 <div class="botc">
   <button id="reset">⟲ RESET LAYOUT</button>
   <button id="homeToggle"></button>
-  <a href="grid.html">⌂ DASHBOARD</a>
+  <a href="dashboard.html">⌂ DASHBOARD</a>
 </div>
 <div id="ov"><div class="ovcard"><div class="ovh" id="ovh"></div><div class="ovbody" id="ovbody"></div></div></div>
 <div id="toast"></div>
@@ -524,7 +527,7 @@ function slotCardHTML(slot){ const list=itemsFor(slot); const it=list.length?lis
     `<div class="st" data-rev>${it?esc(cleanName(it)):'—'}</div><div class="sdots" data-dots>${slotDots(slot,list)}</div>`+
     `<div class="slotfull">${list.length?list.map(rowHTML).join(''):'<div class="none">Nothing here.</div>'}</div></div>`; }
 function wireSlotCard(c){ const slot=c.dataset.slot;
-  const ph=c.querySelector('[data-pin]'); if(ph)ph.onclick=e=>{ e.stopPropagation(); c.classList.toggle('pin'); };
+  const ph=c.querySelector('[data-pin]'); if(ph)ph.onclick=e=>{ e.stopPropagation(); openList(slot); };   // header → full list (drag / remove / reorder have room there)
   const rev=c.querySelector('[data-rev]'); if(rev)rev.onclick=e=>{ e.stopPropagation(); const l=itemsFor(slot); const it=l.length?l[slotIdx[slot]%l.length]:null; if(it)openTask(it.id); };
   wireRowEls(c.querySelector('.slotfull'), slot); }
 function updateSlotCard(slot){ const c=document.querySelector('.slotcard[data-slot="'+slot+'"]'); if(!c||c.classList.contains('pin')||c.matches(':hover'))return;   // don't flip while the list is open
