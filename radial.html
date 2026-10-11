@@ -1,6 +1,8 @@
 <!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Focus</title>
+<script>/* Focus is the site root. If the user pinned Grid as home, bounce to the grid — unless ?focus=1 (the grid's ◎ Focus button) says to stay here. */
+try{ if(localStorage.getItem('tb.landing')==='grid' && !/[?&]focus=/.test(location.search)) location.replace('grid.html'); }catch(e){}</script>
 <style>
 :root{ --bg:#070c10; --ink:#eaf6fb; --cyan:#39c7df; --cyan2:#1b6e80; --dim:#5e7a84; --orange:#e8683c; --gold:#e0a458; --green:#3a8f5f; --line:rgba(57,199,223,.22); --panel:rgba(10,20,25,.82); }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -195,7 +197,7 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 <div class="botc">
   <button id="reset">⟲ RESET LAYOUT</button>
   <button id="homeToggle"></button>
-  <a href="./?grid=1">⌂ DASHBOARD</a>
+  <a href="grid.html">⌂ DASHBOARD</a>
 </div>
 <div id="ov"><div class="ovcard"><div class="ovh" id="ovh"></div><div class="ovbody" id="ovbody"></div></div></div>
 <div id="toast"></div>
