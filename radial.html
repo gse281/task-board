@@ -676,13 +676,15 @@ const fx=$('#fx'); let fxc=fx?fx.getContext('2d'):null, parts=[], fxRun=false;
 const reduceMotion=()=>{ try{ return matchMedia('(prefers-reduced-motion:reduce)').matches; }catch(e){ return false; } };
 function fxResize(){ if(!fxc)return; const dpr=Math.min(2,devicePixelRatio||1); fx.width=innerWidth*dpr; fx.height=innerHeight*dpr; fxc.setTransform(dpr,0,0,dpr,0,0);
   const N=Math.max(24,Math.min(60,Math.round(innerWidth*innerHeight/34000))); parts=[];
-  for(let i=0;i<N;i++) parts.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.5+.4,vx:(Math.random()-.5)*.14,vy:(Math.random()-.5)*.14,a:Math.random()*.35+.08,tw:Math.random()*6.28}); }
-function fxTick(){ if(!fxRun||!fxc){return;} fxc.clearRect(0,0,innerWidth,innerHeight);
+  for(let i=0;i<N;i++) parts.push({x:Math.random()*innerWidth,y:Math.random()*innerHeight,r:Math.random()*1.5+.4,vx:(Math.random()-.5)*.14,vy:(Math.random()-.5)*.14,a:Math.random()*.35+.08,tw:Math.random()*6.28}); fxDraw(); }
+function fxDraw(){ if(!fxc)return; fxc.clearRect(0,0,innerWidth,innerHeight);
+  for(const p of parts){ const a=p.a*(0.6+0.4*Math.sin(p.tw)); fxc.beginPath(); fxc.arc(p.x,p.y,p.r,0,6.2832); fxc.fillStyle='rgba(120,220,240,'+a.toFixed(3)+')'; fxc.fill(); } }
+function fxTick(){ if(!fxRun||!fxc){return;}
   for(const p of parts){ p.x+=p.vx; p.y+=p.vy; p.tw+=.02;
-    if(p.x<-2)p.x=innerWidth+2; if(p.x>innerWidth+2)p.x=-2; if(p.y<-2)p.y=innerHeight+2; if(p.y>innerHeight+2)p.y=-2;
-    const a=p.a*(0.6+0.4*Math.sin(p.tw)); fxc.beginPath(); fxc.arc(p.x,p.y,p.r,0,6.2832); fxc.fillStyle='rgba(120,220,240,'+a.toFixed(3)+')'; fxc.fill(); }
-  requestAnimationFrame(fxTick); }
-function fxStart(){ if(!fxc||reduceMotion())return; fxResize(); if(!fxRun){ fxRun=true; requestAnimationFrame(fxTick); } }
+    if(p.x<-2)p.x=innerWidth+2; if(p.x>innerWidth+2)p.x=-2; if(p.y<-2)p.y=innerHeight+2; if(p.y>innerHeight+2)p.y=-2; }
+  fxDraw(); requestAnimationFrame(fxTick); }
+function fxStart(){ if(!fxc)return; fxResize();   // always draws a static field (depth even under reduced-motion)
+  if(!reduceMotion() && !fxRun){ fxRun=true; requestAnimationFrame(fxTick); } }
 document.addEventListener('visibilitychange',()=>{ if(document.hidden){ fxRun=false; } else if(fxc&&!reduceMotion()){ if(!fxRun){ fxRun=true; requestAnimationFrame(fxTick); } } });
 
 /* ====== boot ====== */
