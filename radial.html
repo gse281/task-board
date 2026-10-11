@@ -264,7 +264,7 @@ async function saveNote(text){ if(demo||!cfg.apiKey) return; const body={fields:
 
 /* ---- fetch all ---- */
 async function fetchAll(){
-  if(!cfg.apiKey){ demo=true; demoData(); return render(); }
+  if(!cfg.apiKey){ demo=true; demoData(); $('#status').textContent='DEMO'; return render(); }
   $('#status').textContent='SYNCING…';
   try{
     let out=[],off,g=0;
@@ -303,7 +303,7 @@ function layout(){ const W=innerWidth,H=innerHeight; CX=W/2; CY=H/2+6;
   const m=Math.min(W,H); CORE=Math.max(170,Math.min(270,m*0.24)); BUB=Math.max(102,Math.min(140,m*0.135)); RAD=Math.min(W,H)*0.33;
   hud.setAttribute('viewBox',`0 0 ${W} ${H}`); drawHud(W,H); place(); renderCorners(); }
 function drawHud(W,H){ const ns='http://www.w3.org/2000/svg'; hud.innerHTML='';
-  const ring=(r,op,w,dash,cls)=>{const c=document.createElementNS(ns,'circle');c.setAttribute('cx',CX);c.setAttribute('cy',CY);c.setAttribute('r',r);c.setAttribute('fill','none');c.setAttribute('stroke','#39c7df');c.setAttribute('stroke-opacity',op);c.setAttribute('stroke-width',w);if(dash)c.setAttribute('stroke-dasharray',dash);if(cls)c.setAttribute('class',cls);return c;};
+  const ring=(r,op,w,dash,cls)=>{const c=document.createElementNS(ns,'circle');c.setAttribute('cx',CX);c.setAttribute('cy',CY);c.setAttribute('r',Math.max(0,r));c.setAttribute('fill','none');c.setAttribute('stroke','#39c7df');c.setAttribute('stroke-opacity',op);c.setAttribute('stroke-width',w);if(dash)c.setAttribute('stroke-dasharray',dash);if(cls)c.setAttribute('class',cls);return c;};
   const g=document.createElementNS(ns,'g'); g.setAttribute('class','spin');
   g.appendChild(ring(RAD+2,.10,1,'2 10')); g.appendChild(ring(CORE/2+30,.14,1,'1 14'));
   for(let i=0;i<72;i++){const a=i/72*2*Math.PI;const r1=RAD-4,r2=RAD+(i%6===0?10:4);const l=document.createElementNS(ns,'line');
