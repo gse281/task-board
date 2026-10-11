@@ -494,7 +494,7 @@ body::before{ opacity:.7 }
 
 <script>
 "use strict";
-const BUILD='2026-10-11 15:50';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-11 15:53';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -2211,9 +2211,13 @@ function resetLayout(){ meta.slots={}; saveMeta(); render(); toast('↺ Grid res
 // ── 10×2 snap grid: every panel lives in a numbered cell. Drag a panel and it
 //    snaps into the cell you drop it on; whatever was there moves to the first
 //    free cell. Predictable, no overlaps, nothing off screen. ──
-const GRID_COLS=10, GRID_ROWS=2;
+let GRID_COLS=10; const GRID_ROWS=2;
+// Adaptive columns: keep each column a comfortable ~190px, so the board reflows
+// to fewer/wider columns on a half-screen window instead of cramming 10 thin ones.
+function computeCols(W){ return Math.max(2, Math.min(10, Math.round((W-8)/190))); }
 function gridDims(nPanels){
   const board=document.getElementById('board'); const GAP=8;
+  GRID_COLS=computeCols(board.clientWidth);
   const rows=Math.max(GRID_ROWS, Math.ceil((nPanels||GRID_COLS*GRID_ROWS)/GRID_COLS));
   const W=board.clientWidth;
   const H=Math.max(300, window.innerHeight - board.getBoundingClientRect().top - 12);
@@ -2226,6 +2230,7 @@ function firstFreeSlot(total){ const used=new Set(Object.values(meta.slots).filt
 // full page height instead of a single half-height cell.
 function layoutGrid(board){
   meta.slots=meta.slots||{};
+  GRID_COLS=computeCols(board.clientWidth);
   const allPanels=[...board.children].filter(p=>p.classList.contains('panel'));
   const bulb=allPanels.find(p=>p.dataset.section==='bulb');
   const panels=allPanels.filter(p=>p!==bulb);
