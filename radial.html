@@ -191,11 +191,11 @@ const PAL=['#39c7df','#5eead4','#67E8F9','#60A5FA','#A78BFA','#818CF8','#34D399'
 const projColor=p=>{ if(!p) return '#5e7a84'; let h=0; for(const c of String(p).toUpperCase()) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; };
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),1700); }
 
-const CAT={ focus:['◎','Now / Focus'], priority:['🔥','Priority'], meeting:['📅','Meeting'], respond:['✍️','Respond'],
-  calls:['📞','Calls'], morning:['🌅','Morning'], afternoon:['☀️','Afternoon'], incoming:['📥','Incoming'],
-  nextup:['⏭','Next Up'], bigticket:['🏔','Big Tix'], sunday:['📆','Sunday'], backlog:['🗂','Backlog'], still:['⏳','Still Open'] };
+const CAT={ focus:['◎','Now / Focus'], priority:['▲','Priority'], meeting:['◷','Meeting'], respond:['↩','Respond'],
+  calls:['☎︎','Calls'], morning:['☀︎','Morning'], afternoon:['◑','Afternoon'], incoming:['▽','Incoming'],
+  nextup:['⇥','Next Up'], bigticket:['◆','Big Tix'], sunday:['◉','Sunday'], backlog:['▤','Backlog'], still:['⧗','Still Open'] };
 const ORBIT=['priority','respond','calls','nextup','bigticket','sunday','backlog','still'];   // 8 bubbles in the ring
-const SECTIONS=[['focus','◎ Focus'],['morning','🌅 Morning'],['afternoon','☀️ Afternoon'],['calls','📞 Calls'],['nextup','⏭ Next Up'],['bigticket','🏔 Big Tix'],['sunday','📆 Sunday'],['backlog','🗂 Backlog'],['parked','🅿️ Parked']];
+const SECTIONS=[['focus','◎ Focus'],['morning','☀︎ Morning'],['afternoon','◑ Afternoon'],['calls','☎︎ Calls'],['nextup','⇥ Next Up'],['bigticket','◆ Big Tix'],['sunday','◉ Sunday'],['backlog','▤ Backlog'],['parked','⊘ Parked']];
 
 function applyOrder(key,list){ const o=order[key]; if(!o||!o.length) return list; const pos={}; o.forEach((id,i)=>pos[id]=i); return list.slice().sort((a,b)=>((pos[a.id]==null?1e9:pos[a.id])-(pos[b.id]==null?1e9:pos[b.id]))); }
 let _if={}; function clearIF(){ _if={}; }

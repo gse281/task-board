@@ -544,7 +544,7 @@ body::before{ opacity:.7 }
 <script src="task-editor.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-12 14:20';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-12 15:31';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -684,15 +684,15 @@ function phoneFor(t){
 
 /* ---------- Sections ---------- */
 const BUCKETS = [
-  {id:'incoming', name:'📥 Incoming'},
-  {id:'morning',  name:'🌅 Morning Call'},
-  {id:'afternoon',name:'☀️ Afternoon Call'},
-  {id:'sunday',   name:'☀️ Sunday'},
-  {id:'nextup',   name:'⏭ Next Up'},
-  {id:'focus',    name:'🎯 Now / Focus'},
-  {id:'bigticket',name:'🏔 Big Ticket'},
-  {id:'calls',    name:'📞 Calls'},
-  {id:'backlog',  name:'🗂 Backlog'},
+  {id:'incoming', name:'▽ Incoming'},
+  {id:'morning',  name:'☀︎ Morning Call'},
+  {id:'afternoon',name:'◑ Afternoon Call'},
+  {id:'sunday',   name:'◉ Sunday'},
+  {id:'nextup',   name:'⇥ Next Up'},
+  {id:'focus',    name:'◎ Now / Focus'},
+  {id:'bigticket',name:'◆ Big Ticket'},
+  {id:'calls',    name:'☎︎ Calls'},
+  {id:'backlog',  name:'▤ Backlog'},
 ];
 const SECTION_SUB = {
   backlog:'Unsorted open items — nothing scheduled yet',
@@ -1397,7 +1397,7 @@ function render(){
   orderedPanels().forEach(id=>{
     const stub=STUBS.find(s=>s.id===id);
     if(id==='stillopen') board.appendChild(stillOpenPanel());
-    else if(id==='priority') board.appendChild(panelEl('priority','🔥 Priority', priorityList().filter(t=>visible(t)&&notSnoozed(t)).slice(0,10), false));
+    else if(id==='priority') board.appendChild(panelEl('priority','▲ Priority', priorityList().filter(t=>visible(t)&&notSnoozed(t)).slice(0,10), false));
     else if(id==='spotlight') board.appendChild(spotlightPanel());
     else if(id==='external') board.appendChild(panelEl('external','📡 From outside', openVisible.filter(t=>t.sourceRemote), false));
     else if(id==='ideas') board.appendChild(ideasPanel());
