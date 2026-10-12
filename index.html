@@ -479,6 +479,22 @@ body::before{ opacity:.7 }
 .task.blink{border-color:#39c7df!important}
 .modal,.backdrop .modal{background:#0b161b!important;color:#eaf6fb!important;border:1px solid rgba(57,199,223,.25)}
 .inp,.modal input,.modal textarea,.modal select{background:rgba(20,36,42,.85)!important;color:#eaf6fb!important;border:1px solid rgba(57,199,223,.22)!important}
+/* ⌘K command bar */
+#cmd{position:fixed;inset:0;z-index:4000;display:none;align-items:flex-start;justify-content:center;background:rgba(3,7,10,.62);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:13vh 16px 20px}
+#cmd.on{display:flex}
+#cmd .cmdbox{width:min(620px,94vw);max-height:76vh;display:flex;flex-direction:column;background:linear-gradient(180deg,#0c171d,#070f14);border:1px solid rgba(57,199,223,.45);border-radius:16px;box-shadow:0 22px 64px rgba(0,0,0,.6),0 0 42px rgba(57,199,223,.16);overflow:hidden}
+#cmd .cmdin{display:flex;align-items:center;gap:11px;padding:15px 17px;border-bottom:1px solid rgba(57,199,223,.2)}
+#cmd .cmdin>span{color:#39c7df;font:800 15px ui-monospace,Menlo,monospace}
+#cmd .cmdin input{flex:1;background:transparent;border:0;outline:none;color:#eaf6fb;font-size:18px}
+#cmd .cmdin input::placeholder{color:#86a2ab}
+#cmd .cmdres{overflow:auto;padding:6px}
+#cmd .cmdrow{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;cursor:pointer}
+#cmd .cmdrow.sel{background:rgba(57,199,223,.15)}
+#cmd .cmdrow .k{font:800 9.5px ui-monospace,Menlo,monospace;letter-spacing:1px;color:#07141a;background:#39c7df;border-radius:5px;padding:2px 6px;text-transform:uppercase;flex:none}
+#cmd .cmdrow .k.g{background:rgba(57,199,223,.18);color:#39c7df}
+#cmd .cmdrow .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:#eaf6fb}
+#cmd .cmdrow .d{color:#86a2ab;font-size:12px;flex:none;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#cmd .cmdhint{padding:9px 15px;color:#86a2ab;font:600 11px ui-monospace,Menlo,monospace;border-top:1px solid rgba(57,199,223,.2)}
 </style>
 </head>
 <body>
@@ -508,6 +524,7 @@ body::before{ opacity:.7 }
 <div class="filters" id="filters"></div>
 
 <div class="desk-add" id="deskAdd"><input id="deskAddInp" placeholder="➕ Add task…"><button id="deskAddBtn">Add</button></div>
+<div id="cmd"><div class="cmdbox"><div class="cmdin"><span>⌘</span><input id="cmdInp" placeholder="Add a task, jump to a panel, or search everything…" autocomplete="off"></div><div class="cmdres" id="cmdRes"></div><div class="cmdhint">↑↓ move · ⏎ select · esc close · type then ⏎ to add · ⌘K to toggle</div></div></div>
 
 <div class="board" id="board"></div>
 
@@ -519,7 +536,7 @@ body::before{ opacity:.7 }
 <script src="task-editor.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-12 11:47';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-12 12:17';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -4060,6 +4077,39 @@ function applyLaunchParams(){
     else if(map[view]){ const c=(typeof CATEGORIES!=='undefined')&&CATEGORIES.find(x=>x.id===map[view]); activeBulb={dim:'category',val:map[view],label:c?c.name:map[view]}; try{render();}catch(e){} } }
   if(task && !_lpTask){ const t=tasks.find(x=>x.id===task); if(t){ _lpTask=true; try{openDetail(t);}catch(e){} } }
 }
+
+/* ====== ⌘K command bar — add / jump / search, self-contained, no animation ====== */
+(function(){
+  const cmd=document.getElementById('cmd'), inp=document.getElementById('cmdInp'), res=document.getElementById('cmdRes');
+  if(!cmd||!inp||!res) return;
+  let items=[], sel=0;
+  function openBar(){ cmd.classList.add('on'); inp.value=''; build(''); setTimeout(()=>inp.focus(),0); }
+  function closeBar(){ cmd.classList.remove('on'); }
+  cmd.addEventListener('click',e=>{ if(e.target===cmd) closeBar(); });
+  function openTaskObj(t){ closeBar(); try{ openDetail(t); }catch(e){ try{ editTaskD(t); }catch(e2){} } }
+  function jump(id){ closeBar(); const el=document.querySelector('.panel[data-section="'+id+'"]'); if(el){ el.scrollIntoView({behavior:'smooth',block:'center'}); const o=el.style.boxShadow; el.style.transition='box-shadow .3s'; el.style.boxShadow='0 0 0 2px #39c7df, 0 0 26px rgba(57,199,223,.45)'; setTimeout(()=>{ el.style.boxShadow=o; },1200); } }
+  function addTask(q){ closeBar(); try{ Promise.resolve(atCreate(q)).then(function(t){ if(t){ try{ A(t.id).section='incoming'; saveAug(); }catch(e){} try{ render(); }catch(e){} } }); }catch(e){} }
+  function build(q){ q=(q||'').trim(); const ql=q.toLowerCase(); items=[]; sel=0;
+    if(q) items.push({k:'add',t:'Add “'+q+'”',d:'→ Incoming',run:function(){addTask(q);}});
+    BUCKETS.forEach(function(b){ if(!ql||b.name.toLowerCase().indexOf(ql)>=0) items.push({k:'go',t:b.name,run:function(){jump(b.id);}}); });
+    if(ql){ var hits=tasks.filter(function(t){ return t.status==='Open' && (((t.name||'').toLowerCase().indexOf(ql)>=0)||((t.project||'').toLowerCase().indexOf(ql)>=0)); }).slice(0,8);
+      hits.forEach(function(t){ items.push({k:'task',t:cleanName(t),d:t.project||'',run:function(){openTaskObj(t);}}); }); }
+    paint();
+  }
+  function paint(){ res.innerHTML=items.map(function(it,i){ var kk=it.k==='add'?'<span class="k">add</span>':it.k==='go'?'<span class="k g">go</span>':'<span class="k g">task</span>';
+      return '<div class="cmdrow'+(i===sel?' sel':'')+'" data-i="'+i+'">'+kk+'<span class="t">'+esc(it.t)+'</span>'+(it.d?'<span class="d">'+esc(it.d)+'</span>':'')+'</div>'; }).join('')||'<div class="cmdrow"><span class="t" style="color:#86a2ab">Type to search or add…</span></div>';
+    [].slice.call(res.querySelectorAll('.cmdrow[data-i]')).forEach(function(r){ r.onclick=function(){ var it=items[+r.dataset.i]; if(it&&it.run)it.run(); }; r.onmousemove=function(){ if(sel!==+r.dataset.i){ sel=+r.dataset.i; mark(); } }; });
+  }
+  function mark(){ [].slice.call(res.querySelectorAll('.cmdrow')).forEach(function(r,i){ r.classList.toggle('sel',i===sel); }); }
+  function scrollSel(){ var r=res.querySelectorAll('.cmdrow')[sel]; if(r)r.scrollIntoView({block:'nearest'}); }
+  inp.addEventListener('input',function(){ build(inp.value); });
+  inp.addEventListener('keydown',function(e){ if(e.key==='ArrowDown'){e.preventDefault();sel=Math.min(items.length-1,sel+1);mark();scrollSel();}
+    else if(e.key==='ArrowUp'){e.preventDefault();sel=Math.max(0,sel-1);mark();scrollSel();}
+    else if(e.key==='Enter'){e.preventDefault();var it=items[sel];if(it&&it.run)it.run();}
+    else if(e.key==='Escape'){e.preventDefault();closeBar();} });
+  document.addEventListener('keydown',function(e){ if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){ e.preventDefault(); cmd.classList.contains('on')?closeBar():openBar(); }
+    else if(e.key==='/'&&!cmd.classList.contains('on')&&!/^(input|textarea)$/i.test((e.target&&e.target.tagName)||'')&&!(e.target&&e.target.isContentEditable)){ e.preventDefault(); openBar(); } });
+})();
 </script>
 <script>
 /* iPhone only: small pill linking to the native-style phone app at ./m/ (desktop never sees it; ✕ hides it for good). */
