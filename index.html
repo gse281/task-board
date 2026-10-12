@@ -495,6 +495,13 @@ body::before{ opacity:.7 }
 #cmd .cmdrow .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:#eaf6fb}
 #cmd .cmdrow .d{color:#86a2ab;font-size:12px;flex:none;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #cmd .cmdhint{padding:9px 15px;color:#86a2ab;font:600 11px ui-monospace,Menlo,monospace;border-top:1px solid rgba(57,199,223,.2)}
+/* glance summary + static panel hierarchy (no animation) */
+.glance{font:600 11.5px ui-monospace,Menlo,monospace;color:#86a2ab;letter-spacing:.2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:42vw}
+.glance b{color:#39c7df;font-weight:800} .glance .att{color:#8fe4f4}
+@media(max-width:900px){ .glance{display:none} }
+.panel.pempty{opacity:.48} .panel.pempty:hover{opacity:.9}
+.panel.purgent{border-color:rgba(57,199,223,.55)!important;box-shadow:0 10px 30px rgba(0,0,0,.42), 0 0 0 1px rgba(57,199,223,.35) inset, 0 0 20px rgba(57,199,223,.14)!important}
+.panel.purgent .panel-head h3{color:#bdefff}
 </style>
 </head>
 <body>
@@ -504,6 +511,7 @@ body::before{ opacity:.7 }
   <span class="date" id="date"></span>
   <span class="build" id="buildTag" title="Last update"></span>
   <span class="build" id="taskCount" title="Total open tasks"></span>
+  <span class="glance" id="glance" title="At a glance"></span>
   <!-- ctrlrow: transparent on desktop (display:contents); on phone it collapses to ONE row -->
   <div class="ctrlrow">
     <div class="wxstrip" id="wx"></div>
@@ -536,7 +544,7 @@ body::before{ opacity:.7 }
 <script src="task-editor.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-12 12:17';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-12 12:21';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -1373,6 +1381,9 @@ function render(){
   document.getElementById('date').textContent = new Date().toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
   renderBanner();
   const tc=document.getElementById('taskCount'); if(tc)tc.textContent='📋 '+tasks.filter(t=>t.status==='Open').length+' open';
+  const gl=document.getElementById('glance'); if(gl){ const openN=tasks.filter(t=>t.status==='Open').length; const att=tasks.filter(t=>t.status==='Open'&&daysOpen(t)>=14).length;
+    let nx=''; try{ const d=new Date(), day=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); const nn=nowNext(calendar,day); const m=nn.now||nn.next; if(m) nx=(nn.now?'NOW ':'NEXT ')+String(m.when||'').replace(/\s*[–—].*/,'')+' '+String(m.title||'').slice(0,20); }catch(e){}
+    gl.innerHTML='◎ <b>'+openN+'</b> open'+(att?' · <span class="att">'+att+' need attention</span>':'')+(nx?' · '+esc(nx):''); }
   const board=document.getElementById('board'); board.innerHTML='';
   const filt=document.getElementById('filters');
   if(isMobileView()){ filt.style.display='none'; renderMobile(board); restoreScrolls(scrolls);
@@ -3058,6 +3069,7 @@ setInterval(()=>fetchAutos(false),10*60000);
 const CALL_LISTS=new Set(['morning','afternoon','calls']);
 function panelEl(sectionId,title,items,isDrop){
   const p=document.createElement('div'); p.className='panel'; p.dataset.section=sectionId;
+  try{ const arr=items||[]; if(!arr.length) p.classList.add('pempty'); else if(arr.some(t=>daysOpen(t)>=14)) p.classList.add('purgent'); }catch(e){}
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls(sectionId,title,items);
   p.appendChild(head); wirePanel(p,head,sectionId);
   head.querySelector('.send-list').onclick=()=>sendList(title,items);
