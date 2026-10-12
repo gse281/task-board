@@ -198,6 +198,23 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-i
 .npane .nfoot button{color:var(--cyan)}
 #cBR{width:min(262px,28vw)}
 /* overlay (task edit + list panes) */
+/* ⌘K command bar */
+#cmd{position:fixed;inset:0;z-index:50;display:none;align-items:flex-start;justify-content:center;background:rgba(3,7,10,.62);backdrop-filter:blur(6px);padding:13vh 16px 20px}
+#cmd.show{display:flex}
+.cmdbox{width:min(620px,94vw);max-height:76vh;display:flex;flex-direction:column;background:linear-gradient(180deg,#0c171d,#070f14);border:1px solid rgba(57,199,223,.45);border-radius:16px;box-shadow:0 22px 64px rgba(0,0,0,.6),0 0 42px rgba(57,199,223,.16);overflow:hidden}
+.cmdin{display:flex;align-items:center;gap:11px;padding:15px 17px;border-bottom:1px solid var(--line);flex:none}
+.cmdin>span{color:var(--cyan);font:800 15px ui-monospace,Menlo,monospace}
+.cmdin input{flex:1;background:transparent;border:0;outline:none;color:var(--ink);font-size:18px}
+.cmdin input::placeholder{color:var(--dim)}
+.cmdres{overflow:auto;padding:6px}
+.cmdrow{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;cursor:pointer}
+.cmdrow.sel{background:rgba(57,199,223,.15)}
+.cmdrow .k{font:800 9.5px ui-monospace,Menlo,monospace;letter-spacing:1px;color:#07141a;background:var(--cyan);border-radius:5px;padding:2px 6px;text-transform:uppercase;flex:none}
+.cmdrow .k.g{background:rgba(57,199,223,.18);color:var(--cyan)}
+.cmdrow .t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+.cmdrow .d{color:var(--dim);font-size:12px;flex:none}
+.cmdrow .dot{width:8px;height:8px;border-radius:4px;flex:none}
+.cmdhint{padding:9px 15px;color:var(--dim);font:600 11px ui-monospace,Menlo,monospace;border-top:1px solid var(--line);flex:none}
 #ov{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(3,7,10,.74);backdrop-filter:blur(7px);padding:20px}
 #ov.show{display:flex}
 .ovcard{width:min(580px,94vw);max-height:90vh;display:flex;flex-direction:column;background:linear-gradient(180deg,#0c171d,#070f14);border:1px solid rgba(57,199,223,.42);border-radius:22px;box-shadow:0 0 70px rgba(57,199,223,.2);overflow:hidden}
@@ -292,11 +309,13 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-i
   <div class="hint">It reuses the same key your dashboard already saved — you usually won't see this.</div>
 </div>
 <div class="botc">
+  <button id="cmdBtn" title="Add / jump / search (⌘K)">⌘ ADD · JUMP</button>
   <button id="reset">⟲ RESET LAYOUT</button>
   <button id="homeToggle"></button>
   <a href="dashboard.html">⌂ DASHBOARD</a>
 </div>
 <div id="ov"><div class="ovcard"><div class="ovh" id="ovh"></div><div class="ovbody" id="ovbody"></div></div></div>
+<div id="cmd"><div class="cmdbox"><div class="cmdin"><span>⌘</span><input id="cmdInp" placeholder="Add a task, jump to a list, or search everything…" autocomplete="off"></div><div class="cmdres" id="cmdRes"></div><div class="cmdhint">↑↓ move · ⏎ select · esc close · type then ⏎ to add a task</div></div></div>
 <div id="toast"></div>
 <script src="task-editor.js"></script>
 <script>
@@ -713,6 +732,39 @@ function closeOv(){ ov.classList.remove('show'); ovbody.innerHTML=''; }
 ov.addEventListener('click',e=>{ if(e.target===ov) closeOv(); });
 addEventListener('keydown',e=>{ if(e.key==='Escape') closeOv(); });
 
+/* ====== ⌘K command bar — add / jump / search from anywhere ====== */
+const cmd=$('#cmd'), cmdInp=$('#cmdInp'), cmdRes=$('#cmdRes'); let cmdItems=[], cmdSel=0;
+function openCmd(){ cmd.classList.add('show'); cmdInp.value=''; buildCmd(''); setTimeout(()=>cmdInp.focus(),0); }
+function closeCmd(){ cmd.classList.remove('show'); }
+cmd.addEventListener('click',e=>{ if(e.target===cmd) closeCmd(); });
+function buildCmd(q){ q=(q||'').trim(); const ql=q.toLowerCase(); cmdItems=[]; cmdSel=0;
+  if(q) cmdItems.push({type:'add',label:'Add “'+q+'”',sub:'→ Incoming',run:()=>{ createTask('incoming',q); closeCmd(); }});
+  if(!ql||'focus now'.includes(ql)) cmdItems.push({type:'jump',label:'◎ Now / Focus',sub:itemsFor('focus').length+' items',run:()=>{closeCmd();openList('focus');}});
+  Object.keys(CAT).filter(k=>k!=='focus').forEach(k=>{ const cap=CAT[k][1]; if(!ql||cap.toLowerCase().includes(ql)){ const n=itemsFor(k).length; cmdItems.push({type:'jump',label:CAT[k][0]+' '+cap,sub:n+' item'+(n===1?'':'s'),run:()=>{closeCmd();openList(k);}}); } });
+  if(ql){ const hits=tasks.filter(t=>live(t)&&(((t.name||'').toLowerCase().includes(ql))||((t.project||'').toLowerCase().includes(ql)))).slice(0,8);
+    hits.forEach(t=>cmdItems.push({type:'task',label:cleanName(t),sub:t.project||'',color:projColor(t.project),run:()=>{closeCmd();openTask(t.id);}})); }
+  renderCmd();
+}
+function renderCmd(){ cmdRes.innerHTML=cmdItems.map((it,i)=>{
+    const k=it.type==='add'?'<span class="k">add</span>':it.type==='jump'?'<span class="k g">go</span>':'<span class="dot" style="background:'+(it.color||'var(--cyan)')+'"></span>';
+    return '<div class="cmdrow'+(i===cmdSel?' sel':'')+'" data-i="'+i+'">'+k+'<span class="t">'+esc(it.label)+'</span>'+(it.sub?'<span class="d">'+esc(it.sub)+'</span>':'')+'</div>';
+  }).join('')||'<div class="cmdrow"><span class="t" style="color:var(--dim)">Type to search or add…</span></div>';
+  cmdRes.querySelectorAll('.cmdrow[data-i]').forEach(r=>{ r.onclick=()=>{ const it=cmdItems[+r.dataset.i]; if(it&&it.run)it.run(); }; r.onmousemove=()=>{ if(cmdSel!==+r.dataset.i){ cmdSel=+r.dataset.i; markCmdSel(); } }; });
+}
+function markCmdSel(){ cmdRes.querySelectorAll('.cmdrow').forEach((r,i)=>r.classList.toggle('sel',i===cmdSel)); }
+function scrollCmdSel(){ const r=cmdRes.querySelectorAll('.cmdrow')[cmdSel]; if(r)r.scrollIntoView({block:'nearest'}); }
+cmdInp.addEventListener('input',()=>buildCmd(cmdInp.value));
+cmdInp.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'){ e.preventDefault(); cmdSel=Math.min(cmdItems.length-1,cmdSel+1); markCmdSel(); scrollCmdSel(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); cmdSel=Math.max(0,cmdSel-1); markCmdSel(); scrollCmdSel(); }
+  else if(e.key==='Enter'){ e.preventDefault(); const it=cmdItems[cmdSel]; if(it&&it.run)it.run(); }
+  else if(e.key==='Escape'){ e.preventDefault(); closeCmd(); }
+});
+addEventListener('keydown',e=>{
+  if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){ e.preventDefault(); cmd.classList.contains('show')?closeCmd():openCmd(); return; }
+  if(e.key==='/'&&!cmd.classList.contains('show')&&!/^(input|textarea)$/i.test((e.target&&e.target.tagName)||'')&&!(e.target&&e.target.isContentEditable)){ e.preventDefault(); openCmd(); }
+});
+
 /* ✎ one shared full editor (task-editor.js) — same as the iPhone app and the grid */
 const TE_CATS=[['',''],['morning',''],['afternoon',''],['calls',''],['incoming',''],['focus',''],['@Computer – Claude',''],['Open Items',''],['parked','']];
 const TE_KEYS={Task:'name',Project:'project',SBLead:'lead',Sub:'sub',Status:'status',Priority:'priorityRaw',DoDate:'doDate',ReminderAt:'remindAt',NextStep:'next',Notes:'notes',CallContact:'callWho',Phone:'phone',RoniFlag:'flag',NextUp:'nextUp',TextExclude:'textEx',NextUpOrder:'nuOrder'};
@@ -844,6 +896,7 @@ addEventListener('resize',()=>{ popPinned=false; popHide(true); fxResize(); clea
 $('#keygo').onclick=()=>{ const k=$('#keyin').value.trim(); if(!k)return; cfg.apiKey=k; try{const c=JSON.parse(localStorage.getItem('tb.cfg')||'{}');c.apiKey=k;localStorage.setItem('tb.cfg',JSON.stringify(c));}catch(e){} $('#setup').style.display='none'; demo=false; fetchAll(); };
 $('#demo').onclick=()=>{ $('#setup').style.display='none'; demo=true; demoData(); render(); };
 $('#reset').onclick=resetLayout;
+$('#cmdBtn').onclick=openCmd;
 function updHome(){ const b=$('#homeToggle'); const isFocus=localStorage.getItem('tb.landing')!=='grid'; b.textContent=isFocus?'★ HOME: FOCUS':'☆ HOME: GRID'; b.style.color=isFocus?'var(--cyan)':'var(--dim)'; b.style.borderColor=isFocus?'rgba(57,199,223,.5)':'var(--line)'; }
 $('#homeToggle').onclick=()=>{ if(localStorage.getItem('tb.landing')!=='grid')localStorage.setItem('tb.landing','grid'); else localStorage.removeItem('tb.landing'); updHome(); };
 updHome();
