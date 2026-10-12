@@ -615,8 +615,6 @@ body{ background:radial-gradient(130% 120% at 50% 16%, #0d1920 0%, #0a1216 55%, 
 /* home call tiles → cyan glass (match Focus's Morning/Afternoon cards) */
 .call.am{ background:linear-gradient(150deg,rgba(57,199,223,.24) 0%,rgba(27,110,128,.1) 60%,rgba(9,16,20,.5) 100%); color:#eaf6fb; border:1px solid rgba(57,199,223,.36); }
 .call.pm{ background:linear-gradient(150deg,rgba(120,212,236,.22) 0%,rgba(57,160,190,.1) 60%,rgba(9,16,20,.5) 100%); color:#eaf6fb; border:1px solid rgba(120,212,236,.36); }
-.calls .call.am.slim{ background:linear-gradient(150deg,rgba(57,199,223,.24) 0%,rgba(27,110,128,.1) 60%,rgba(9,16,20,.5) 100%)!important; color:#eaf6fb!important; border-color:rgba(57,199,223,.36)!important }
-.calls .call.pm.slim{ background:linear-gradient(150deg,rgba(120,212,236,.22) 0%,rgba(57,160,190,.1) 60%,rgba(9,16,20,.5) 100%)!important; color:#eaf6fb!important; border-color:rgba(120,212,236,.36)!important }
 .call.now::after{ background:var(--accent); color:#07141a }
 /* warm gradient CTAs → cyan */
 .cta,.invall{ background:linear-gradient(135deg,#45b8d0,#1f7f93)!important; color:#07141a!important }
@@ -674,7 +672,7 @@ body{ background:radial-gradient(130% 120% at 50% 16%, #0d1920 0%, #0a1216 55%, 
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-12 13:06';   // stamped by deploy.sh
+const BUILD='2026-10-12 13:10';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
