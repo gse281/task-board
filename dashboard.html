@@ -455,6 +455,30 @@ body::before{ opacity:.7 }
 .nnchip.now{ border-color:var(--accent)!important } .nnchip.now b{ color:var(--accent)!important }
 .panel-body::-webkit-scrollbar-thumb,.board::-webkit-scrollbar-thumb{ background:rgba(57,199,223,.18) }
 .demo-banner{ background:rgba(57,199,223,.12)!important }
+
+/* ═══════════ SLIM ROWS + UNIFIED THEME (master spec §1, §6.1) ═══════════
+   One line per task: project dot+tag · title · age; actions appear on hover. Click anywhere = full editor. */
+.task{display:flex!important;flex-wrap:wrap;align-items:center;gap:0 8px;min-height:34px;padding:5px 10px!important;margin:0 0 3px!important;border-radius:9px!important;
+  background:rgba(14,26,31,.6)!important;border:1px solid rgba(57,199,223,.12)!important;box-shadow:none!important;cursor:pointer;position:relative}
+.task:hover{border-color:rgba(57,199,223,.4)!important;background:rgba(20,36,42,.8)!important}
+.task .name{order:1;flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px!important;font-weight:600;line-height:1.3;margin:0!important;padding:0!important;display:block!important}
+.task .topright{order:3;position:static!important;display:flex;align-items:center;gap:4px;margin-left:auto}
+.task .topright .reveal,.task .details,.task .next,.task .notepv,.task .plsrow,.task .dobadge,.task .row{display:none!important}
+.task .age{font:600 11px ui-monospace,Menlo,monospace;color:#64838d}
+.task .projbadge{background:transparent!important;border:0!important;color:#9fdbe7!important;font:700 11.5px ui-monospace,Menlo,monospace!important;padding:0 8px 0 0!important;margin:0!important;max-width:110px;overflow:hidden;text-overflow:ellipsis;vertical-align:baseline}
+.task .projbadge::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px}
+.task .projbadge.empty{display:none}
+.task .plsline{order:2;display:contents}
+.task .cardacts{display:none;position:absolute;right:46px;top:50%;transform:translateY(-50%);gap:3px;background:#0b161b;border:1px solid rgba(57,199,223,.3);border-radius:8px;padding:2px;z-index:3;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.task:hover .cardacts{display:flex}
+.task .cardbtn{font:600 11.5px -apple-system,system-ui,sans-serif!important;color:#bfe3ec!important;padding:4px 8px!important;border-radius:6px!important;border:0!important;background:transparent!important;white-space:nowrap}
+.task .cardbtn:hover{background:rgba(57,199,223,.16)!important;color:#eaf6fb!important}
+.task .cardbtn.done{color:#62e08a!important}.task .cardbtn.on{color:#39c7df!important}
+.task .cardbtn.callg{background:var(--callg)!important;color:var(--callink)!important}
+.task .cardbtn.whobtn{font-size:12px!important;max-width:150px}
+.task.blink{border-color:#39c7df!important}
+.modal,.backdrop .modal{background:#0b161b!important;color:#eaf6fb!important;border:1px solid rgba(57,199,223,.25)}
+.inp,.modal input,.modal textarea,.modal select{background:rgba(20,36,42,.85)!important;color:#eaf6fb!important;border:1px solid rgba(57,199,223,.22)!important}
 </style>
 </head>
 <body>
@@ -492,9 +516,10 @@ body::before{ opacity:.7 }
 <div id="grid"></div>
 <input type="file" id="picInput" accept="image/*" class="hidden">
 
+<script src="task-editor.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-11 15:55';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-12 11:20';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -1262,7 +1287,7 @@ function orderedPanels(){
   if(!ord.includes('frequent')){ const i=ord.indexOf('calls'); ord.splice(i<0?0:i+1,0,'frequent'); }   // ⭐ right under Calls
   if(!ord.includes('computer')){ const i=Math.max(ord.indexOf('morning'),ord.indexOf('afternoon'),ord.indexOf('calls')); ord.splice(i<0?0:i+1,0,'computer'); }   // 🖥 right after the call panels
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
-  return ord.filter(id=>def.includes(id) && id!=='backlog');   // backlog hidden
+  return ord.filter(id=>def.includes(id) && id!=='backlog' && id!=='nextup');   // backlog hidden · old ⏭ Next Up section merged into ⏫ Next Up
 }
 function reorderPanels(fromId,toId){
   if(fromId===toId)return;
@@ -2870,66 +2895,17 @@ function callInvitePanel(){
   p.addEventListener('drop',e=>{const dd=e.dataTransfer.getData('text/plain');if(dd&&dd.startsWith('panel:'))reorderPanels(dd.slice(6),'callinvite');});
   return p;
 }
-/* ✎ FULL TASK EDITOR (shared by iPhone + desktop) — every meaningful Airtable field, saved the moment it changes, each change undoable.
-   Choices come live from the Airtable schema (meta API, cached 24h; select options) PLUS every value already used in tasks.
-   Type a new value in any combo box → saved with typecast, so Airtable adds the new option. */
-const ED_SCHEMA_KEY='tb.schema.items';
-let edSchema=(()=>{ try{ const x=JSON.parse(localStorage.getItem(ED_SCHEMA_KEY)||'null'); return x&&Date.now()-x.at<864e5?x:null; }catch(e){ return null; } })();
-async function edLoadSchema(){ if(edSchema||!EDA.key()) return; try{
-    const r=await fetch('https://api.airtable.com/v0/meta/bases/'+EDA.base()+'/tables',{headers:{Authorization:'Bearer '+EDA.key()}}); if(!r.ok){ edSchema={at:Date.now(),choices:{}}; return; }
-    const d=await r.json(); const tb=(d.tables||[]).find(x=>x.id===EDA.table()||x.name==='Items'); const ch={};
-    (tb&&tb.fields||[]).forEach(f=>{ const c=f.options&&f.options.choices; if(c) ch[f.name]=c.map(x=>x.name); });
-    edSchema={at:Date.now(),choices:ch}; localStorage.setItem(ED_SCHEMA_KEY,JSON.stringify(edSchema)); }catch(e){ edSchema={at:Date.now(),choices:{}}; } }
-function edValues(field,key){ const set=new Set(((edSchema&&edSchema.choices[field])||[]).filter(Boolean));
-  EDA.all().forEach(t=>{ const v=t[key]; if(v) String(v).split(', ').forEach(x=>x&&set.add(x)); }); return [...set].sort((a,b)=>a.localeCompare(b)); }
-const ED_CATS=[['','🚫 None (no category)'],['morning','🌅 Morning call'],['afternoon','☀️ Afternoon call'],['calls','📞 Calls'],['incoming','📥 Incoming'],['@Computer – Claude','🖥 @Computer – Claude'],['Open Items','📋 Open Items'],['parked','🅿️ Parked']];
-function edCatOptions(){ const seen=new Set(ED_CATS.map(c=>c[0].toLowerCase())); const out=ED_CATS.slice();
-  [...((edSchema&&edSchema.choices.Section)||[]),...EDA.extraCats(),...EDA.all().map(t=>t.sectionRemote)].forEach(v=>{ const k=String(v||'').trim(); if(k&&!seen.has(k.toLowerCase())&&k!=='backlog'){ seen.add(k.toLowerCase()); out.push([k,'🗂 '+(EDA.catLabel(k)||k)]); } });
-  return out; }
-const edLocalDT=iso=>{ if(!iso) return ''; const d=new Date(iso); if(isNaN(d)) return ''; const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes()); };
-function edFormHTML(t){ const e=s=>EDA.esc(s==null?'':String(s)); const dl=(id,vals)=>`<datalist id="${id}">${vals.map(v=>`<option value="${e(v)}">`).join('')}</datalist>`;
-  const g=k=>EDA.get(t,k); const cat=EDA.cat(t);
-  const stat=edValues('Status','status'); ['Open','Done','Disposed'].forEach(x=>{ if(!stat.includes(x)) stat.push(x); });
-  const row=(lbl,inner)=>`<label class="edr"><span class="edl">${lbl}</span>${inner}</label>`;
-  return `<div class="edform">
-    ${row('Task',`<textarea class="edi" data-f="Task" rows="2">${e(g('Task'))}</textarea>`)}
-    ${row('Project',`<input class="edi" data-f="Project" list="edl-p" value="${e(g('Project'))}" placeholder="Pick or type a new one" autocomplete="off">`)}${dl('edl-p',edValues('Project','project'))}
-    ${row('Lead',`<input class="edi" data-f="SBLead" list="edl-l" value="${e(g('SBLead'))}" placeholder="Pick or type a new one" autocomplete="off">`)}${dl('edl-l',edValues('SBLead','lead'))}
-    ${row('Sub',`<input class="edi" data-f="Sub" list="edl-s" value="${e(g('Sub'))}" placeholder="Pick or type a new one" autocomplete="off">`)}${dl('edl-s',edValues('Sub','sub'))}
-    ${row('Category',`<select class="edi" data-cat>${edCatOptions().map(([v,l])=>`<option value="${e(v)}"${v.toLowerCase()===cat.toLowerCase()?' selected':''}>${e(l)}</option>`).join('')}<option value="__new">＋ New category…</option></select>`)}
-    ${row('Status',`<select class="edi" data-f="Status">${stat.map(v=>`<option${v===(g('Status')||'Open')?' selected':''}>${e(v)}</option>`).join('')}</select>`)}
-    ${row('Priority',`<input class="edi" data-f="Priority" list="edl-pr" value="${e(g('Priority'))}" autocomplete="off">`)}${dl('edl-pr',edValues('Priority','priorityRaw'))}
-    <div class="ed2">${row('Do date',`<input class="edi" type="date" data-f="DoDate" value="${e(g('DoDate'))}">`)}${row('Reminder',`<input class="edi" type="datetime-local" data-f="ReminderAt" value="${e(edLocalDT(g('ReminderAt')))}">`)}</div>
-    ${row('Next step',`<input class="edi" data-f="NextStep" value="${e(g('NextStep'))}">`)}
-    ${row('Notes',`<textarea class="edi" data-f="Notes" rows="4">${e(g('Notes'))}</textarea>`)}
-    <div class="ed2">${row('Call contact',`<input class="edi" data-f="CallContact" value="${e(g('CallContact')==='-'?'':g('CallContact'))}">`)}${row('Phone',`<input class="edi" type="tel" data-f="Phone" value="${e(g('Phone'))}">`)}</div>
-    <div class="edchk"><label><input type="checkbox" data-f="RoniFlag"${g('RoniFlag')?' checked':''}> ⭐ Flag</label><label><input type="checkbox" data-f="NextUp"${g('NextUp')?' checked':''}> ⏫ Next Up</label><label><input type="checkbox" data-f="TextExclude"${g('TextExclude')?' checked':''}> 🚫 Don’t text lead</label></div>
-  </div>`; }
-function edWire(root,t){
-  const conv=(f,el)=>{ if(el.type==='checkbox'){ if(f==='NextUp') return el.checked?EDA.today():null; return el.checked; }
-    let v=el.value.trim(); if(f==='ReminderAt') return v?new Date(v).toISOString():null; if(f==='DoDate') return v||null; if(f==='Priority'&&v&&!isNaN(+v)) return v; return v; };
-  root.querySelectorAll('[data-f]').forEach(el=>{ const f=el.dataset.f; let last=JSON.stringify(EDA.get(t,f)??'');
-    const commit=()=>{ const v=conv(f,el); const cur=JSON.stringify(v??''); if(cur===last) return; const prev=EDA.get(t,f);
-      if(f==='Task'&&!v){ el.value=prev; return; }
-      last=cur; const extra=(f==='NextUp'&&v)?{NextUpOrder:EDA.nextOrder()}:{}; EDA.set(t,f,v); if(extra.NextUpOrder!=null) EDA.set(t,'NextUpOrder',extra.NextUpOrder);
-      EDA.patch(t.id,Object.assign({[f]:v===''?null:v},extra)); EDA.refresh();
-      EDA.undo('✎ '+f+' saved',()=>{ EDA.set(t,f,prev); EDA.patch(t.id,{[f]:(prev===''||prev==null)?null:prev}); last=JSON.stringify(prev??''); if(el.type==='checkbox') el.checked=!!prev; else el.value=f==='ReminderAt'?edLocalDT(prev):(prev||''); EDA.refresh(); }); };
-    el.addEventListener('change',commit); if(el.tagName!=='SELECT'&&el.type!=='checkbox'&&el.type!=='date'&&el.type!=='datetime-local') el.addEventListener('blur',commit); });
-  const cs=root.querySelector('[data-cat]'); let lastCat=EDA.cat(t);
-  cs.addEventListener('change',()=>{ let v=cs.value; if(v==='__new'){ v=(prompt('New category name')||'').trim(); if(!v){ cs.value=lastCat; return; } const o=document.createElement('option'); o.value=v; o.textContent='🗂 '+v; o.selected=true; cs.insertBefore(o,cs.lastElementChild); }
-    const prevRaw=EDA.catRaw(t); lastCat=v; EDA.setCat(t,v); EDA.refresh();
-    EDA.undo('✎ Category saved',()=>{ EDA.restoreCat(t,prevRaw); cs.value=EDA.cat(t); lastCat=cs.value; EDA.refresh(); }); });
-}
 
 // adapter: desktop board → editor engine
 const ED_KEYS={Task:'name',Project:'project',SBLead:'lead',Sub:'sub',Status:'status',Priority:'priorityRaw',DoDate:'doDate',ReminderAt:'remindAt',NextStep:'nextStepRemote',Notes:'notesRemote',CallContact:'callWho',Phone:'phoneRemote',RoniFlag:'flag',NextUp:'nextUp',TextExclude:'textEx',NextUpOrder:'nuOrder'};
-const EDA={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.tableId, esc, all:()=>tasks, today:todayISO,
+const TE_CATS=[['',''],['morning',''],['afternoon',''],['calls',''],['incoming',''],['focus',''],['@Computer – Claude',''],['Open Items',''],['parked','']];
+const EDA=window.TE={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.tableId, esc, all:()=>tasks, today:todayISO,
   extraCats:()=>[...BUCKETS.map(b=>b.id),...((meta.customCats||[]).map(c=>c.id))], catLabel:k=>{ const b=BUCKETS.find(x=>x.id===k)||(meta.customCats||[]).find(x=>x.id===k); return b?b.name.replace(/^\S+\s/,''):''; },
   get:(t,f)=>{ if(f==='DoDate') return doDateOf(t); if(f==='NextStep') return A(t.id).nextStep||t.nextStepRemote||''; if(f==='Phone') return phoneFor(t)||''; const v=t[ED_KEYS[f]]; return v==null?'':v; },
   set:(t,f,v)=>{ const a=A(t.id); t[ED_KEYS[f]]=(v==null?'':v); if(f==='DoDate') a.doDate=v||''; if(f==='NextStep') a.nextStep=v||''; if(f==='Phone') a.phone=v||''; if(f==='Priority') t.priorityRemote=+v||0; if(f==='NextUp'&&!v) t.nuOrder=null; saveAug(); },
   patch:(id,f)=>atPatch(id,f), nextOrder:()=>nextUpListD().reduce((m,x)=>Math.max(m,x.nuOrder||0),0)+10,
-  refresh:()=>render(), undo:(msg,fn)=>{ pushUndo(msg,fn); toast(msg+' — ↶ Undo in the top bar'); },
-  cat:t=>{ const s=sectionOf(t)||''; return s==='backlog'?'':((ED_CATS.find(c=>c[0].toLowerCase()===s.toLowerCase())||[s])[0]); },
+  refresh:()=>render(), undo:(msg,fn)=>{ pushUndo(msg,fn); toast('✎ '+msg+' · ↶ Undo in the top bar'); }, done:t=>markDone(t), snooze:(t,d)=>{ const ds=new Date(Date.now()+d*864e5); const v=ds.getFullYear()+'-'+String(ds.getMonth()+1).padStart(2,'0')+'-'+String(ds.getDate()).padStart(2,'0'); A(t.id).snoozeUntil=ds.getTime(); setDoDate(t.id,v); toast('Snoozed to '+v); render(); },
+  cat:t=>{ const s=sectionOf(t)||''; return s==='backlog'?'':((TE_CATS.find(c=>c[0].toLowerCase()===s.toLowerCase())||[s])[0]); },
   catRaw:t=>({sec:A(t.id).section,sr:t.sectionRemote||'',m:t.slotRemote||'',ty:t.typeRemote||'',tl:A(t.id).type}),
   setCat:(t,v)=>{ const a=A(t.id); a.secAt=Date.now(); const f={};
     if(v==='morning'||v==='afternoon'){ a.section=v; t.slotRemote=v; t.sectionRemote=''; Object.assign(f,{MeetingSlot:v,Section:''}); }
@@ -2938,16 +2914,12 @@ const EDA={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.table
     else { const id=v.toLowerCase(); a.section=id; t.sectionRemote=id; t.slotRemote=''; Object.assign(f,{Section:v,MeetingSlot:''}); }
     saveAug(); atPatch(t.id,f); },
   restoreCat:(t,p)=>{ const a=A(t.id); a.section=p.sec; a.secAt=Date.now(); a.type=p.tl; t.sectionRemote=p.sr; t.slotRemote=p.m; t.typeRemote=p.ty; saveAug(); atPatch(t.id,Object.assign({Section:p.sr,MeetingSlot:p.m},p.ty==='call'?{Type:'call'}:{})); } };
-function editTaskD(t){ edLoadSchema().then(()=>{});
-  const bd=document.createElement('div'); bd.className='backdrop';
-  bd.innerHTML='<div class="modal edmodal"><h3>✎ Edit task</h3>'+edFormHTML(t)+'<div class="modal-actions"><button class="btn primary" data-x>Done</button></div></div>';
-  bd.addEventListener('click',e=>{ if(e.target===bd) bd.remove(); }); bd.querySelector('[data-x]').onclick=()=>{ document.activeElement&&document.activeElement.blur(); setTimeout(()=>bd.remove(),0); };
-  document.body.appendChild(bd); edWire(bd,t); }
+function editTaskD(t){ TaskEditor.open(t); }
 /* ⏫ Next Up (Airtable NextUp date + NextUpOrder — same list as the iPhone; carries over until done/removed)
    ✨ Suggested (SuggestedDate=today + SuggestReason, written once a day by the suggested-next-up scheduled task) */
-function nextUpListD(){ return tasks.filter(t=>t.status==='Open'&&t.nextUp).sort((a,b)=>((a.nuOrder??1e9)-(b.nuOrder??1e9))||String(a.nextUp).localeCompare(String(b.nextUp))); }
+function nextUpListD(){ return tasks.filter(t=>t.status==='Open'&&(t.nextUp||sectionOf(t)==='nextup')).sort((a,b)=>((a.nuOrder??1e9)-(b.nuOrder??1e9))||String(a.nextUp).localeCompare(String(b.nextUp))); }
 function setNextUpD(t,on){ if(on){ t.nextUp=todayISO(); t.nuOrder=nextUpListD().reduce((m,x)=>Math.max(m,x.nuOrder||0),0)+10; atPatch(t.id,{NextUp:t.nextUp,NextUpOrder:t.nuOrder}); toast('⏫ Added to Next Up'); }
-  else { t.nextUp=''; t.nuOrder=null; atPatch(t.id,{NextUp:null,NextUpOrder:null}); toast('Removed from Next Up'); } render(); }
+  else { t.nextUp=''; t.nuOrder=null; atPatch(t.id,{NextUp:null,NextUpOrder:null}); if(sectionOf(t)==='nextup') unfile(t,true); toast('Removed from Next Up'); } render(); }
 function nuMoveD(t,dir){ const L=nextUpListD(); const i=L.indexOf(t), j=i+dir; if(i<0||j<0||j>=L.length) return; [L[i],L[j]]=[L[j],L[i]];
   const ups=[]; L.forEach((x,k)=>{ if(x.nuOrder!==k*10){ x.nuOrder=k*10; ups.push({id:x.id,fields:{NextUpOrder:k*10}}); } }); atPatchMany(ups); render(); }
 function nuPanelShell(id,title,stat){ const p=document.createElement('div'); p.className='panel'; p.dataset.section=id;
@@ -2957,7 +2929,7 @@ function nuPanelShell(id,title,stat){ const p=document.createElement('div'); p.c
 function nuRowD(t,sub,btns){ const r=document.createElement('div'); r.className='fqrow';
   r.innerHTML='<div class="fqi"><b>'+esc(cleanName(t))+'</b><span'+(t.sugWhy&&sub===t.sugWhy?' style="color:#b9a8f0;white-space:normal"':'')+'>'+esc(sub||'')+'</span></div>';
   btns.forEach(([txt,title,fn,cls])=>{ const b=document.createElement('button'); b.className='cardbtn'+(cls?' '+cls:''); b.textContent=txt; b.title=title; b.onclick=e=>{ e.stopPropagation(); fn(); }; r.appendChild(b); }); return r; }
-function nextUpPanel(){ const L=nextUpListD(); const {p,body}=nuPanelShell('nupicks','⏫ Next Up — today',L.length+' picked');
+function nextUpPanel(){ const L=nextUpListD(); const {p,body}=nuPanelShell('nupicks','Next Up',L.length+' picked');
   if(!L.length) body.innerHTML='<div class="note" style="padding:6px">Hit ⏫ on any card to line it up for today. Picks stay until done or removed.</div>';
   L.forEach((t,i)=>body.appendChild(nuRowD(t,[t.project,t.lead].filter(Boolean).join(' · '),[...(i?[['↑','Move up',()=>nuMoveD(t,-1)]]:[]),...(i<L.length-1?[['↓','Move down',()=>nuMoveD(t,1)]]:[]),['✓','Done',()=>markDone(t),'done'],['✕','Remove from Next Up',()=>setNextUpD(t,false)]])));
   return p; }
@@ -3147,6 +3119,7 @@ function taskEl(t,sectionId){
     `</div>`;
   const nm=el.querySelector('.name'); nm.style.cursor='pointer'; nm.title='Edit';
   nm.onclick=e=>{e.stopPropagation();openDetail(t);};
+  el.addEventListener('click',e=>{ if(bulkMode||e.target.closest('button,a,input,textarea,select')) return; openDetail(t); });
   // Project ID badge to the LEFT of the description text — shown everywhere, including the searched/filtered pane.
   { const pb=document.createElement('button'); pb.className='projbadge'+(t.project?'':' empty'); pb.textContent=t.project||'＋P';
     pb.title=t.project?('Project: '+t.project+' — click to change'):'Set project';
@@ -3154,10 +3127,14 @@ function taskEl(t,sectionId){
   const np=el.querySelector('.notepv'); if(np){ np.style.cursor='pointer'; np.onclick=e=>{e.stopPropagation();editNotes(t);}; }
   // Visible action row on the card FACE — left-aligned, tight, below the name/tags.
   const acts=document.createElement('div'); acts.className='cardacts';
-  const act=(txt,cls,title,fn)=>{const b=document.createElement('button');b.className='cardbtn'+(cls?' '+cls:'');b.textContent=txt;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};acts.appendChild(b);return b;};
+  const ACTL={'🔔':'Ring','🔕':'Ring','✎':'Edit','⏫':'Next up','📌':'Pin','🅿️':'Park','⬇':'Lower','👍':'Keep','⊘':'Remove','＋#':'Who?'};
+  const act=(txt,cls,title,fn)=>{const b=document.createElement('button');b.className='cardbtn'+(cls?' '+cls:'');b.textContent=ACTL[txt]||txt;b.title=title;b.onclick=e=>{e.stopPropagation();fn();};acts.appendChild(b);return b;};
   act('✓','done','Mark done',()=>markDone(t));
   act(a.blink?'🔔':'🔕', a.blink?'on':'', a.blink?'Ringing — tap to silence':'Ring bell (jumps to top)', ()=>{const aa=A(t.id); aa.blink=!aa.blink; if(aa.blink)bumpTop(t.id); saveAug(); render();});
   act('✎','','Edit all fields',()=>editTaskD(t));
+  act('→ AM',sectionOf(t)==='morning'?'on':'','Move to the morning call',()=>{ if(sectionOf(t)!=='morning') setSlot(t.id,'morning'); });
+  act('→ PM',sectionOf(t)==='afternoon'?'on':'','Move to the afternoon call',()=>{ if(sectionOf(t)!=='afternoon') setSlot(t.id,'afternoon'); });
+  act('Snooze','','Snooze 10 days',()=>snoozeTask(t.id));
   act('⏫', t.nextUp?'on':'', t.nextUp?'In Next Up — tap to remove':'Add to Next Up (today)', ()=>setNextUpD(t,!t.nextUp));
   act('📌', a.pin?'on':'', a.pin?'Pinned — survives daily reset':'Pin — keep until done', ()=>{const aa=A(t.id);aa.pin=!aa.pin;saveAug();render();toast(aa.pin?'📌 Pinned':'Unpinned');});
   act('🅿️','','Park — hide it until you restore it',()=>parkTask(t.id));
@@ -3169,8 +3146,8 @@ function taskEl(t,sectionId){
   if(sectionOf(t) && sectionOf(t)!=='backlog') act('⊘','','Remove from category ('+sectionOf(t)+') — stays open',()=>unfile(t));
   // 📞 Calls pane: one-tap Call / Text, matched to Contacts (or Add number)
   if(sectionId==='calls'){ const m=callMatchD(t);
-    if(m){ const c=document.createElement('a'); c.className='cardbtn'; c.href='tel:'+m.phone.replace(/[^\d+]/g,''); c.textContent='📞'; c.title='Call '+(m.who||m.phone)+' '+m.phone; c.onclick=e=>e.stopPropagation(); acts.appendChild(c);
-      const x=document.createElement('a'); x.className='cardbtn'; x.href='sms:'+m.phone.replace(/[^\d+]/g,''); x.textContent='💬'; x.title='Text '+(m.who||m.phone); x.onclick=e=>e.stopPropagation(); acts.appendChild(x); }
+    if(m){ const c=document.createElement('a'); c.className='cardbtn callg'; c.href='tel:'+m.phone.replace(/[^\d+]/g,''); c.textContent='Call'; c.title='Call '+(m.who||m.phone)+' '+m.phone; c.onclick=e=>e.stopPropagation(); acts.appendChild(c);
+      const x=document.createElement('a'); x.className='cardbtn'; x.href='sms:'+m.phone.replace(/[^\d+]/g,''); x.textContent='Text'; x.title='Text '+(m.who||m.phone); x.onclick=e=>e.stopPropagation(); acts.appendChild(x); }
     else act('＋#','','Pick who to call',()=>pickCallContactD(t));
     { const wb=document.createElement('button'); wb.className='cardbtn whobtn'; wb.innerHTML=m?(m.sure?esc(m.who||m.phone)+' <i>✎</i>':'<b>≈</b> '+esc(m.who||m.phone)+' <small>tap to fix</small>'):'👤 pick contact'; wb.classList.add(m?(m.sure?'ok':'guess'):'none'); wb.title='Change who to call'; wb.onclick=e=>{ e.stopPropagation(); pickCallContactD(t); }; acts.appendChild(wb); } }
   const mas=document.createElement('div'); mas.className='mas';
@@ -3665,6 +3642,7 @@ function sendEmail(t){
 
 /* ---------- Task detail / edit ---------- */
 function openDetail(t,guess){
+  if(!guess&&window.TaskEditor){ TaskEditor.open(t); return; }   // one shared full editor everywhere (task-editor.js)
   const a=A(t.id); guess=guess||{};
   const gp=t.project||guess.project||'', gl=t.lead||guess.lead||'', gs=t.sub||'';
   const uniq=dim=>[...new Set(tasks.map(x=>x[dim]).filter(Boolean))].sort();
@@ -4024,6 +4002,7 @@ function renderNowNext(){ const el=document.getElementById('meetNN'); if(!el) re
   // calls due today (DoDate ≤ today) → CALL chip with one-tap dial
   const due=orderRows(tasks.filter(t=>t.status==='Open'&&visible(t)&&notSnoozed(t)&&sectionOf(t)==='calls'),'calls').slice(0,2);   // = top 2 of the Calls panel, in drag order
   due.forEach(t=>{ const m=callMatchD(t); el.insertAdjacentHTML('beforeend','<span class="nnchip" title="'+esc(cleanName(t))+'"><b>CALL</b> '+esc(cleanName(t).slice(0,22))+' <a href="#" class="whobtn '+(m?(m.sure?'ok':'guess'):'none')+'" data-whod="'+t.id+'">'+(m?(m.sure?esc(m.who||m.phone)+' <i>✎</i>':'<b>≈</b> '+esc(m.who||m.phone)+' <small>tap to fix</small>'):'👤 pick contact')+'</a>'+(m?' <a class="joinbtn callg" href="tel:'+m.phone.replace(/[^\d+]/g,'')+'">📞</a><a class="joinbtn" href="sms:'+m.phone.replace(/[^\d+]/g,'')+'">💬</a>':'')+'</span>'); }); }
+if(window.TaskEditor) TaskEditor.plain('.panel-head h3,.secchip,.chip-f,.pchip,.bucket-btn,.modal h3,.nnchip>b');
 document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('[data-whod]'); if(!a) return; e.preventDefault(); e.stopPropagation(); const t=tasks.find(x=>x.id===a.dataset.whod); if(t) pickCallContactD(t); },true);
 // ⭐ Contact usage (same Airtable ContactUsage table the iPhone's Frequent chips read): every tel:/sms: click on the board counts.
 const CU_TABLE='tblxPMZa78C8n0U4t', CU_HALF=14*86400000;
