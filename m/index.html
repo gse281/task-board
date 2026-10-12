@@ -326,6 +326,12 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .cxbtns .cxb{height:44px;min-height:0;display:inline-flex;align-items:center;justify-content:center;padding:0 14px;box-sizing:border-box;line-height:1}
 .cxbtns .cxb:not(.cxcall){width:44px;padding:0}
 .cxrow.more{border-top:0;padding-top:0}
+/* group text: select multiple recipients */
+.cxsel{flex:none;width:44px;height:44px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);font-size:20px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.cxsel.on{background:var(--accent);border-color:var(--accent);color:#07141a}
+.cxgrp{position:sticky;top:0;z-index:3;display:flex;gap:8px;align-items:center;background:var(--bg);padding:6px 0 10px}
+.cxgrpt{flex:1;display:flex;align-items:center;justify-content:center;min-height:50px;border-radius:14px;background:var(--accent);color:#07141a;font-weight:800;font-size:16px;text-decoration:none}
+.cxgrpx{flex:none;width:50px;height:50px;border-radius:14px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);font-size:18px}
 /* 📅 Meetings */
 .mtgh{font-weight:800;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 4px}
 .mtg{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
@@ -666,7 +672,7 @@ body{ background:radial-gradient(130% 120% at 50% 16%, #0d1920 0%, #0a1216 55%, 
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-12 12:22';   // stamped by deploy.sh
+const BUILD='2026-10-12 13:01';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -1208,14 +1214,18 @@ function wireLookup(root,onSaved){
         close(); onSaved?onSaved(nm,ph):(useContact(nm,ph),toast('⭐ Saved '+nm+' to Frequent')); }; }); }); }
 function wireDialer(root,keepQ){ const ci=root.querySelector('.cxsearch'), cr=root.querySelector('[data-cxresults]'); if(!ci||!cr) return;
   if(keepQ) ci.value=homeQ;
+  let cxGroup={};   // selected phone digits -> name, for texting several people at once
+  const grpBar=()=>{ const k=Object.keys(cxGroup); return k.length?'<div class="cxgrp"><a class="cxgrpt" href="sms:'+k.join(',')+'" aria-label="Text the selected people">💬 Text '+k.length+' selected</a><button class="cxgrpx" data-grpclear aria-label="Clear selection">✕</button></div>':''; };
+  function wireGrp(){ cr.querySelectorAll('[data-grp]').forEach(b=>b.onclick=ev=>{ ev.preventDefault(); ev.stopPropagation(); const d=b.dataset.grp; if(cxGroup[d])delete cxGroup[d]; else cxGroup[d]=b.dataset.grpn||d; buzz(5); drawCx(); });
+    const gc=cr.querySelector('[data-grpclear]'); if(gc)gc.onclick=()=>{ cxGroup={}; drawCx(); }; }
   const drawCx=()=>{ const q=ci.value.trim(); if(keepQ) homeQ=ci.value;
-    if(!q){ cr.innerHTML=(keepQ?'':freqHTML())+(keepQ?'':'<div class="cxhint">'+(contacts.length?contacts.length+' contacts · type a name to call':'Loading contacts…')+'</div>'); wireFreq(cr,drawCx); return; }
+    if(!q){ cr.innerHTML=grpBar()+(keepQ?'':freqHTML())+(keepQ?'':'<div class="cxhint">'+(contacts.length?contacts.length+' contacts · type a name — ＋ adds to a group text':'Loading contacts…')+'</div>'); wireFreq(cr,drawCx); wireGrp(); return; }
     const hits=searchContacts(q).slice(0,keepQ?8:40);
-    cr.innerHTML=hits.length?hits.map(c=>(c.p||[]).map((p,i)=>{ const d=p.replace(/[^\d+]/g,'');
+    cr.innerHTML=grpBar()+(hits.length?hits.map(c=>(c.p||[]).map((p,i)=>{ const d=p.replace(/[^\d+]/g,''); const sel=!!cxGroup[d];
         return '<div class="cxrow'+(i?' more':'')+'"><div class="cxinfo">'+(i?'':'<b>'+esc(c.n)+'</b>'+(c.o?'<span class="cxsub">'+esc(c.o)+'</span>':''))+'<span class="cxp">'+esc(p)+'</span></div>'
-          +'<div class="cxbtns"><a class="cxb cxcall" href="tel:'+esc(d)+'"'+cuA(c.n)+'>📞 Call</a><a class="cxb" href="sms:'+esc(d)+'"'+cuA(c.n)+' aria-label="Text">💬</a></div></div>'; }).join('')).join('')
-      :'<div class="cxhint">'+(contacts.length?'No match':'Loading contacts…')+'</div>';
-    cr.insertAdjacentHTML('beforeend',lookupHTML(q,!hits.length)); wireLookup(cr,null); };
+          +'<div class="cxbtns"><button class="cxsel'+(sel?' on':'')+'" data-grp="'+esc(d)+'" data-grpn="'+esc(c.n)+'" aria-label="Add to group text">'+(sel?'✓':'＋')+'</button><a class="cxb cxcall" href="tel:'+esc(d)+'"'+cuA(c.n)+'>📞 Call</a><a class="cxb" href="sms:'+esc(d)+'"'+cuA(c.n)+' aria-label="Text">💬</a></div></div>'; }).join('')).join('')
+      :'<div class="cxhint">'+(contacts.length?'No match':'Loading contacts…')+'</div>');
+    cr.insertAdjacentHTML('beforeend',lookupHTML(q,!hits.length)); wireLookup(cr,null); wireGrp(); };
   ci.addEventListener('input',drawCx); drawCx(); if(!contacts.length&&contactsTry()) loadContacts().then(drawCx);
   root.querySelectorAll('[data-cxclear]').forEach(b=>b.onclick=()=>{ ci.value=''; drawCx(); ci.focus(); });
 }
