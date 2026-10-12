@@ -16,7 +16,8 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .top>*{pointer-events:auto}
 .top .greet{font:700 12px ui-monospace,Menlo,monospace;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);white-space:nowrap}
 .top .sum{flex:1;min-width:0;text-align:center;font:600 12px ui-monospace,Menlo,monospace;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.top .sum b{color:var(--cyan)} .top .sum .att{color:#8fe4f4}
+.top .sum b{color:var(--cyan)} .top .sum .att{color:#8fe4f4;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.top .sum .att:hover{color:#cdf3ff}
 .top .cmdbtn{flex:none;border:1px solid var(--line);border-radius:999px;padding:6px 13px;font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--dim)}
 .top .cmdbtn:hover{color:var(--cyan);border-color:var(--cyan)}
 .top .clk{flex:none;font-size:15px;color:var(--ink);min-width:66px;text-align:right}
@@ -191,7 +192,7 @@ const PAL=['#39c7df','#5eead4','#67E8F9','#60A5FA','#A78BFA','#818CF8','#34D399'
 const projColor=p=>{ if(!p) return '#5e7a84'; let h=0; for(const c of String(p).toUpperCase()) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; };
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),1700); }
 
-const CAT={ focus:['◎','Now / Focus'], priority:['▲','Priority'], meeting:['▣','Meeting'], respond:['↩','Respond'],
+const CAT={ focus:['◎','Now / Focus'], attention:['△','Need Attention'], priority:['▲','Priority'], meeting:['▣','Meeting'], respond:['↩','Respond'],
   calls:['☎︎','Calls'], morning:['☀︎','Morning'], afternoon:['◑','Afternoon'], incoming:['▽','Incoming'],
   nextup:['⇥','Next Up'], bigticket:['◆','Big Tix'], sunday:['◉','Sunday'], backlog:['▤','Backlog'], still:['○','Still Open'] };
 const ORBIT=['priority','respond','calls','nextup','bigticket','sunday','backlog','still'];   // 8 bubbles in the ring
@@ -206,6 +207,7 @@ function _compute(key){ const L=sec=>tasks.filter(t=>live(t)&&sectionOf(t)===sec
     case 'priority': return applyOrder('priority', tasks.filter(t=>live(t)&&!A(t.id).notPriority).sort((a,b)=>score(b)-score(a)).slice(0,20));
     case 'incoming': return applyOrder('incoming', L('incoming'));
     case 'still': return applyOrder('still', tasks.filter(t=>live(t)&&daysOpen(t)>=10&&!t.project&&!t.lead).sort((a,b)=>daysOpen(b)-daysOpen(a)));
+    case 'attention': return tasks.filter(t=>live(t)&&daysOpen(t)>=14).sort((a,b)=>daysOpen(b)-daysOpen(a));
     case 'morning': case 'afternoon': case 'calls': return applyOrder(key, L(key).sort((a,b)=>daysOpen(a)-daysOpen(b)));
     case 'respond': return respond;
     case 'meeting': return todayMtgItems();
@@ -272,9 +274,10 @@ function demoData(){ const mk=(n,p,sec,days,pri)=>({id:'d'+Math.random(),created
 /* ===== radial render (no SVG / canvas / blur / animation) ===== */
 function renderAll(){ clearIF(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); }
 function renderHeader(){ const h=new Date().getHours(); $('#greet').textContent=(h<12?'GOOD MORNING':h<17?'GOOD AFTERNOON':'GOOD EVENING')+' ◎';
-  const open=tasks.filter(live).length; let att=0; ORBIT.concat(['morning','afternoon','incoming']).forEach(k=>{ if(hasStale(itemsFor(k))) att++; });
+  const open=tasks.filter(live).length; const att=itemsFor('attention').length;
   const nn=nowNext(todayISO()); const m=nn.now||nn.next; let nx=''; if(m){ const w=String(m.when||'').replace(/\s*[–—].*/,'').trim(), ti=String(m.title||'').trim().slice(0,20); if(w||ti) nx=(nn.now?'NOW ':'NEXT ')+[w,ti].filter(Boolean).join(' '); }
-  $('#sum').innerHTML='<b>'+open+'</b> open'+(att?' · <span class="att">'+att+' need attention</span>':'')+(nx?' · '+esc(nx):''); }
+  $('#sum').innerHTML='<b>'+open+'</b> open'+(att?' · <span class="att" id="attLink">'+att+' need attention</span>':'')+(nx?' · '+esc(nx):'');
+  const al=$('#attLink'); if(al) al.onclick=()=>openList('attention'); }
 function renderCore(){ const f=itemsFor('focus'); const it=f[0]||null; const core=$('#core');
   core.innerHTML='<div class="cl">◎ Now / Focus</div><div class="cc">'+(f.length?f.length+' in focus':'clear')+'</div>'+
     (it?(it.project?'<span class="proj">'+esc(it.project.split(',')[0])+'</span>':'')+'<div class="cit">'+esc(cleanName(it))+'</div>':'<div class="cempty">Nothing in focus — tap a task → ◎ to zero in.</div>');
@@ -289,7 +292,8 @@ function miniRow(t){ return '<div class="lrow" data-open="'+t.id+'"><span class=
 function miniList(key,n){ const items=itemsFor(key); return {count:items.length, html:(items.length?items.slice(0,n).map(miniRow).join(''):'<div class="none">—</div>')}; }
 function renderCorners(){
   const m=miniList('morning',3), a=miniList('afternoon',3);
-  $('#cTL').innerHTML='<div class="pane"><div class="subrow"><div><h5 data-list="morning">☀︎ Morning ('+m.count+')</h5>'+m.html+'</div><div><h5 data-list="afternoon">◑ Afternoon ('+a.count+')</h5>'+a.html+'</div></div></div>';
+  $('#cTL').innerHTML='<div class="pane"><div class="ph" data-list="morning">☀︎ Morning<span class="pn">'+m.count+'</span></div>'+m.html+'</div>'+
+    '<div class="pane"><div class="ph" data-list="afternoon">◑ Afternoon<span class="pn">'+a.count+'</span></div>'+a.html+'</div>';
   const nn=nowNext(todayISO()); const mt=nn.now||nn.next, nx=nn.now&&nn.next?nn.next:null; let mh='';
   if(mt){ const h=joinHref(mt), tel=h.indexOf('tel:')===0;
     mh='<div class="mtime">'+esc(mt.when||'')+(nn.now?'<span class="nowtag">NOW</span>':'')+'</div><div class="mtitle">'+esc(mt.title||'(untitled)')+'</div>'+(mt.location?'<div class="mloc">📍 '+esc(mt.location)+'</div>':'')+
