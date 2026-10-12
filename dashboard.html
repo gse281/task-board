@@ -544,7 +544,7 @@ body::before{ opacity:.7 }
 <script src="task-editor.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-12 12:21';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-12 12:22';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -1382,7 +1382,8 @@ function render(){
   renderBanner();
   const tc=document.getElementById('taskCount'); if(tc)tc.textContent='📋 '+tasks.filter(t=>t.status==='Open').length+' open';
   const gl=document.getElementById('glance'); if(gl){ const openN=tasks.filter(t=>t.status==='Open').length; const att=tasks.filter(t=>t.status==='Open'&&daysOpen(t)>=14).length;
-    let nx=''; try{ const d=new Date(), day=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); const nn=nowNext(calendar,day); const m=nn.now||nn.next; if(m) nx=(nn.now?'NOW ':'NEXT ')+String(m.when||'').replace(/\s*[–—].*/,'')+' '+String(m.title||'').slice(0,20); }catch(e){}
+    let nx=''; try{ const d=new Date(), day=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); const nn=nowNext(calendar,day); const m=nn.now||nn.next;
+      if(m){ const w=String(m.when||'').replace(/\s*[–—].*/,'').trim(), ti=String(m.title||'').trim().slice(0,22); if(w||ti) nx=(nn.now?'NOW ':'NEXT ')+[w,ti].filter(Boolean).join(' '); } }catch(e){}
     gl.innerHTML='◎ <b>'+openN+'</b> open'+(att?' · <span class="att">'+att+' need attention</span>':'')+(nx?' · '+esc(nx):''); }
   const board=document.getElementById('board'); board.innerHTML='';
   const filt=document.getElementById('filters');
