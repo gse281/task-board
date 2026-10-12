@@ -191,9 +191,9 @@ const PAL=['#39c7df','#5eead4','#67E8F9','#60A5FA','#A78BFA','#818CF8','#34D399'
 const projColor=p=>{ if(!p) return '#5e7a84'; let h=0; for(const c of String(p).toUpperCase()) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; };
 function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>t.classList.remove('show'),1700); }
 
-const CAT={ focus:['◎','Now / Focus'], priority:['▲','Priority'], meeting:['◷','Meeting'], respond:['↩','Respond'],
+const CAT={ focus:['◎','Now / Focus'], priority:['▲','Priority'], meeting:['▣','Meeting'], respond:['↩','Respond'],
   calls:['☎︎','Calls'], morning:['☀︎','Morning'], afternoon:['◑','Afternoon'], incoming:['▽','Incoming'],
-  nextup:['⇥','Next Up'], bigticket:['◆','Big Tix'], sunday:['◉','Sunday'], backlog:['▤','Backlog'], still:['⧗','Still Open'] };
+  nextup:['⇥','Next Up'], bigticket:['◆','Big Tix'], sunday:['◉','Sunday'], backlog:['▤','Backlog'], still:['○','Still Open'] };
 const ORBIT=['priority','respond','calls','nextup','bigticket','sunday','backlog','still'];   // 8 bubbles in the ring
 const SECTIONS=[['focus','◎ Focus'],['morning','☀︎ Morning'],['afternoon','◑ Afternoon'],['calls','☎︎ Calls'],['nextup','⇥ Next Up'],['bigticket','◆ Big Tix'],['sunday','◉ Sunday'],['backlog','▤ Backlog'],['parked','⊘ Parked']];
 
@@ -289,21 +289,21 @@ function miniRow(t){ return '<div class="lrow" data-open="'+t.id+'"><span class=
 function miniList(key,n){ const items=itemsFor(key); return {count:items.length, html:(items.length?items.slice(0,n).map(miniRow).join(''):'<div class="none">—</div>')}; }
 function renderCorners(){
   const m=miniList('morning',3), a=miniList('afternoon',3);
-  $('#cTL').innerHTML='<div class="pane"><div class="subrow"><div><h5 data-list="morning">🌅 Morning ('+m.count+')</h5>'+m.html+'</div><div><h5 data-list="afternoon">☀️ Afternoon ('+a.count+')</h5>'+a.html+'</div></div></div>';
+  $('#cTL').innerHTML='<div class="pane"><div class="subrow"><div><h5 data-list="morning">☀︎ Morning ('+m.count+')</h5>'+m.html+'</div><div><h5 data-list="afternoon">◑ Afternoon ('+a.count+')</h5>'+a.html+'</div></div></div>';
   const nn=nowNext(todayISO()); const mt=nn.now||nn.next, nx=nn.now&&nn.next?nn.next:null; let mh='';
   if(mt){ const h=joinHref(mt), tel=h.indexOf('tel:')===0;
     mh='<div class="mtime">'+esc(mt.when||'')+(nn.now?'<span class="nowtag">NOW</span>':'')+'</div><div class="mtitle">'+esc(mt.title||'(untitled)')+'</div>'+(mt.location?'<div class="mloc">📍 '+esc(mt.location)+'</div>':'')+
        (h?'<a class="mjoin'+(tel?' tel':'')+'" href="'+esc(h)+'"'+(tel?'':' target="_blank" rel="noopener"')+'>'+(tel?'📞 Call':'▶ Join')+'</a>':'')+(nx?'<div class="mnext">Next · '+esc(nx.when||'')+' <b>'+esc(String(nx.title||'').slice(0,24))+'</b></div>':'');
   } else mh='<div class="none">No meetings left today.</div>';
   const inc=miniList('incoming',3);
-  $('#cTR').innerHTML='<div class="pane meet'+(nn.now?' urgent':'')+'"><div class="ph" data-list="meeting">📅 Next Meeting<span class="pn">'+nn.L.length+'</span></div>'+mh+'</div>'+
-    '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">📥 Incoming<span class="pn">'+inc.count+'</span></div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="➕ Add incoming…"><button id="incAddBtn">Add</button></div></div>';
+  $('#cTR').innerHTML='<div class="pane meet'+(nn.now?' urgent':'')+'"><div class="ph" data-list="meeting">▣ Next Meeting<span class="pn">'+nn.L.length+'</span></div>'+mh+'</div>'+
+    '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span></div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div>';
   const td=todayISO(); const days=wx.filter(w=>w.date>=td).slice(0,7);
   const cell=w=>{ const nm=w.date===td?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(w.date+'T12:00:00').getDay()]; const tc=w.hi>=90?'hot':w.hi<=32?'cold':''; const amt=w.pr>0.02?w.pr.toFixed(2).replace(/^0/,'')+'"':'';
     return '<div class="wxc'+(w.date===td?' today':'')+(w.pr>0.08?' wet':'')+'"><div class="wd">'+nm+'</div><div class="we">'+wxEmoji(w.code)+'</div><div class="wt '+tc+'">'+w.hi+'°</div><div class="wp">'+amt+'</div></div>'; };
-  $('#cBL').innerHTML='<div class="pane"><div class="ph" style="cursor:default">🌤 Weather<span class="pn">NYC</span></div>'+(days.length?'<div class="wxstrip">'+days.map(cell).join('')+'</div>':'<div class="none">Loading…</div>')+'</div>';
+  $('#cBL').innerHTML='<div class="pane"><div class="ph" style="cursor:default">☁︎ Weather<span class="pn">NYC</span></div>'+(days.length?'<div class="wxstrip">'+days.map(cell).join('')+'</div>':'<div class="none">Loading…</div>')+'</div>';
   const day=noteDay||todayISO(), isToday=day===todayISO(); const prev=$('#noteTa'), keep=(prev&&prev.dataset.day===day)?prev.value:null;
-  $('#cBR').innerHTML='<div class="pane notes"><div class="ph" style="cursor:default">🗒 '+(isToday?"Today's Notes":'Notes')+'<span class="nnav"><button data-dp>‹</button><span class="nlbl'+(isToday?'':' past')+'">'+esc(dnLabel(day))+'</span><button data-dn '+(isToday?'disabled':'')+'>›</button>'+(isToday?'':'<button data-dt>Today</button>')+'</span></div><textarea id="noteTa" placeholder="'+(isToday?'Jot anything — new page every day. ‹ for yesterday.':'Nothing on '+esc(dnLabel(day)))+'">'+(keep!=null?esc(keep):esc(dnGet()[day]||''))+'</textarea><div class="nfoot"><span id="noteSt"></span></div></div>';
+  $('#cBR').innerHTML='<div class="pane notes"><div class="ph" style="cursor:default">✎ '+(isToday?"Today's Notes":'Notes')+'<span class="nnav"><button data-dp>‹</button><span class="nlbl'+(isToday?'':' past')+'">'+esc(dnLabel(day))+'</span><button data-dn '+(isToday?'disabled':'')+'>›</button>'+(isToday?'':'<button data-dt>Today</button>')+'</span></div><textarea id="noteTa" placeholder="'+(isToday?'Jot anything — new page every day. ‹ for yesterday.':'Nothing on '+esc(dnLabel(day)))+'">'+(keep!=null?esc(keep):esc(dnGet()[day]||''))+'</textarea><div class="nfoot"><span id="noteSt"></span></div></div>';
   // wiring
   document.querySelectorAll('.corner [data-list]').forEach(h=>h.onclick=()=>openList(h.dataset.list));
   document.querySelectorAll('.corner .lrow[data-open]').forEach(r=>r.onclick=e=>{ if(e.target.closest('.tick'))return; openTask(r.dataset.open); });
