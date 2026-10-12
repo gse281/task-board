@@ -382,7 +382,7 @@ function openList(key){ const em=CAT[key][0],cap=CAT[key][1]; const items=itemsF
     ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; return; }
   if(key==='respond'){ ovb.innerHTML='<div class="plist">'+(items.length?items.map(e=>'<div class="lrow">'+(e.link?'<a href="'+esc(e.link)+'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:flex;gap:10px;align-items:center;flex:1;min-width:0">':'<span style="display:flex;gap:10px;align-items:center;flex:1;min-width:0">')+'<span class="dot" style="background:'+projColor(e.project)+'"></span><span class="lt"><span class="ln">'+esc(e.name)+'</span><span class="lm">'+esc(e.project||'')+'</span></span>'+(e.link?'</a>':'</span>')+'</div>').join(''):'<div class="none">No replies.</div>')+'</div>';
     ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; return; }
-  ovb.innerHTML='<div class="phint">Tap a task to edit · ⏎ in search to add · ⋮⋮ drag to reorder · ⊘ remove · ✓ done</div><div class="plist" id="plist">'+(items.length?items.map(rowHTML).join(''):'<div class="none">Nothing here.</div>')+'</div>';
+  ovb.innerHTML='<div class="phint">Tap a task to edit · ⋮⋮ drag to reorder · ⊘ remove · ✓ done</div><div class="plist" id="plist">'+capRows(items,200)+'</div>';
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; wireRows($('#plist'),key); }
 
 /* ===== writes ===== */
