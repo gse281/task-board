@@ -289,6 +289,10 @@ svg.hud{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-i
 .rchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:4px 9px;font-size:12px;color:#cfeaf1;background:rgba(57,199,223,.05);max-width:100%}
 .rchip:hover{border-color:var(--cyan);color:#eaf6fb}
 .rchip i{width:7px;height:7px;border-radius:50%;flex:none}.rchip b{color:var(--dim);font:800 10.5px ui-monospace,Menlo,monospace}
+/* ── STABILITY: all continuous motion off (was causing Page Unresponsive on large data) ── */
+.fx{display:none!important}
+.sweep,.corehalo,.spin,.spin.rev,.bub.urgent,.core{animation:none!important}
+.corehalo{opacity:.55} .sweep{opacity:.28}
 </style></head>
 <body>
 <div id="stage">
@@ -480,7 +484,7 @@ function drawHud(W,H){ const ns='http://www.w3.org/2000/svg'; hud.innerHTML='';
 }
 function updateLinks(){ const ns='http://www.w3.org/2000/svg'; let lg=hud.querySelector('#links'); if(lg)lg.remove();
   lg=document.createElementNS(ns,'g'); lg.setAttribute('id','links');
-  const rm=reduceMotion()||window._dragging;   // skip the animated pulses while dragging (rebuilt on drop)
+  const rm=true;   // animated connector pulses disabled for stability
   bubEls.forEach((b,i)=>{ const bx=b.el.offsetLeft+BUB/2, by=b.el.offsetTop+BUB/2; const a=Math.atan2(by-CY,bx-CX);
     const x1=CX+(CORE/2+8)*Math.cos(a),y1=CY+(CORE/2+8)*Math.sin(a), x2=bx-(BUB/2)*Math.cos(a),y2=by-(BUB/2)*Math.sin(a);
     const l=document.createElementNS(ns,'line');l.setAttribute('x1',x1);l.setAttribute('y1',y1);l.setAttribute('x2',x2);l.setAttribute('y2',y2);
@@ -887,7 +891,7 @@ document.addEventListener('visibilitychange',()=>{ if(document.hidden){ fxRun=fa
 
 /* ====== boot ====== */
 function tick(){ $('#clock').textContent=new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); updateHud(); }
-function boot(){ tick(); setInterval(tick,20000); fxStart();
+function boot(){ tick(); setInterval(tick,20000);   /* particles disabled for stability */
   if(!cfg.apiKey){ $('#setup').style.display='flex'; }
   fetchAll();
   setInterval(()=>fetchAll(),5*60000);
