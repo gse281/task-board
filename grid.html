@@ -502,6 +502,25 @@ body::before{ opacity:.7 }
 .panel.pempty{opacity:.48} .panel.pempty:hover{opacity:.9}
 .panel.purgent{border-color:rgba(57,199,223,.55)!important;box-shadow:0 10px 30px rgba(0,0,0,.42), 0 0 0 1px rgba(57,199,223,.35) inset, 0 0 20px rgba(57,199,223,.14)!important}
 .panel.purgent .panel-head h3{color:#bdefff}
+.panel-head h3[data-cat]{cursor:pointer} .panel-head h3[data-cat]:hover{color:var(--accent)}
+/* Focus-style full-list modal (click a panel title) */
+#catov{position:fixed;inset:0;z-index:4000;display:none;align-items:center;justify-content:center;background:rgba(3,7,10,.82);padding:20px}
+#catov.on{display:flex}
+#catov .catcard{width:min(600px,94vw);max-height:88vh;display:flex;flex-direction:column;background:#0d1a21;border:1px solid rgba(57,199,223,.42);border-radius:18px;overflow:hidden}
+#catov .catovh{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid rgba(57,199,223,.18);font:700 12px ui-monospace,Menlo,monospace;letter-spacing:1.5px;text-transform:uppercase;color:#39c7df}
+#catov .catovh .cx{margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid rgba(57,199,223,.2);color:#86a2ab;font-size:16px;display:grid;place-items:center}
+#catov .catovh .cx:hover{color:#39c7df;border-color:#39c7df}
+#catov .catovb{overflow:auto;padding:8px}
+#catov .catrow{display:flex;align-items:center;gap:11px;padding:11px 10px;border-bottom:1px solid rgba(57,199,223,.1);cursor:pointer;border-radius:9px}
+#catov .catrow:last-child{border-bottom:0} #catov .catrow:hover{background:rgba(57,199,223,.08)}
+#catov .cdot{width:9px;height:9px;border-radius:5px;flex:none}
+#catov .ct{flex:1;min-width:0}
+#catov .cn{font-weight:600;font-size:15px;color:#eaf6fb;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+#catov .cm{color:#86a2ab;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+#catov .cage{font:700 11px ui-monospace,Menlo,monospace;color:#86a2ab;flex:none} #catov .cage.o{color:#e8683c}
+#catov .ctick{width:30px;height:30px;border-radius:50%;border:1px solid rgba(57,199,223,.2);color:#86a2ab;flex:none;display:grid;place-items:center;font-size:15px;background:none}
+#catov .ctick:hover{color:#3a8f5f;border-color:#3a8f5f}
+#catov .catnone{color:#86a2ab;text-align:center;padding:40px}
 </style>
 </head>
 <body>
@@ -533,6 +552,7 @@ body::before{ opacity:.7 }
 
 <div class="desk-add" id="deskAdd"><input id="deskAddInp" placeholder="➕ Add task…"><button id="deskAddBtn">Add</button></div>
 <div id="cmd"><div class="cmdbox"><div class="cmdin"><span>⌘</span><input id="cmdInp" placeholder="Add a task, jump to a panel, or search everything…" autocomplete="off"></div><div class="cmdres" id="cmdRes"></div><div class="cmdhint">↑↓ move · ⏎ select · esc close · type then ⏎ to add · ⌘K to toggle</div></div></div>
+<div id="catov"><div class="catcard"><div class="catovh" id="catovh"></div><div class="catovb" id="catovb"></div></div></div>
 
 <div class="board" id="board"></div>
 
@@ -544,7 +564,7 @@ body::before{ opacity:.7 }
 <script src="task-editor.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-12 15:55';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-12 15:57';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -3073,6 +3093,7 @@ function panelEl(sectionId,title,items,isDrop){
   try{ const arr=items||[]; if(!arr.length) p.classList.add('pempty'); else if(arr.some(t=>daysOpen(t)>=14)) p.classList.add('purgent'); }catch(e){}
   const head=document.createElement('div'); head.className='panel-head'; head.innerHTML=headCtrls(sectionId,title,items);
   p.appendChild(head); wirePanel(p,head,sectionId);
+  { const h3=head.querySelector('h3'); if(h3){ h3.setAttribute('data-cat','1'); h3.title='Open the full list'; h3.onclick=()=>openCat(title,items); } }
   head.querySelector('.send-list').onclick=()=>sendList(title,items);
   head.querySelector('[data-m]').onclick=()=>setMax(sectionId);
   const clr=head.querySelector('[data-clr]'); if(clr)clr.onclick=()=>clearCategory(sectionId,title,items);
@@ -4090,6 +4111,26 @@ function applyLaunchParams(){
     else if(map[view]){ const c=(typeof CATEGORIES!=='undefined')&&CATEGORIES.find(x=>x.id===map[view]); activeBulb={dim:'category',val:map[view],label:c?c.name:map[view]}; try{render();}catch(e){} } }
   if(task && !_lpTask){ const t=tasks.find(x=>x.id===task); if(t){ _lpTask=true; try{openDetail(t);}catch(e){} } }
 }
+
+/* ====== Click a panel title → Focus-style full-list modal (like clicking a bubble on Focus) ====== */
+const CATPAL=['#39c7df','#5eead4','#67E8F9','#60A5FA','#A78BFA','#818CF8','#34D399','#2dd4bf','#7dd3fc','#c4b5fd','#4ADE80','#38bdf8'];
+function catColor(p){ if(!p) return '#5e7a84'; let h=0; for(const c of String(p).toUpperCase()) h=(h*31+c.charCodeAt(0))>>>0; return CATPAL[h%CATPAL.length]; }
+function catRow(t){ const d=daysOpen(t);
+  return '<div class="catrow" data-id="'+t.id+'"><span class="cdot" style="background:'+catColor(t.project)+'"></span>'+
+    '<span class="ct"><span class="cn">'+esc(cleanName(t))+'</span>'+((t.project||t.lead)?'<span class="cm">'+esc([t.project,t.lead].filter(Boolean).join(' · '))+'</span>':'')+'</span>'+
+    '<span class="cage'+(d>=21?' o':'')+'">'+d+'d</span><button class="ctick" data-done="'+t.id+'" title="Done">✓</button></div>'; }
+function closeCat(){ const ov=document.getElementById('catov'); if(ov) ov.classList.remove('on'); }
+function openCat(title, items){ const ov=document.getElementById('catov'); if(!ov) return;
+  const arr=(items||[]).filter(t=>t&&t.status==='Open');
+  document.getElementById('catovh').innerHTML=esc(title)+' · '+arr.length+'<button class="cx" data-x>✕</button>';
+  document.getElementById('catovb').innerHTML='<div class="catlist">'+(arr.length?arr.map(catRow).join(''):'<div class="catnone">Nothing here.</div>')+'</div>';
+  ov.classList.add('on');
+  document.getElementById('catovh').querySelector('[data-x]').onclick=closeCat;
+  document.querySelectorAll('#catovb .catrow').forEach(r=>{ const t=tasks.find(x=>x.id===r.dataset.id); if(!t)return;
+    const tk=r.querySelector('[data-done]'); if(tk)tk.onclick=e=>{ e.stopPropagation(); markDone(t); r.remove(); };
+    r.onclick=e=>{ if(e.target.closest('.ctick'))return; closeCat(); try{ openDetail(t); }catch(err){ try{ editTaskD(t); }catch(e2){} } }; }); }
+document.getElementById('catov').addEventListener('click',e=>{ if(e.target.id==='catov') closeCat(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeCat(); });
 
 /* ====== ⌘K command bar — add / jump / search, self-contained, no animation ====== */
 (function(){
