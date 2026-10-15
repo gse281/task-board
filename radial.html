@@ -47,7 +47,8 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .bub.empty{opacity:.4} .bub.empty:hover{opacity:.85}
 /* corners */
 .corner{position:absolute;z-index:8;width:min(290px,30vw);display:flex;flex-direction:column;gap:10px}
-.tl{top:50px;left:14px}.tr{top:50px;right:14px}.bl{bottom:58px;left:14px}.br{bottom:58px;right:14px}
+.tl{top:50px;left:14px}.ml{left:14px;top:50%}
+#cML .pane{display:flex;flex-direction:column;max-height:100%;min-height:0}#cML .oil{overflow:auto;min-height:0;margin:0 -4px}#cML .lt{overflow:hidden}#cML .ln{display:block}#cML .ld{white-space:nowrap}#cML .ld .tm{color:var(--cyan);margin-right:5px;font-weight:600}#cML .lrow .dot.o{background:var(--orange)!important}#cML .oisub{color:var(--dim);font:600 10.5px ui-monospace,Menlo,monospace;margin:-3px 0 5px}.tr{top:50px;right:14px}.bl{bottom:58px;left:14px}.br{bottom:58px;right:14px}
 @media(max-width:620px){ .corner{width:42vw} }
 .pane{background:rgba(10,20,26,.94);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
 .pane.urgent{border-color:rgba(57,199,223,.5)}
@@ -151,16 +152,20 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 <body>
 <div id="stage">
   <div class="ring r1" id="ring1"></div><div class="ring r2" id="ring2"></div>
-  <div class="top"><span class="greet" id="greet">FOCUS</span><span class="sum" id="sum"></span><button class="cmdbtn" id="cmdBtn">⌘ ADD · JUMP</button><span class="clk" id="clk"></span></div>
+  <div class="top"><span class="greet" id="greet">FOCUS</span><span class="sum" id="sum"></span><button class="cmdbtn" id="cmdBtn">⌘ ADD · JUMP · FIND</button><span class="clk" id="clk"></span></div>
   <div class="core" id="core"></div>
   <div id="bubbles"></div>
-  <div class="corner tl" id="cTL"></div><div class="corner tr" id="cTR"></div><div class="corner bl" id="cBL"></div><div class="corner br" id="cBR"></div>
-  <div class="foot"><button id="cmdBtn2">⌘ ADD · JUMP</button><button id="homeToggle"></button><a href="dashboard.html">⌂ DASHBOARD</a></div>
+  <div class="corner tl" id="cTL"></div><div class="corner tr" id="cTR"></div><div class="corner ml" id="cML"></div><div class="corner bl" id="cBL"></div><div class="corner br" id="cBR"></div>
+  <div class="foot"><button id="cmdBtn2">⌘ ADD · JUMP · FIND</button><button id="homeToggle"></button><a href="focus2.html">◉ AM·PM CALLS</a><a href="dashboard.html">⌂ DASHBOARD</a></div>
 </div>
 <div class="back" id="ov"><div class="card"><div class="cardh" id="ovh"></div><div class="cardb" id="ovb"></div></div></div>
 <div id="cmd"><div class="cmdbox"><div class="cmdin"><span>⌘</span><input id="cmdInp" placeholder="Add a task, jump to a list, or search everything…" autocomplete="off"></div><div class="cmdres" id="cmdRes"></div><div class="cmdhint">↑↓ move · ⏎ select · esc close · type then ⏎ to add</div></div></div>
 <div id="setup"><div class="hint">Paste your Airtable key to see live data (or just preview the demo).</div><input id="keyin" type="password" placeholder="Airtable Personal Access Token (pat…)"><div style="display:flex;gap:8px"><button id="keygo">Connect</button><button id="demo" style="background:#13232b;color:var(--cyan)">Preview demo</button></div></div>
 <div id="toast"></div>
+<script src="task-editor.js"></script>
+<script src="photos.js"></script>
+<script src="guide.js"></script>
+<script src="claudeq.js"></script>
 <script>
 "use strict";
 const $=s=>document.querySelector(s);
@@ -209,6 +214,7 @@ function _compute(key){ const L=sec=>tasks.filter(t=>live(t)&&sectionOf(t)===sec
     case 'still': return applyOrder('still', tasks.filter(t=>live(t)&&daysOpen(t)>=10&&!t.project&&!t.lead).sort((a,b)=>daysOpen(b)-daysOpen(a)));
     case 'attention': return tasks.filter(t=>live(t)&&daysOpen(t)>=14).sort((a,b)=>daysOpen(b)-daysOpen(a));
     case 'morning': case 'afternoon': case 'calls': return applyOrder(key, L(key).sort((a,b)=>daysOpen(a)-daysOpen(b)));
+    case 'nextup': return applyOrder('nextup', tasks.filter(t=>live(t)&&(sectionOf(t)==='nextup'||t.nextUp)).sort((a,b)=>((a.nuOrder??1e9)-(b.nuOrder??1e9))));
     case 'respond': return respond;
     case 'meeting': return todayMtgItems();
     default: return applyOrder(key,L(key));
@@ -257,7 +263,7 @@ async function fetchAll(){ if(!cfg.apiKey){ demo=true; demoData(); renderAll(); 
   try{ let out=[],off,g=0;
     do{ const u=new URL(atUrl()); u.searchParams.set('pageSize','100'); u.searchParams.set('filterByFormula',"OR({Status}='Open',{Status}=BLANK())"); if(off)u.searchParams.set('offset',off);
       const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) throw new Error(r.status); const d=await r.json();
-      out=out.concat((d.records||[]).map(rec=>{const f=rec.fields;return{id:rec.id,createdTime:rec.createdTime,name:flat(f.Task),project:flat(f.Project).trim(),lead:flat(f.SBLead).trim(),sub:flat(f.Sub).trim(),status:flat(f.Status)||'Open',slotRemote:flat(f.MeetingSlot).toLowerCase(),sectionRemote:flat(f.Section).toLowerCase(),doDate:flat(f.DoDate).slice(0,10),priorityRemote:+flat(f.Priority)||0,typeRemote:flat(f.Type).toLowerCase(),phone:flat(f.Phone)};}));
+      out=out.concat((d.records||[]).map(rec=>{const f=rec.fields;return{id:rec.id,createdTime:rec.createdTime,name:flat(f.Task),project:flat(f.Project).trim(),lead:flat(f.SBLead).trim(),sub:flat(f.Sub).trim(),status:flat(f.Status)||'Open',slotRemote:flat(f.MeetingSlot).toLowerCase(),sectionRemote:flat(f.Section).toLowerCase(),doDate:flat(f.DoDate).slice(0,10),priorityRemote:+flat(f.Priority)||0,typeRemote:flat(f.Type).toLowerCase(),phone:flat(f.Phone),guide:flat(f.Guide),next:flat(f.NextStep),guideStep:+f.GuideStep||0,notes:flat(f.Notes),callWho:flat(f.CallContact),priorityRaw:flat(f.Priority),nextUp:flat(f.NextUp).slice(0,10),nuOrder:(f.NextUpOrder==null?null:+f.NextUpOrder),remindAt:flat(f.ReminderAt),textEx:!!f.TextExclude,flag:!!f.RoniFlag,photos:Array.isArray(f.Photos)?f.Photos:[]};}));
       off=d.offset; }while(off&&++g<40);
     tasks=out;
     const cu=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CAL_TABLE); cu.searchParams.set('pageSize','100'); cu.searchParams.set('filterByFormula','OR({Date}="'+todayISO()+'",{Date}="'+tomorrowISO()+'")');
@@ -267,12 +273,13 @@ async function fetchAll(){ if(!cfg.apiKey){ demo=true; demoData(); renderAll(); 
     renderAll();
   }catch(e){ demo=true; demoData(); renderAll(); toast('Offline — showing demo'); } }
 function demoData(){ const mk=(n,p,sec,days,pri)=>({id:'d'+Math.random(),createdTime:new Date(Date.now()-days*864e5).toISOString(),name:n,project:p,lead:'',sub:'',status:'Open',slotRemote:sec==='morning'||sec==='afternoon'?sec:'',sectionRemote:sec,priorityRemote:pri||0,typeRemote:sec==='calls'?'call':''});
-  tasks=[mk('Finish the YOSS steel submittal review','YOSS','focus',2,900),mk('Call Mark re: permit timeline','1Oak','calls',4),mk('Approve the Cove Miami change order','COVE','focus',1,900),mk('Sprinkler quote follow-up','Riverside','morning',9),mk('Confirm steel delivery date','1Oak','afternoon',12),mk('Send invoice to Michelle','Admin','morning',0),mk('Kitchen backsplash decision','DOMI','backlog',14),mk('Review Albert drawings','Albert','bigticket',6),mk('Window wall embed coordination','COVE','backlog',218),mk('Insurance payment','Maple','nextup',6,500),mk('Reply to lender package','NHP','backlog',3,500),mk('Draft scope for basement reno','Basement','afternoon',5)];
+  tasks=[mk('Finish the YOSS steel submittal review','YOSS','focus',2,900),mk('Call Mark re: permit timeline','1Oak','calls',4),mk('Approve the Cove Miami change order','COVE','focus',1,900),mk('Sprinkler quote follow-up','Riverside','morning',9),mk('Confirm steel delivery date','1Oak','afternoon',12),mk('Send invoice to Michelle','Admin','morning',0),mk('Kitchen backsplash decision','DOMI','backlog',14),mk('Review Albert drawings','Albert','bigticket',6),mk('Window wall embed coordination','COVE','backlog',218),mk('Insurance payment','Maple','nextup',6,500),mk('Reply to lender package','NHP','backlog',3,500),mk('Draft scope for basement reno','Basement','afternoon',5),Object.assign(mk('Gmail filter for rbenjamini+todo','','open items',13),{guide:'WHY: Emails to your +todo address land in one label.\nTIME: ~3 min\nCLAUDE: no\n1. Open Gmail (mail.google.com).\n2. Search: to:rbenjamini+todo@gmail.com\n3. Sliders icon → Create filter → Apply the label "todo-inbox".'}),Object.assign(mk('Email village re 539 Oakland curb permit','','open items',5),{doDate:dnShift(todayISO(),-4),guide:'WHY: Work can\'t start without the permit.\nTIME: ~3 min\nCLAUDE: yes\n1. Gmail → search "539 Oakland curb".\n2. Reply asking for status.'}),mk('Run Suggested next up once','','@computer – claude',2)];
   calendar=[{title:'1Oak weekly sync',when:'2:00 PM',date:todayISO(),sort:840,link:'https://zoom.us/j/1'},{title:'Cove design review',when:'4:30 PM',date:todayISO(),sort:990,link:''}];
   if(!wx.length) wx=[0,1,2,3,4,5,6].map(i=>({date:isoOf(new Date(Date.now()+i*864e5)),code:[0,2,61,3,0,80,0][i],hi:[72,68,59,63,70,58,66][i],pr:[0,0,.3,0,0,.6,0][i]})); }
 
 /* ===== radial render (no SVG / canvas / blur / animation) ===== */
-function renderAll(){ clearIF(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); }
+function renderAll(){ clearIF(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
+window.addEventListener('hashchange',()=>{ window._gdShown=null; const gid=window.Guide&&Guide.hashId(); if(gid) openGuide(gid); });
 function renderHeader(){ const h=new Date().getHours(); $('#greet').textContent=(h<12?'GOOD MORNING':h<17?'GOOD AFTERNOON':'GOOD EVENING')+' ◎';
   const open=tasks.filter(live).length; const att=itemsFor('attention').length;
   const nn=nowNext(todayISO()); const m=nn.now||nn.next; let nx=''; if(m){ const w=String(m.when||'').replace(/\s*[–—].*/,'').trim(), ti=String(m.title||'').trim().slice(0,20); if(w||ti) nx=(nn.now?'NOW ':'NEXT ')+[w,ti].filter(Boolean).join(' '); }
@@ -301,7 +308,13 @@ function renderCorners(){
   } else mh='<div class="none">No meetings left today.</div>';
   const inc=miniList('incoming',3);
   $('#cTR').innerHTML='<div class="pane meet'+(nn.now?' urgent':'')+'"><div class="ph" data-list="meeting">▣ Next Meeting<span class="pn">'+nn.L.length+'</span></div>'+mh+'</div>'+
-    '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span></div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div>';
+    '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span></div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div><div class="pane" id="cqPane" style="display:none"></div>';
+  renderCQPane();
+  const oi=window.Guide?Guide.list(tasks):[];
+  $('#cML').innerHTML='<div class="pane'+(oi.some(t=>Guide.overdue(t))?' urgent':'')+'"><div class="ph" style="cursor:default">▤ Open items · @Computer<span class="pn">'+oi.length+'</span></div>'+
+    (oi.length?'<div class="oisub">Tap one for step-by-step</div><div class="oil">'+oi.map(t=>{ const od=Guide.overdue(t), m=Guide.meta(t);
+      return '<div class="lrow" data-guide="'+t.id+'" title="'+esc(cleanName(t))+'"><span class="dot'+(od||Guide.ageDays(t)>=7?' o':'')+'" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(od?' o':'')+'">'+(m.on?'<span class="tm">step '+(m.on+1)+'/'+m.n+'</span>':m.time?'<span class="tm">'+esc(m.time)+'</span>':'')+(od?od+'d late':Guide.ageDays(t)+'d')+'</span></div>'; }).join('')+'</div>':'<div class="none">All clear.</div>')+'</div>';
+  document.querySelectorAll('#cML [data-guide]').forEach(r=>r.onclick=()=>openGuide(r.dataset.guide));
   const td=todayISO(); const days=wx.filter(w=>w.date>=td).slice(0,7);
   const cell=w=>{ const nm=w.date===td?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(w.date+'T12:00:00').getDay()]; const tc=w.hi>=90?'hot':w.hi<=32?'cold':''; const amt=w.pr>0.02?w.pr.toFixed(2).replace(/^0/,'')+'"':'';
     return '<div class="wxc'+(w.date===td?' today':'')+(w.pr>0.08?' wet':'')+'"><div class="wd">'+nm+'</div><div class="we">'+wxEmoji(w.code)+'</div><div class="wt '+tc+'">'+w.hi+'°</div><div class="wp">'+amt+'</div></div>'; };
@@ -311,13 +324,15 @@ function renderCorners(){
   // wiring
   document.querySelectorAll('.corner [data-list]').forEach(h=>h.onclick=()=>openList(h.dataset.list));
   document.querySelectorAll('.corner .lrow[data-open]').forEach(r=>r.onclick=e=>{ if(e.target.closest('.tick'))return; openTask(r.dataset.open); });
-  const ia=$('#incAdd'); if(ia){ const go=()=>{ const v=ia.value.trim(); if(!v)return; ia.value=''; createTask('incoming',v); }; $('#incAddBtn').onclick=go; ia.addEventListener('keydown',e=>{if(e.key==='Enter')go();}); }
+  const ia=$('#incAdd'); if(ia){ ia.setAttribute('enterkeyhint','done'); let last='',at=0; const go=()=>{ const v=ia.value.trim(); if(!v)return; ia.value=''; if(v===last&&Date.now()-at<2500)return; last=v; at=Date.now(); createTask('incoming',v); }; $('#incAddBtn').onclick=go; ia.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)go();}); }
   const ta=$('#noteTa'); if(ta){ ta.dataset.day=day; setNoteStat('init'); ta.oninput=()=>{ clearTimeout(window._nt); setNoteStat('saving'); dnPut(day,ta.value); window._nt=setTimeout(()=>saveNoteDay(day,ta.value),700); }; loadNoteDay(day);
     const dp=$('#cBR [data-dp]'); if(dp)dp.onclick=()=>{ noteDay=dnShift(day,-1); renderCorners(); layout(); };
     const dn=$('#cBR [data-dn]'); if(dn)dn.onclick=()=>{ const n=dnShift(day,1); noteDay=n>=todayISO()?null:n; renderCorners(); layout(); };
     const dt=$('#cBR [data-dt]'); if(dt)dt.onclick=()=>{ noteDay=null; renderCorners(); layout(); }; } }
 /* layout: position core + bubbles in a ring (computed once per render / resize — cheap) */
 function layout(){ const st=$('#stage'); const W=st.clientWidth, H=st.clientHeight, CX=W/2, CY=H/2+8;
+  { const ml=$('#cML'), tl=$('#cTL'), bl=$('#cBL'); if(ml&&tl&&bl){ const top=tl.offsetTop+tl.offsetHeight+10, bot=bl.offsetTop-10; ml.style.top=top+'px'; ml.style.height=Math.max(120,bot-top)+'px'; ml.style.transform='none'; }
+    const cl=$('#cqPane .cqlist'), tr=$('#cTR'), br=$('#cBR'); if(cl&&tr&&br){ cl.style.maxHeight='300px'; const over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop; if(over>0) cl.style.maxHeight=Math.max(70,300-over)+'px'; } }
   const m=Math.min(W,H); const CS=Math.max(176,Math.min(286,m*0.25)); const BS=Math.max(104,Math.min(140,m*0.135)); const R=Math.min(W,H)*0.34;
   const core=$('#core'); core.style.width=core.style.height=CS+'px'; core.style.left=(CX-CS/2)+'px'; core.style.top=(CY-CS/2)+'px';
   const r1=$('#ring1'), r2=$('#ring2'); const D1=R*2+BS*0.2, D2=CS+40;
@@ -351,20 +366,30 @@ const ov=$('#ov'), ovh=$('#ovh'), ovb=$('#ovb');
 function closeOv(){ ov.classList.remove('show'); ovb.innerHTML=''; }
 ov.addEventListener('click',e=>{ if(e.target===ov) closeOv(); });
 addEventListener('keydown',e=>{ if(e.key==='Escape') closeOv(); });
-function openTask(id){ const t=tasks.find(x=>x.id===id); if(!t){ toast('Task not found'); return; } const cur=sectionOf(t);
-  ovh.innerHTML='◎ Edit Task<button class="x" data-x>✕</button>';
-  ovb.innerHTML='<div class="ed">'+(t.project?'<span class="proj">'+esc(t.project)+'</span><br>':'')+'<textarea class="name" id="edName" rows="2">'+esc(cleanName(t))+'</textarea>'+
-    '<div class="meta">'+esc([t.lead&&('Lead: '+t.lead),t.sub&&('Sub: '+t.sub),daysOpen(t)+' days open'].filter(Boolean).join('  ·  '))+'</div>'+
-    '<div class="lbl">Move to</div><div class="secchips" id="edSecs">'+SECTIONS.map(([k,l])=>'<button class="secchip'+(k===cur?' on':'')+'" data-sec="'+k+'">'+esc(l)+'</button>').join('')+'</div>'+
-    '<div class="edact"><button class="done" data-act="done"><span class="ei">✓</span>Done</button><button data-act="snooze"><span class="ei">😴</span>Snooze</button><button data-act="focus"><span class="ei">◎</span>Focus</button><button class="del" data-act="del"><span class="ei">🗑</span>Delete</button></div>'+
-    (t.phone?'<a class="edlink" href="tel:'+esc(String(t.phone).replace(/[^\d+]/g,''))+'">📞 Call '+esc(t.phone)+'</a>':'')+'</div>';
-  ov.classList.add('show'); const nm=$('#edName'); nm.focus(); nm.setSelectionRange(nm.value.length,nm.value.length);
-  ovh.querySelector('[data-x]').onclick=closeOv;
-  nm.onblur=()=>{ const v=nm.value.trim(); if(v&&v!==cleanName(t)){ t.name=v; patchTask(t.id,{Task:v}); toast('Saved'); renderAll(); } };
-  $('#edSecs').querySelectorAll('[data-sec]').forEach(b=>b.onclick=()=>{ moveSection(t.id,b.dataset.sec); $('#edSecs').querySelectorAll('[data-sec]').forEach(x=>x.classList.toggle('on',x===b)); });
-  ovb.querySelectorAll('[data-act]').forEach(b=>b.onclick=()=>{ const a=b.dataset.act;
-    if(a==='done'){ markDone(t.id); closeOv(); } else if(a==='snooze'){ A(t.id).snoozeUntil=Date.now()+864e5; saveAug(); toast('Snoozed 1 day'); closeOv(); renderAll(); }
-    else if(a==='focus'){ moveSection(t.id,'focus'); toast('Moved to Focus'); } else if(a==='del'){ if(confirm('Delete this task permanently?')){ delTask(t.id); closeOv(); } } }); }
+/* ===== the ONE universal task editor (task-editor.js), same as iPhone + grid. Focus sections appear as Category chips. ===== */
+const ED_KEYS={Task:'name',Project:'project',SBLead:'lead',Sub:'sub',Status:'status',Priority:'priorityRaw',DoDate:'doDate',ReminderAt:'remindAt',NextStep:'next',Notes:'notes',CallContact:'callWho',Phone:'phone',RoniFlag:'flag',NextUp:'nextUp',TextExclude:'textEx',NextUpOrder:'nuOrder'};
+const SEC_LAB={focus:'◎ Focus',morning:'☀︎ Morning',afternoon:'◑ Afternoon',calls:'☎︎ Calls',nextup:'⇥ Next Up',bigticket:'◆ Big Tix',sunday:'◉ Sunday',parked:'⊘ Parked',incoming:'▽ Incoming'};
+function toastU(m,undo){ const t=$('#toast'); t.innerHTML=''; t.append(document.createTextNode(m)); if(undo){ const b=document.createElement('button'); b.textContent='Undo'; b.style.cssText='margin-left:12px;background:none;border:0;color:#39c7df;font-weight:800;cursor:pointer'; b.onclick=()=>{ t.classList.remove('show'); t.style.pointerEvents=''; undo(); }; t.append(b); t.style.pointerEvents='auto'; }
+  t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>{ t.classList.remove('show'); t.style.pointerEvents=''; },undo?5000:1700); }
+window.TE={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.tableId, esc, all:()=>tasks, today:todayISO,
+  extraCats:()=>['nextup','bigticket','sunday'], catLabel:k=>SEC_LAB[String(k).toLowerCase()]||'',
+  get:(t,f)=>{ const v=t[ED_KEYS[f]]; return v==null?'':v; },
+  set:(t,f,v)=>{ t[ED_KEYS[f]]=(v==null?'':v); if(f==='DoDate'){ A(t.id).snoozeUntil=0; saveAug(); } if(f==='Priority') t.priorityRemote=+v||0; if(f==='NextUp'&&!v) t.nuOrder=null; if(f==='Status'&&v&&v!=='Open'){ /* Done / Disposed leave the board */ } },
+  patch:(id,f)=>patchTask(id,f), nextOrder:()=>tasks.reduce((m,x)=>Math.max(m,x.nuOrder||0),0)+10,
+  refresh:()=>renderAll(), contactGuess:()=>null, undo:(msg,fn)=>toastU('✎ '+msg,fn),
+  done:t=>markDone(t.id),
+  snooze:(t,d,date)=>{ const prev=t.doDate; const dd=date||isoOf(new Date(Date.now()+d*864e5)); t.doDate=dd; A(t.id).snoozeUntil=new Date(dd+'T06:00:00').getTime(); saveAug(); patchTask(t.id,{DoDate:dd}); renderAll();
+    toastU('Snoozed to '+dnLabel(dd),()=>{ t.doDate=prev; A(t.id).snoozeUntil=0; saveAug(); patchTask(t.id,{DoDate:prev||null}); renderAll(); }); },
+  cat:t=>{ const s=sectionOf(t); return s==='backlog'?'':s; },
+  catRaw:t=>({sec:A(t.id).section,sr:t.sectionRemote||'',m:t.slotRemote||'',ty:t.typeRemote||''}),
+  setCat:(t,v)=>{ const a=A(t.id); const f={}; v=String(v||'');
+    if(v==='morning'||v==='afternoon'){ delete a.section; t.sectionRemote=''; t.slotRemote=v; Object.assign(f,{MeetingSlot:v,Section:''}); }
+    else if(v==='calls'){ a.section='calls'; t.sectionRemote='calls'; t.slotRemote=''; t.typeRemote='call'; Object.assign(f,{Section:'calls',MeetingSlot:'',Type:'call'}); }
+    else if(!v){ a.section='backlog'; t.sectionRemote='backlog'; t.slotRemote=''; Object.assign(f,{Section:'backlog',MeetingSlot:''}); if(t.typeRemote==='call'){ t.typeRemote=''; f.Type=null; } }
+    else { a.section=v.toLowerCase(); t.sectionRemote=v.toLowerCase(); t.slotRemote=''; Object.assign(f,{Section:v,MeetingSlot:''}); }
+    saveAug(); patchTask(t.id,f); renderAll(); },
+  restoreCat:(t,p)=>{ const a=A(t.id); if(p.sec) a.section=p.sec; else delete a.section; t.sectionRemote=p.sr; t.slotRemote=p.m; t.typeRemote=p.ty; saveAug(); patchTask(t.id,Object.assign({Section:p.sr,MeetingSlot:p.m},p.ty==='call'?{Type:'call'}:{})); renderAll(); } };
+function openTask(id){ const t=tasks.find(x=>x.id===id); if(!t){ toast('Task not found'); return; } closeOv(); if(window.TaskEditor) TaskEditor.open(t); else toast('Editor not loaded'); }
 function openList(key){ const em=CAT[key][0],cap=CAT[key][1]; const items=itemsFor(key);
   ovh.innerHTML=em+' '+esc(cap)+' · '+items.length+'<button class="x" data-x>✕</button>';
   if(key==='meeting'){ ovb.innerHTML='<div class="plist">'+(items.length?items.map(e=>'<div class="lrow"><span class="dot" style="background:'+projColor(e.when)+'"></span><span class="lt"><span class="ln">'+esc(e.name)+'</span><span class="lm">'+esc(e.when||'')+'</span></span>'+(e.link?'<a class="edlink" style="margin:0;padding:6px 10px" href="'+esc(e.link)+'" target="_blank" rel="noopener">'+(e.link.indexOf('tel:')===0?'📞':'▶ Join')+'</a>':'')+'</div>').join(''):'<div class="none">Nothing here.</div>')+'</div>';
@@ -374,6 +399,29 @@ function openList(key){ const em=CAT[key][0],cap=CAT[key][1]; const items=itemsF
   ovb.innerHTML='<div class="phint">Tap a task to edit · ⋮⋮ drag to reorder · ⊘ remove · ✓ done</div><div class="plist" id="plist">'+capRows(items,200)+'</div>';
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; wireRows($('#plist'),key); }
 
+/* ===== ✨ Claude requests pane (claudeq.js) ===== */
+function cqOpenTask(id){ const t=tasks.find(x=>x.id===id); if(t){ closeOv(); openTask(t.id); } else toast('Task not loaded'); }
+function renderCQPane(){ const el=$('#cqPane'); if(!el||!window.CQ) return; const L=CQ.list(); if(!L.length){ el.style.display='none'; return; }
+  const a=document.activeElement; if(a&&el.contains(a)) return; const n=CQ.counts();
+  const top=L.filter(q=>q.Status==='Needs approval'), rest=L.filter(q=>q.Status!=='Needs approval').slice(0,Math.max(0,3-top.length));
+  el.style.display=''; el.classList.toggle('urgent',!!(n.approve||n.stale));
+  el.innerHTML='<div class="ph" data-cqall>✨ Claude requests<span class="pn">'+L.length+'</span></div><div class="cqx-sum" style="margin:-3px 0 4px">'+CQ.summary()+'</div><div class="cqlist" style="max-height:300px;overflow:auto">'+top.concat(rest).map(q=>CQ.rowHTML(q)).join('')+'</div>';
+  CQ.wire(el,{toast,onOpen:cqOpenTask}); el.querySelector('[data-cqall]').onclick=openCQList; layout(); }
+function openCQList(){ const L=CQ.list(); ovh.innerHTML='✨ Claude requests · '+L.length+'<button class="x" data-x>✕</button>';
+  ovb.innerHTML='<div class="phint">'+CQ.summary()+'</div>'+(L.length?L.map(q=>CQ.rowHTML(q)).join(''):'<div class="none">No requests this week.</div>');
+  ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; CQ.wire(ovb,{toast,onOpen:cqOpenTask}); }
+if(window.CQ){ CQ.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); CQ.onChange(()=>{ renderCQPane(); if(ov.classList.contains('show')&&/Claude requests/.test(ovh.textContent)&&!(document.activeElement&&ovb.contains(document.activeElement))) openCQList(); }); }
+/* ===== open-items guide drawer (guide.js) ===== */
+const gItem=t=>({id:t.id,name:cleanName(t),project:t.project,createdTime:t.createdTime,doDate:t.doDate,guide:t.guide,next:t.next,guideStep:t.guideStep});
+function openGuide(id){ const t=tasks.find(x=>x.id===id); if(!t||!window.Guide){ toast('Item not found'); return; }
+  Guide.open(gItem(t),{
+    key:()=>cfg.apiKey, base:()=>cfg.baseId,
+    saveStep:(x,k)=>{ t.guideStep=k; patchTask(t.id,{GuideStep:k}); },
+    next:()=>{ const n=Guide.list(tasks).find(x=>x.id!==t.id); return n?Object.assign(gItem(n),{_open:()=>openGuide(n.id)}):null; },
+    done:()=>markDone(t.id),
+    drop:()=>{ t.status='Disposed'; patchTask(t.id,{Status:'Disposed'}); tasks=tasks.filter(x=>x.id!==t.id); toast('Dropped (Disposed)'); renderAll(); },
+    snooze:(x,d)=>{ t.doDate=d; patchTask(t.id,{DoDate:d}); toast('Snoozed to '+dnLabel(d)); renderAll(); },
+    edit:()=>openTask(t.id) }); }
 /* ===== writes ===== */
 async function patchTask(id,fields){ if(demo||!cfg.apiKey||String(id).startsWith('d')) return true;
   try{ const r=await fetch(atUrl()+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields,typecast:true})}); if(!r.ok){ toast('Save failed '+r.status); return false; } return true; }catch(e){ toast('Offline'); return false; } }
@@ -382,7 +430,7 @@ function moveSection(id,sec){ const t=tasks.find(x=>x.id===id); if(!t)return;
   else{ A(id).section=sec; t.sectionRemote=sec; t.slotRemote=''; saveAug(); patchTask(id,{Section:sec,MeetingSlot:''}); } renderAll(); }
 function markDone(id){ const t=tasks.find(x=>x.id===id); if(!t)return; t.status='Done'; patchTask(id,{Status:'Done'}); tasks=tasks.filter(x=>x.id!==id); toast('✓ Done'); renderAll(); }
 function removeFromCat(id){ const t=tasks.find(x=>x.id===id); if(!t)return; delete A(id).section; t.sectionRemote=''; t.slotRemote=''; saveAug(); patchTask(id,{Section:'',MeetingSlot:''}); toast('Removed from category'); renderAll(); }
-async function delTask(id){ tasks=tasks.filter(x=>x.id!==id); renderAll(); if(demo||!cfg.apiKey||String(id).startsWith('d'))return; try{ await fetch(atUrl()+'/'+id,{method:'DELETE',headers:{Authorization:'Bearer '+cfg.apiKey}}); toast('Deleted'); }catch(e){} }
+async function delTask(id){ const t=tasks.find(x=>x.id===id); if(!t) return; t.status='Disposed'; tasks=tasks.filter(x=>x.id!==id); renderAll(); patchTask(id,{Status:'Disposed'}); toastU('⊘ Disposed',()=>{ t.status='Open'; tasks.unshift(t); patchTask(id,{Status:'Open'}); renderAll(); }); }
 async function createTask(section,text){ const slot=(section==='morning'||section==='afternoon');
   const t={id:'d'+Date.now(),createdTime:new Date().toISOString(),name:text,project:'',lead:'',sub:'',status:'Open',slotRemote:slot?section:'',sectionRemote:slot?'':section,priorityRemote:0,typeRemote:'',phone:''};
   tasks.unshift(t); if(!slot) A(t.id).section=section; saveAug(); renderAll(); toast('Added'); setTimeout(()=>{ const n=$('#incAdd'); if(n&&section==='incoming')n.focus(); },0);
@@ -398,7 +446,8 @@ function buildCmd(q){ q=(q||'').trim(); const ql=q.toLowerCase(); cmdItems=[]; c
   if(q) cmdItems.push({t:'Add “'+q+'”',d:'→ Incoming',k:'add',run:()=>{ createTask('incoming',q); closeCmd(); }});
   if(!ql||'focus now'.includes(ql)) cmdItems.push({t:'◎ Now / Focus',d:itemsFor('focus').length+' items',k:'go',run:()=>{ closeCmd(); openList('focus'); }});
   Object.keys(CAT).filter(k=>k!=='focus').forEach(k=>{ const cap=CAT[k][1]; if(!ql||cap.toLowerCase().includes(ql)){ const n=itemsFor(k).length; cmdItems.push({t:CAT[k][0]+' '+cap,d:n+' item'+(n===1?'':'s'),k:'go',run:()=>{ closeCmd(); openList(k); }}); } });
-  if(ql){ tasks.filter(t=>live(t)&&(((t.name||'').toLowerCase().includes(ql))||((t.project||'').toLowerCase().includes(ql)))).slice(0,8).forEach(t=>cmdItems.push({t:cleanName(t),d:t.project||'',k:'task',run:()=>{ closeCmd(); openTask(t.id); }})); }
+  if(ql){ if('am pm calls focus 2 focus2'.includes(ql)) cmdItems.push({t:'◉ AM · PM Calls (Focus 2)',d:'open sender',k:'go',run:()=>{ closeCmd(); location.href='focus2.html'; }});
+    tasks.filter(t=>live(t)&&[t.name,t.project,t.lead,t.nextUp,t.sub].map(v=>(v||'').toLowerCase()).some(v=>v.includes(ql))).slice(0,12).forEach(t=>cmdItems.push({t:cleanName(t),d:[t.project,t.lead].filter(Boolean).join(' · '),k:'task',run:()=>{ closeCmd(); openTask(t.id); }})); }
   paintCmd(); }
 function paintCmd(){ cmdRes.innerHTML=cmdItems.map((it,i)=>{ const kk=it.k==='add'?'<span class="k">add</span>':it.k==='go'?'<span class="k g">go</span>':'<span class="k g">task</span>'; return '<div class="cmdrow'+(i===cmdSel?' sel':'')+'" data-i="'+i+'">'+kk+'<span class="t">'+esc(it.t)+'</span>'+(it.d?'<span class="d">'+esc(it.d)+'</span>':'')+'</div>'; }).join('')||'<div class="cmdrow"><span class="t" style="color:var(--dim)">Type to search or add…</span></div>';
   cmdRes.querySelectorAll('.cmdrow[data-i]').forEach(r=>{ r.onclick=()=>{ const it=cmdItems[+r.dataset.i]; if(it&&it.run)it.run(); }; r.onmousemove=()=>{ if(cmdSel!==+r.dataset.i){ cmdSel=+r.dataset.i; markCmd(); } }; }); }

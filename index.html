@@ -542,6 +542,7 @@ body::before{ opacity:.7 }
     <button class="tb-btn" id="contactsBtn" title="Contacts search">👤</button>
     <button class="tb-btn" id="scBtn" title="⌨️ Shortcuts cheat-sheet (press ?)">⌨️</button>
     <a class="tb-btn" id="focusCoreBtn" href="radial.html?focus=1" title="◎ Focus — the home screen" style="text-decoration:none;color:var(--ink);display:inline-flex;align-items:center">◎ Focus</a>
+    <a class="tb-btn" id="focus2Btn" href="focus2.html" title="◉ AM · PM Calls sender" style="text-decoration:none;color:var(--ink);display:inline-flex;align-items:center">◉ AM·PM</a>
     <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
     <input class="search" id="search" placeholder="Search tasks…">
     <button class="tb-btn" id="settingsBtn">⚙︎</button>
@@ -562,9 +563,12 @@ body::before{ opacity:.7 }
 <input type="file" id="picInput" accept="image/*" class="hidden">
 
 <script src="task-editor.js"></script>
+<script src="learning.js"></script>
+<script src="claudeq.js"></script>
+<script src="photos.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-12 15:57';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-15 11:58';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -874,7 +878,7 @@ async function atFetch(){
       name:flat(rec.fields.Task), project:flat(rec.fields.Project),
       lead:flat(rec.fields.SBLead), sub:flat(rec.fields.Sub),
       status:flat(rec.fields.Status)||'Open',
-      phoneRemote:flat(rec.fields.Phone), callWho:flat(rec.fields.CallContact), priorityRaw:flat(rec.fields.Priority), remindAt:flat(rec.fields.ReminderAt), nextUp:flat(rec.fields.NextUp).slice(0,10), nuOrder:(rec.fields.NextUpOrder==null?null:+rec.fields.NextUpOrder), sugDate:flat(rec.fields.SuggestedDate).slice(0,10), sugWhy:flat(rec.fields.SuggestReason), nextStepRemote:flat(rec.fields.NextStep),
+      phoneRemote:flat(rec.fields.Phone), callWho:flat(rec.fields.CallContact), priorityRaw:flat(rec.fields.Priority), remindAt:flat(rec.fields.ReminderAt), nextUp:flat(rec.fields.NextUp).slice(0,10), nuOrder:(rec.fields.NextUpOrder==null?null:+rec.fields.NextUpOrder), sugDate:flat(rec.fields.SuggestedDate).slice(0,10), sugX:flat(rec.fields.SuggestDismissed).slice(0,10), photos:Array.isArray(rec.fields.Photos)?rec.fields.Photos:[], sugWhy:flat(rec.fields.SuggestReason), nextStepRemote:flat(rec.fields.NextStep),
       sourceRemote:flat(rec.fields.Source), notesRemote:flat(rec.fields.Notes),
       typeRemote:(flat(rec.fields.Type)||'').toLowerCase(),
       slotRemote:(flat(rec.fields.MeetingSlot)||'').toLowerCase(),
@@ -1324,11 +1328,11 @@ const expanded = new Set();   // ephemeral: which capped sections are showing al
 function orderedPanels(){
   const custom=((meta.customCats||[]).map(c=>c.id));
   // to-send / from-outside / improvements are now folded INTO the Triage pane.
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer','leadrev','callinvite','frequent','nupicks','suggested',...STUBS.map(s=>s.id)];
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer','leadrev','callinvite','frequent','nupicks','suggested','claudeq','learning',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
   if(!ord.includes('automations')) ord.unshift('automations');   // always-on status panel: first time it appears at the top
   ['leadrev','callinvite'].forEach(id=>{ if(!ord.includes(id)){ const i=ord.indexOf('computer'); ord.splice(i<0?0:i+1,0,id); } });   // right after @Computer
-  ['suggested','nupicks'].forEach(id=>{ if(!ord.includes(id)) ord.unshift(id); });   // ⏫ Next Up then ✨ Suggested at the top the first time
+  ['suggested','nupicks','claudeq'].forEach(id=>{ if(!ord.includes(id)) ord.unshift(id); });   // ⏫ Next Up then ✨ Suggested at the top the first time
   if(!ord.includes('frequent')){ const i=ord.indexOf('calls'); ord.splice(i<0?0:i+1,0,'frequent'); }   // ⭐ right under Calls
   if(!ord.includes('computer')){ const i=Math.max(ord.indexOf('morning'),ord.indexOf('afternoon'),ord.indexOf('calls')); ord.splice(i<0?0:i+1,0,'computer'); }   // 🖥 right after the call panels
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
@@ -1434,6 +1438,8 @@ function render(){
     else if(id==='callinvite') board.appendChild(callInvitePanel());
     else if(id==='frequent') board.appendChild(frequentPanel());
     else if(id==='nupicks') board.appendChild(nextUpPanel());
+    else if(id==='learning'){ const lp=learningPanel(); if(lp) board.appendChild(lp); }
+    else if(id==='claudeq'){ const cp=claudeQPanel(); if(cp) board.appendChild(cp); }
     else if(id==='suggested'){ const sp=suggestedPanel(); if(sp) board.appendChild(sp); }
     else if(stub) board.appendChild(stubPanel(stub));
     else { const cc=(meta.customCats||[]).find(c=>c.id===id); const b=BUCKETS.find(x=>x.id===id)||cc; if(!b)return;
@@ -2917,7 +2923,7 @@ const CC_TABLE='tblLl5Wb4vJK8xGBs', DIAL_IN='917-268-3365';
 let ccRows=(meta.ccRows||[]), ccBusy=false;
 function fetchCC(force){ if(!cfg.apiKey||ccBusy) return; if(!force&&Date.now()-(meta.ccAt||0)<30*60000) return; ccBusy=true;
   const u=new URL(AT+cfg.baseId+'/'+CC_TABLE); u.searchParams.set('pageSize','100');
-  fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{ ccBusy=false; if(!d) return; ccRows=(d.records||[]).map(x=>({id:x.id,name:x.fields.Name||'',phone:x.fields.Phone||'',slots:x.fields.Slots||[],active:!!x.fields.Active}));
+  fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{ ccBusy=false; if(!d) return; ccRows=(d.records||[]).map(x=>({id:x.id,name:x.fields.Name||'',phone:x.fields.Phone||'',slots:x.fields.Slots||[],active:!!x.fields.Active,trade:flat(x.fields.Trade)||'',guess:!!x.fields.TradeGuess}));
     meta.ccRows=ccRows; meta.ccAt=Date.now(); saveMeta(); try{ render(); }catch(e){} }).catch(()=>{ ccBusy=false; }); }
 const ccMsg='Please join the call: https://meetings.dialpad.com/room/rbenjamini or dial '+DIAL_IN+' (no PIN)';
 function ccPatchD(id,fields){ if(!cfg.apiKey) return; fetch(AT+cfg.baseId+'/'+CC_TABLE+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields,typecast:true})}); }
@@ -2928,17 +2934,32 @@ function callInvitePanel(){
   head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>👥 Call invites</h3><span class="scratch-stat">dial-in <a href="tel:+19172683365" style="color:inherit">'+DIAL_IN+'</a> · no PIN</span>';
   p.appendChild(head); wirePanel(p,head,'callinvite');
   const body=document.createElement('div'); body.className='panel-body'; body.style.fontSize='12.5px'; const hp=heightPx('callinvite'); if(hp) body.style.maxHeight=hp;
-  [['morning','🌅 Morning'],['afternoon','☀️ Afternoon']].forEach(([slot,lbl])=>{ const list=ccRows.filter(c=>c.active&&c.slots.includes(slot)).sort((a,b)=>a.name.localeCompare(b.name));
-    const h=document.createElement('div'); h.style.cssText='display:flex;align-items:center;gap:6px;margin:6px 0 2px;font-weight:800';
-    h.innerHTML=lbl+' <span style="color:var(--muted);font-weight:600">'+list.length+'</span>'+(list.length?'<a class="mini" style="margin-left:auto;text-decoration:none" href="sms://open?addresses='+list.map(c=>c.phone.replace(/[^\d+]/g,'')).join(',')+'&body='+encodeURIComponent(ccMsg)+'">📣 Invite all</a>':'')+'<button class="mini" title="Add someone">＋</button>';
-    h.querySelector('button').onclick=()=>{ const name=(prompt('Name for the '+lbl.slice(3)+' call:')||'').trim(); if(!name) return; const ph=(prompt('Mobile number for '+name+':')||'').trim(); if(!ph) return;
-      const ex=ccRows.find(c=>c.phone.replace(/\D/g,'').slice(-10)===ph.replace(/\D/g,'').slice(-10));
-      if(ex){ ex.slots=[...new Set([...ex.slots,slot])]; ex.active=true; ccPatchD(ex.id,{Slots:ex.slots,Active:true}); render(); return; }
-      if(cfg.apiKey) fetch(AT+cfg.baseId+'/'+CC_TABLE,{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({records:[{fields:{Name:name,Phone:ph,Slots:[slot],Active:true,Source:'Desktop'}}],typecast:true})}).then(()=>fetchCC(true)); };
-    body.appendChild(h);
-    list.forEach(c=>{ const r=document.createElement('div'); r.style.cssText='display:flex;align-items:center;gap:6px;padding:3px 0;border-bottom:1px solid var(--line)';
-      r.innerHTML='<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>'+esc(c.name)+'</b> <span style="color:var(--muted)">'+esc(c.phone)+'</span></span><a class="mini" style="text-decoration:none;background:#3a8f5f;color:#fff" href="sms:'+c.phone.replace(/[^\d+]/g,'')+'&body='+encodeURIComponent(ccMsg)+'">Invite</a><button class="mini" title="Remove from this call">✕</button>';
-      r.querySelector('button').onclick=()=>{ c.slots=c.slots.filter(x=>x!==slot); ccPatchD(c.id,{Slots:c.slots}); render(); toast('Removed '+c.name); };
+  // ONE roster (same as the iPhone): AM / PM are flags; grouped by trade — 1oak, MEP, then CSI order; ≈ = guessed trade (click to fix)
+  const TR=['1oak','21 Fire Suppression','22 Plumbing','23 HVAC','26 Electrical','27 Communications','28 Fire Alarm','03 Concrete','04 Masonry','05 Metals / Steel','06 Wood / Millwork','07 Thermal & Moisture','08 Openings','09 Finishes','10 Specialties','11 Equipment','12 Furnishings','14 Conveying','31-33 Sitework','Other'];
+  const f=window._invF||'all'; const all=ccRows.filter(c=>c.active); const list=all.filter(c=>f==='all'||c.slots.includes(f));
+  const smsMany=L=>'sms://open?addresses='+L.map(c=>c.phone.replace(/[^\d+]/g,'')).join(',')+'&body='+encodeURIComponent(ccMsg);
+  const top=document.createElement('div'); top.style.cssText='display:flex;align-items:center;gap:4px;margin:2px 0 6px;flex-wrap:wrap';
+  top.innerHTML=[['morning','AM'],['afternoon','PM'],['all','All']].map(([k,l])=>'<button class="mini'+(f===k?' on':'')+'" data-if="'+k+'">'+l+' '+(k==='all'?all.length:all.filter(c=>c.slots.includes(k)).length)+'</button>').join('')
+    +(list.length?'<a class="mini" style="margin-left:auto;text-decoration:none" href="'+smsMany(list)+'">Invite all '+list.length+'</a>':'')+'<button class="mini" data-iadd title="Add someone">＋</button>';
+  top.querySelectorAll('[data-if]').forEach(b=>b.onclick=()=>{ window._invF=b.dataset.if; render(); });
+  top.querySelector('[data-iadd]').onclick=()=>{ const name=(prompt('Name (company helps guess the trade):')||'').trim(); if(!name) return; const ph=(prompt('Mobile number for '+name+':')||'').trim(); if(!ph) return; const flags=f==='all'?['morning','afternoon']:[f];
+    const ex=ccRows.find(c=>c.phone.replace(/\D/g,'').slice(-10)===ph.replace(/\D/g,'').slice(-10));
+    if(ex){ ex.slots=[...new Set([...ex.slots,...flags])]; ex.active=true; ccPatchD(ex.id,{Slots:ex.slots,Active:true}); render(); return; }
+    const n=name.toLowerCase(); const tr=[[/1\s*oak|gustavo|sam mari|\brke\b/,'1oak'],[/sprinkler/,'21 Fire Suppression'],[/plumb/,'22 Plumbing'],[/hvac|\bcms\b|coil/,'23 HVAC'],[/elec/,'26 Electrical'],[/tele/,'27 Communications'],[/concrete/,'03 Concrete'],[/mason/,'04 Masonry'],[/steel|metal/,'05 Metals / Steel'],[/millwork|cabinet|wood/,'06 Wood / Millwork'],[/roof|waterproof|decoflex/,'07 Thermal & Moisture'],[/window|glass|storefront|alumtec/,'08 Openings'],[/drywall|tile|floor|paint|panel|green global/,'09 Finishes'],[/landscap|site/,'31-33 Sitework']].find(([re])=>re.test(n));
+    if(cfg.apiKey) fetch(AT+cfg.baseId+'/'+CC_TABLE,{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({records:[{fields:{Name:name,Phone:ph,Slots:flags,Active:true,Source:'Desktop',Trade:tr?tr[1]:'Other',TradeGuess:true}}],typecast:true})}).then(()=>fetchCC(true)); };
+  body.appendChild(top);
+  let mep=false;
+  TR.forEach(t=>{ const L=list.filter(c=>(TR.includes(c.trade)?c.trade:'Other')===t).sort((a,b)=>a.name.localeCompare(b.name)); if(!L.length) return;
+    if(['21 Fire Suppression','22 Plumbing','23 HVAC','26 Electrical','27 Communications','28 Fire Alarm'].includes(t)&&!mep){ mep=true; const m=document.createElement('div'); m.style.cssText='margin:8px 0 0;font:800 10px ui-monospace,Menlo,monospace;letter-spacing:2px;color:#39c7df'; m.textContent='MEP'; body.appendChild(m); }
+    const h=document.createElement('div'); h.style.cssText='display:flex;align-items:center;gap:6px;margin:8px 0 2px;font-weight:800';
+    h.innerHTML=esc(t)+' <span style="color:var(--muted);font-weight:600">'+L.length+'</span><a class="mini" style="margin-left:auto;text-decoration:none" href="'+smsMany(L)+'">Invite group</a>'; body.appendChild(h);
+    L.forEach(c=>{ const r=document.createElement('div'); r.style.cssText='display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid var(--line)';
+      r.innerHTML='<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>'+esc(c.name)+'</b> <button class="mini" data-tr style="color:'+(c.guess?'#e0a458':'var(--muted)')+'" title="Set trade">'+(c.guess?'≈ ':'')+esc(c.trade||'Other')+'</button></span>'
+        +'<button class="mini'+(c.slots.includes('morning')?' on':'')+'" data-fl="morning">AM</button><button class="mini'+(c.slots.includes('afternoon')?' on':'')+'" data-fl="afternoon">PM</button>'
+        +'<a class="mini" style="text-decoration:none;background:var(--callg);color:var(--callink)" href="sms:'+c.phone.replace(/[^\d+]/g,'')+'&body='+encodeURIComponent(ccMsg)+'" data-cu="'+esc(c.name)+'">Invite</a><button class="mini" data-rm title="Remove from the roster">✕</button>';
+      r.querySelectorAll('[data-fl]').forEach(b=>b.onclick=()=>{ const fl=b.dataset.fl; c.slots=c.slots.includes(fl)?c.slots.filter(x=>x!==fl):[...c.slots,fl]; ccPatchD(c.id,{Slots:c.slots}); render(); });
+      r.querySelector('[data-tr]').onclick=()=>{ const v=prompt('Trade for '+c.name+':\n'+TR.map((x,i)=>(i+1)+'. '+x).join('\n'),String(TR.indexOf(c.trade)+1||TR.length)); if(!v) return; const nt=TR[(+v||0)-1]||TR.find(x=>x.toLowerCase().includes(v.toLowerCase())); if(!nt) return; c.trade=nt; c.guess=false; ccPatchD(c.id,{Trade:nt,TradeGuess:false}); render(); };
+      r.querySelector('[data-rm]').onclick=()=>{ if(!confirm('Remove '+c.name+' from the invite roster?')) return; c.active=false; ccPatchD(c.id,{Active:false}); render(); toast('Removed '+c.name); };
       body.appendChild(r); }); });
   p.appendChild(body);
   p.addEventListener('drop',e=>{const dd=e.dataTransfer.getData('text/plain');if(dd&&dd.startsWith('panel:'))reorderPanels(dd.slice(6),'callinvite');});
@@ -2953,6 +2974,7 @@ const EDA=window.TE={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=
   get:(t,f)=>{ if(f==='DoDate') return doDateOf(t); if(f==='NextStep') return A(t.id).nextStep||t.nextStepRemote||''; if(f==='Phone') return phoneFor(t)||''; const v=t[ED_KEYS[f]]; return v==null?'':v; },
   set:(t,f,v)=>{ const a=A(t.id); t[ED_KEYS[f]]=(v==null?'':v); if(f==='DoDate') a.doDate=v||''; if(f==='NextStep') a.nextStep=v||''; if(f==='Phone') a.phone=v||''; if(f==='Priority') t.priorityRemote=+v||0; if(f==='NextUp'&&!v) t.nuOrder=null; saveAug(); },
   patch:(id,f)=>atPatch(id,f), nextOrder:()=>nextUpListD().reduce((m,x)=>Math.max(m,x.nuOrder||0),0)+10,
+  contactGuess:t=>{ try{ const m=callMatchD(t); return m?{who:m.who,phone:m.phone}:null; }catch(e){ return null; } },
   refresh:()=>render(), undo:(msg,fn)=>{ pushUndo(msg,fn); toast('✎ '+msg+' · ↶ Undo in the top bar'); }, done:t=>markDone(t), snooze:(t,d)=>{ const ds=new Date(Date.now()+d*864e5); const v=ds.getFullYear()+'-'+String(ds.getMonth()+1).padStart(2,'0')+'-'+String(ds.getDate()).padStart(2,'0'); A(t.id).snoozeUntil=ds.getTime(); setDoDate(t.id,v); toast('Snoozed to '+v); render(); },
   cat:t=>{ const s=sectionOf(t)||''; return s==='backlog'?'':((TE_CATS.find(c=>c[0].toLowerCase()===s.toLowerCase())||[s])[0]); },
   catRaw:t=>({sec:A(t.id).section,sr:t.sectionRemote||'',m:t.slotRemote||'',ty:t.typeRemote||'',tl:A(t.id).type}),
@@ -2982,9 +3004,43 @@ function nextUpPanel(){ const L=nextUpListD(); const {p,body}=nuPanelShell('nupi
   if(!L.length) body.innerHTML='<div class="note" style="padding:6px">Hit ⏫ on any card to line it up for today. Picks stay until done or removed.</div>';
   L.forEach((t,i)=>body.appendChild(nuRowD(t,[t.project,t.lead].filter(Boolean).join(' · '),[...(i?[['↑','Move up',()=>nuMoveD(t,-1)]]:[]),...(i<L.length-1?[['↓','Move down',()=>nuMoveD(t,1)]]:[]),['✓','Done',()=>markDone(t),'done'],['✕','Remove from Next Up',()=>setNextUpD(t,false)]])));
   return p; }
-function suggestedPanel(){ const td=todayISO(); const L=tasks.filter(t=>t.status==='Open'&&t.sugDate===td).slice(0,5); const {p,body}=nuPanelShell('suggested','✨ Suggested next up',L.length?L.length+' for today':'refreshes 6:30 AM');
+// ✨ Claude drafts waiting for Roni's approval (ClaudeQueue Status = Needs approval); click → the task's editor (Approve & send / Edit / Cancel)
+let claudeQD=[]; setInterval(()=>{ if(window.TaskEditor&&!document.hidden) TaskEditor.claudePending().then(L=>{ const ch=L.length!==claudeQD.length; claudeQD=L; if(ch) render(); }); },120000);
+setTimeout(()=>{ if(window.TaskEditor) TaskEditor.claudePending().then(L=>{ claudeQD=L; if(L.length) render(); }); },4000);
+// 📖 Learning — Mishnah Gittin + Shnayim Mikra v'Echad Targum (learning.js; progress synced via Airtable AppNotes "learning")
+function learningPanel(){ if(!window.Learning) return null; const S=Learning.summary(); const {p,body}=nuPanelShell('learning','Learning',S.today?('today '+S.today+(S.streak?' · '+S.streak+'-day streak':'')):'');
+  body.innerHTML=Learning.rowsHTML(); Learning.wireRows(body); if(!window._lrSubD){ window._lrSubD=1; Learning.onChange(()=>{ if(!document.querySelector('.lrd')) render(); }); } return p; }
+/* 📷 Desktop: drop an image on a task → attached to it; drop it on the Incoming panel / anywhere else, or ⌘V outside a text field → new Incoming item "Screenshot 9:14 AM" (+ ✨ Extract tasks). */
+async function shotToIncoming(files){ const t=await atCreate(Photos.shotTitle()); if(!t) return; A(t.id).section='incoming'; saveAug(); render();
+  for(let i=0;i<20&&!/^rec/.test(t.id);i++) await new Promise(r=>setTimeout(r,250)); if(!/^rec/.test(t.id)){ toast('Connect Airtable to save photos'); return; }
+  await Photos.add(t,files,()=>render()); shotBanner(t); }
+function shotBanner(t){ document.querySelectorAll('.shotban').forEach(x=>x.remove()); const b=document.createElement('div'); b.className='shotban';
+  b.style.cssText='position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:9000;background:#0b161b;border:1px solid #39c7df;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;color:#e7f3f6;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.5)';
+  b.innerHTML='📷 Added “'+esc(t.name)+'” to Incoming <button data-ext style="background:#39c7df;color:#04161c;border:0;border-radius:8px;padding:6px 10px;font-weight:800;cursor:pointer">✨ Extract tasks</button><button data-op style="background:none;border:1px solid rgba(57,199,223,.4);color:#e7f3f6;border-radius:8px;padding:6px 10px;cursor:pointer">Open</button><button data-x style="background:none;border:0;color:#8aa6af;cursor:pointer;font-size:15px">✕</button>';
+  document.body.appendChild(b); const kill=setTimeout(()=>b.remove(),20000);
+  b.querySelector('[data-x]').onclick=()=>b.remove(); b.querySelector('[data-op]').onclick=()=>{ b.remove(); TaskEditor.open(t); };
+  b.querySelector('[data-ext]').onclick=async e=>{ const x=e.target; x.disabled=true; x.textContent='Sending…'; try{ await Photos.extract(t); x.textContent='✨ Queued'; clearTimeout(kill); setTimeout(()=>b.remove(),2500); }catch(err){ x.disabled=false; x.textContent='Retry ('+err+')'; } }; }
+if(window.Photos){ Photos.css(); let over=null; const tgt=e=>e.target.closest&&(e.target.closest('.task[data-tid]')||e.target.closest('.panel[data-section="incoming"]'));
+  const hasFiles=e=>[...(e.dataTransfer&&e.dataTransfer.items||[])].some(i=>i.kind==='file');
+  document.addEventListener('dragover',e=>{ if(!hasFiles(e)||document.querySelector('.te')) return; e.preventDefault(); const t=tgt(e); if(over&&over!==t) over.classList.remove('ph-over'); over=t; if(t) t.classList.add('ph-over'); },true);
+  document.addEventListener('drop',e=>{ if(document.querySelector('.te')) return; const f=Photos.imagesFrom(e); if(!f.length) return; e.preventDefault(); e.stopPropagation(); if(over){ over.classList.remove('ph-over'); }
+    const row=e.target.closest&&e.target.closest('.task[data-tid]'); const t=row&&tasks.find(x=>x.id===row.dataset.tid);
+    if(t){ if(!/^rec/.test(t.id)){ toast('Task not saved yet'); return; } Photos.add(t,f,()=>render()); } else shotToIncoming(f); over=null; },true);
+  document.addEventListener('paste',e=>{ if(document.querySelector('.te')) return; const a=document.activeElement; const f=Photos.imagesFrom(e); if(!f.length) return; if(a&&/INPUT|TEXTAREA/.test(a.tagName)&&!a.closest('.panel[data-section="incoming"]')) return; e.preventDefault(); shotToIncoming(f); }); }
+function claudeQPanel(){ if(!window.CQ) return null; const L=CQ.list(); if(!L.length) return null; const n=CQ.counts();
+  const {p,body}=nuPanelShell('claudeq','✨ Claude requests',(n.approve?n.approve+' to approve · ':'')+(n.stale?n.stale+' not picked up · ':'')+L.length+' this week');
+  body.innerHTML='<div style="max-height:420px;overflow:auto;padding:0 4px">'+L.map(q=>CQ.rowHTML(q)).join('')+'</div>';
+  CQ.wire(body,{toast,onOpen:id=>{ const t=tasks.find(x=>x.id===id); if(t) TaskEditor.open(t); else toast('Task not loaded'); }}); return p; }
+if(window.CQ){ CQ.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); CQ.onChange(()=>{ const a=document.activeElement; if(a&&(a.classList.contains('cqx-ta')||a.closest&&a.closest('.te'))) return; render(); }); }
+const sugXL=()=>{ try{ return JSON.parse(localStorage.getItem('m.sugx')||'{}'); }catch(e){ return {}; } }; const sugCut=()=>{ const d=new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10); };
+const sugDismissedD=t=>{ const d=t.sugX||sugXL()[t.id]||''; return !!d&&d>=sugCut(); };
+async function dismissSugD(t){ const td=todayISO(), prev={d:t.sugDate,x:t.sugX}; const m=sugXL(); m[t.id]=td; localStorage.setItem('m.sugx',JSON.stringify(m)); t.sugDate=''; t.sugX=td; render();
+  toast('✕ Dismissed — won’t be suggested for 14 days');
+  try{ const r=await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+encodeURIComponent(cfg.tableId)+'/'+t.id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields:{SuggestedDate:null,SuggestDismissed:td},typecast:true})});
+    if(!r.ok) toast('⚠︎ Dismiss not saved ('+r.status+') — hidden on this computer only'); }catch(e){ toast('⚠︎ Offline — dismiss not saved'); } }
+function suggestedPanel(){ const td=todayISO(); const L=tasks.filter(t=>t.status==='Open'&&t.sugDate===td&&!sugDismissedD(t)).slice(0,5); const {p,body}=nuPanelShell('suggested','✨ Suggested next up',L.length?L.length+' for today':'refreshes 6:30 AM');
   if(!L.length) body.innerHTML='<div class="note" style="padding:6px">Today’s 5 suggestions appear here after the 6:30 AM run.</div>';
-  L.forEach(t=>body.appendChild(nuRowD(t,t.sugWhy||[t.project,t.lead].filter(Boolean).join(' · '),[...(t.nextUp?[]:[['⏫','Add to Next Up',()=>setNextUpD(t,true)]]),['✓','Done',()=>markDone(t),'done'],['✕','Dismiss',()=>{ t.sugDate=''; atPatch(t.id,{SuggestedDate:null}); render(); }]])));
+  L.forEach(t=>body.appendChild(nuRowD(t,t.sugWhy||[t.project,t.lead].filter(Boolean).join(' · '),[...(t.nextUp?[]:[['⏫','Add to Next Up',()=>setNextUpD(t,true)]]),['✓','Done',()=>markDone(t),'done'],['✕','Dismiss',()=>dismissSugD(t)]])));
   return p; }
 /* ⭐ Frequent — people Roni calls/texts most (Airtable ContactUsage, shared with the iPhone). Pinned first, then recent-weighted use (14-day half-life). */
 let fqRows=[], fqAt=0, fqBusy=false, fqAll=false;
@@ -3142,7 +3198,7 @@ function panelEl(sectionId,title,items,isDrop){
 
 function taskEl(t,sectionId){
   const a=A(t.id); const el=document.createElement('div');
-  el.className=(CALL_LISTS.has(sectionId)?'task callrow':'task')+((a.blink||autoBlinkOn(t,sectionId))?' blink':'')+(sectionOf(t)==='bigticket'?' bigtix':''); el.draggable=true;
+  el.dataset.tid=t.id; el.className=(CALL_LISTS.has(sectionId)?'task callrow':'task')+((a.blink||autoBlinkOn(t,sectionId))?' blink':'')+(sectionOf(t)==='bigticket'?' bigtix':''); el.draggable=true;
   el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',t.id);el.classList.add('dragging');});
   el.addEventListener('dragend',()=>el.classList.remove('dragging'));
   // Card-level reorder ONLY in real bucket sections. In the filter/added pane the
@@ -3183,6 +3239,7 @@ function taskEl(t,sectionId){
   act('✓','done','Mark done',()=>markDone(t));
   act(a.blink?'🔔':'🔕', a.blink?'on':'', a.blink?'Ringing — tap to silence':'Ring bell (jumps to top)', ()=>{const aa=A(t.id); aa.blink=!aa.blink; if(aa.blink)bumpTop(t.id); saveAug(); render();});
   act('✎','','Edit all fields',()=>editTaskD(t));
+  act('✨ Claude','','Send to Claude — instructions for this task',()=>TaskEditor.open(t,{claude:true}));
   act('→ AM',sectionOf(t)==='morning'?'on':'','Move to the morning call',()=>{ if(sectionOf(t)!=='morning') setSlot(t.id,'morning'); });
   act('→ PM',sectionOf(t)==='afternoon'?'on':'','Move to the afternoon call',()=>{ if(sectionOf(t)!=='afternoon') setSlot(t.id,'afternoon'); });
   act('Snooze','','Snooze 10 days',()=>snoozeTask(t.id));
