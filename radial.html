@@ -80,6 +80,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .meet .mloc{color:var(--dim);font-size:11.5px;margin-top:3px}
 .meet .mjoin{display:inline-flex;align-items:center;gap:5px;margin-top:8px;background:rgba(57,199,223,.14);color:var(--ink);border:1px solid var(--cyan);border-radius:9px;padding:5px 11px;font:700 12px ui-monospace,Menlo,monospace;text-decoration:none}
 .meet .mjoin.tel{background:rgba(58,143,95,.2);border-color:var(--green)}
+.meet{cursor:pointer}.meet .mnav{display:flex;align-items:center;justify-content:space-between;margin:-2px 0 4px;font:700 10px ui-monospace,Menlo,monospace;color:var(--dim)}.meet .mnav button{color:var(--cyan);font-size:16px;padding:0 8px}.meet .mnav button:disabled{opacity:.25}.meet .malso{margin-top:8px;padding-top:7px;border-top:1px solid var(--line);font-size:12px}
 .meet .mnext{margin-top:8px;padding-top:7px;border-top:1px solid var(--line);color:var(--dim);font-size:11.5px}
 .meet .mnext b{color:var(--ink)}
 .nowtag{display:inline-block;font:800 9px ui-monospace,Menlo,monospace;letter-spacing:1px;background:var(--cyan);color:#07141a;border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:middle}
@@ -235,6 +236,8 @@ function meetingsToday(day){ const list=calendar.filter(e=>e.date===day).map(e=>
 function nowNext(day){ const d=new Date(), cur=d.getHours()*60+d.getMinutes(); const L=meetingsToday(day);
   const now=L.filter(e=>e.start-5<=cur&&cur<e.end); const next=L.find(e=>e.start>cur&&!now.includes(e)); return {now:now[0]||null,next:next||null,L}; }
 function joinHref(e){ if(e.link&&/^(https?:|tel:)/i.test(e.link)) return e.link; const digits=(e.location||'').replace(/[^\d]/g,''); return digits.length>=10?'tel:'+digits:''; }
+let mSel=null, mSelAt=0; const nowMin=()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); };
+function mtgNav(){ return meetingsToday(todayISO()).map(e=>Object.assign(e,{_today:1})).concat(meetingsToday(tomorrowISO())); }
 const todayMtgItems=()=>meetingsToday(todayISO()).map(e=>({_mtg:true,name:e.title,when:e.when,link:joinHref(e)}));
 
 /* weather */
@@ -306,11 +309,17 @@ function renderCorners(){
   const m=miniList('morning',3), a=miniList('afternoon',3);
   $('#cTL').innerHTML='<div class="pane"><div class="ph" data-list="morning">☀︎ Morning<span class="pn">'+m.count+'</span></div>'+m.html+'</div>'+
     '<div class="pane"><div class="ph" data-list="afternoon">◑ Afternoon<span class="pn">'+a.count+'</span></div>'+a.html+'</div>';
-  const nn=nowNext(todayISO()); const mt=nn.now||nn.next, nx=nn.now&&nn.next?nn.next:null; let mh='';
-  if(mt){ const h=joinHref(mt), tel=h.indexOf('tel:')===0;
-    mh='<div class="mtime">'+esc(mt.when||'')+(nn.now?'<span class="nowtag">NOW</span>':'')+'</div><div class="mtitle">'+esc(mt.title||'(untitled)')+'</div>'+(mt.location?'<div class="mloc">📍 '+esc(mt.location)+'</div>':'')+
-       (h?'<a class="mjoin'+(tel?' tel':'')+'" href="'+esc(h)+'"'+(tel?'':' target="_blank" rel="noopener"')+'>'+(tel?'📞 Call':'▶ Join')+'</a>':'')+(nx?'<div class="mnext">Next · '+esc(nx.when||'')+' <b>'+esc(String(nx.title||'').slice(0,24))+'</b></div>':'');
-  } else mh='<div class="none">No meetings left today.</div>';
+  const nn=nowNext(todayISO()); const ML=mtgNav(), cur=nowMin(); let mi=(mSel!=null&&Date.now()-mSelAt<120000)?Math.min(mSel,ML.length-1):ML.findIndex(e=>e._today&&e.end>cur); if(mi<0) mi=ML.findIndex(e=>!e._today); if(mi<0) mi=ML.length-1; mSel=mi;
+  const mt=ML[mi]; let mh='';
+  if(mt){ const h=joinHref(mt), tel=h.indexOf('tel:')===0, isNow=mt._today&&mt.start-5<=cur&&cur<mt.end;
+    const also=mt._today?ML.filter(e=>e!==mt&&e._today&&e.start-5<=cur&&cur<e.end):[];
+    const nx=ML[mi+1];
+    mh='<div class="mnav"><button data-mp '+(mi<=0?'disabled':'')+'>‹</button><span>'+(mi+1)+' / '+ML.length+(mt._today?'':' · Tomorrow')+'</span><button data-mn '+(mi>=ML.length-1?'disabled':'')+'>›</button></div>'+
+       '<div class="mtime">'+esc(mt.when||'')+(isNow?'<span class="nowtag">NOW</span>':'')+'</div><div class="mtitle">'+esc(mt.title||'(untitled)')+'</div>'+(mt.location?'<div class="mloc">📍 '+esc(mt.location)+'</div>':'')+
+       (h?'<a class="mjoin'+(tel?' tel':'')+'" href="'+esc(h)+'"'+(tel?'':' target="_blank" rel="noopener"')+'>'+(tel?'📞 Call':'▶ Join')+'</a>':'')+
+       also.map(e=>{ const h2=joinHref(e); return '<div class="malso"><span class="nowtag">ALSO NOW</span> <b>'+esc(String(e.title||'').slice(0,40))+'</b>'+(h2?' <a class="mjoin" style="margin:4px 0 0" href="'+esc(h2)+'" target="_blank" rel="noopener">▶ Join</a>':'')+'</div>'; }).join('')+
+       (nx&&!also.includes(nx)?'<div class="mnext">Next · '+(nx._today?'':'Tmrw ')+esc(nx.when||'')+' <b>'+esc(String(nx.title||'').slice(0,24))+'</b></div>':'');
+  } else mh='<div class="none">No meetings today or tomorrow.</div>';
   const inc=miniList('incoming',3);
   $('#cTR').innerHTML='<div class="pane meet'+(nn.now?' urgent':'')+'"><div class="ph" data-list="meeting">▣ Next Meeting<span class="pn">'+nn.L.length+'</span></div>'+mh+'</div>'+
     '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span></div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div><div class="pane" id="cqPane" style="display:none"></div>';
@@ -328,6 +337,8 @@ function renderCorners(){
   const day=noteDay||todayISO(), isToday=day===todayISO(); const prev=$('#noteTa'), keep=(prev&&prev.dataset.day===day)?prev.value:null;
   $('#cBR').innerHTML='<div class="pane notes"><div class="ph" style="cursor:default">✎ '+(isToday?"Today's Notes":'Notes')+'<span class="nnav"><button data-dp>‹</button><span class="nlbl'+(isToday?'':' past')+'">'+esc(dnLabel(day))+'</span><button data-dn '+(isToday?'disabled':'')+'>›</button>'+(isToday?'':'<button data-dt>Today</button>')+'</span></div><textarea id="noteTa" placeholder="'+(isToday?'Jot anything — new page every day. ‹ for yesterday.':'Nothing on '+esc(dnLabel(day)))+'">'+(keep!=null?esc(keep):esc(dnGet()[day]||''))+'</textarea><div class="nfoot"><span id="noteSt"></span></div><div class="addrow"><input id="noteQ" placeholder="⌕ Search all notes…" value="'+esc(nq)+'"></div><div id="noteR" class="nres"></div></div>';
   // wiring
+  { const mp=$('#cTR [data-mp]'), mn=$('#cTR [data-mn]'); if(mp)mp.onclick=e=>{ e.stopPropagation(); mSel=Math.max(0,mSel-1); mSelAt=Date.now(); renderCorners(); layout(); }; if(mn)mn.onclick=e=>{ e.stopPropagation(); mSel=mSel+1; mSelAt=Date.now(); renderCorners(); layout(); };
+    const mc=$('#cTR .meet'); if(mc) mc.onclick=e=>{ if(e.target.closest('a,button,[data-list]')) return; openList('meeting'); }; }
   document.querySelectorAll('.corner [data-list]').forEach(h=>h.onclick=()=>openList(h.dataset.list));
   document.querySelectorAll('.corner .lrow[data-open]').forEach(r=>r.onclick=e=>{ if(e.target.closest('.tick'))return; openTask(r.dataset.open); });
   const ia=$('#incAdd'); if(ia){ ia.setAttribute('enterkeyhint','done'); let last='',at=0; const go=()=>{ const v=ia.value.trim(); if(!v)return; ia.value=''; if(v===last&&Date.now()-at<2500)return; last=v; at=Date.now(); createTask('incoming',v); }; $('#incAddBtn').onclick=go; ia.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)go();}); }
@@ -412,7 +423,9 @@ window.TE={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.table
 function openTask(id){ const t=tasks.find(x=>x.id===id); if(!t){ toast('Task not found'); return; } closeOv(); if(window.TaskEditor) TaskEditor.open(t); else toast('Editor not loaded'); }
 function openList(key){ const em=CAT[key][0],cap=CAT[key][1]; const items=itemsFor(key);
   ovh.innerHTML=em+' '+esc(cap)+' · '+items.length+'<button class="x" data-x>✕</button>';
-  if(key==='meeting'){ ovb.innerHTML='<div class="plist">'+(items.length?items.map(e=>'<div class="lrow"><span class="dot" style="background:'+projColor(e.when)+'"></span><span class="lt"><span class="ln">'+esc(e.name)+'</span><span class="lm">'+esc(e.when||'')+'</span></span>'+(e.link?'<a class="edlink" style="margin:0;padding:6px 10px" href="'+esc(e.link)+'" target="_blank" rel="noopener">'+(e.link.indexOf('tel:')===0?'📞':'▶ Join')+'</a>':'')+'</div>').join(''):'<div class="none">Nothing here.</div>')+'</div>';
+  if(key==='meeting'){ const cur=nowMin(); const row=(e,td)=>{ const h=joinHref(e), past=td&&e.end<=cur, now=td&&e.start-5<=cur&&cur<e.end; return '<div class="lrow"'+(past?' style="opacity:.45"':'')+'><span class="dot" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(e.title||'(untitled)')+(now?'<span class="nowtag">NOW</span>':'')+'</span><span class="lm">'+esc(e.when||'')+'</span></span>'+(h?'<a class="edlink" style="margin:0;padding:6px 10px" href="'+esc(h)+'" target="_blank" rel="noopener">'+(h.indexOf('tel:')===0?'📞':'▶ Join')+'</a>':'')+'</div>'; };
+    const T=meetingsToday(todayISO()), M=meetingsToday(tomorrowISO()); ovh.innerHTML=em+' Meetings · '+(T.length+M.length)+'<button class="x" data-x>✕</button>';
+    ovb.innerHTML='<div class="phint">TODAY · '+T.length+'</div><div class="plist">'+(T.length?T.map(e=>row(e,1)).join(''):'<div class="none">None.</div>')+'</div><div class="phint" style="margin-top:14px">TOMORROW · '+M.length+'</div><div class="plist">'+(M.length?M.map(e=>row(e,0)).join(''):'<div class="none">None.</div>')+'</div>';
     ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; return; }
   if(key==='respond'){ ovb.innerHTML='<div class="plist">'+(items.length?items.map(e=>'<div class="lrow">'+(e.link?'<a href="'+esc(e.link)+'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:flex;gap:10px;align-items:center;flex:1;min-width:0">':'<span style="display:flex;gap:10px;align-items:center;flex:1;min-width:0">')+'<span class="dot" style="background:'+projColor(e.project)+'"></span><span class="lt"><span class="ln">'+esc(e.name)+'</span><span class="lm">'+esc(e.project||'')+'</span></span>'+(e.link?'</a>':'</span>')+'</div>').join(''):'<div class="none">No replies.</div>')+'</div>';
     ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; return; }
