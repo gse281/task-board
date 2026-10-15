@@ -96,6 +96,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .notes .nnav button{color:var(--cyan);padding:0 5px;font-size:14px}.notes .nnav button:disabled{opacity:.3}
 .notes .nnav .nlbl{font:700 9.5px ui-monospace,Menlo,monospace;color:var(--ink);min-width:50px;text-align:center;text-transform:none;letter-spacing:0}
 .notes .nnav .nlbl.past{color:var(--gold)}
+.notes .nres{max-height:200px;overflow:auto;margin-top:6px}.notes .nhit{padding:6px 8px;border-radius:8px;font-size:12px;line-height:1.35;color:var(--ink2,var(--ink));cursor:pointer;border:1px solid transparent}.notes .nhit:hover{border-color:var(--line);background:var(--card2)}.notes .nhit b{color:var(--cyan);font:700 10px ui-monospace,Menlo,monospace;margin-right:4px}.notes .nhit mark{background:rgba(57,199,223,.25);color:var(--ink);border-radius:3px}
 .notes .nfoot{margin-top:5px;font:600 10.5px ui-monospace,Menlo,monospace;color:var(--dim)}
 /* overlays */
 .back{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(3,7,10,.86);padding:20px}
@@ -320,7 +321,7 @@ function renderCorners(){
     return '<div class="wxc'+(w.date===td?' today':'')+(w.pr>0.08?' wet':'')+'"><div class="wd">'+nm+'</div><div class="we">'+wxEmoji(w.code)+'</div><div class="wt '+tc+'">'+w.hi+'°</div><div class="wp">'+amt+'</div></div>'; };
   $('#cBL').innerHTML='<div class="pane"><div class="ph" style="cursor:default">☁︎ Weather<span class="pn">NYC</span></div>'+(days.length?'<div class="wxstrip">'+days.map(cell).join('')+'</div>':'<div class="none">Loading…</div>')+'</div>';
   const day=noteDay||todayISO(), isToday=day===todayISO(); const prev=$('#noteTa'), keep=(prev&&prev.dataset.day===day)?prev.value:null;
-  $('#cBR').innerHTML='<div class="pane notes"><div class="ph" style="cursor:default">✎ '+(isToday?"Today's Notes":'Notes')+'<span class="nnav"><button data-dp>‹</button><span class="nlbl'+(isToday?'':' past')+'">'+esc(dnLabel(day))+'</span><button data-dn '+(isToday?'disabled':'')+'>›</button>'+(isToday?'':'<button data-dt>Today</button>')+'</span></div><textarea id="noteTa" placeholder="'+(isToday?'Jot anything — new page every day. ‹ for yesterday.':'Nothing on '+esc(dnLabel(day)))+'">'+(keep!=null?esc(keep):esc(dnGet()[day]||''))+'</textarea><div class="nfoot"><span id="noteSt"></span></div></div>';
+  $('#cBR').innerHTML='<div class="pane notes"><div class="ph" style="cursor:default">✎ '+(isToday?"Today's Notes":'Notes')+'<span class="nnav"><button data-dp>‹</button><span class="nlbl'+(isToday?'':' past')+'">'+esc(dnLabel(day))+'</span><button data-dn '+(isToday?'disabled':'')+'>›</button>'+(isToday?'':'<button data-dt>Today</button>')+'</span></div><textarea id="noteTa" placeholder="'+(isToday?'Jot anything — new page every day. ‹ for yesterday.':'Nothing on '+esc(dnLabel(day)))+'">'+(keep!=null?esc(keep):esc(dnGet()[day]||''))+'</textarea><div class="nfoot"><span id="noteSt"></span></div><div class="addrow"><input id="noteQ" placeholder="⌕ Search all notes…" value="'+esc(nq)+'"></div><div id="noteR" class="nres"></div></div>';
   // wiring
   document.querySelectorAll('.corner [data-list]').forEach(h=>h.onclick=()=>openList(h.dataset.list));
   document.querySelectorAll('.corner .lrow[data-open]').forEach(r=>r.onclick=e=>{ if(e.target.closest('.tick'))return; openTask(r.dataset.open); });
@@ -328,7 +329,21 @@ function renderCorners(){
   const ta=$('#noteTa'); if(ta){ ta.dataset.day=day; setNoteStat('init'); ta.oninput=()=>{ clearTimeout(window._nt); setNoteStat('saving'); dnPut(day,ta.value); window._nt=setTimeout(()=>saveNoteDay(day,ta.value),700); }; loadNoteDay(day);
     const dp=$('#cBR [data-dp]'); if(dp)dp.onclick=()=>{ noteDay=dnShift(day,-1); renderCorners(); layout(); };
     const dn=$('#cBR [data-dn]'); if(dn)dn.onclick=()=>{ const n=dnShift(day,1); noteDay=n>=todayISO()?null:n; renderCorners(); layout(); };
-    const dt=$('#cBR [data-dt]'); if(dt)dt.onclick=()=>{ noteDay=null; renderCorners(); layout(); }; } }
+    const dt=$('#cBR [data-dt]'); if(dt)dt.onclick=()=>{ noteDay=null; renderCorners(); layout(); }; }
+  const nqi=$('#noteQ'); if(nqi){ nqi.oninput=()=>{ nq=nqi.value; renderNoteRes(); clearTimeout(window._nqt); window._nqt=setTimeout(noteSearchRemote,700); }; nqi.onkeydown=e=>{ if(e.key==='Escape'){ nq=''; nqi.value=''; renderNoteRes(); } }; nqi.onfocus=()=>window._nqF=1; nqi.onblur=()=>window._nqF=0; if(window._nqF){ nqi.focus(); nqi.setSelectionRange(nq.length,nq.length); } renderNoteRes(); } }
+/* notes search: instant over local cache, then one Airtable query per term (debounced) */
+let nq=''; const _nqDone={};
+function renderNoteRes(){ const el=$('#noteR'); if(!el) return; const q=nq.trim().toLowerCase(); if(q.length<2){ el.innerHTML=''; return; }
+  const L=dnGet(); const hits=Object.keys(L).filter(d=>(L[d]||'').toLowerCase().includes(q)).sort().reverse();
+  if(!hits.length){ el.innerHTML='<div class="none">'+(_nqDone[q]?'No notes match.':'Searching…')+'</div>'; return; }
+  el.innerHTML=hits.slice(0,15).map(d=>{ const t=L[d], i=t.toLowerCase().indexOf(q), a=Math.max(0,i-30); const snip=(a?'…':'')+t.slice(a,i)+'\u0001'+t.slice(i,i+q.length)+'\u0002'+t.slice(i+q.length,i+q.length+60);
+    return '<div class="nhit" data-d="'+d+'"><b>'+esc(dnLabel(d))+'</b> '+esc(snip).replace('\u0001','<mark>').replace('\u0002','</mark>')+'</div>'; }).join('')+(hits.length>15?'<div class="none">+'+(hits.length-15)+' more</div>':'');
+  el.querySelectorAll('.nhit').forEach(h=>h.onclick=()=>{ const d=h.dataset.d; noteDay=d===todayISO()?null:d; renderCorners(); layout(); }); }
+async function noteSearchRemote(){ const q=nq.trim().toLowerCase(); if(q.length<2||_nqDone[q]||demo||!cfg.apiKey){ _nqDone[q]=1; renderNoteRes(); return; }
+  try{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE); u.searchParams.set('pageSize','50'); u.searchParams.append('fields[]','Key'); u.searchParams.append('fields[]','Text');
+    u.searchParams.set('filterByFormula',"AND(LEFT({Key},8)='scratch:',SEARCH('"+q.replace(/\\/g,'').replace(/'/g,"\\'")+"',LOWER({Text})))");
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(r.ok){ const d=await r.json(); (d.records||[]).forEach(rec=>{ const day=String(rec.fields.Key||'').slice(8); if(day){ noteRids[day]=rec.id; if(document.activeElement!==$('#noteTa')||$('#noteTa').dataset.day!==day) dnPut(day,rec.fields.Text||''); } }); }
+  }catch(e){} _nqDone[q]=1; renderNoteRes(); }
 /* layout: position core + bubbles in a ring (computed once per render / resize — cheap) */
 function layout(){ const st=$('#stage'); const W=st.clientWidth, H=st.clientHeight, CX=W/2, CY=H/2+8;
   { const ml=$('#cML'), tl=$('#cTL'), bl=$('#cBL'); if(ml&&tl&&bl){ const top=tl.offsetTop+tl.offsetHeight+10, bot=bl.offsetTop-10; ml.style.top=top+'px'; ml.style.height=Math.max(120,bot-top)+'px'; ml.style.transform='none'; }
