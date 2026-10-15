@@ -290,9 +290,13 @@ function renderCore(){ const f=itemsFor('focus'); const it=f[0]||null; const cor
   core.innerHTML='<div class="cl">◎ Now / Focus</div><div class="cc">'+(f.length?f.length+' in focus':'clear')+'</div>'+
     (it?(it.project?'<span class="proj">'+esc(it.project.split(',')[0])+'</span>':'')+'<div class="cit">'+esc(cleanName(it))+'</div>':'<div class="cempty">Nothing in focus — tap a task → ◎ to zero in.</div>');
   core.onclick=()=>{ if(it) openTask(it.id); else openList('focus'); }; }
-function renderBubbles(){ const box=$('#bubbles'); box.innerHTML=ORBIT.map(k=>{ const list=itemsFor(k); const it=list[0]; const em=CAT[k][0],nm=CAT[k][1];
+let bubIdx=0;   // bubbles rotate through their tasks every 30s (text swap only — no animation)
+const bubPrev=it=>(it.project&&!it._mtg?'<span class="pr">'+esc(it.project.split(',')[0])+'</span>':'')+(it._mtg?esc(it.name):esc(cleanName(it)));
+function cycleBubbles(){ if(document.hidden) return; bubIdx++; document.querySelectorAll('#bubbles .bub').forEach(el=>{ const list=itemsFor(el.dataset.key); if(list.length<2) return; const b=el.querySelector('.bit'); if(b) b.innerHTML=bubPrev(list[bubIdx%list.length]); }); }
+setInterval(cycleBubbles,30000);
+function renderBubbles(){ const box=$('#bubbles'); box.innerHTML=ORBIT.map(k=>{ const list=itemsFor(k); const it=list.length?list[bubIdx%list.length]:null; const em=CAT[k][0],nm=CAT[k][1];
     const cls='bub'+(list.length?'':' empty')+(hasStale(list)?' urgent':'');
-    const prev=it?'<div class="bit">'+(it.project&&!it._mtg?'<span class="pr">'+esc(it.project.split(',')[0])+'</span>':'')+(it._mtg?esc(it.name):esc(cleanName(it)))+'</div>':'<div class="bit e">—</div>';
+    const prev=it?'<div class="bit">'+bubPrev(it)+'</div>':'<div class="bit e">—</div>';
     return '<div class="'+cls+'" data-key="'+k+'"><div class="bcap">'+em+' '+esc(nm)+'</div><div class="bn">'+list.length+'</div>'+prev+'</div>'; }).join('');
   box.querySelectorAll('.bub').forEach(el=>el.onclick=()=>openList(el.dataset.key)); }
 /* corners */
