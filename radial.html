@@ -18,7 +18,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .top .sum{flex:1;min-width:0;text-align:center;font:600 12px ui-monospace,Menlo,monospace;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .top .sum b{color:var(--cyan)} .top .sum .att{color:#8fe4f4;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .top .sum .att:hover{color:#cdf3ff}
-.top .cmdbtn{flex:none;border:1px solid var(--line);border-radius:999px;padding:6px 13px;font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--dim)}
+.top .cmdbtn:hover{color:var(--cyan);border-color:var(--cyan)}.top .cmdbtn{flex:none;margin-left:6px;border:1px solid var(--line);border-radius:999px;padding:6px 13px;font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--dim)}
 .top .cmdbtn:hover{color:var(--cyan);border-color:var(--cyan)}
 .top .clk{flex:none;font-size:15px;color:var(--ink);min-width:66px;text-align:right}
 @media(max-width:720px){ .top .sum{display:none} }
@@ -154,7 +154,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 <body>
 <div id="stage">
   <div class="ring r1" id="ring1"></div><div class="ring r2" id="ring2"></div>
-  <div class="top"><span class="greet" id="greet">FOCUS</span><span class="sum" id="sum"></span><button class="cmdbtn" id="cmdBtn">⌘ ADD · JUMP · FIND</button><span class="clk" id="clk"></span></div>
+  <div class="top"><span class="greet" id="greet">FOCUS</span><span class="sum" id="sum"></span><button class="cmdbtn" id="cmdBtn">⌘ ADD · JUMP · FIND</button><a class="cmdbtn" href="focus2.html" style="text-decoration:none">◉ FOCUS 2</a><a class="cmdbtn" href="dashboard.html" style="text-decoration:none">⌂ DASHBOARD</a><span class="clk" id="clk"></span></div>
   <div class="core" id="core"></div>
   <div id="bubbles"></div>
   <div class="corner tl" id="cTL"></div><div class="corner tr" id="cTR"></div><div class="corner ml" id="cML"></div><div class="corner bl" id="cBL"></div><div class="corner br" id="cBR"></div>
