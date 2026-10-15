@@ -396,8 +396,10 @@ function openList(key){ const em=CAT[key][0],cap=CAT[key][1]; const items=itemsF
     ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; return; }
   if(key==='respond'){ ovb.innerHTML='<div class="plist">'+(items.length?items.map(e=>'<div class="lrow">'+(e.link?'<a href="'+esc(e.link)+'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:flex;gap:10px;align-items:center;flex:1;min-width:0">':'<span style="display:flex;gap:10px;align-items:center;flex:1;min-width:0">')+'<span class="dot" style="background:'+projColor(e.project)+'"></span><span class="lt"><span class="ln">'+esc(e.name)+'</span><span class="lm">'+esc(e.project||'')+'</span></span>'+(e.link?'</a>':'</span>')+'</div>').join(''):'<div class="none">No replies.</div>')+'</div>';
     ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; return; }
-  ovb.innerHTML='<div class="phint">Tap a task to edit · ⋮⋮ drag to reorder · ⊘ remove · ✓ done</div><div class="plist" id="plist">'+capRows(items,200)+'</div>';
-  ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; wireRows($('#plist'),key); }
+  const canAdd=!/^(priority|still|attention)$/.test(key);
+  ovb.innerHTML=(canAdd?'<div class="addrow" style="margin:0 0 10px"><input id="ovAdd" placeholder="＋ Add to '+esc(cap)+'…"><button id="ovAddBtn">Add</button></div>':'')+'<div class="phint">Tap a task to edit · ⋮⋮ drag to reorder · ⊘ remove · ✓ done</div><div class="plist" id="plist">'+capRows(items,200)+'</div>';
+  ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; wireRows($('#plist'),key);
+  const oa=$('#ovAdd'); if(oa){ oa.setAttribute('enterkeyhint','done'); const go=()=>{ const v=oa.value.trim(); if(!v)return; oa.value=''; createTask(key,v); openList(key); const n=$('#ovAdd'); if(n)n.focus(); }; $('#ovAddBtn').onclick=go; oa.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)go();}); } }
 
 /* ===== ✨ Claude requests pane (claudeq.js) ===== */
 function cqOpenTask(id){ const t=tasks.find(x=>x.id===id); if(t){ closeOv(); openTask(t.id); } else toast('Task not loaded'); }
