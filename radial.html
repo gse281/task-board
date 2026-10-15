@@ -48,7 +48,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 /* corners */
 .corner{position:absolute;z-index:8;width:min(290px,30vw);display:flex;flex-direction:column;gap:10px}
 .tl{top:50px;left:14px}.ml{left:14px;top:50%}
-#cML .pane{display:flex;flex-direction:column;max-height:100%;min-height:0}#cML .oil{overflow:auto;min-height:0;margin:0 -4px}#cML .lt{overflow:hidden}#cML .ln{display:block}#cML .ld{white-space:nowrap}#cML .ld .tm{color:var(--cyan);margin-right:5px;font-weight:600}#cML .lrow .dot.o{background:var(--orange)!important}#cML .oisub{color:var(--dim);font:600 10.5px ui-monospace,Menlo,monospace;margin:-3px 0 5px}.tr{top:50px;right:14px}.bl{bottom:58px;left:14px}.br{bottom:58px;right:14px}
+#cML .pane{display:flex;flex-direction:column;max-height:100%;min-height:0}#cML .oil{overflow-y:auto;overflow-x:hidden;min-height:0;margin:0 -4px}#cML .lt{overflow:hidden}#cML .ln{display:block}#cML .ld{white-space:nowrap}#cML .ld .tm{color:var(--cyan);margin-right:5px;font-weight:600}#cML .lrow .dot.o{background:var(--orange)!important}#cML .oisub{color:var(--dim);font:600 10.5px ui-monospace,Menlo,monospace;margin:-3px 0 5px}.tr{top:50px;right:14px}.bl{bottom:58px;left:14px}.br{bottom:58px;right:14px}
 @media(max-width:620px){ .corner{width:42vw} }
 .pane{background:rgba(10,20,26,.94);border:1px solid var(--line);border-radius:14px;padding:10px 12px}
 .pane.urgent{border-color:rgba(57,199,223,.5)}
@@ -311,10 +311,11 @@ function renderCorners(){
   $('#cTR').innerHTML='<div class="pane meet'+(nn.now?' urgent':'')+'"><div class="ph" data-list="meeting">▣ Next Meeting<span class="pn">'+nn.L.length+'</span></div>'+mh+'</div>'+
     '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span></div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div><div class="pane" id="cqPane" style="display:none"></div>';
   renderCQPane();
+  const shortTime=x=>{ const r=String(x).match(/(\d+)\s*(h|hr|hour|m|min)/i); return r?'~'+r[1]+(/^h/i.test(r[2])?'h':'m'):''; };
   const oi=window.Guide?Guide.list(tasks):[];
-  $('#cML').innerHTML='<div class="pane'+(oi.some(t=>Guide.overdue(t))?' urgent':'')+'"><div class="ph" style="cursor:default">▤ Open items · @Computer<span class="pn">'+oi.length+'</span></div>'+
-    (oi.length?'<div class="oisub">Tap one for step-by-step</div><div class="oil">'+oi.map(t=>{ const od=Guide.overdue(t), m=Guide.meta(t);
-      return '<div class="lrow" data-guide="'+t.id+'" title="'+esc(cleanName(t))+'"><span class="dot'+(od||Guide.ageDays(t)>=7?' o':'')+'" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(od?' o':'')+'">'+(m.on?'<span class="tm">step '+(m.on+1)+'/'+m.n+'</span>':m.time?'<span class="tm">'+esc(m.time)+'</span>':'')+(od?od+'d late':Guide.ageDays(t)+'d')+'</span></div>'; }).join('')+'</div>':'<div class="none">All clear.</div>')+'</div>';
+  $('#cML').innerHTML='<div class="pane'+(oi.some(t=>Guide.overdue(t))?' urgent':'')+'"><div class="ph" style="cursor:default">▤ At the computer<span class="pn">'+oi.length+'</span></div>'+
+    (oi.length?'<div class="oisub">Desk tasks with guides · tap one to walk through it<br>~min = your time · d = days open</div><div class="oil">'+oi.map(t=>{ const od=Guide.overdue(t), m=Guide.meta(t);
+      return '<div class="lrow" data-guide="'+t.id+'" title="'+esc(cleanName(t))+'"><span class="dot'+(od||Guide.ageDays(t)>=7?' o':'')+'" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(od?' o':'')+'">'+(m.on?'<span class="tm">step '+(m.on+1)+'/'+m.n+'</span>':m.time?'<span class="tm">'+esc(shortTime(m.time))+'</span>':'')+(od?od+'d late':Guide.ageDays(t)+'d')+'</span></div>'; }).join('')+'</div>':'<div class="none">All clear.</div>')+'</div>';
   document.querySelectorAll('#cML [data-guide]').forEach(r=>r.onclick=()=>openGuide(r.dataset.guide));
   const td=todayISO(); const days=wx.filter(w=>w.date>=td).slice(0,7);
   const cell=w=>{ const nm=w.date===td?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(w.date+'T12:00:00').getDay()]; const tc=w.hi>=90?'hot':w.hi<=32?'cold':''; const amt=w.pr>0.02?w.pr.toFixed(2).replace(/^0/,'')+'"':'';
