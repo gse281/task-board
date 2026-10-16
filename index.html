@@ -50,6 +50,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .bub .bnav button:hover{border-color:var(--cyan);background:rgba(57,199,223,.18)}
 .ringseg{display:flex;gap:2px;border:1px solid var(--line);border-radius:999px;padding:2px;pointer-events:auto;flex:none}
 .ringseg button{width:26px;height:22px;border-radius:999px;border:0;background:transparent;color:var(--dim);font:800 11px ui-monospace,Menlo,monospace;cursor:pointer}
+.ovnav{display:inline-flex;align-items:center;gap:6px;margin-left:16px;font:700 12px ui-monospace,Menlo,monospace;color:var(--ink);letter-spacing:0;text-transform:none}.ovnav button{color:var(--cyan);font-size:22px;line-height:1;width:34px;height:30px;border:1px solid var(--line);border-radius:9px;background:none;cursor:pointer}.ovnav button:disabled{opacity:.25}.ovnav .past{color:var(--gold)}
 .ringseg button.on{background:var(--cyan);color:#07141a}
 #ringDD{display:none;position:fixed;z-index:60;width:290px;max-height:min(70vh,560px);overflow:auto;background:rgba(9,18,24,.97);border:1px solid var(--cyan);border-radius:14px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 #ringDD .rdh{font:700 10px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--cyan);text-transform:uppercase;padding:6px 8px 8px}
@@ -276,7 +277,8 @@ function meetingsToday(day){ const list=calendar.filter(e=>e.date===day).map(e=>
 function nowNext(day){ const d=new Date(), cur=d.getHours()*60+d.getMinutes(); const L=meetingsToday(day);
   const now=L.filter(e=>e.start-5<=cur&&cur<e.end); const next=L.find(e=>e.start>cur&&!now.includes(e)); return {now:now[0]||null,next:next||null,L}; }
 function joinHref(e){ if(e.link&&/^(https?:|tel:)/i.test(e.link)) return e.link; const digits=(e.location||'').replace(/[^\d]/g,''); return digits.length>=10?'tel:'+digits:''; }
-let mSel=null, mSelAt=0, incDay=null; const nowMin=()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); };
+let mSel=null, mSelAt=0, incDay=null;
+const incItems=()=>incDay?tasks.filter(t=>live(t)&&t.createdTime&&isoOf(new Date(t.createdTime))===incDay).sort((a,b)=>Date.parse(b.createdTime)-Date.parse(a.createdTime)):itemsFor('incoming'); const nowMin=()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); };
 function mtgNav(){ return meetingsToday(todayISO()).map(e=>Object.assign(e,{_today:1})).concat(meetingsToday(tomorrowISO())); }
 const todayMtgItems=()=>meetingsToday(todayISO()).map(e=>({_mtg:true,name:e.title,when:e.when,link:joinHref(e)}));
 
@@ -426,7 +428,7 @@ function renderCorners(){
        also.map(e=>{ const h2=joinHref(e); return '<div class="malso"><span class="nowtag">ALSO NOW</span> <b>'+esc(String(e.title||'').slice(0,40))+'</b>'+(h2?' <a class="mjoin" style="margin:4px 0 0" href="'+esc(h2)+'" target="_blank" rel="noopener">▶ Join</a>':'')+'</div>'; }).join('')+
        (nx&&!also.includes(nx)?'<div class="mnext">Next · '+(nx._today?'':'Tmrw ')+esc(nx.when||'')+' <b>'+esc(String(nx.title||'').slice(0,24))+'</b></div>':'');
   } else mh='<div class="none">No meetings today or tomorrow.</div>';
-  const incT=incDay?tasks.filter(t=>live(t)&&t.createdTime&&isoOf(new Date(t.createdTime))===incDay).sort((a,b)=>Date.parse(b.createdTime)-Date.parse(a.createdTime)):itemsFor('incoming');
+  const incT=incItems();
   const inc={count:incT.length, html:'<div class="inclist">'+(incT.length?incT.slice(0,60).map(miniRow).join(''):'<div class="none">'+(incDay?'Nothing came in.':'—')+'</div>')+'</div>'};
   const incNav='<span class="nnav"><button data-ip>‹</button><span class="nlbl'+(incDay?' past':'')+'">'+esc(dnLabel(incDay||todayISO()))+'</span><button data-in '+(incDay?'':'disabled')+'>›</button></span>';
   if(!$('#cxHost')){ $('#cTR').innerHTML='<div id="cxHost"></div><div id="cTRb" style="display:flex;flex-direction:column;gap:10px"></div>'; renderCx(); }
@@ -549,8 +551,9 @@ window.TE={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.table
     saveAug(); patchTask(t.id,f); renderAll(); },
   restoreCat:(t,p)=>{ const a=A(t.id); if(p.sec) a.section=p.sec; else delete a.section; t.sectionRemote=p.sr; t.slotRemote=p.m; t.typeRemote=p.ty; saveAug(); patchTask(t.id,Object.assign({Section:p.sr,MeetingSlot:p.m},p.ty==='call'?{Type:'call'}:{})); renderAll(); } };
 function openTask(id){ const t=tasks.find(x=>x.id===id); if(!t){ toast('Task not found'); return; } closeOv(); if(window.TaskEditor) TaskEditor.open(t); else toast('Editor not loaded'); }
-function openList(key){ const em=capOf(key)[0],cap=capOf(key)[1]; const items=itemsFor(key);
-  ovh.innerHTML=em+' '+esc(cap)+' · '+items.length+'<button class="x" data-x>✕</button>';
+function openList(key){ const em=capOf(key)[0],cap=capOf(key)[1]; const items=key==='incoming'?incItems():itemsFor(key);
+  ovh.innerHTML=em+' '+esc(cap)+' · '+items.length+(key==='incoming'?'<span class="ovnav"><button data-oip>‹</button><span class="'+(incDay?'past':'')+'">'+esc(dnLabel(incDay||todayISO()))+'</span><button data-oin '+(incDay?'':'disabled')+'>›</button></span>':'')+'<button class="x" data-x>✕</button>';
+  if(key==='incoming'){ ovh.querySelector('[data-oip]').onclick=()=>{ incDay=dnShift(incDay||todayISO(),-1); openList('incoming'); renderCorners(); layout(); }; ovh.querySelector('[data-oin]').onclick=()=>{ const n=dnShift(incDay||todayISO(),1); incDay=n>=todayISO()?null:n; openList('incoming'); renderCorners(); layout(); }; }
   if(key==='meeting'){ const cur=nowMin(); const row=(e,td)=>{ const h=joinHref(e), past=td&&e.end<=cur, now=td&&e.start-5<=cur&&cur<e.end; return '<div class="lrow"'+(past?' style="opacity:.45"':'')+'><span class="dot" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(e.title||'(untitled)')+(now?'<span class="nowtag">NOW</span>':'')+'</span><span class="lm">'+esc(e.when||'')+'</span></span>'+(h?'<a class="edlink" style="margin:0;padding:6px 10px" href="'+esc(h)+'" target="_blank" rel="noopener">'+(h.indexOf('tel:')===0?'📞':'▶ Join')+'</a>':'')+'</div>'; };
     const T=meetingsToday(todayISO()), M=meetingsToday(tomorrowISO()); ovh.innerHTML=em+' Meetings · '+(T.length+M.length)+'<button class="x" data-x>✕</button>';
     ovb.innerHTML='<div class="phint">TODAY · '+T.length+'</div><div class="plist">'+(T.length?T.map(e=>row(e,1)).join(''):'<div class="none">None.</div>')+'</div><div class="phint" style="margin-top:14px">TOMORROW · '+M.length+'</div><div class="plist">'+(M.length?M.map(e=>row(e,0)).join(''):'<div class="none">None.</div>')+'</div>';
