@@ -116,7 +116,7 @@ function open(t,h,startAt){ ensure(); cur=t; const g=parse(t.guide), N=g.steps.l
   let k=startAt!=null?startAt:stepOf(t,N);
   const head=()=>'<div class="gd-gdh"><div style="min-width:0"><div class="gd-k">Open item · @Computer'+(g.time?' · '+esc(g.time):'')+'</div><div class="gd-t">'+esc(t.name)+'</div></div><button class="gd-x" data-x aria-label="Close">✕</button></div>'+
     '<div class="gd-bar">'+g.steps.map((_,i)=>'<i class="'+(i<k?'gd-d':i===k?'gd-c':'')+'"></i>').join('')+'</div>';
-  const draw=(note)=>{ const s=g.steps[k], cps=copies(s), ims=imgs(s), last=k===N-1;
+  const draw=(note)=>{ const s=g.steps[k], cps=copies(s).filter(v=>!launches(s).some(l=>l.label.toLowerCase()===v.toLowerCase())), ims=imgs(s), last=k===N-1;
     ov.innerHTML='<div class="gd" role="dialog" aria-label="Guide">'+head()+
       '<div class="gd-gdb"><div class="gd-sn">Step '+(k+1)+' of '+N+(k===0&&overdue(t)?'<span>· overdue '+overdue(t)+'d</span>':'')+'</div>'+
         '<div class="gd-st">'+rich(s)+'</div>'+
