@@ -320,7 +320,7 @@ textarea.inp{min-height:70px;resize:vertical}
 .note{color:var(--muted);font-size:12px;margin-top:6px;line-height:1.5}
 /* Action feedback pops mid-screen (not the bottom), by request */
 .toast{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);background:var(--panel2);border:1px solid var(--accent);
-  border-radius:12px;padding:12px 20px;font-size:15px;font-weight:600;z-index:60;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  border-radius:12px;padding:12px 20px;font-size:15px;font-weight:600;z-index:9600;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .fab{position:fixed;right:16px;bottom:16px;width:54px;height:54px;border-radius:50%;background:var(--accent);
   border:none;color:#14110f;font-size:28px;z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.4)}
 .empty{color:var(--muted);font-size:12px;text-align:center;padding:7px}
@@ -545,6 +545,7 @@ body::before{ opacity:.7 }
     <a class="tb-btn" id="focus2Btn" href="focus2.html" title="Focus 2 — AM/PM calls" style="text-decoration:none;color:var(--ink);display:inline-flex;align-items:center">◉ Focus 2</a>
     <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
     <input class="search" id="search" placeholder="Search tasks…">
+    <input class="search" id="nsearch" type="search" placeholder="🗒 Search notes…" autocomplete="off" title="Search every note + daily notes page">
     <button class="tb-btn" id="settingsBtn">⚙︎</button>
   </div>
 </div>
@@ -557,7 +558,7 @@ body::before{ opacity:.7 }
 
 <div class="board" id="board"></div>
 
-<div id="searchResults" class="search-results hidden"></div>
+<div id="searchResults" class="search-results hidden"></div><div id="nsRes" class="search-results hidden"></div>
 <button class="fab" id="addBtn">＋</button>
 <div id="grid"></div>
 <input type="file" id="picInput" accept="image/*" class="hidden">
@@ -566,9 +567,10 @@ body::before{ opacity:.7 }
 <script src="learning.js"></script>
 <script src="claudeq.js"></script>
 <script src="photos.js"></script>
+<script src="bills.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-15 13:15';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-16 09:22';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -1328,11 +1330,11 @@ const expanded = new Set();   // ephemeral: which capped sections are showing al
 function orderedPanels(){
   const custom=((meta.customCats||[]).map(c=>c.id));
   // to-send / from-outside / improvements are now folded INTO the Triage pane.
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer','leadrev','callinvite','frequent','nupicks','suggested','claudeq','learning',...STUBS.map(s=>s.id)];
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer','leadrev','callinvite','frequent','nupicks','suggested','claudeq','bills','learning',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
   if(!ord.includes('automations')) ord.unshift('automations');   // always-on status panel: first time it appears at the top
   ['leadrev','callinvite'].forEach(id=>{ if(!ord.includes(id)){ const i=ord.indexOf('computer'); ord.splice(i<0?0:i+1,0,id); } });   // right after @Computer
-  ['suggested','nupicks','claudeq'].forEach(id=>{ if(!ord.includes(id)) ord.unshift(id); });   // ⏫ Next Up then ✨ Suggested at the top the first time
+  ['suggested','nupicks','claudeq'].forEach(id=>{ if(!ord.includes(id)) ord.unshift(id); }); if(!ord.includes('bills')) ord.unshift('bills');   // ⏫ Next Up then ✨ Suggested at the top the first time
   if(!ord.includes('frequent')){ const i=ord.indexOf('calls'); ord.splice(i<0?0:i+1,0,'frequent'); }   // ⭐ right under Calls
   if(!ord.includes('computer')){ const i=Math.max(ord.indexOf('morning'),ord.indexOf('afternoon'),ord.indexOf('calls')); ord.splice(i<0?0:i+1,0,'computer'); }   // 🖥 right after the call panels
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
@@ -1440,6 +1442,7 @@ function render(){
     else if(id==='nupicks') board.appendChild(nextUpPanel());
     else if(id==='learning'){ const lp=learningPanel(); if(lp) board.appendChild(lp); }
     else if(id==='claudeq'){ const cp=claudeQPanel(); if(cp) board.appendChild(cp); }
+    else if(id==='bills'){ const bp=billsPanel(); if(bp) board.appendChild(bp); }
     else if(id==='suggested'){ const sp=suggestedPanel(); if(sp) board.appendChild(sp); }
     else if(stub) board.appendChild(stubPanel(stub));
     else { const cc=(meta.customCats||[]).find(c=>c.id===id); const b=BUCKETS.find(x=>x.id===id)||cc; if(!b)return;
@@ -2848,8 +2851,10 @@ const AUTO_C={OK:'#3a8f5f',Failing:'#c2553f',Missed:'#e0a458',Paused:'#6f6861',M
 // Standing panel; hidden only when empty. ✓ marks it Done in Airtable (undoable).
 const isComputerItem=t=>/@computer/i.test(t.project||'')||/@computer/i.test(t.sectionRemote||'');
 function computerPanel(){
-  const items=tasks.filter(t=>t.status==='Open'&&isComputerItem(t)).sort((a,b)=>new Date(a.createdTime||0)-new Date(b.createdTime||0));
+  const lo=t=>(t.listOrder==null||t.listOrder==='')?1e9:+t.listOrder;   // Roni's order (ListOrder) first, then oldest
+  const items=tasks.filter(t=>t.status==='Open'&&isComputerItem(t)).sort((a,b)=>(lo(a)-lo(b))||(new Date(a.createdTime||0)-new Date(b.createdTime||0)));
   if(!items.length) return null;
+  const CAP=5; let showAll=!!window._compAll;   // show 5; rest under "more" (Roni 10/15)
   const p=document.createElement('div'); p.className='panel'; p.dataset.section='computer';
   const head=document.createElement('div'); head.className='panel-head';
   head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>🖥 @Computer – Claude</h3>'
@@ -2857,13 +2862,16 @@ function computerPanel(){
     +'<span class="scratch-stat">needs you at the Mac</span>';
   p.appendChild(head); wirePanel(p,head,'computer');
   const body=document.createElement('div'); body.className='panel-body'; const hp=heightPx('computer'); if(hp) body.style.maxHeight=hp;
-  items.forEach(t=>{ const ns=A(t.id).nextStep||t.nextStepRemote||'';
+  items.forEach((t,i)=>{ if(i>=CAP&&!showAll) return; const ns=A(t.id).nextStep||t.nextStepRemote||'';
     const r=document.createElement('div'); r.style.cssText='display:flex;gap:8px;align-items:flex-start;padding:6px 2px;border-bottom:1px solid var(--line)';
     r.innerHTML='<button class="mini" title="Mark done" style="flex:none;min-width:30px;font-weight:900">✓</button><div style="min-width:0;flex:1"><div style="font-weight:700;font-size:13px">'+esc(cleanName(t))+'</div>'
       +(ns?'<div style="color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="'+esc(ns)+'">→ '+esc(ns)+'</div>':'')+'</div>'
       +'<span style="color:var(--muted);font-size:11px;flex:none">'+daysOpen(t)+'d</span>';
     r.querySelector('button').onclick=e=>{ e.stopPropagation(); markDone(t); };
     body.appendChild(r); });
+  if(items.length>CAP){ const m=document.createElement('button'); m.className='mini'; m.style.cssText='margin:6px 2px;width:calc(100% - 4px)';
+    m.textContent=showAll?'Show less':('+ '+(items.length-CAP)+' more'); m.onclick=e=>{ e.stopPropagation(); window._compAll=!showAll; const np=computerPanel(); if(np) p.replaceWith(np); };
+    body.appendChild(m); }
   p.appendChild(body);
   p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'computer');});
   return p;
@@ -3023,10 +3031,17 @@ function shotBanner(t){ document.querySelectorAll('.shotban').forEach(x=>x.remov
 if(window.Photos){ Photos.css(); let over=null; const tgt=e=>e.target.closest&&(e.target.closest('.task[data-tid]')||e.target.closest('.panel[data-section="incoming"]'));
   const hasFiles=e=>[...(e.dataTransfer&&e.dataTransfer.items||[])].some(i=>i.kind==='file');
   document.addEventListener('dragover',e=>{ if(!hasFiles(e)||document.querySelector('.te')) return; e.preventDefault(); const t=tgt(e); if(over&&over!==t) over.classList.remove('ph-over'); over=t; if(t) t.classList.add('ph-over'); },true);
-  document.addEventListener('drop',e=>{ if(document.querySelector('.te')) return; const f=Photos.imagesFrom(e); if(!f.length) return; e.preventDefault(); e.stopPropagation(); if(over){ over.classList.remove('ph-over'); }
+  document.addEventListener('drop',e=>{ if(document.querySelector('.te')||(e.target.closest&&e.target.closest('.panel[data-section="bills"]'))) return; const f=Photos.imagesFrom(e); if(!f.length) return; e.preventDefault(); e.stopPropagation(); if(over){ over.classList.remove('ph-over'); }
     const row=e.target.closest&&e.target.closest('.task[data-tid]'); const t=row&&tasks.find(x=>x.id===row.dataset.tid);
     if(t){ if(!/^rec/.test(t.id)){ toast('Task not saved yet'); return; } Photos.add(t,f,()=>render()); } else shotToIncoming(f); over=null; },true);
   document.addEventListener('paste',e=>{ if(document.querySelector('.te')) return; const a=document.activeElement; const f=Photos.imagesFrom(e); if(!f.length) return; if(a&&/INPUT|TEXTAREA/.test(a.tagName)&&!a.closest('.panel[data-section="incoming"]')) return; e.preventDefault(); shotToIncoming(f); }); }
+// 💵 Bills & Taxes (bills.js) — tracking only
+function billsPanel(){ if(!window.Bills) return null; const U=Bills.unpaid(); const {p,body}=nuPanelShell('bills','💵 Bills & Taxes',U.length?Bills.summary().replace(/<[^>]+>/g,''):'all paid');
+  body.innerHTML='<div style="max-height:420px;overflow:auto;padding:0 4px">'+(U.length?U.map(b=>Bills.rowHTML(b)).join(''):'<div class="note" style="padding:6px">Nothing unpaid.</div>')+'</div><div style="padding:6px 4px"><button class="cardbtn" data-bladd>📷 Add bill</button> <span class="note">drop a bill photo here too</span></div>';
+  Bills.wire(body,{toast,onOpenTask:id=>{ const t=tasks.find(x=>x.id===id); if(t) TaskEditor.open(t); else toast('Task not loaded'); },after:()=>setTimeout(()=>{ try{ atFetch(); }catch(e){} },1500)});
+  body.querySelector('[data-bladd]').onclick=async()=>{ const f=await Photos.pick(); if(f.length) Bills.addFromPhoto(f,{toast}); };
+  if(window.Photos) Photos.dropZone(p,f=>Bills.addFromPhoto(f,{toast})); return p; }
+if(window.Bills){ Bills.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); Bills.onChange(()=>{ const a=document.activeElement; if(a&&(a.classList.contains('bl-in')||a.closest&&a.closest('.te'))) return; render(); }); }
 function claudeQPanel(){ if(!window.CQ) return null; const L=CQ.list(); if(!L.length) return null; const n=CQ.counts();
   const {p,body}=nuPanelShell('claudeq','✨ Claude requests',(n.approve?n.approve+' to approve · ':'')+(n.stale?n.stale+' not picked up · ':'')+L.length+' this week');
   body.innerHTML='<div style="max-height:420px;overflow:auto;padding:0 4px">'+L.map(q=>CQ.rowHTML(q)).join('')+'</div>';
@@ -4074,6 +4089,24 @@ setInterval(()=>{ if(!document.querySelector('.backdrop') && !isTyping()) render
   });
 })();
 document.getElementById('search').addEventListener('input',e=>{query=e.target.value;renderSearch();});
+/* 🗒 Notes search (top bar): task notes archive (EventLog "Note") + daily notes pages (AppNotes scratch:*), same data as the iPhone Notes archive */
+let nsData=null, nsLoading=null, nsT=null;
+async function nsLoad(){ if(nsData) return nsData; if(nsLoading) return nsLoading; if(!cfg.apiKey) return (nsData=[]);
+  const H={Authorization:'Bearer '+cfg.apiKey}; const all=async(tbl,f,fields)=>{ let out=[],off,g=0; do{ const u=new URL(AT+cfg.baseId+'/'+tbl); u.searchParams.set('pageSize','100'); u.searchParams.set('filterByFormula',f); fields.forEach(x=>u.searchParams.append('fields[]',x)); if(off) u.searchParams.set('offset',off);
+      const r=await fetch(u,{headers:H}); if(!r.ok) break; const d=await r.json(); out=out.concat(d.records||[]); off=d.offset; }while(off&&++g<60); return out; };
+  nsLoading=Promise.all([all(DN_LOG,"{Event Type}='Note'",['Event Name','Event Date','Details','Item']),all(NOTES_TABLE,"LEFT({Key},8)='scratch:'",['Key','Text'])]).then(([L,D])=>{
+    nsData=L.map(x=>({at:x.fields['Event Date']||x.createdTime,name:x.fields['Event Name']||'',text:x.fields.Details||'',item:(x.fields.Item||[])[0]||''}))
+      .concat(D.map(x=>({at:String(x.fields.Key).slice(8)+'T12:00:00',name:'🗒 Daily notes',text:x.fields.Text||'',day:String(x.fields.Key).slice(8)}))).sort((a,b)=>String(b.at).localeCompare(String(a.at)));
+    setTimeout(()=>{ nsData=null; },10*60000); return nsData; }).finally(()=>{ nsLoading=null; }); return nsLoading; }
+function nsRender(q){ const box=document.getElementById('nsRes'); q=q.trim().toLowerCase(); if(!q){ box.classList.add('hidden'); return; }
+  box.classList.remove('hidden'); box.innerHTML='<div class="sr"><span class="m">Searching notes…</span></div>';
+  nsLoad().then(L=>{ if(document.getElementById('nsearch').value.trim().toLowerCase()!==q) return; const byId=new Map(tasks.map(t=>[t.id,t]));
+    const hits=L.filter(n=>{ const t=byId.get(n.item); return (n.text+' '+n.name+' '+(t?[t.project,t.lead,t.sub].join(' '):'')).toLowerCase().includes(q); }).slice(0,60);
+    const snip=txt=>{ const i=txt.toLowerCase().indexOf(q); const a=Math.max(0,i-50); return (a?'…':'')+txt.slice(a,i+q.length+90).replace(/\n/g,' ')+(txt.length>i+q.length+90?'…':''); };
+    box.innerHTML=hits.length?hits.map((n,k)=>'<div class="sr" data-nk="'+k+'"><div><b>'+esc(n.name)+'</b> <span class="m">'+esc(new Date(n.at).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'2-digit'}))+'</span></div><div class="m">'+esc(snip(n.text||''))+'</div></div>').join(''):'<div class="sr"><span class="m">No notes match “'+esc(q)+'”.</span></div>';
+    box.querySelectorAll('[data-nk]').forEach(el=>el.onclick=()=>{ const n=hits[+el.dataset.nk]; const t=n.item&&tasks.find(x=>x.id===n.item); if(t){ box.classList.add('hidden'); TaskEditor.open(t); } else { el.querySelector('.m:last-child').textContent=n.text; } }); }); }
+{ const ni=document.getElementById('nsearch'); if(ni){ ni.addEventListener('input',()=>{ clearTimeout(nsT); nsT=setTimeout(()=>nsRender(ni.value),250); }); ni.addEventListener('focus',()=>{ nsLoad(); if(ni.value.trim()) nsRender(ni.value); }); ni.addEventListener('keydown',e=>{ if(e.key==='Escape'){ ni.value=''; nsRender(''); ni.blur(); } }); } }
+document.addEventListener('click',e=>{ if(!e.target.closest('#nsRes')&&e.target.id!=='nsearch'){ const b=document.getElementById('nsRes'); if(b) b.classList.add('hidden'); } });
 document.addEventListener('click',e=>{ if(!e.target.closest('#searchResults')&&e.target.id!=='search'){const b=document.getElementById('searchResults'); if(b)b.classList.add('hidden');} });
 function renderSearch(){
   const box=document.getElementById('searchResults'); const q=query.trim().toLowerCase();

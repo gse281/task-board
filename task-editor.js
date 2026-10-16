@@ -255,7 +255,10 @@ function open(t,opts){ const E=window.TE; if(!E||!t) return; ensureCss(); if(cur
     sh.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ close(); E.snooze(t,+b.dataset.d); });
     sh.querySelector('[data-pick]').onchange=ev=>{ const v=ev.target.value; if(!v) return; const days=Math.max(1,Math.round((new Date(v+'T12:00:00')-new Date())/864e5)); close(); E.snooze(t,days,v); };
     sh.querySelector('[data-nu]').onclick=()=>{ const tg=sh.querySelector('[data-tog="NextUp"]'); if(tg) tg.click(); sh.querySelector('[data-nu]').classList.toggle('on',!!E.get(t,'NextUp')); };
-    sh.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{ const v=b.dataset.mv; const cs=sh.querySelector('[data-cat]'); cs.value=v; cs.dispatchEvent(new Event('change')); }); };
+    const mvMark=()=>{ const c=String(E.cat(t)||''); sh.querySelectorAll('[data-mv]').forEach(x=>x.classList.toggle('on',!!x.dataset.mv&&x.dataset.mv===c)); const cs=sh.querySelector('[data-cat]'); if(cs) cs.value=c; sh.querySelectorAll('[data-catv]').forEach(x=>x.classList.toggle('on',x.dataset.catv===c)); };
+    sh.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{ const v=b.dataset.mv; const prevRaw=E.catRaw(t); E.setCat(t,v); mvMark(); E.refresh(); if(navigator.vibrate) navigator.vibrate(8);
+      E.undo(v==='morning'?'Moved to AM call':v==='afternoon'?'Moved to PM call':'Removed from category',()=>{ E.restoreCat(t,prevRaw); mvMark(); E.refresh(); }); }); mvMark();
+    sh.querySelectorAll('.te-a button').forEach(b=>b.addEventListener('pointerdown',e=>{ const a=document.activeElement; if(a&&sh.contains(a)&&/INPUT|TEXTAREA/.test(a.tagName)) e.preventDefault(); })); };
   render(); sc.onclick=close; document.body.append(sc,sh); cur={sc,sh,t};
   const show=()=>{ sc.classList.add('on'); sh.classList.add('on'); }; requestAnimationFrame(()=>requestAnimationFrame(show)); setTimeout(show,60);
   if(opts&&opts.claude) setTimeout(()=>{ const ci=sh.querySelector('[data-ci]'); if(ci){ ci.scrollIntoView({block:'center'}); ci.focus(); } },350);

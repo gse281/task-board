@@ -17,9 +17,11 @@ function isOpenItem(t){ const s=((t.sectionRemote||t.section||'')+' '+(t.project
 function ageDays(t){ return Math.max(0,Math.floor((Date.now()-new Date(t.createdTime||Date.now()))/864e5)); }
 function overdue(t){ const d=(t.doDate||'').slice(0,10); if(!d) return 0; const n=Math.round((new Date(today()+'T12:00')-new Date(d+'T12:00'))/864e5); return n>0?n:0; }
 function snoozed(t){ const d=(t.doDate||'').slice(0,10); return !!d&&d>today(); }
-// open @Computer / Open Items, not snoozed; overdue first (most overdue), then oldest
+// open @Computer / Open Items, not snoozed; Roni's ListOrder first (10/15), then overdue first (most overdue), then oldest
+const lo=t=>(t.listOrder==null||t.listOrder==='')?1e9:+t.listOrder;
 function list(tasks){ return tasks.filter(t=>(!t.status||/^open$/i.test(t.status))&&isOpenItem(t)&&!snoozed(t))
-  .sort((a,b)=>(overdue(b)-overdue(a))||(ageDays(b)-ageDays(a))); }
+  .sort((a,b)=>(lo(a)-lo(b))||(overdue(b)-overdue(a))||(ageDays(b)-ageDays(a))); }
+const VISIBLE=5;   // @Computer pane shows 5; the rest sit under "more" (Roni 10/15)
 
 function parse(txt){ const o={why:'',time:'',claude:false,steps:[],extra:[]}; String(txt||'').split(/\n+/).forEach(l=>{ l=l.trim(); if(!l) return; let m;
     if((m=l.match(/^WHY:\s*(.*)/i))) o.why=m[1]; else if((m=l.match(/^TIME:\s*(.*)/i))) o.time=m[1]; else if((m=l.match(/^CLAUDE:\s*(.*)/i))) o.claude=/^yes/i.test(m[1]);
@@ -34,13 +36,22 @@ function rich(s){ let h=esc(String(s).replace(/\[img:\s*[^\]]+\]/gi,'').trim());
   h=h.replace(/&quot;([^&]{2,60}?)&quot;/g,'<b>“$1”</b>');
   h=h.replace(/→/g,'<span class="gd-ar">→</span>');
   return h; }
+// one-click launchers for apps/sites named in a step
+const LAUNCH=[[/\bterminal\b/i,'Terminal','x-man-page://bash'],[/\bairtable\b/i,'Airtable','https://airtable.com/appdDTNBbVrp6hVOv'],[/\bgmail\b/i,'Gmail','https://mail.google.com/'],
+  [/google calendar|\bgcal\b/i,'Google Calendar','https://calendar.google.com/'],[/google drive/i,'Google Drive','https://drive.google.com/'],[/google contacts/i,'Google Contacts','https://contacts.google.com/'],
+  [/system settings|system preferences/i,'System Settings','x-apple.systempreferences:'],[/\bshortcuts\b/i,'Shortcuts','shortcuts://'],[/\bgithub\b/i,'GitHub','https://github.com/gse281/task-board'],
+  [/\bdialpad\b/i,'Dialpad','https://dialpad.com/app'],[/\bdropbox\b/i,'Dropbox','https://www.dropbox.com/home'],[/\bquickbooks\b/i,'QuickBooks','https://qbo.intuit.com/'],
+  [/\bclaude\b(?!.*queue)/i,'Claude','https://claude.ai/']];
+function launches(s){ s=String(s); return LAUNCH.filter(([re])=>re.test(s)).slice(0,3).map(([,label,href])=>({label,href})); }
 // exact text worth copying: what to type/search/paste/name, URLs, search operators, emails
 function copies(s){ const out=[]; const add=v=>{ v=String(v||'').trim().replace(/[.,;]+$/,'').replace(/^["“]|["”]$/g,''); if(v&&v.length<=160&&!out.includes(v)) out.push(v); };
   s=String(s); let m;
-  const re1=/\b(?:search bar type|tell claude|type|search(?: for)?|paste|name it)\s*:?\s*("[^"]+"|“[^”]+”|[^\s→(][^→(]*?)(?=\s*(?:→|\(|$|\. ))/gi; while((m=re1.exec(s))) add(m[1]);
+  const re0=/"([^"]{2,200})"|“([^”]{2,200})”/g; while((m=re0.exec(s))) add(m[1]||m[2]);
+  const re1=/\b(?:search bar type|tell claude|type|search(?: for)?|paste|name it)(?:\s*:\s*|\s+)([^\s→(,"“][^→(,"“]*?)(?=\s*(?:→|\(|,|$|\. ))/gi; while((m=re1.exec(s))) add(m[1]);
   const re2=/(https?:\/\/[^\s)]+)/g; while((m=re2.exec(s))) add(m[1]);
-  const re3=/\b((?:[a-z0-9-]+\.)+(?:com|io)\/[^\s,;)]+)/gi; while((m=re3.exec(s))) if(!/^https?:/.test(m[1])) add(m[1]);
-  return out.filter(v=>!/^(?:the|a|an|it)$/i.test(v)); }
+  const re3=/\b((?:[a-z0-9-]+\.)+(?:com|io)\/[^\s,;)]+)/gi; while((m=re3.exec(s))) if(!out.some(o=>o.includes(m[1]))) add(m[1]);
+  const cmd=v=>/^(?:https?:\/\/|~\/|\/)|\s(?:&&|\|)\s|^(?:cd|ls|rm|cp|mv|open|git|curl|bash|F=)\b/.test(v);
+  return out.filter(v=>cmd(v)||(!/^(?:the|a|an|it)\b/i.test(v)&&!/[,;()]/.test(v)&&v.length<=60)); }
 const imgs=s=>{ const o=[]; String(s).replace(/\[img:\s*([^\]]+)\]/gi,(m,u)=>{ o.push(u.trim()); return m; }); return o; };
 
 const CSS=`
@@ -62,6 +73,7 @@ const CSS=`
 @media(max-width:700px){ #gdOv .gd-st{font-size:22px} }
 #gdOv .gd-st a{color:#6fd0e0}
 #gdOv .gd-ar{color:#39c7df;font-weight:700}
+#gdOv .gd-ln{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}#gdOv .gd-ln a{display:inline-flex;align-items:center;height:40px;padding:0 16px;border-radius:10px;background:#39c7df;color:#07141a;font:800 13px ui-monospace,Menlo,monospace;text-decoration:none}#gdOv .gd-ln a:hover{filter:brightness(1.1)}
 #gdOv .gd-cp{display:flex;align-items:center;gap:8px;margin-top:14px;background:#06222b;border:1px solid rgba(57,199,223,.35);border-radius:12px;padding:8px 8px 8px 12px}
 #gdOv .gd-cp code{flex:1;min-width:0;font:600 15px ui-monospace,Menlo,monospace;color:#e7f3f6;overflow-wrap:anywhere;user-select:all;-webkit-user-select:all}
 #gdOv .gd-cp button{flex:none;min-width:70px;height:36px;border-radius:9px;border:0;background:#39c7df;color:#07141a;font:800 12px ui-monospace,Menlo,monospace;cursor:pointer}
@@ -108,6 +120,7 @@ function open(t,h,startAt){ ensure(); cur=t; const g=parse(t.guide), N=g.steps.l
     ov.innerHTML='<div class="gd" role="dialog" aria-label="Guide">'+head()+
       '<div class="gd-gdb"><div class="gd-sn">Step '+(k+1)+' of '+N+(k===0&&overdue(t)?'<span>· overdue '+overdue(t)+'d</span>':'')+'</div>'+
         '<div class="gd-st">'+rich(s)+'</div>'+
+        (launches(s).length?'<div class="gd-ln">'+launches(s).map(l=>'<a href="'+esc(l.href)+'"'+(/^https?:/.test(l.href)?' target="_blank" rel="noopener"':'')+'>↗ Open '+esc(l.label)+'</a>').join('')+'</div>':'')+
         cps.map((v,i)=>'<div class="gd-cp"><code>'+esc(v)+'</code><button data-cp="'+i+'">Copy</button></div>').join('')+
         ims.map(u=>'<img class="gd-shot" src="'+esc(u)+'" alt="screenshot">').join('')+
         (note||'')+
@@ -158,5 +171,5 @@ async function sendClaude(t,h,instr){ const key=h.key&&h.key(), base=(h.base&&h.
     body:JSON.stringify({typecast:true,records:[{fields:{Summary:'Claude → '+String(t.name||'').slice(0,60),ItemId:t.id,Item:[t.id],Instruction:instr,Status:'Queued',QueuedAt:new Date().toISOString()}}]})});
   if(!r.ok) throw r.status; return true; }
 const hashId=()=>{ const m=location.hash.match(/guide=(rec[A-Za-z0-9]{14})/); return m?m[1]:null; };
-window.Guide={isOpenItem,list,parse,meta,open,close,sendClaude,copies,ageDays,overdue,hashId,esc,stepOf};
+window.Guide={isOpenItem,list,parse,meta,open,close,sendClaude,copies,ageDays,overdue,hashId,esc,stepOf,VISIBLE};
 })();

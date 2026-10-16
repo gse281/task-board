@@ -44,6 +44,30 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .bub .bit .pr{display:inline-block;font:800 9px ui-monospace,Menlo,monospace;color:#07141a;background:var(--gold);border-radius:4px;padding:0 5px;margin-bottom:4px}
 .bub .bit.e{color:var(--dim)}
 .bub.urgent{border-color:rgba(57,199,223,.6)} .bub.urgent .bcap{color:#bdefff}
+.bub .bnav{display:flex;align-items:center;gap:3px;margin-top:5px;font:700 9.5px ui-monospace,Menlo,monospace;color:var(--dim)}
+.bub .bnav button{width:22px;height:20px;border-radius:6px;border:1px solid var(--line);background:rgba(57,199,223,.06);color:var(--cyan);font-size:9px;line-height:1;cursor:pointer;padding:0}
+.bub .bnav button:hover{border-color:var(--cyan);background:rgba(57,199,223,.18)}
+.ringseg{display:flex;gap:2px;border:1px solid var(--line);border-radius:999px;padding:2px;pointer-events:auto;flex:none}
+.ringseg button{width:26px;height:22px;border-radius:999px;border:0;background:transparent;color:var(--dim);font:800 11px ui-monospace,Menlo,monospace;cursor:pointer}
+.ringseg button.on{background:var(--cyan);color:#07141a}
+.ampm{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.amb{border-radius:14px;padding:8px 10px 6px;cursor:pointer;min-width:0;display:flex;flex-direction:column;gap:3px}
+.amb.am{background:linear-gradient(150deg,#f0a35c 0%,#e8683c 55%,#b8452a 100%);color:#1a0e07}
+.amb.pm{background:linear-gradient(150deg,#f3d27a 0%,#e0a458 55%,#a8742f 100%);color:#1a1207}
+.amb .h{display:flex;align-items:center;font:800 10px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;opacity:.85}.amb .h b{margin-left:auto}
+.amb .t{font-weight:700;font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.5em}
+.amb .n{display:flex;justify-content:space-between;align-items:center}.amb .n button{width:24px;height:22px;border:0;border-radius:6px;background:rgba(0,0,0,.14);color:inherit;font-weight:800;cursor:pointer}
+.amb .n span{font:700 10px ui-monospace,Menlo,monospace;opacity:.75}
+.cxpane{padding:10px!important}.cxb{max-height:min(260px,30vh);overflow:auto;margin-top:6px}
+.cxr{display:flex;align-items:center;gap:6px;padding:6px 2px;border-bottom:1px solid rgba(57,199,223,.08)}
+.cxn{flex:1;min-width:0;display:flex;flex-direction:column}.cxn b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cxn i{font-style:normal;font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cxc,.cxt{flex:none;font-size:11.5px;font-weight:800;text-decoration:none;border-radius:7px;padding:4px 8px}
+.cxc{background:#30D158;color:#0b1a10}.cxt{border:1px solid var(--line);color:#cfeaf1}
+.cxh{font:700 10px ui-monospace,Menlo,monospace;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);margin:2px 0 6px}
+.cxf{display:flex;flex-wrap:wrap;gap:5px}.cxchip{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);border-radius:999px;padding:3px 4px 3px 9px;font-size:12px}.cxchip .cxc,.cxchip .cxt{padding:2px 6px;font-size:10.5px}
+.cxlk{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}.cxlk a,.cxlk button{font-size:11.5px;font-weight:700;border:1px solid var(--line);border-radius:7px;padding:4px 8px;color:#cfeaf1;text-decoration:none}.cxlk button{color:#62e08a}
+.top .cxbtn{pointer-events:auto}
+.cxpane .rq{width:100%;box-sizing:border-box;background:rgba(20,36,42,.85);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:8px 10px;font-size:13px;outline:none}.cxpane .rq:focus{border-color:var(--cyan)}
 .bub.empty{opacity:.4} .bub.empty:hover{opacity:.85}
 /* corners */
 .corner{position:absolute;z-index:8;width:min(290px,30vw);display:flex;flex-direction:column;gap:10px}
@@ -144,7 +168,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .foot{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:9;display:flex;gap:8px}
 .foot button,.foot a{border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--dim);text-decoration:none}
 .foot button:hover,.foot a:hover{color:var(--cyan);border-color:var(--cyan)}
-#toast{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--cyan);color:var(--ink);border-radius:12px;padding:10px 16px;font-size:13px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--cyan);color:var(--ink);border-radius:12px;padding:10px 16px;font-size:13px;z-index:9600;opacity:0;transition:opacity .2s;pointer-events:none}
 #toast.show{opacity:1}
 #setup{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:70;background:rgba(4,7,10,.92)}
 #setup input{background:var(--card2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:10px 12px;width:min(420px,86vw);font:14px ui-monospace,Menlo}
@@ -154,7 +178,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 <body>
 <div id="stage">
   <div class="ring r1" id="ring1"></div><div class="ring r2" id="ring2"></div>
-  <div class="top"><span class="greet" id="greet">FOCUS</span><span class="sum" id="sum"></span><button class="cmdbtn" id="cmdBtn">⌘ ADD · JUMP · FIND</button><a class="cmdbtn" href="focus2.html" style="text-decoration:none">◉ FOCUS 2</a><a class="cmdbtn" href="dashboard.html" style="text-decoration:none">⌂ DASHBOARD</a><span class="clk" id="clk"></span></div>
+  <div class="top"><span class="greet" id="greet">FOCUS</span><span class="sum" id="sum"></span><button class="cmdbtn cxbtn" id="cxBtn" title="Call someone — contacts search (/)">🔍 CONTACTS</button><span class="ringseg" id="ringSeg" title="Ring shows: Projects / Leads / Subs / Categories"></span><button class="cmdbtn" id="cmdBtn">⌘ ADD · JUMP · FIND</button><a class="cmdbtn" href="focus2.html" style="text-decoration:none">◉ FOCUS 2</a><a class="cmdbtn" href="dashboard.html" style="text-decoration:none">⌂ DASHBOARD</a><span class="clk" id="clk"></span></div>
   <div class="core" id="core"></div>
   <div id="bubbles"></div>
   <div class="corner tl" id="cTL"></div><div class="corner tr" id="cTR"></div><div class="corner ml" id="cML"></div><div class="corner bl" id="cBL"></div><div class="corner br" id="cBR"></div>
@@ -208,14 +232,20 @@ const SECTIONS=[['focus','◎ Focus'],['morning','☀︎ Morning'],['afternoon',
 function applyOrder(key,list){ const o=order[key]; if(!o||!o.length) return list; const pos={}; o.forEach((id,i)=>pos[id]=i); return list.slice().sort((a,b)=>((pos[a.id]==null?1e9:pos[a.id])-(pos[b.id]==null?1e9:pos[b.id]))); }
 let _if={}; function clearIF(){ _if={}; }
 function itemsFor(key){ if(key in _if) return _if[key]; return (_if[key]=_compute(key)); }
+let ringMode=LS('tb.ringMode','C'); const RING_F={P:'project',L:'lead',S:'sub'};
+const splitV=v=>String(v||'').split(',').map(x=>x.trim()).filter(Boolean);
+function ringKeys(){ if(ringMode==='C') return ORBIT; const f=RING_F[ringMode], cnt={}; tasks.filter(live).forEach(t=>splitV(t[f]).forEach(g=>{ cnt[g]=(cnt[g]||0)+1; }));
+  return Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([g])=>ringMode.toLowerCase()+':'+g); }
+const capOf=k=>{ const m=/^([pls]):(.*)$/.exec(k); if(m) return [{p:'▣',l:'◍',s:'◆'}[m[1]],m[2]]; return CAT[k]||['•',k]; };
 function _compute(key){ const L=sec=>tasks.filter(t=>live(t)&&sectionOf(t)===sec);
+  { const m=/^([pls]):(.*)$/.exec(key); if(m){ const f=RING_F[m[1].toUpperCase()]; return applyOrder(key,tasks.filter(t=>live(t)&&splitV(t[f]).includes(m[2])).sort((a,b)=>score(b)-score(a))); } }
   switch(key){
     case 'focus': return applyOrder('focus',L('focus'));
     case 'priority': return applyOrder('priority', tasks.filter(t=>live(t)&&!A(t.id).notPriority).sort((a,b)=>score(b)-score(a)).slice(0,20));
-    case 'incoming': return applyOrder('incoming', L('incoming'));
+    case 'incoming': { const td=todayISO(); return applyOrder('incoming', tasks.filter(t=>live(t)&&(sectionOf(t)==='incoming'||(t.createdTime&&isoOf(new Date(t.createdTime))===td))).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0))); }
     case 'still': return applyOrder('still', tasks.filter(t=>live(t)&&daysOpen(t)>=10&&!t.project&&!t.lead).sort((a,b)=>daysOpen(b)-daysOpen(a)));
     case 'attention': return tasks.filter(t=>live(t)&&daysOpen(t)>=14).sort((a,b)=>daysOpen(b)-daysOpen(a));
-    case 'morning': case 'afternoon': case 'calls': return applyOrder(key, L(key).sort((a,b)=>daysOpen(a)-daysOpen(b)));
+    case 'morning': case 'afternoon': case 'calls': return applyOrder(key, L(key).sort((a,b)=>daysOpen(a)-daysOpen(b)).map((t,i)=>({t,i})).sort((a,b)=>((a.t.listOrder??1e9)-(b.t.listOrder??1e9))||a.i-b.i).map(x=>x.t));
     case 'nextup': return applyOrder('nextup', tasks.filter(t=>live(t)&&(sectionOf(t)==='nextup'||t.nextUp)).sort((a,b)=>((a.nuOrder??1e9)-(b.nuOrder??1e9))));
     case 'respond': return respond;
     case 'meeting': return todayMtgItems();
@@ -267,7 +297,7 @@ async function fetchAll(){ if(!cfg.apiKey){ demo=true; demoData(); renderAll(); 
   try{ let out=[],off,g=0;
     do{ const u=new URL(atUrl()); u.searchParams.set('pageSize','100'); u.searchParams.set('filterByFormula',"OR({Status}='Open',{Status}=BLANK())"); if(off)u.searchParams.set('offset',off);
       const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) throw new Error(r.status); const d=await r.json();
-      out=out.concat((d.records||[]).map(rec=>{const f=rec.fields;return{id:rec.id,createdTime:rec.createdTime,name:flat(f.Task),project:flat(f.Project).trim(),lead:flat(f.SBLead).trim(),sub:flat(f.Sub).trim(),status:flat(f.Status)||'Open',slotRemote:flat(f.MeetingSlot).toLowerCase(),sectionRemote:flat(f.Section).toLowerCase(),doDate:flat(f.DoDate).slice(0,10),priorityRemote:+flat(f.Priority)||0,typeRemote:flat(f.Type).toLowerCase(),phone:flat(f.Phone),guide:flat(f.Guide),next:flat(f.NextStep),guideStep:+f.GuideStep||0,notes:flat(f.Notes),callWho:flat(f.CallContact),priorityRaw:flat(f.Priority),nextUp:flat(f.NextUp).slice(0,10),nuOrder:(f.NextUpOrder==null?null:+f.NextUpOrder),remindAt:flat(f.ReminderAt),textEx:!!f.TextExclude,flag:!!f.RoniFlag,photos:Array.isArray(f.Photos)?f.Photos:[]};}));
+      out=out.concat((d.records||[]).map(rec=>{const f=rec.fields;return{id:rec.id,createdTime:rec.createdTime,name:flat(f.Task),project:flat(f.Project).trim(),lead:flat(f.SBLead).trim(),sub:flat(f.Sub).trim(),status:flat(f.Status)||'Open',slotRemote:flat(f.MeetingSlot).toLowerCase(),sectionRemote:flat(f.Section).toLowerCase(),doDate:flat(f.DoDate).slice(0,10),priorityRemote:+flat(f.Priority)||0,typeRemote:flat(f.Type).toLowerCase(),phone:flat(f.Phone),guide:flat(f.Guide),next:flat(f.NextStep),guideStep:+f.GuideStep||0,notes:flat(f.Notes),callWho:flat(f.CallContact),priorityRaw:flat(f.Priority),nextUp:flat(f.NextUp).slice(0,10),nuOrder:(f.NextUpOrder==null?null:+f.NextUpOrder),remindAt:flat(f.ReminderAt),textEx:!!f.TextExclude,flag:!!f.RoniFlag,photos:Array.isArray(f.Photos)?f.Photos:[],listOrder:(f.ListOrder==null?null:+f.ListOrder)};}));
       off=d.offset; }while(off&&++g<40);
     tasks=out;
     const cu=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CAL_TABLE); cu.searchParams.set('pageSize','100'); cu.searchParams.set('filterByFormula','OR({Date}="'+todayISO()+'",{Date}="'+tomorrowISO()+'")');
@@ -282,7 +312,9 @@ function demoData(){ const mk=(n,p,sec,days,pri)=>({id:'d'+Math.random(),created
   if(!wx.length) wx=[0,1,2,3,4,5,6].map(i=>({date:isoOf(new Date(Date.now()+i*864e5)),code:[0,2,61,3,0,80,0][i],hi:[72,68,59,63,70,58,66][i],pr:[0,0,.3,0,0,.6,0][i]})); }
 
 /* ===== radial render (no SVG / canvas / blur / animation) ===== */
-function renderAll(){ clearIF(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
+function renderRingSeg(){ const el=$('#ringSeg'); if(!el) return; el.innerHTML=[['P','Projects'],['L','Leads'],['S','Subs'],['C','Categories']].map(([k,l])=>'<button class="'+(ringMode===k?'on':'')+'" data-rm="'+k+'" title="Ring: '+l+'">'+k+'</button>').join('');
+  el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ ringMode=b.dataset.rm; SV('tb.ringMode',ringMode); renderAll(); }); }
+function renderAll(){ clearIF(); renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
 window.addEventListener('hashchange',()=>{ window._gdShown=null; const gid=window.Guide&&Guide.hashId(); if(gid) openGuide(gid); });
 function renderHeader(){ const h=new Date().getHours(); $('#greet').textContent=(h<12?'GOOD MORNING':h<17?'GOOD AFTERNOON':'GOOD EVENING')+' ◎';
   const open=tasks.filter(live).length; const att=itemsFor('attention').length;
@@ -295,20 +327,69 @@ function renderCore(){ const f=itemsFor('focus'); const it=f[0]||null; const cor
   core.onclick=()=>{ if(it) openTask(it.id); else openList('focus'); }; }
 let bubIdx=0;   // bubbles rotate through their tasks every 30s (text swap only — no animation)
 const bubPrev=it=>(it.project&&!it._mtg?'<span class="pr">'+esc(it.project.split(',')[0])+'</span>':'')+(it._mtg?esc(it.name):esc(cleanName(it)));
-function cycleBubbles(){ if(document.hidden) return; bubIdx++; document.querySelectorAll('#bubbles .bub').forEach(el=>{ const list=itemsFor(el.dataset.key); if(list.length<2) return; const b=el.querySelector('.bit'); if(b) b.innerHTML=bubPrev(list[bubIdx%list.length]); }); }
+function cycleBubbles(){ if(document.hidden) return; bubIdx++; amCycle(); if(document.querySelector('#bubbles .bub:hover')) return; renderBubbles(); layout(); }
 setInterval(cycleBubbles,30000);
-function renderBubbles(){ const box=$('#bubbles'); box.innerHTML=ORBIT.map(k=>{ const list=itemsFor(k); const it=list.length?list[bubIdx%list.length]:null; const em=CAT[k][0],nm=CAT[k][1];
+const bSel={}; const ORDERED=new Set(['calls','morning','afternoon','nextup']);
+const bubOf=(k,list)=>{ const sel=bSel[k]; const i=(sel&&Date.now()-sel.at<180000)?sel.i:bubIdx; return list.length?((i%list.length)+list.length)%list.length:0; };
+function renderBubbles(){ const box=$('#bubbles'); box.innerHTML=ringKeys().map(k=>{ const list=itemsFor(k); const ix=bubOf(k,list); const it=list.length?list[ix]:null; const [em,nm]=capOf(k);
     const cls='bub'+(list.length?'':' empty')+(hasStale(list)?' urgent':'');
     const prev=it?'<div class="bit">'+bubPrev(it)+'</div>':'<div class="bit e">—</div>';
-    return '<div class="'+cls+'" data-key="'+k+'"><div class="bcap">'+em+' '+esc(nm)+'</div><div class="bn">'+list.length+'</div>'+prev+'</div>'; }).join('');
-  box.querySelectorAll('.bub').forEach(el=>el.onclick=()=>openList(el.dataset.key)); }
+    const nav=list.length>1?'<div class="bnav"><button data-bs="-1" aria-label="Previous task">▲</button><span>'+(ix+1)+'/'+list.length+'</span><button data-bs="1" aria-label="Next task">▼</button>'+(ORDERED.has(k)&&ix>0?'<button data-btop aria-label="Move to top" title="Move to top">⤒</button>':'')+'</div>':'';
+    return '<div class="'+cls+'" data-key="'+esc(k)+'"><div class="bcap">'+em+' '+esc(nm)+'</div><div class="bn">'+list.length+'</div>'+prev+nav+'</div>'; }).join('');
+  box.querySelectorAll('.bub').forEach(el=>{ const k=el.dataset.key; el.onclick=e=>{ if(e.target.closest('.bnav')) return; openList(k); };
+    el.querySelectorAll('[data-bs]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const list=itemsFor(k); bSel[k]={i:bubOf(k,list)+(+b.dataset.bs),at:Date.now()}; renderBubbles(); layout(); });
+    const tb=el.querySelector('[data-btop]'); if(tb) tb.onclick=e=>{ e.stopPropagation(); moveTop(k); }; }); }
+function moveTop(k){ const list=itemsFor(k); const t=list[bubOf(k,list)]; if(!t) return;
+  if(k==='nextup'){ t.nuOrder=Math.min(...list.map(x=>x.nuOrder??0))-10; patchTask(t.id,{NextUpOrder:t.nuOrder}); }
+  else { t.listOrder=Math.min(...list.map(x=>x.listOrder??0))-10; patchTask(t.id,{ListOrder:t.listOrder}); }
+  order[k]=[t.id].concat(list.map(x=>x.id).filter(id=>id!==t.id)); saveOrder(); bSel[k]={i:0,at:Date.now()}; toast('⤒ Moved to top'); renderAll(); }
+/* ── Call someone (same as the iPhone): contacts search · Call (tel: → iPhone/FaceTime) / Text (sms: → Messages) ·
+   Gmail / Web / Ask Claude / + Save number fallbacks · Frequent chips when empty. Usage → Airtable ContactUsage (shared). ── */
+const CX_TABLE='tbla8W2IjHCJMXgY5', CU_TABLE='tblxPMZa78C8n0U4t', CU_HALF=14*864e5;
+let cxContacts=(()=>{ try{ return JSON.parse(localStorage.getItem('contacts')||localStorage.getItem('m.contacts')||'[]'); }catch(e){ return []; } })();
+let cxQ='', cuRows=[], cuAt=0, cxBusy=false;
+const cxKey=p=>String(p||'').replace(/\D/g,'').slice(-10);
+let cxLast=0; function cxLoad(){ if(cxBusy||demo||!cfg.apiKey||Date.now()-cxLast<60000) return; cxLast=Date.now(); const fresh=Date.now()-(+localStorage.getItem('tb.contacts.ts')||0)<12*36e5; cxBusy=true;
+  const jobs=[];
+  if(!cxContacts.length||!fresh){ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CX_TABLE); u.searchParams.set('pageSize','100');
+    jobs.push(fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{ if(d&&d.records&&d.records.length){ const rows=d.records.map(r=>({i:+flat(r.fields.Idx)||0,d:flat(r.fields.Data)||''})).sort((a,b)=>a.i-b.i);
+      try{ const arr=JSON.parse(rows.map(r=>r.d).join('')); if(arr.length){ cxContacts=arr; localStorage.setItem('contacts',JSON.stringify(arr)); localStorage.setItem('tb.contacts.ts',String(Date.now())); } }catch(e){} } }).catch(()=>{})); }
+  if(Date.now()-cuAt>30*6e4){ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CU_TABLE); u.searchParams.set('pageSize','100');
+    jobs.push(fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{ if(d&&d.records){ cuRows=d.records.map(x=>({id:x.id,name:x.fields.Name||'',phone:x.fields.Phone||'',count:+x.fields.Count||0,score:+x.fields.Score||0,last:x.fields.LastUsed?Date.parse(x.fields.LastUsed):0,pinned:!!x.fields.Pinned,hidden:!!x.fields.Hidden})); cuAt=Date.now(); } }).catch(()=>{})); }
+  if(!jobs.length){ cxBusy=false; return; }   // nothing to fetch → no re-render (re-rendering here called cxLoad again in an endless loop)
+  Promise.all(jobs).then(()=>{ cxBusy=false; if(!document.activeElement||document.activeElement.id!=='cxQ') renderCx(); }); }
+function cxSearch(q){ q=q.toLowerCase(); const dq=q.replace(/\D/g,''); const out=[]; for(const c of cxContacts){ const hit=(c.n||'').toLowerCase().includes(q)||(c.o||'').toLowerCase().includes(q)||(dq.length>=3&&(c.p||[]).some(p=>String(p).replace(/\D/g,'').includes(dq))); if(hit&&(c.p||[]).length){ out.push(c); if(out.length>=8) break; } } return out; }
+const cuNow=r=>r.score*Math.pow(0.5,(Date.now()-r.last)/CU_HALF);
+async function cxUse(name,phone){ const k=cxKey(phone); if(k.length<7||demo||!cfg.apiKey) return; const base='https://api.airtable.com/v0/'+cfg.baseId+'/'+CU_TABLE, H={Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'};
+  try{ const u=new URL(base); u.searchParams.set('filterByFormula',"{Key}='"+k+"'"); u.searchParams.set('maxRecords','1'); const d=await fetch(u,{headers:H}).then(r=>r.ok?r.json():{records:[]}); const f=((d.records||[])[0]||{}).fields||{};
+    const sc=(+f.Score||0)*Math.pow(0.5,(Date.now()-(f.LastUsed?Date.parse(f.LastUsed):0))/CU_HALF)+1; const fields={Key:k,Phone:phone,Count:(+f.Count||0)+1,Score:+sc.toFixed(3),LastUsed:new Date().toISOString(),Hidden:false}; if(name||!f.Name) fields.Name=name||f.Name||'';
+    await fetch(base,{method:'PATCH',headers:H,body:JSON.stringify({performUpsert:{fieldsToMergeOn:['Key']},typecast:true,records:[{fields}]})}); cuAt=0; }catch(e){} }
+const cxRow=(n,o,p)=>{ const d=String(p).replace(/[^\d+]/g,''); return `<div class="cxr"><span class="cxn"><b>${esc(n||p)}</b>${o?`<i>${esc(o)}</i>`:''}<i>${esc(p)}</i></span><a class="cxc" href="tel:${esc(d)}" data-cu="${esc(n||'')}" title="Call (iPhone / FaceTime)">Call</a><a class="cxt" href="sms:${esc(d)}" data-cu="${esc(n||'')}" title="Text (Messages)">Text</a></div>`; };
+function cxHTML(){ const q=cxQ.trim(); let body='';
+  if(!q){ const F=cuRows.filter(r=>!r.hidden&&(r.pinned||r.count)).sort((a,b)=>((+b.pinned)-(+a.pinned))||(cuNow(b)-cuNow(a))).slice(0,8);
+    body=F.length?`<div class="cxh">Frequent</div><div class="cxf">${F.map(r=>`<span class="cxchip"><b>${esc((r.name||r.phone).split(' ').slice(0,2).join(' '))}</b><a href="tel:${esc(String(r.phone).replace(/[^\d+]/g,''))}" data-cu="${esc(r.name)}" class="cxc">Call</a><a href="sms:${esc(String(r.phone).replace(/[^\d+]/g,''))}" data-cu="${esc(r.name)}" class="cxt">Text</a></span>`).join('')}</div>`:''; }
+  else { const hits=cxSearch(q); const e=encodeURIComponent(q);
+    body=(hits.length?hits.map(c=>(c.p||[]).slice(0,2).map((p,i)=>cxRow(i?'':c.n,i?'':c.o,p)).join('')).join(''):`<div class="none" style="padding:6px 2px">${cxContacts.length?'Not in Contacts — look it up:':'Contacts not loaded'}</div>`)
+      +`<div class="cxlk"><a href="https://mail.google.com/mail/u/?authuser=rbenjamini%40gmail.com#search/${e}" target="_blank" rel="noopener">Gmail</a><a href="https://www.google.com/search?q=${encodeURIComponent(q+' phone')}" target="_blank" rel="noopener">Web</a><a href="https://claude.ai/new?q=${encodeURIComponent('Find the phone number for '+q+' — check my email and contacts')}" target="_blank" rel="noopener">Ask Claude</a><button data-cxsave>+ Save number</button></div>`; }
+  return `<div class="pane cxpane"><input id="cxQ" class="rq" type="search" placeholder="Call someone — type a name…" value="${esc(cxQ)}" autocomplete="off"><div class="cxb">${body}</div></div>`; }
+function renderCx(){ const host=document.querySelector('#cxHost'); if(!host) return; host.innerHTML=cxHTML(); cxLoad();
+  const q=host.querySelector('#cxQ'); q.oninput=()=>{ cxQ=q.value; const pos=q.selectionStart; renderCx(); const q2=document.querySelector('#cxQ'); q2.focus(); try{ q2.setSelectionRange(pos,pos); }catch(e){} };
+  host.querySelectorAll('a[data-cu]').forEach(a=>a.addEventListener('click',()=>cxUse(a.dataset.cu,decodeURIComponent(a.getAttribute('href').replace(/^(tel:|sms:)/,'')))));
+  const sv=host.querySelector('[data-cxsave]'); if(sv) sv.onclick=()=>{ const ph=(prompt('Phone number for '+cxQ)||'').trim(); if(ph.replace(/\D/g,'').length<7) return; const nm=(prompt('Name',cxQ)||cxQ).trim(); cxUse(nm,ph); cuRows.push({name:nm,phone:ph,count:1,score:1,last:Date.now()}); cxQ=''; renderCx(); toast('Saved '+nm+' to Frequent'); }; }
+
+function focusCx(){ const q=$('#cxQ'); if(!q){ renderCx(); } const q2=$('#cxQ'); if(q2){ q2.scrollIntoView({block:'nearest'}); q2.focus(); q2.select(); const p=q2.closest('.pane'); if(p){ p.classList.add('urgent'); setTimeout(()=>p.classList.remove('urgent'),900); } } }
+/* ☀︎ Morning / ◑ Afternoon: two slim side-by-side boxes (iPhone gradients), one task each, rotating every 30s; ‹ › step; click → the list */
+const amI={morning:0,afternoon:0}, amAt={morning:0,afternoon:0};
+function amCycle(){ ['morning','afternoon'].forEach(k=>{ if(Date.now()-amAt[k]>120000) amI[k]++; }); renderAmPm(); }
+function renderAmPm(){ const el=$('#amPm'); if(!el) return; el.innerHTML=[['morning','am','☀︎ Morning'],['afternoon','pm','◑ Afternoon']].map(([k,c,l])=>{ const L=itemsFor(k); const i=L.length?((amI[k]%L.length)+L.length)%L.length:0; const t=L[i];
+    return '<div class="amb '+c+'" data-amk="'+k+'"><div class="h">'+l+'<b>'+L.length+'</b></div><div class="t">'+(t?esc(cleanName(t)):'—')+'</div><div class="n"><button data-amd="-1" aria-label="Previous">‹</button><span>'+(L.length?(i+1)+' / '+L.length:'')+'</span><button data-amd="1" aria-label="Next">›</button></div></div>'; }).join('');
+  el.querySelectorAll('.amb').forEach(b=>{ const k=b.dataset.amk; b.onclick=e=>{ if(e.target.closest('[data-amd]')) return; openList(k); };
+    b.querySelectorAll('[data-amd]').forEach(x=>x.onclick=e=>{ e.stopPropagation(); amI[k]+=(+x.dataset.amd); amAt[k]=Date.now(); renderAmPm(); }); }); }
 /* corners */
 function miniRow(t){ return '<div class="lrow" data-open="'+t.id+'"><span class="dot" style="background:'+projColor(t.project)+'"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(daysOpen(t)>=21?' o':'')+'">'+daysOpen(t)+'d</span></div>'; }
 function miniList(key,n){ const items=itemsFor(key); return {count:items.length, html:(items.length?items.slice(0,n).map(miniRow).join(''):'<div class="none">—</div>')}; }
 function renderCorners(){
-  const m=miniList('morning',3), a=miniList('afternoon',3);
-  $('#cTL').innerHTML='<div class="pane"><div class="ph" data-list="morning">☀︎ Morning<span class="pn">'+m.count+'</span></div>'+m.html+'</div>'+
-    '<div class="pane"><div class="ph" data-list="afternoon">◑ Afternoon<span class="pn">'+a.count+'</span></div>'+a.html+'</div>';
+  $('#cTL').innerHTML='<div class="ampm" id="amPm"></div>'; renderAmPm();
   const nn=nowNext(todayISO()); const ML=mtgNav(), cur=nowMin(); let mi=(mSel!=null&&Date.now()-mSelAt<120000)?Math.min(mSel,ML.length-1):ML.findIndex(e=>e._today&&e.end>cur); if(mi<0) mi=ML.findIndex(e=>!e._today); if(mi<0) mi=ML.length-1; mSel=mi;
   const mt=ML[mi]; let mh='';
   if(mt){ const h=joinHref(mt), tel=h.indexOf('tel:')===0, isNow=mt._today&&mt.start-5<=cur&&cur<mt.end;
@@ -321,7 +402,8 @@ function renderCorners(){
        (nx&&!also.includes(nx)?'<div class="mnext">Next · '+(nx._today?'':'Tmrw ')+esc(nx.when||'')+' <b>'+esc(String(nx.title||'').slice(0,24))+'</b></div>':'');
   } else mh='<div class="none">No meetings today or tomorrow.</div>';
   const inc=miniList('incoming',3);
-  $('#cTR').innerHTML='<div class="pane meet'+(nn.now?' urgent':'')+'"><div class="ph" data-list="meeting">▣ Next Meeting<span class="pn">'+nn.L.length+'</span></div>'+mh+'</div>'+
+  if(!$('#cxHost')){ $('#cTR').innerHTML='<div id="cxHost"></div><div id="cTRb" style="display:flex;flex-direction:column;gap:10px"></div>'; renderCx(); }
+  $('#cTRb').innerHTML='<div class="pane meet'+(nn.now?' urgent':'')+'"><div class="ph" data-list="meeting">▣ Next Meeting<span class="pn">'+nn.L.length+'</span></div>'+mh+'</div>'+
     '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span></div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div><div class="pane" id="cqPane" style="display:none"></div>';
   renderCQPane();
   const shortTime=x=>{ const r=String(x).match(/(\d+)\s*(h|hr|hour|m|min)/i); return r?'~'+r[1]+(/^h/i.test(r[2])?'h':'m'):''; };
@@ -421,7 +503,7 @@ window.TE={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.table
     saveAug(); patchTask(t.id,f); renderAll(); },
   restoreCat:(t,p)=>{ const a=A(t.id); if(p.sec) a.section=p.sec; else delete a.section; t.sectionRemote=p.sr; t.slotRemote=p.m; t.typeRemote=p.ty; saveAug(); patchTask(t.id,Object.assign({Section:p.sr,MeetingSlot:p.m},p.ty==='call'?{Type:'call'}:{})); renderAll(); } };
 function openTask(id){ const t=tasks.find(x=>x.id===id); if(!t){ toast('Task not found'); return; } closeOv(); if(window.TaskEditor) TaskEditor.open(t); else toast('Editor not loaded'); }
-function openList(key){ const em=CAT[key][0],cap=CAT[key][1]; const items=itemsFor(key);
+function openList(key){ const em=capOf(key)[0],cap=capOf(key)[1]; const items=itemsFor(key);
   ovh.innerHTML=em+' '+esc(cap)+' · '+items.length+'<button class="x" data-x>✕</button>';
   if(key==='meeting'){ const cur=nowMin(); const row=(e,td)=>{ const h=joinHref(e), past=td&&e.end<=cur, now=td&&e.start-5<=cur&&cur<e.end; return '<div class="lrow"'+(past?' style="opacity:.45"':'')+'><span class="dot" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(e.title||'(untitled)')+(now?'<span class="nowtag">NOW</span>':'')+'</span><span class="lm">'+esc(e.when||'')+'</span></span>'+(h?'<a class="edlink" style="margin:0;padding:6px 10px" href="'+esc(h)+'" target="_blank" rel="noopener">'+(h.indexOf('tel:')===0?'📞':'▶ Join')+'</a>':'')+'</div>'; };
     const T=meetingsToday(todayISO()), M=meetingsToday(tomorrowISO()); ovh.innerHTML=em+' Meetings · '+(T.length+M.length)+'<button class="x" data-x>✕</button>';
@@ -489,7 +571,8 @@ function paintCmd(){ cmdRes.innerHTML=cmdItems.map((it,i)=>{ const kk=it.k==='ad
 function markCmd(){ cmdRes.querySelectorAll('.cmdrow').forEach((r,i)=>r.classList.toggle('sel',i===cmdSel)); }
 cmdInp.addEventListener('input',()=>buildCmd(cmdInp.value));
 cmdInp.addEventListener('keydown',e=>{ if(e.key==='ArrowDown'){e.preventDefault();cmdSel=Math.min(cmdItems.length-1,cmdSel+1);markCmd();}else if(e.key==='ArrowUp'){e.preventDefault();cmdSel=Math.max(0,cmdSel-1);markCmd();}else if(e.key==='Enter'){e.preventDefault();const it=cmdItems[cmdSel];if(it&&it.run)it.run();}else if(e.key==='Escape'){e.preventDefault();closeCmd();} });
-addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){ e.preventDefault(); cmd.classList.contains('show')?closeCmd():openCmd(); } else if(e.key==='/'&&!cmd.classList.contains('show')&&!/^(input|textarea)$/i.test((e.target&&e.target.tagName)||'')&&!(e.target&&e.target.isContentEditable)){ e.preventDefault(); openCmd(); } });
+addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&(e.key==='k'||e.key==='K')){ e.preventDefault(); cmd.classList.contains('show')?closeCmd():openCmd(); } else if(e.key==='/'&&!cmd.classList.contains('show')&&!/^(input|textarea)$/i.test((e.target&&e.target.tagName)||'')&&!(e.target&&e.target.isContentEditable)){ e.preventDefault(); focusCx(); } });
+{ const b=$('#cxBtn'); if(b) b.onclick=focusCx; }
 
 /* ===== boot ===== */
 function tick(){ $('#clk').textContent=new Date().toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); }
@@ -498,6 +581,7 @@ $('#cmdBtn').onclick=openCmd; $('#cmdBtn2').onclick=openCmd;
 $('#homeToggle').onclick=()=>{ if(localStorage.getItem('tb.landing')!=='grid')localStorage.setItem('tb.landing','grid'); else localStorage.removeItem('tb.landing'); updHome(); };
 $('#keygo').onclick=()=>{ const k=$('#keyin').value.trim(); if(!k)return; cfg.apiKey=k; try{const c=JSON.parse(localStorage.getItem('tb.cfg')||'{}');c.apiKey=k;localStorage.setItem('tb.cfg',JSON.stringify(c));}catch(e){} $('#setup').style.display='none'; demo=false; fetchAll(); };
 $('#demo').onclick=()=>{ $('#setup').style.display='none'; demo=true; demoData(); renderAll(); };
-function boot(){ tick(); setInterval(tick,30000); updHome(); if(!cfg.apiKey) $('#setup').style.display='flex'; fetchAll(); setInterval(fetchAll,5*60000); }
+function boot(){ tick(); setInterval(tick,30000); updHome(); if(!cfg.apiKey) $('#setup').style.display='flex'; fetchAll(); setInterval(()=>{ if(!document.hidden) fetchAll(); },60000);
+  let lastF=0; const fresh=()=>{ if(document.hidden||Date.now()-lastF<8000) return; lastF=Date.now(); fetchAll(); }; document.addEventListener('visibilitychange',fresh); window.addEventListener('focus',fresh); }
 boot();
 </script></body></html>

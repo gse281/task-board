@@ -17,6 +17,7 @@
 <script src="../guide.js"></script>
 <script src="../claudeq.js"></script>
 <script src="../photos.js"></script>
+<script src="../bills.js"></script>
 <script>
 /* Deep links: /m/#morning, /m/#afternoon, /m/#review, /m/#notes.
    For the two calls, swap manifest + icon + title so "Add to Home Screen" makes a dedicated one-tap icon. */
@@ -70,8 +71,8 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .call{position:relative;border-radius:16px;padding:8px 10px;min-height:54px;display:flex;flex-direction:row;align-items:center;gap:7px;
   text-align:left;overflow:hidden;transition:transform .12s}
 .call:active{transform:scale(.97)}
-.call.am{background:linear-gradient(150deg,#f0a35c 0%,#e8683c 55%,#b8452a 100%);color:#1a0e07}
-.call.pm{background:linear-gradient(150deg,#f3d27a 0%,#e0a458 55%,#a8742f 100%);color:#1a1207}
+.call.am{background:linear-gradient(150deg,#7fe6f4 0%,#39c7df 55%,#1d8ea3 100%);color:#07141a}
+.call.pm{background:linear-gradient(150deg,#a9e9f2 0%,#5fb9cc 55%,#2f7f91 100%);color:#07141a}
 .call .em{font-size:20px;line-height:1;flex:none}
 .call .lbl{font-weight:800;font-size:15px;letter-spacing:-.2px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .call .n{font-size:26px;font-weight:800;line-height:1;letter-spacing:-1px;flex:none}
@@ -107,7 +108,7 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .grow .gn{flex:1;font-size:18px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .grow .gn.none{color:var(--muted);font-weight:500;font-style:italic}
 .grow .gc{min-width:34px;text-align:center;font-weight:700;font-size:15px;background:var(--panel2);border-radius:10px;padding:4px 9px;color:var(--gold)}
-.grow .gc.hot{background:var(--accent);color:#1a0e07}
+.grow .gc.hot{background:var(--accent);color:#07141a}
 
 /* ---------- deck (one task at a time) ---------- */
 .deckwrap{flex:1;position:relative;padding:4px 16px 0;display:flex;flex-direction:column;min-height:0}
@@ -153,7 +154,7 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .empty .big2{font-size:64px}
 .empty h2{margin:0;color:var(--ink);font-size:26px}
 .pill{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 22px;font-weight:700;color:var(--ink);min-height:50px}
-.pill.acc{background:var(--accent);border-color:var(--accent);color:#1a0e07}
+.pill.acc{background:var(--accent);border-color:var(--accent);color:#07141a}
 
 /* agenda (list) view inside a deck */
 .agenda .row{display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:60px;border-bottom:1px solid var(--line);width:100%;text-align:left}
@@ -171,7 +172,7 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .review{display:flex;align-items:center;gap:14px;width:100%;text-align:left;border-radius:22px;padding:16px 18px;min-height:86px;margin-bottom:26px;
   background:linear-gradient(135deg,#2a2320,#1d1916);border:1px solid #3a2f28;position:relative;overflow:hidden;transition:transform .12s}
 .review:active{transform:scale(.98)}
-.review .ri{width:52px;height:52px;border-radius:16px;background:var(--accent);display:grid;place-items:center;font-size:26px;color:#1a0e07;flex:none}
+.review .ri{width:52px;height:52px;border-radius:16px;background:var(--accent);display:grid;place-items:center;font-size:26px;color:#07141a;flex:none}
 .review .rn{font-size:21px;font-weight:800;letter-spacing:-.2px}
 .review .rs{color:var(--muted);font-size:14px;margin-top:2px}
 .ring{position:relative;width:44px;height:44px;flex:none}
@@ -180,8 +181,8 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .chips2{display:flex;gap:8px;overflow-x:auto;padding:0 16px 10px;flex:none;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch}
 .pchip{flex:none;display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-weight:700;font-size:14px;white-space:nowrap;scroll-snap-align:center;transition:all .2s}
 .pchip i{font-style:normal;color:var(--gold);font-size:12px}
-.pchip.on{background:var(--accent);border-color:var(--accent);color:#1a0e07}
-.pchip.on i{color:#1a0e07}
+.pchip.on{background:var(--accent);border-color:var(--accent);color:#07141a}
+.pchip.on i{color:#07141a}
 .pchip.clear{opacity:.45;text-decoration:line-through}
 .bhead{padding:4px 20px 12px;flex:none}
 .bhead .bt{font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -233,7 +234,7 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .bbar{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:10px;padding:10px 16px calc(12px + var(--sab));flex:none;border-top:1px solid var(--line);background:rgba(20,17,15,.96)}
 .bbar button{min-height:54px;border-radius:17px;font-weight:800;font-size:15px;background:var(--panel2)}
 .bbar button:active{transform:scale(.96)}
-.bbar .fm{background:var(--accent);color:#1a0e07}
+.bbar .fm{background:var(--accent);color:#07141a}
 .bbar button:disabled{opacity:.35}
 .cleared{text-align:center;padding:40px 20px;color:var(--muted)}
 .cleared div{font-size:54px}
@@ -563,8 +564,8 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .autocard.autoc{padding:11px 14px}.autoc .ah{display:flex;align-items:center;gap:4px;font-size:15px;white-space:nowrap;overflow:hidden}
 .autoc .aok{color:var(--muted);font-weight:600}.autoc .afail{color:#e5533a;font-weight:800}.autoc .amiss{color:#e0a458;font-weight:800}.autoc.bad{border-color:#7a3a2c}
 /* Morning / Afternoon keep their own colors under any skin: sunrise red-orange + orange/gold (Roni) */
-.calls .call.am.slim{background:linear-gradient(150deg,#f0a35c 0%,#e8683c 55%,#b8452a 100%)!important;color:#1a0e07!important;border-color:transparent!important}
-.calls .call.pm.slim{background:linear-gradient(150deg,#f3d27a 0%,#e0a458 55%,#a8742f 100%)!important;color:#1a1207!important;border-color:transparent!important}
+.calls .call.am.slim{background:linear-gradient(150deg,#7fe6f4 0%,#39c7df 55%,#1d8ea3 100%)!important;color:#07141a!important;border-color:transparent!important}
+.calls .call.pm.slim{background:linear-gradient(150deg,#a9e9f2 0%,#5fb9cc 55%,#2f7f91 100%)!important;color:#07141a!important;border-color:transparent!important}
 .nurow.rotin{animation:rotin2 .45s var(--ease)}
 .homeinv{margin:0 0 10px}
 .trsup{margin:16px 4px 2px;font:800 11px ui-monospace,Menlo,monospace;letter-spacing:2px;color:#39c7df}
@@ -624,7 +625,7 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 /* @Computer – Claude */
 .compbtn{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:0 14px;margin:0 0 12px;background:#1f1a14;border:1px solid #4a3522;border-radius:16px;font-weight:800;font-size:15px;text-align:left}
 .compbtn>span:first-child{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.compbtn b{background:var(--accent);color:#1a0e07;border-radius:10px;padding:2px 9px;font-size:13px}
+.compbtn b{background:var(--accent);color:#07141a;border-radius:10px;padding:2px 9px;font-size:13px}
 .compbtn:active{transform:scale(.98)}
 .compcard{background:#1f1a14;border:1px solid #4a3522;border-radius:18px;padding:12px 14px 6px;margin-bottom:14px}
 .compcard .ah{display:flex;align-items:center;gap:8px;font-weight:800;font-size:16px}
@@ -667,7 +668,7 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
 .row2{display:flex;gap:8px}
 .row2 .pill{flex:1}
 .lbl2{color:var(--muted);font-size:13px;margin:4px 4px 6px}
-#toast{position:fixed;left:16px;right:16px;bottom:calc(10px + var(--sab));z-index:60;display:flex;align-items:center;gap:12px;
+#toast{position:fixed;left:16px;right:16px;bottom:calc(10px + var(--sab));z-index:9600;display:flex;align-items:center;gap:12px;
   background:#2b2521;border:1px solid #3a322c;border-radius:16px;padding:12px 14px 12px 16px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.4);
   transform:translateY(20px);opacity:0;pointer-events:none;transition:all .25s var(--ease)}
 #toast.on{transform:none;opacity:1;pointer-events:auto}
@@ -744,7 +745,7 @@ body{ background:radial-gradient(130% 120% at 50% 16%, #0d1920 0%, #0a1216 55%, 
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-15 13:15';   // stamped by deploy.sh
+const BUILD='2026-10-16 09:22';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -1041,8 +1042,10 @@ function inferTrade(n){ n=String(n||'').toLowerCase(); const T=[[/1\s*oak|gustav
 const rosterAll=()=>callCts.filter(c=>c.active);
 const callContacts=slot=>rosterAll().filter(c=>slot==='all'||c.slots.includes(slot));
 function rosterGroups(list){ const g=new Map(TRADES.map(t=>[t,[]])); list.forEach(c=>{ const t=TRADES.includes(c.trade)?c.trade:'Other'; g.get(t).push(c); }); g.forEach(v=>v.sort((a,b)=>a.name.localeCompare(b.name))); return [...g.entries()].filter(([,v])=>v.length); }
+// Invite roster: default = everyone (All); AM / PM are optional filters, remembered for this session only
+let invSlot='all';
 function paintInvite(s){
-  const r=s.route, el=s.el; if(!r.slot) r.slot=new Date().getHours()<12?'morning':'afternoon'; const slot=r.slot; const keepSc=el.querySelector('.scroll'); const st0=keepSc?keepSc.scrollTop:(s._st||0); const list=callContacts(slot); const sent=load('m.invited.'+todayISO(),{});
+  const r=s.route, el=s.el; if(!r.slot) r.slot=invSlot; const slot=r.slot; const keepSc=el.querySelector('.scroll'); const st0=keepSc?keepSc.scrollTop:(s._st||0); const list=callContacts(slot); const sent=load('m.invited.'+todayISO(),{});
   const SELK='m.invsel.'+slot; const sel=s._sel&&s._selK===SELK?s._sel:(s._selK=SELK,s._sel=load(SELK,{})); const saveSel=()=>save(SELK,sel); const selected=list.filter(c=>sel[c.phone]); const selN=selected.length; const msg=inviteText(slot==='all'?'morning':slot);
   const G=rosterGroups(list); let mepShown=false;
   el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">👥 Invite to the call</div><button class="icon" data-ccadd aria-label="Add people">＋</button></div>
@@ -1062,7 +1065,7 @@ function paintInvite(s){
       ${list.length?`<a class="invall" style="margin-top:16px" href="${smsMany((selN?selected:list).map(c=>c.phone),msg)}" data-invgo>📣 ${selN?('Invite '+selN+' selected'):('Invite all '+list.length)}</a>`:''}
       <div class="foot" style="padding-bottom:70px">One list for both calls — AM / PM mark who's on which call. Tap the trade to fix it. Long-press a name to remove from the roster.</div></div>
     ${list.length?`<div class="invbar" data-invbar><a class="invall" href="${smsMany((selN?selected:list).map(c=>c.phone),msg)}" data-invgo>📣 ${selN?('Invite '+selN+' selected'):('Invite all '+list.length)}</a>${selN?'<button class="pill" data-selclear>Clear</button>':''}</div>`:''}`;
-  wire(el); el.querySelectorAll('[data-is]').forEach(x=>x.onclick=()=>{ if(x.dataset.is===r.slot) return; r.slot=x.dataset.is; const sc=el.querySelector('.scroll'); if(sc) sc.scrollTop=0; s._st=0; buzz(6); paintInvite(s); });
+  wire(el); el.querySelectorAll('[data-is]').forEach(x=>x.onclick=()=>{ if(x.dataset.is===r.slot) return; r.slot=x.dataset.is; invSlot=r.slot; const sc=el.querySelector('.scroll'); if(sc) sc.scrollTop=0; s._st=0; buzz(6); paintInvite(s); });
   const mark=ids=>{ const m=load('m.invited.'+todayISO(),{}); const now=Date.now(); ids.forEach(i=>m[i]=now); save('m.invited.'+todayISO(),m); setTimeout(()=>paintInvite(s),600); };
   { const sc=el.querySelector('.scroll'); if(sc){ sc.scrollTop=st0; s._st=st0; sc.addEventListener('scroll',()=>{ s._st=sc.scrollTop; },{passive:true}); } }   // keep his place across Invite taps, returning from Messages and sync re-renders
   el.querySelectorAll('[data-sel]').forEach(b=>b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); const p=b.dataset.sel; if(sel[p])delete sel[p]; else sel[p]=1; saveSel(); buzz(5); paintInvite(s); });
@@ -1186,10 +1189,11 @@ function quickSave(inp,fn){ if(!inp||inp._qs) return; inp._qs=1; inp.setAttribut
 function paintComp(s){
   const el=s.el, ci=computerItems();
   el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">🖥 Open items · @Computer</div><span class="score">${ci.length} open</span></div>
-    <div class="scroll"><div class="sub" style="margin-top:4px">Oldest / overdue first. Tap one for step-by-step. ✓ marks it done.</div>
-    ${ci.length?`<div class="compcard">${ci.map(t=>`<div class="crow" data-cid="${t.id}"><button class="cck" data-cdone="${t.id}" aria-label="Done">✓</button><div style="flex:1;min-width:0"><div class="cn">${esc(cleanName(t))}</div>${t.next?`<div class="cx" style="white-space:normal">→ ${esc(t.next)}</div>`:''}</div><span class="cd">${window.Guide&&Guide.meta(t).time?'<b style="color:#39c7df;font-weight:600">'+esc(Guide.meta(t).time)+'</b> ':''}${window.Guide&&Guide.overdue(t)?'<b style="color:#e0a458">'+Guide.overdue(t)+'d late</b>':daysOpen(t)+'d'}</span></div>`).join('')}</div>`
+    <div class="scroll"><div class="sub" style="margin-top:4px">Your order first. Tap one for step-by-step. ✓ marks it done.</div>
+    ${ci.length?`<div class="compcard">${ci.slice(0,s.all?ci.length:5).map(t=>`<div class="crow" data-cid="${t.id}"><button class="cck" data-cdone="${t.id}" aria-label="Done">✓</button><div style="flex:1;min-width:0"><div class="cn">${esc(cleanName(t))}</div>${t.next?`<div class="cx" style="white-space:normal">→ ${esc(t.next)}</div>`:''}</div><span class="cd">${window.Guide&&Guide.meta(t).time?'<b style="color:#39c7df;font-weight:600">'+esc(Guide.meta(t).time)+'</b> ':''}${window.Guide&&Guide.overdue(t)?'<b style="color:#e0a458">'+Guide.overdue(t)+'d late</b>':daysOpen(t)+'d'}</span></div>`).join('')}</div>${ci.length>5?`<button class="compbtn" data-cmore style="margin-top:8px"><span>${s.all?'Show less':'+ '+(ci.length-5)+' more'}</span><span class="chev">›</span></button>`:''}`
       :'<div class="empty" style="padding-top:60px"><div class="big2">✅</div><h2>All clear</h2></div>'}</div>`;
   wire(el);
+  const mb=el.querySelector('[data-cmore]'); if(mb) mb.onclick=()=>{ s.all=!s.all; paintComp(s); };
   el.querySelectorAll('[data-cdone]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const t=tasks.find(x=>x.id===b.dataset.cdone); if(!t) return;
     b.closest('.crow').classList.add('gone'); setTimeout(()=>{ done(t); paintComp(s); if(stack[0]) paintHome(stack[0]); },420); });
   el.querySelectorAll('.crow').forEach(r=>r.onclick=e=>{ if(e.target.closest('button,a')) return; const t=tasks.find(x=>x.id===r.dataset.cid); if(t) openGuideM(t,()=>{ paintComp(s); if(stack[0]) paintHome(stack[0]); }); });
@@ -1404,12 +1408,12 @@ function paintSlotList(s){
     ${isCalls?'':`<div class="amseg" data-amseg><button class="${slot==='morning'?'on':''}" data-seg="morning">🌅 AM <b>${slotTasks('morning').length}</b></button><button class="${slot==='afternoon'?'on':''}" data-seg="afternoon">☀️ PM <b>${slotTasks('afternoon').length}</b></button></div>`}
     <div class="scroll" style="padding:0 10px calc(20px + var(--sab))">
       ${isCalls?`<div class="dialer"><input class="cxsearch" type="search" enterkeyhint="search" placeholder="🔍 Call someone — type a name…" autocomplete="off"><div class="cxresults" data-cxresults></div></div>`:''}
-      ${isCalls?'':`<button class="invbtn" data-invite>👥 Invite to the call<span>${callContacts(slot).length} people · ${esc(DIAL_IN)}</span><span class="chev">›</span></button>`}
+      ${isCalls?'':`<button class="invbtn" data-invite>👥 Invite to the call<span>${callContacts(invSlot).length} people · ${esc(DIAL_IN)}</span><span class="chev">›</span></button>`}
       <div class="addbar"><input class="qadd" type="text" enterkeyhint="done" placeholder="Add to ${esc(S.label.toLowerCase())}…" autocomplete="off"><button class="qaddb" data-qadd>＋</button></div>
       ${items.length?'<div class="swhint">swipe → done · ← remove / snooze · tap to open</div>':''}
       <div data-list>${body}</div></div>`;
   wire(el);
-  { const ib=el.querySelector('[data-invite]'); if(ib) ib.onclick=()=>push({type:'invite',slot}); }
+  { const ib=el.querySelector('[data-invite]'); if(ib) ib.onclick=()=>push({type:'invite',slot:invSlot}); }
   if(isCalls&&!contacts.length&&contactsTry()) loadContacts().then(()=>{ if(contacts.length&&stack[stack.length-1]===s) paintSlotList(s); });
   if(isCalls) wireDialer(el); else wireTopStrip(el,()=>paintSlotList(s));
   el.querySelector('[data-run]').onclick=()=>{ if(!items.length){ toast('Nothing to run'); return; } push(isCalls?{type:'deck',kind:'calls',title:'📞 Calls'}:{type:'deck',kind:'slot',slot,title:S.label}); };
@@ -1725,7 +1729,7 @@ function nuSortable(card,s){ if(!card) return; const rows=()=>[...card.querySele
 // ✨ Claude requests (claudeq.js): status of every Send-to-Claude request; Needs approval on top
 function cqCard(){ if(!window.CQ) return ''; const L=CQ.list(); if(!L.length) return ''; const n=CQ.counts();
   const top=L.filter(q=>q.Status==='Needs approval'), rest=L.filter(q=>q.Status!=='Needs approval').slice(0,Math.max(0,3-top.length));
-  return `<div class="review nucard cqcard" style="cursor:default"><div class="fqhd"><span>✨ Claude requests</span><span class="nucnt"${n.approve||n.stale?' style="background:#e0a458;color:#1a0e07"':''}>${n.approve+n.stale||L.length}</span></div>
+  return `<div class="review nucard cqcard" style="cursor:default"><div class="fqhd"><span>✨ Claude requests</span><span class="nucnt"${n.approve||n.stale?' style="background:#e0a458;color:#07141a"':''}>${n.approve+n.stale||L.length}</span></div>
     <div class="cqx-sum" style="margin:0 2px 4px">${CQ.summary()}</div>${top.concat(rest).map(q=>CQ.rowHTML(q)).join('')}
     ${L.length>top.length+rest.length?`<button class="pill" data-cqall style="width:100%;margin-top:8px">See all ${L.length} ›</button>`:''}</div>`; }
 function wireCQ(el){ if(!window.CQ) return; CQ.wire(el,{toast:m=>toast(m),onOpen:id=>{ const t=tasks.find(x=>x.id===id); if(t) editTask(t); else toast('Task not loaded yet'); }});
@@ -1738,6 +1742,24 @@ function paintClaudeQ(s){ const el=s.el; const L=window.CQ?CQ.list():[];
   wire(el); wireCQ(el); el.querySelector('[data-cqr]').onclick=()=>{ toast('Reloading…'); CQ.load(true); }; }
 if(window.CQ){ CQ.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); CQ.onChange(()=>{ const a=document.activeElement; if(a&&a.classList&&a.classList.contains('cqx-ta')) return; const top=stack[stack.length-1]; if(!top) return;
   if(top.route.type==='claudeq') paintClaudeQ(top); else if(stack.length===1) paintHome(top); }); }
+// 💵 Bills & Taxes (bills.js, Airtable Bills) — what's due next, amount, days left, Mark paid (+ conf # / receipt), 📷 Add bill. Tracking only.
+function billsCard(){ if(!window.Bills) return ''; const U=Bills.unpaid(); if(!U.length) return '';
+  const urgent=U.some(b=>{ const d=Bills.daysLeft(b); return d!=null&&d<=7; });
+  return `<div class="review nucard blcard" style="cursor:default"><div class="fqhd"><span>💵 Bills & Taxes</span><span class="nucnt"${urgent?' style="background:#e0a458;color:#07141a"':''}>${U.length}</span></div>
+    <div class="bl-sum">${Bills.summary()}</div>${U.slice(0,2).map(b=>Bills.rowHTML(b)).join('')}
+    <div style="display:flex;gap:8px;margin-top:8px"><button class="pill" data-blall style="flex:1">See all ›</button><button class="pill" data-bladd style="flex:1">📷 Add bill</button></div></div>`; }
+function wireBills(el){ if(!window.Bills) return; Bills.wire(el,{toast:m=>toast(m),onOpenTask:id=>{ const t=tasks.find(x=>x.id===id); if(t) editTask(t); else toast('Task not loaded yet'); },after:()=>{ setTimeout(()=>{ fetchAll().catch(()=>{}); },1500); }});
+  el.querySelectorAll('[data-blall]').forEach(b=>b.onclick=()=>push({type:'bills'}));
+  el.querySelectorAll('[data-bladd]').forEach(b=>b.onclick=async()=>{ if(!window.Photos) return; const f=await Photos.pick(); if(f.length) Bills.addFromPhoto(f,{toast:m=>toast(m)}); }); }
+function paintBills(s){ const el=s.el; const U=window.Bills?Bills.unpaid():[], P=window.Bills?Bills.list().filter(b=>b.Status==='Paid').sort((a,b)=>String(b.PaidDate||'').localeCompare(String(a.PaidDate||''))).slice(0,12):[];
+  el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">💵 Bills & Taxes</div><button class="icon" data-blr aria-label="Reload">↻</button></div>
+    <div class="scroll" style="padding:4px 12px calc(20px + var(--sab))"><div class="sub" style="margin-top:4px">${window.Bills?Bills.summary():''} · tracking only — you pay</div>
+    <button class="pill" data-bladd style="width:100%;margin:8px 0">📷 Add bill (Claude reads the photo)</button>
+    <div class="review nucard" style="cursor:default">${U.length?U.map(b=>Bills.rowHTML(b)).join(''):'<div class="ap" style="padding:12px 2px">Nothing unpaid. 📷 Add bill to track one.</div>'}</div>
+    ${P.length?`<div class="sect" style="margin-top:16px">Paid</div><div class="review nucard" style="cursor:default">${P.map(b=>Bills.rowHTML(b)).join('')}</div>`:''}</div>`;
+  wire(el); wireBills(el); el.querySelector('[data-blr]').onclick=()=>{ toast('Reloading…'); Bills.load(true); }; }
+if(window.Bills){ Bills.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); Bills.onChange(()=>{ const a=document.activeElement; if(a&&a.classList&&a.classList.contains('bl-in')) return; const top=stack[stack.length-1]; if(!top) return;
+  if(top.route.type==='bills') paintBills(top); else if(stack.length===1) paintHome(top); }); }
 function sugCard(){ const L=suggestedList(); if(!L.length) return '';
   return `<div class="review nucard sug"><div class="fqhd"><span>✨ Suggested next up</span><span class="nucnt">${L.length}</span></div>
     ${L.map(t=>`<div class="nurow" data-nuopen="${t.id}" data-sug="1"><div class="nui"><b>${esc(cleanName(t))}</b><span class="why">${esc(t.sugWhy||[t.project,t.lead].filter(Boolean).join(' · '))}</span></div>
@@ -1805,7 +1827,7 @@ function homeSafety(){ stack.forEach((x,i)=>{ x.el.classList.remove('peek','drag
 function syncLayers(){ stack.forEach((x,i)=>{ const isTop=i===stack.length-1; x.el.classList.toggle('under',!isTop); if(isTop){ x.el.classList.remove('enter','leave'); x.el.style.transform=''; } }); }
 function goHome(){ while(stack.length>1){ const s=stack.pop(); s.el.remove(); } document.querySelectorAll('.pane-dim').forEach(x=>x.remove()); syncLayers(); paint(stack[0]); homeSafety(); }
 function render(){ stack.forEach(paint); }
-function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='wx') paintWx(s); else if(r.type==='parked') paintParked(s); else if(r.type==='autos') paintAutos(s); else if(r.type==='comp') paintComp(s); else if(r.type==='invite') paintInvite(s); else if(r.type==='leadrev') paintLeadRev(s); else if(r.type==='meetings') paintMeetings(s); else if(r.type==='freq') paintFreq(s); else if(r.type==='nextup') paintNextUp(s); else if(r.type==='claudeq') paintClaudeQ(s); }
+function paint(s){ const r=s.route; if(r.type==='home') paintHome(s); else if(r.type==='groups') paintGroups(s); else if(r.type==='deck') paintDeck(s); else if(r.type==='board') paintBoard(s); else if(r.type==='notes') paintNotes(s); else if(r.type==='stats') paintStats(s); else if(r.type==='snap') paintSnap(s); else if(r.type==='day') paintDay(s); else if(r.type==='incoming') paintIncoming(s); else if(r.type==='slotlist') paintSlotList(s); else if(r.type==='wx') paintWx(s); else if(r.type==='parked') paintParked(s); else if(r.type==='autos') paintAutos(s); else if(r.type==='comp') paintComp(s); else if(r.type==='invite') paintInvite(s); else if(r.type==='leadrev') paintLeadRev(s); else if(r.type==='meetings') paintMeetings(s); else if(r.type==='freq') paintFreq(s); else if(r.type==='nextup') paintNextUp(s); else if(r.type==='claudeq') paintClaudeQ(s); else if(r.type==='bills') paintBills(s); }
 // Pane gestures (every pushed screen): pull DOWN at the top = close like an iOS sheet; swipe from the LEFT EDGE = back.
 // Translate only (no fading). Release → finish (past threshold or fast flick) or snap back. touchcancel → snap back. Never leaves a stray transform.
 function paneGestures(el){
@@ -1977,12 +1999,12 @@ setInterval(()=>{ if(document.hidden||!stack[0]||stack.length!==1) return; const
   const h=stack[0]; const sec=h.el.querySelector('.hsec[data-hsec="nextup"]'); if(sec&&!h.editing&&nextUpList().length>1){ sec.innerHTML=nuHomeCard(); wireNU(sec,h); const r=sec.querySelector('.nurow'); if(r){ r.classList.add('rotin'); } } },30000);
 /* ---------- 🏠 Home layout: Roni's order + hidden sections, editable (⚙︎ → Edit home, or long-press empty space).
    Saved locally + in Airtable AppNotes (Key "home-layout") so it follows him across devices. ---------- */
-const HOME_DEFAULT=['wx','letters','learn','meet','inotes','invite','ampm','search','calls','freq','nextup','sug','claude','leadrev','comp','parked','autos','drill','review','views','daynote','notesarc','quick'], HOME_LABEL={letters:'C P S L N I letters',learn:'📖 Learning',claude:'✨ Claude requests',invite:'👥 Invite to the call',wx:'🌤 Weather',meet:'📅 Meetings',inotes:'📥 Incoming + Notes',ampm:'🌅 Morning / Afternoon',search:'🔍 Call someone',calls:'📞 Calls',freq:'⭐ Frequent',nextup:'⏫ Next Up',sug:'✨ Suggested',leadrev:'📲 Lead texts',comp:'🖥 @Computer',parked:'🅿️ Parked',autos:'⚙️ Automations',drill:'🎯 Drill',review:'▶ Review projects',views:'👁 View tasks by',daynote:'🗒 Today’s notes',notesarc:'📝 Notes archive',quick:'📆 Due today / Snapshot'};
+const HOME_DEFAULT=['wx','letters','learn','meet','bills','inotes','invite','ampm','search','calls','freq','nextup','sug','claude','leadrev','comp','parked','autos','drill','review','views','daynote','notesarc','quick'], HOME_LABEL={letters:'C P S L N I letters',learn:'📖 Learning',claude:'✨ Claude requests',bills:'💵 Bills & Taxes',invite:'👥 Invite to the call',wx:'🌤 Weather',meet:'📅 Meetings',inotes:'📥 Incoming + Notes',ampm:'🌅 Morning / Afternoon',search:'🔍 Call someone',calls:'📞 Calls',freq:'⭐ Frequent',nextup:'⏫ Next Up',sug:'✨ Suggested',leadrev:'📲 Lead texts',comp:'🖥 @Computer',parked:'🅿️ Parked',autos:'⚙️ Automations',drill:'🎯 Drill',review:'▶ Review projects',views:'👁 View tasks by',daynote:'🗒 Today’s notes',notesarc:'📝 Notes archive',quick:'📆 Due today / Snapshot'};
 let homeLay=load('m.homeLayout',{order:HOME_DEFAULT,hidden:[],at:0});
 let claudeQ=[]; const claudePoll=()=>{ if(!window.TaskEditor||document.hidden) return; TaskEditor.claudePending().then(L=>{ const ch=L.length!==claudeQ.length; claudeQ=L; if(ch&&stack[0]&&stack.length===1) paintHome(stack[0]); }); }; setInterval(claudePoll,120000); setTimeout(claudePoll,4000);
 function homeOrder(){ if(!homeLay.v4){ homeLay.v4=1; ['views','daynote'].forEach(k=>{ if(!homeLay.hidden.includes(k)) homeLay.hidden.push(k); }); save('m.homeLayout',homeLay); }   // C P S L N I replaces them (restorable in Edit home)
   if(!homeLay.v2){ homeLay.v2=1; if(!homeLay.hidden.includes('inotes')) homeLay.hidden.push('inotes'); save('m.homeLayout',homeLay); }
-  const o=(homeLay.order||[]).filter(k=>HOME_DEFAULT.includes(k)); if(!o.includes('letters')&&o.includes('wx')) o.splice(o.indexOf('wx')+1,0,'letters'); if(!o.includes('claude')&&o.includes('leadrev')) o.splice(o.indexOf('leadrev'),0,'claude'); if(!homeLay.v3){ homeLay.v3=1; const i=o.indexOf('learn'); if(i>=0) o.splice(i,1); const j=o.indexOf('letters'); o.splice(j>=0?j+1:1,0,'learn'); homeLay.order=o.slice(); save('m.homeLayout',homeLay); } if(!o.includes('invite')&&o.includes('ampm')) o.splice(o.indexOf('ampm'),0,'invite'); HOME_DEFAULT.forEach(k=>{ if(!o.includes(k)){ const i=HOME_DEFAULT.indexOf(k); o.splice(Math.min(i,o.length),0,k); } }); return o; }
+  const o=(homeLay.order||[]).filter(k=>HOME_DEFAULT.includes(k)); if(!o.includes('letters')&&o.includes('wx')) o.splice(o.indexOf('wx')+1,0,'letters'); if(!o.includes('bills')) o.splice(o.includes('meet')?o.indexOf('meet')+1:0,0,'bills'); if(!o.includes('claude')&&o.includes('leadrev')) o.splice(o.indexOf('leadrev'),0,'claude'); if(!homeLay.v3){ homeLay.v3=1; const i=o.indexOf('learn'); if(i>=0) o.splice(i,1); const j=o.indexOf('letters'); o.splice(j>=0?j+1:1,0,'learn'); homeLay.order=o.slice(); save('m.homeLayout',homeLay); } if(!o.includes('invite')&&o.includes('ampm')) o.splice(o.indexOf('ampm'),0,'invite'); HOME_DEFAULT.forEach(k=>{ if(!o.includes(k)){ const i=HOME_DEFAULT.indexOf(k); o.splice(Math.min(i,o.length),0,k); } }); return o; }
 async function homeLaySave(){ homeLay.at=Date.now(); save('m.homeLayout',homeLay); if(demo||!cfg.apiKey) return;
   try{ await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
     body:JSON.stringify({performUpsert:{fieldsToMergeOn:['Key']},typecast:true,records:[{fields:{Key:'home-layout',Text:JSON.stringify(homeLay),Updated:new Date().toISOString()}}]})}); }catch(e){} }
@@ -2037,7 +2059,8 @@ function paintHome(s){
 `,
         learn:()=>window.Learning?Learning.rowsHTML():'',
         claude:()=>cqCard(),
-        invite:()=>{ const sl=new Date().getHours()<12?'morning':'afternoon'; return `<button class="invbtn homeinv" data-hinvite="${sl}">👥 Invite to the call<span>${callContacts(sl).length} people · ${esc(DIAL_IN)} · ${sl==='morning'?'AM':'PM'}</span><span class="chev">›</span></button>`; },
+        bills:()=>billsCard(),
+        invite:()=>{ const sl=invSlot; return `<button class="invbtn homeinv" data-hinvite="${sl}">👥 Invite to the call<span>${callContacts(sl).length} people · ${esc(DIAL_IN)}${sl==='all'?'':' · '+(sl==='morning'?'AM':'PM')}</span><span class="chev">›</span></button>`; },
         ampm:()=>`
       <div class="calls">
         <div class="call am slim pgbox" role="button" tabindex="0" data-slot="morning" data-pg="morning" aria-label="Morning call"><span class="rot" data-rot="${(rotTask('morning')||{}).id||''}">${esc(rotTask('morning')?cleanName(rotTask('morning')):'Nothing queued')}</span>${slotTasks('morning').length>1?`<div class="pgbar sm"><button class="pga2" data-pgd="-1" aria-label="Previous">‹</button><span class="pgpos">${(slotTasks('morning').indexOf(rotTask('morning'))+1)||1} of ${slotTasks('morning').length}</span><button class="pga2" data-pgd="1" aria-label="Next">›</button></div>`:''}</div>
@@ -2122,7 +2145,7 @@ function paintHome(s){
     push({type:'slotlist',slot:sl}); });   // tap = open that call list
   wireCars(el); wireNU(el,s); wirePagers(el);
   if(window.Learning){ Learning.wireRows(el); if(!window._lrSub){ window._lrSub=1; Learning.onChange(()=>{ if(stack[0]&&stack.length===1) paintHome(stack[0]); }); } }
-  wireCQ(el);
+  wireCQ(el); wireBills(el);
   { const cq=el.querySelector('[data-claudeq]'); if(cq) cq.onclick=()=>{ const q=claudeQ[0]; const t=q&&tasks.find(x=>x.id===q.ItemId); if(t) editTask(t); else toast('Task not loaded yet'); }; }
   // ⚡ quick add: Incoming → new task (today) · Notes → append a line to today's notes page
   { const qi=el.querySelector('[data-qinc]'), qn=el.querySelector('[data-qnote]');
@@ -2706,7 +2729,9 @@ function routeFromHash(){ const gm=(location.hash||'').match(/guide=(rec[A-Za-z0
   else if(h==='automations'||h==='autos'){ push({type:'autos'}); }
   else if(h==='leadtexts'||h==='review-texts'){ push({type:'leadrev'}); }
   else if(h==='claude'||h==='claudeq'){ push({type:'claudeq'}); }
-  else if(h==='invite'||h==='invite-am'){ push({type:'invite',slot:'morning'}); }
+  else if(h==='bills'){ push({type:'bills'}); }
+  else if(h==='invite'){ push({type:'invite',slot:'all'}); }
+  else if(h==='invite-am'){ push({type:'invite',slot:'morning'}); }
   else if(h==='invite-pm'){ push({type:'invite',slot:'afternoon'}); }
   else if(h==='today'||h==='daynotes'){ push({type:'day',day:null}); }
   else if(h==='snapshot'||h==='list'){ push({type:'snap',mode:localStorage.getItem('m.snapMode')||'group'}); } }
