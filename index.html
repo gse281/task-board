@@ -127,6 +127,12 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .invchip button{border:0;background:transparent;color:var(--dim);cursor:pointer;font-size:12px}
 .invsend{font:800 13px ui-monospace,Menlo,monospace;color:#07141a;background:var(--cyan);border:0;border-radius:10px;padding:10px 16px;cursor:pointer;width:100%}
 .invsend:disabled{opacity:.4;cursor:default}
+.fbox{margin-top:10px;display:flex;flex-direction:column;background:rgba(9,18,24,.92);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.fbox .fbh{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid var(--line)}
+.fbox .fbh .fdot{width:10px;height:10px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px rgba(57,199,223,.8);flex:none}
+.fbox .fbh .fbt{flex:1;font:800 14px ui-monospace,Menlo,monospace;letter-spacing:1.5px;color:#cdeef5}
+.fbox .fbh .fbc{font:700 12px ui-monospace,Menlo,monospace;color:var(--dim)}
+.fbox .fbb{overflow:auto;max-height:40vh;padding:2px 12px 10px}
 .filist{display:flex;flex-direction:column;gap:4px}
 .fqrow{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--line)}
 .fqi{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
@@ -468,7 +474,7 @@ function renderCorners(){
     (oi.length?'<div class="oisub">Desk tasks with guides · tap one to walk through it<br>~min = your time · d = days open</div><div class="oil">'+oi.map(t=>{ const od=Guide.overdue(t), m=Guide.meta(t);
       return '<div class="lrow" data-guide="'+t.id+'" title="'+esc(cleanName(t))+'"><span class="dot'+(od||Guide.ageDays(t)>=7?' o':'')+'" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(od?' o':'')+'">'+(m.on?'<span class="tm">step '+(m.on+1)+'/'+m.n+'</span>':m.time?'<span class="tm">'+esc(shortTime(m.time))+'</span>':'')+(od?od+'d late':Guide.ageDays(t)+'d')+'</span></div>'; }).join('')+'</div>':'<div class="none">All clear.</div>')+'</div>';
   document.querySelectorAll('#cML [data-guide]').forEach(r=>r.onclick=()=>openGuide(r.dataset.guide));
-  if(window.Files){ const FL=Files.list(); $('#cML').insertAdjacentHTML('beforeend','<div class="pane" id="filesPane" style="margin-top:10px"><div class="ph" style="cursor:default">▦ Files in Use<span class="pn">'+FL.length+'</span></div>'+(FL.length?'<div class="filist">'+FL.map(f=>Files.rowHTML(f)).join('')+'</div>':'<div class="none">Files Claude references show up here.</div>')+'</div>'); Files.wire($('#filesPane'),{toast}); }
+  if(window.Files){ const FL=Files.list(); $('#cML').insertAdjacentHTML('beforeend','<div class="fbox" id="filesPane"><div class="fbh"><span class="fdot"></span><span class="fbt">Files in Use</span><span class="fbc">'+FL.length+' open</span></div><div class="fbb">'+(FL.length?'<div class="filist">'+FL.map(f=>Files.rowHTML(f)).join('')+'</div>':'<div class="none" style="padding:8px 2px">Files Claude references show up here.</div>')+'</div></div>'); Files.wire($('#filesPane'),{toast}); }
   const td=todayISO(); const days=wx.filter(w=>w.date>=td).slice(0,7);
   const cell=w=>{ const nm=w.date===td?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(w.date+'T12:00:00').getDay()]; const tc=w.hi>=90?'hot':w.hi<=32?'cold':''; const amt=w.pr>0.02?w.pr.toFixed(2).replace(/^0/,'')+'"':'';
     return '<div class="wxc'+(w.date===td?' today':'')+(w.pr>0.08?' wet':'')+'"><div class="wd">'+nm+'</div><div class="we">'+wxEmoji(w.code)+'</div><div class="wt '+tc+'">'+w.hi+'°</div><div class="wp">'+amt+'</div></div>'; };
