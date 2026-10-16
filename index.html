@@ -128,6 +128,9 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .invsend{font:800 13px ui-monospace,Menlo,monospace;color:#07141a;background:var(--cyan);border:0;border-radius:10px;padding:10px 16px;cursor:pointer;width:100%}
 .invsend:disabled{opacity:.4;cursor:default}
 .fbox{margin-top:10px;display:flex;flex-direction:column;background:rgba(9,18,24,.92);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.fbox-float{position:fixed;margin:0;z-index:35;width:272px;max-height:62vh;box-shadow:0 14px 40px rgba(0,0,0,.55)}
+.fbox-float .fbh{cursor:grab;user-select:none}
+.fbox-float .fbh:active{cursor:grabbing}
 .fbox .fbh{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid var(--line)}
 .fbox .fbh .fdot{width:10px;height:10px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px rgba(57,199,223,.8);flex:none}
 .fbox .fbh .fbt{flex:1;font:800 14px ui-monospace,Menlo,monospace;letter-spacing:1.5px;color:#cdeef5}
@@ -220,6 +223,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 <div class="back" id="ov"><div class="card"><div class="cardh" id="ovh"></div><div class="cardb" id="ovb"></div></div></div>
 <div id="cmd"><div class="cmdbox"><div class="cmdin"><span>⌘</span><input id="cmdInp" placeholder="Add a task, jump to a list, or search everything…" autocomplete="off"></div><div class="cmdres" id="cmdRes"></div><div class="cmdhint">↑↓ move · ⏎ select · esc close · type then ⏎ to add</div></div></div>
 <div id="setup"><div class="hint">Paste your Airtable key to see live data (or just preview the demo).</div><input id="keyin" type="password" placeholder="Airtable Personal Access Token (pat…)"><div style="display:flex;gap:8px"><button id="keygo">Connect</button><button id="demo" style="background:#13232b;color:var(--cyan)">Preview demo</button></div></div>
+<div id="filesBox" class="fbox fbox-float" hidden></div>
 <div id="toast"></div>
 <script src="task-editor.js"></script>
 <script src="photos.js"></script>
@@ -370,7 +374,7 @@ function showRingDD(){ let dd=$('#ringDD'); if(!dd){ dd=document.createElement('
     r.addEventListener('dragstart',()=>{ dragEl=r; r.classList.add('drag'); });
     r.addEventListener('dragover',e=>{ e.preventDefault(); if(!dragEl||dragEl===r) return; const b=r.getBoundingClientRect(); rdl.insertBefore(dragEl,(e.clientY-b.top)>b.height/2?r.nextSibling:r); });
     r.addEventListener('dragend',()=>{ r.classList.remove('drag'); const p=ringPref(); p.ord=[...rdl.querySelectorAll('.rdr')].map(x=>x.dataset.k); saveRingPref(p); ringPage=0; rer(); }); }); }
-function renderAll(){ clearIF(); if(window.Files&&!window._filesInit&&cfg&&cfg.apiKey){ window._filesInit=1; Files.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); Files.onChange(()=>{ if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.te')) return; renderCorners(); }); } renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
+function renderAll(){ clearIF(); if(window.Files&&!window._filesInit&&cfg&&cfg.apiKey){ window._filesInit=1; Files.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); Files.onChange(()=>{ if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.te')) return; renderFilesBox(); }); } renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
 window.addEventListener('hashchange',()=>{ window._gdShown=null; const gid=window.Guide&&Guide.hashId(); if(gid) openGuide(gid); });
 function renderHeader(){ const h=new Date().getHours(); $('#greet').textContent=(h<12?'GOOD MORNING':h<17?'GOOD AFTERNOON':'GOOD EVENING')+' ◎';
   const open=tasks.filter(live).length; const att=itemsFor('attention').length;
@@ -474,7 +478,7 @@ function renderCorners(){
     (oi.length?'<div class="oisub">Desk tasks with guides · tap one to walk through it<br>~min = your time · d = days open</div><div class="oil">'+oi.map(t=>{ const od=Guide.overdue(t), m=Guide.meta(t);
       return '<div class="lrow" data-guide="'+t.id+'" title="'+esc(cleanName(t))+'"><span class="dot'+(od||Guide.ageDays(t)>=7?' o':'')+'" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(od?' o':'')+'">'+(m.on?'<span class="tm">step '+(m.on+1)+'/'+m.n+'</span>':m.time?'<span class="tm">'+esc(shortTime(m.time))+'</span>':'')+(od?od+'d late':Guide.ageDays(t)+'d')+'</span></div>'; }).join('')+'</div>':'<div class="none">All clear.</div>')+'</div>';
   document.querySelectorAll('#cML [data-guide]').forEach(r=>r.onclick=()=>openGuide(r.dataset.guide));
-  if(window.Files){ const FL=Files.list(); $('#cML').insertAdjacentHTML('beforeend','<div class="fbox" id="filesPane"><div class="fbh"><span class="fdot"></span><span class="fbt">Files in Use</span><span class="fbc">'+FL.length+' open</span></div><div class="fbb">'+(FL.length?'<div class="filist">'+FL.map(f=>Files.rowHTML(f)).join('')+'</div>':'<div class="none" style="padding:8px 2px">Files Claude references show up here.</div>')+'</div></div>'); Files.wire($('#filesPane'),{toast}); }
+  renderFilesBox();
   const td=todayISO(); const days=wx.filter(w=>w.date>=td).slice(0,7);
   const cell=w=>{ const nm=w.date===td?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(w.date+'T12:00:00').getDay()]; const tc=w.hi>=90?'hot':w.hi<=32?'cold':''; const amt=w.pr>0.02?w.pr.toFixed(2).replace(/^0/,'')+'"':'';
     return '<div class="wxc'+(w.date===td?' today':'')+(w.pr>0.08?' wet':'')+'"><div class="wd">'+nm+'</div><div class="we">'+wxEmoji(w.code)+'</div><div class="wt '+tc+'">'+w.hi+'°</div><div class="wp">'+amt+'</div></div>'; };
@@ -636,6 +640,19 @@ function openInvite(mt){ invSel=[]; invQ='';
   };
   draw(); ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; setTimeout(()=>{ const q=$('#invQ'); if(q) q.focus(); },60);
 }
+/* ▦ Files in Use — floating, draggable box (same list as the dashboard) */
+function renderFilesBox(){ const box=$('#filesBox'); if(!box) return; if(!window.Files||!(cfg&&cfg.apiKey)){ box.hidden=true; return; }
+  const FL=Files.list(); box.hidden=false;
+  box.innerHTML='<div class="fbh" data-fdrag><span class="fdot"></span><span class="fbt">Files in Use</span><span class="fbc">'+FL.length+' open</span></div>'+
+    '<div class="fbb">'+(FL.length?'<div class="filist">'+FL.map(f=>Files.rowHTML(f)).join('')+'</div>':'<div class="none" style="padding:8px 2px">Files Claude references show up here.</div>')+'</div>';
+  Files.wire(box,{toast}); placeFbox(); wireFboxDrag(); }
+function placeFbox(){ const box=$('#filesBox'); if(!box) return; let p=null; try{ p=JSON.parse(localStorage.getItem('tb.fbox')||'null'); }catch(e){}
+  let L=p?p.l:16, T=p?p.t:72; L=Math.max(6,Math.min(L,innerWidth-60)); T=Math.max(56,Math.min(T,innerHeight-50)); box.style.left=L+'px'; box.style.top=T+'px'; }
+function wireFboxDrag(){ const box=$('#filesBox'), h=box&&box.querySelector('[data-fdrag]'); if(!h) return; let sx,sy,ol,ot,drag=false;
+  h.onpointerdown=e=>{ if(e.target.closest('button,a')) return; drag=true; sx=e.clientX; sy=e.clientY; const r=box.getBoundingClientRect(); ol=r.left; ot=r.top; try{h.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); };
+  h.onpointermove=e=>{ if(!drag) return; let L=ol+(e.clientX-sx), T=ot+(e.clientY-sy); L=Math.max(6,Math.min(L,innerWidth-60)); T=Math.max(6,Math.min(T,innerHeight-40)); box.style.left=L+'px'; box.style.top=T+'px'; };
+  h.onpointerup=()=>{ if(!drag) return; drag=false; try{ localStorage.setItem('tb.fbox',JSON.stringify({l:parseInt(box.style.left),t:parseInt(box.style.top)})); }catch(_){} }; }
+addEventListener('resize',()=>{ if(!$('#filesBox').hidden) placeFbox(); });
 function openCQList(){ const L=CQ.list(); ovh.innerHTML='✨ Claude requests · '+L.length+'<button class="x" data-x>✕</button>';
   ovb.innerHTML='<div class="phint">'+CQ.summary()+'</div>'+(L.length?L.map(q=>CQ.rowHTML(q)).join(''):'<div class="none">No requests this week.</div>');
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; CQ.wire(ovb,{toast,onOpen:cqOpenTask}); }
