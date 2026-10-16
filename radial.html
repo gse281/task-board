@@ -53,7 +53,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .ringseg button.on{background:var(--cyan);color:#07141a}
 #ringDD{display:none;position:fixed;z-index:60;width:290px;max-height:min(70vh,560px);overflow:auto;background:rgba(9,18,24,.97);border:1px solid var(--cyan);border-radius:14px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 #ringDD .rdh{font:700 10px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--cyan);text-transform:uppercase;padding:6px 8px 8px}
-#ringDD .rdr{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:9px;cursor:pointer;font-size:13px}#ringDD .rdr:hover{background:rgba(57,199,223,.12)}#ringDD .rdr b{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#ringDD .rdr i{font:700 11px ui-monospace,Menlo,monospace;color:var(--dim);font-style:normal}#ringDD .rdr.on b{color:var(--cyan)}#ringDD .rdr span{width:14px;color:var(--cyan)}
+#ringDD .rdr{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:9px;cursor:pointer;font-size:13px}#ringDD .rdr:hover{background:rgba(57,199,223,.12)}#ringDD .rdr b{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#ringDD .rdr i{font:700 11px ui-monospace,Menlo,monospace;color:var(--dim);font-style:normal}#ringDD .rdr.on b{color:var(--cyan)}#ringDD .rdr .rg{color:var(--dim);cursor:grab;font-size:11px}#ringDD .rdr .rnum{width:20px;text-align:right;font:700 11px ui-monospace,Menlo,monospace;color:var(--dim)}#ringDD .rck{accent-color:#39c7df;width:15px;height:15px;cursor:pointer;margin:0}#ringDD .rdr.drag{opacity:.4}#ringDD .rdh a{color:var(--ink);text-decoration:underline;cursor:pointer}
 .ampm{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .amb{border-radius:14px;padding:8px 10px 6px;cursor:pointer;min-width:0;display:flex;flex-direction:column;gap:3px}
 .amb.am{background:linear-gradient(150deg,#7fe6f4 0%,#39c7df 55%,#1d8ea3 100%);color:#07141a}
@@ -239,12 +239,13 @@ let _if={}; function clearIF(){ _if={}; }
 function itemsFor(key){ if(key in _if) return _if[key]; return (_if[key]=_compute(key)); }
 let ringMode=LS('tb.ringMode','C'); const RING_F={P:'project',L:'lead',S:'sub'};
 const splitV=v=>String(v||'').split(',').map(x=>x.trim()).filter(Boolean);
-function ringKeys(){ if(ringMode==='C') return ORBIT; const f=RING_F[ringMode], cnt={}; tasks.filter(live).forEach(t=>splitV(t[f]).forEach(g=>{ cnt[g]=(cnt[g]||0)+1; }));
-  const all=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([g])=>ringMode.toLowerCase()+':'+g); const pages=Math.max(1,Math.ceil(all.length/8)); ringPage%=pages;
-  return all.slice(ringPage*8,ringPage*8+8); }
-function ringAll(){ if(ringMode==='C') return Object.keys(CAT); const f=RING_F[ringMode], cnt={}; tasks.filter(live).forEach(t=>splitV(t[f]).forEach(g=>{ cnt[g]=(cnt[g]||0)+1; }));
-  return Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([g,n])=>[ringMode.toLowerCase()+':'+g,n]); }
-let ringPage=0; setInterval(()=>{ if(document.hidden||ringMode==='C'||document.querySelector('#bubbles .bub:hover')) return; ringPage++; clearIF(); renderBubbles(); layout(); },180000);
+const ringPref=()=>LS('tb.ringPref.'+ringMode,{ord:[],sel:[]}), saveRingPref=p=>SV('tb.ringPref.'+ringMode,p);
+function ringAll(){ const p=ringPref(); let L; if(ringMode==='C') L=Object.keys(CAT).map(k=>[k,itemsFor(k).length]);
+  else { const f=RING_F[ringMode], cnt={}; tasks.filter(live).forEach(t=>splitV(t[f]).forEach(g=>{ cnt[g]=(cnt[g]||0)+1; })); L=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([g,n])=>[ringMode.toLowerCase()+':'+g,n]); }
+  const pos=k=>{ const i=p.ord.indexOf(k); return i<0?1e6:i; }; return L.map((x,i)=>[x[0],x[1],i]).sort((a,b)=>(pos(a[0])-pos(b[0]))||(a[2]-b[2])).map(x=>[x[0],x[1]]); }
+function ringKeys(){ const A=ringAll().map(x=>x[0]), sel=ringPref().sel; let pool=A.filter(k=>sel.includes(k)); if(!pool.length) pool=ringMode==='C'?ORBIT:A;
+  const pages=Math.max(1,Math.ceil(pool.length/8)); ringPage%=pages; return pool.slice(ringPage*8,ringPage*8+8); }
+let ringPage=0; setInterval(()=>{ if(document.hidden||document.querySelector('#bubbles .bub:hover')) return; ringPage++; clearIF(); renderBubbles(); layout(); },180000);
 const capOf=k=>{ const m=/^([pls]):(.*)$/.exec(k); if(m) return [{p:'▣',l:'◍',s:'◆'}[m[1]],m[2]]; return CAT[k]||['•',k]; };
 function _compute(key){ const L=sec=>tasks.filter(t=>live(t)&&sectionOf(t)===sec);
   { const m=/^([pls]):(.*)$/.exec(key); if(m){ const f=RING_F[m[1].toUpperCase()]; return applyOrder(key,tasks.filter(t=>live(t)&&splitV(t[f]).includes(m[2])).sort((a,b)=>score(b)-score(a))); } }
@@ -325,10 +326,19 @@ function renderRingSeg(){ const el=$('#ringSeg'); if(!el) return; el.innerHTML=[
   el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const same=ringMode===b.dataset.rm; ringMode=b.dataset.rm; ringPage=0; SV('tb.ringMode',ringMode); if(!same) renderAll(); const dd=$('#ringDD'); if(same&&dd&&dd.style.display==='block'){ dd.style.display='none'; return; } showRingDD(); }); }
 function showRingDD(){ let dd=$('#ringDD'); if(!dd){ dd=document.createElement('div'); dd.id='ringDD'; document.body.appendChild(dd); document.addEventListener('click',e=>{ if(!e.target.closest('#ringDD,#ringSeg')) dd.style.display='none'; }); }
   const r=$('#ringSeg').getBoundingClientRect(); dd.style.left=Math.max(8,Math.min(innerWidth-300,r.left))+'px'; dd.style.top=(r.bottom+6)+'px';
-  const L=ringAll(), shown=new Set(ringKeys()); const nm={P:'Projects',L:'Leads',S:'Subs',C:'Categories'}[ringMode];
-  dd.innerHTML='<div class="rdh">'+nm+' · '+L.length+(ringMode==='C'?'':' · ring shows 8, rotates 3 min')+'</div>'+L.slice(0,150).map(x=>{ const k=Array.isArray(x)?x[0]:x, n=Array.isArray(x)?x[1]:itemsFor(k).length, [em,lab]=capOf(k);
-    return '<div class="rdr'+(shown.has(k)?' on':'')+'" data-k="'+esc(k)+'"><span>'+em+'</span><b>'+esc(lab)+'</b><i>'+n+'</i></div>'; }).join('');
-  dd.style.display='block'; dd.querySelectorAll('.rdr').forEach(r=>r.onclick=()=>{ dd.style.display='none'; openList(r.dataset.k); }); }
+  const L=ringAll(), shown=new Set(ringKeys()), P=ringPref(); const nm={P:'Projects',L:'Leads',S:'Subs',C:'Categories'}[ringMode];
+  dd.innerHTML='<div class="rdh">'+nm+' · '+L.length+' · ☑ = in ring'+(P.sel.length?' ('+P.sel.length+') · <a data-clr>clear</a>':' (none = all)')+'<br>drag ⋮⋮ to reorder · rotates 8 every 3 min</div><div id="rdl">'+L.slice(0,150).map(([k,n],i)=>{ const [em,lab]=capOf(k), on=P.sel.includes(k);
+    return '<div class="rdr'+(shown.has(k)?' on':'')+'" draggable="true" data-k="'+esc(k)+'"><span class="rg">⋮⋮</span><span class="rnum">'+(i+1)+'</span><input type="checkbox" class="rck"'+(on?' checked':'')+'><b>'+esc(lab)+'</b><i>'+n+'</i></div>'; }).join('')+'</div>';
+  dd.style.display='block';
+  const rer=()=>{ clearIF(); renderBubbles(); layout(); showRingDD(); };
+  const clr=dd.querySelector('[data-clr]'); if(clr) clr.onclick=e=>{ e.stopPropagation(); const p=ringPref(); p.sel=[]; saveRingPref(p); ringPage=0; rer(); };
+  let dragEl=null; const rdl=dd.querySelector('#rdl');
+  dd.querySelectorAll('.rdr').forEach(r=>{ const k=r.dataset.k;
+    r.querySelector('.rck').onclick=e=>{ e.stopPropagation(); const p=ringPref(); p.sel=e.target.checked?p.sel.concat(k):p.sel.filter(x=>x!==k); saveRingPref(p); ringPage=0; rer(); };
+    r.onclick=e=>{ if(e.target.closest('.rck,.rg')) return; dd.style.display='none'; openList(k); };
+    r.addEventListener('dragstart',()=>{ dragEl=r; r.classList.add('drag'); });
+    r.addEventListener('dragover',e=>{ e.preventDefault(); if(!dragEl||dragEl===r) return; const b=r.getBoundingClientRect(); rdl.insertBefore(dragEl,(e.clientY-b.top)>b.height/2?r.nextSibling:r); });
+    r.addEventListener('dragend',()=>{ r.classList.remove('drag'); const p=ringPref(); p.ord=[...rdl.querySelectorAll('.rdr')].map(x=>x.dataset.k); saveRingPref(p); ringPage=0; rer(); }); }); }
 function renderAll(){ clearIF(); renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
 window.addEventListener('hashchange',()=>{ window._gdShown=null; const gid=window.Guide&&Guide.hashId(); if(gid) openGuide(gid); });
 function renderHeader(){ const h=new Date().getHours(); $('#greet').textContent=(h<12?'GOOD MORNING':h<17?'GOOD AFTERNOON':'GOOD EVENING')+' ◎';
