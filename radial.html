@@ -28,6 +28,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 /* core */
 .core{position:absolute;z-index:6;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;cursor:pointer;
   background:radial-gradient(circle at 50% 42%,rgba(57,199,223,.15),rgba(9,16,20,.2) 72%);border:1.5px solid rgba(57,199,223,.55);box-shadow:0 0 30px rgba(57,199,223,.14)}
+.corner .pane .ph{cursor:grab}.moving{opacity:.85;z-index:30!important;cursor:grabbing!important}
 .core:hover{border-color:var(--cyan)}
 .core .cl{font:700 11px ui-monospace,Menlo,monospace;letter-spacing:4px;text-transform:uppercase;color:var(--cyan)}
 .core .cc{font:800 11px ui-monospace,Menlo,monospace;color:var(--dim);margin-top:2px}
@@ -182,7 +183,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
   <div class="core" id="core"></div>
   <div id="bubbles"></div>
   <div class="corner tl" id="cTL"></div><div class="corner tr" id="cTR"></div><div class="corner ml" id="cML"></div><div class="corner bl" id="cBL"></div><div class="corner br" id="cBR"></div>
-  <div class="foot"><button id="cmdBtn2">⌘ ADD · JUMP · FIND</button><button id="homeToggle"></button><a href="focus2.html" title="Focus 2 — AM/PM calls">◉ FOCUS 2</a><a href="dashboard.html">⌂ DASHBOARD</a></div>
+  <div class="foot"><button id="mvReset" onclick="resetMoves()" title="Put bubbles and panes back">↺ LAYOUT</button><button id="cmdBtn2">⌘ ADD · JUMP · FIND</button><button id="homeToggle"></button><a href="focus2.html" title="Focus 2 — AM/PM calls">◉ FOCUS 2</a><a href="dashboard.html">⌂ DASHBOARD</a></div>
 </div>
 <div class="back" id="ov"><div class="card"><div class="cardh" id="ovh"></div><div class="cardb" id="ovb"></div></div></div>
 <div id="cmd"><div class="cmdbox"><div class="cmdin"><span>⌘</span><input id="cmdInp" placeholder="Add a task, jump to a list, or search everything…" autocomplete="off"></div><div class="cmdres" id="cmdRes"></div><div class="cmdhint">↑↓ move · ⏎ select · esc close · type then ⏎ to add</div></div></div>
@@ -455,8 +456,25 @@ function layout(){ const st=$('#stage'); const W=st.clientWidth, H=st.clientHeig
   for(let i=0;i<n;i++){ const b=bs[i]; const a=axis[Math.floor(i/2)%4]+((i%2)?1:-1)*spread;
     let left=CX+R*Math.cos(a)-BS/2, top=CY+R*Math.sin(a)-BS/2;
     left=Math.max(6,Math.min(W-BS-6,left)); top=Math.max(50,Math.min(H-BS-54,top));
-    b.style.width=b.style.height=BS+'px'; b.style.left=left+'px'; b.style.top=top+'px'; } }
+    b.style.width=b.style.height=BS+'px'; b.style.left=left+'px'; b.style.top=top+'px'; }
+  if(typeof applyMoves==='function') applyMoves(); }
 addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setTimeout(layout,160); });
+/* ===== movable bubbles / core / panes: drag a bubble, the core, or a pane's header; offsets saved (CSS translate — no layout math) ===== */
+let MV=LS('focus.mv',{}); let mvDrag=null, mvJustDragged=0;
+function mvKey(el){ if(el.id==='core') return 'core'; if(el.classList.contains('bub')) return 'b:'+el.dataset.key;
+  if(el.id) return 'p:'+el.id; if(el.classList.contains('cxpane')) return 'p:cx'; if(el.classList.contains('notes')) return 'p:notes'; if(el.classList.contains('meet')) return 'p:meet';
+  const h=el.querySelector('.ph'); return 'p:'+((h&&h.dataset.list)||((h&&h.textContent)||'').replace(/[^A-Za-z]/g,'').slice(0,14)); }
+function applyMoves(){ document.querySelectorAll('#core,#bubbles .bub,.corner .pane').forEach(el=>{ const o=MV[mvKey(el)]; el.style.translate=o?o[0]+'px '+o[1]+'px':''; if(o) el.style.zIndex=el.classList.contains('pane')?'12':''; }); }
+addEventListener('pointerdown',e=>{ if(e.button!==0) return; const t=e.target; if(t.closest('a,button,input,textarea,select,.lrow,.tick,.rmcat,.nhit')) return;
+  const el=t.closest('#core,#bubbles .bub')||((t.closest('.ph'))&&t.closest('.corner .pane')); if(!el) return;
+  const o=MV[mvKey(el)]||[0,0]; mvDrag={el,k:mvKey(el),x:e.clientX,y:e.clientY,o,on:false}; },true);
+addEventListener('pointermove',e=>{ const d=mvDrag; if(!d) return; const dx=e.clientX-d.x, dy=e.clientY-d.y; if(!d.on){ if(Math.abs(dx)+Math.abs(dy)<6) return; d.on=true; d.el.classList.add('moving'); document.body.style.userSelect='none'; }
+  d.el.style.translate=(d.o[0]+dx)+'px '+(d.o[1]+dy)+'px'; });
+addEventListener('pointerup',e=>{ const d=mvDrag; mvDrag=null; if(!d||!d.on) return; d.el.classList.remove('moving'); document.body.style.userSelect='';
+  MV[d.k]=[Math.round(d.o[0]+e.clientX-d.x),Math.round(d.o[1]+e.clientY-d.y)]; SV('focus.mv',MV); mvJustDragged=Date.now(); applyMoves(); toast('Position saved · ↺ LAYOUT resets'); });
+addEventListener('click',e=>{ if(Date.now()-mvJustDragged<350){ e.stopPropagation(); e.preventDefault(); } },true);
+function resetMoves(){ MV={}; SV('focus.mv',MV); applyMoves(); toast('Layout reset'); }
+{ const _rc=renderCorners; renderCorners=function(){ const r=_rc.apply(this,arguments); applyMoves(); return r; }; const _rb=renderBubbles; renderBubbles=function(){ const r=_rb.apply(this,arguments); applyMoves(); return r; }; }
 
 /* ===== rows + lists ===== */
 function rowHTML(t){ const d=daysOpen(t);
