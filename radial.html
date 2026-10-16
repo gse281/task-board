@@ -51,6 +51,9 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .ringseg{display:flex;gap:2px;border:1px solid var(--line);border-radius:999px;padding:2px;pointer-events:auto;flex:none}
 .ringseg button{width:26px;height:22px;border-radius:999px;border:0;background:transparent;color:var(--dim);font:800 11px ui-monospace,Menlo,monospace;cursor:pointer}
 .ringseg button.on{background:var(--cyan);color:#07141a}
+#ringDD{display:none;position:fixed;z-index:60;width:290px;max-height:min(70vh,560px);overflow:auto;background:rgba(9,18,24,.97);border:1px solid var(--cyan);border-radius:14px;padding:6px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+#ringDD .rdh{font:700 10px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--cyan);text-transform:uppercase;padding:6px 8px 8px}
+#ringDD .rdr{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:9px;cursor:pointer;font-size:13px}#ringDD .rdr:hover{background:rgba(57,199,223,.12)}#ringDD .rdr b{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#ringDD .rdr i{font:700 11px ui-monospace,Menlo,monospace;color:var(--dim);font-style:normal}#ringDD .rdr.on b{color:var(--cyan)}#ringDD .rdr span{width:14px;color:var(--cyan)}
 .ampm{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .amb{border-radius:14px;padding:8px 10px 6px;cursor:pointer;min-width:0;display:flex;flex-direction:column;gap:3px}
 .amb.am{background:linear-gradient(150deg,#7fe6f4 0%,#39c7df 55%,#1d8ea3 100%);color:#07141a}
@@ -118,6 +121,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 /* notes */
 .notes textarea{width:100%;height:276px;resize:none;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;line-height:1.4;outline:none}
 .notes textarea:focus{border-color:var(--cyan)}
+.inclist{overflow-y:auto;overflow-x:hidden}.pane .ph .nnav{margin-left:auto;display:flex;align-items:center;gap:3px}.pane .ph .nnav button{color:var(--cyan);padding:0 5px;font-size:14px;background:none;border:0;cursor:pointer}.pane .ph .nnav button:disabled{opacity:.3}.pane .ph .nnav .nlbl{font:700 9.5px ui-monospace,Menlo,monospace;color:var(--ink);min-width:50px;text-align:center;text-transform:none;letter-spacing:0}.pane .ph .nnav .nlbl.past{color:var(--gold)}
 .notes .nnav{margin-left:auto;display:flex;align-items:center;gap:3px}
 .notes .nnav button{color:var(--cyan);padding:0 5px;font-size:14px}.notes .nnav button:disabled{opacity:.3}
 .notes .nnav .nlbl{font:700 9.5px ui-monospace,Menlo,monospace;color:var(--ink);min-width:50px;text-align:center;text-transform:none;letter-spacing:0}
@@ -236,7 +240,11 @@ function itemsFor(key){ if(key in _if) return _if[key]; return (_if[key]=_comput
 let ringMode=LS('tb.ringMode','C'); const RING_F={P:'project',L:'lead',S:'sub'};
 const splitV=v=>String(v||'').split(',').map(x=>x.trim()).filter(Boolean);
 function ringKeys(){ if(ringMode==='C') return ORBIT; const f=RING_F[ringMode], cnt={}; tasks.filter(live).forEach(t=>splitV(t[f]).forEach(g=>{ cnt[g]=(cnt[g]||0)+1; }));
-  return Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([g])=>ringMode.toLowerCase()+':'+g); }
+  const all=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([g])=>ringMode.toLowerCase()+':'+g); const pages=Math.max(1,Math.ceil(all.length/8)); ringPage%=pages;
+  return all.slice(ringPage*8,ringPage*8+8); }
+function ringAll(){ if(ringMode==='C') return Object.keys(CAT); const f=RING_F[ringMode], cnt={}; tasks.filter(live).forEach(t=>splitV(t[f]).forEach(g=>{ cnt[g]=(cnt[g]||0)+1; }));
+  return Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(([g,n])=>[ringMode.toLowerCase()+':'+g,n]); }
+let ringPage=0; setInterval(()=>{ if(document.hidden||ringMode==='C'||document.querySelector('#bubbles .bub:hover')) return; ringPage++; clearIF(); renderBubbles(); layout(); },180000);
 const capOf=k=>{ const m=/^([pls]):(.*)$/.exec(k); if(m) return [{p:'▣',l:'◍',s:'◆'}[m[1]],m[2]]; return CAT[k]||['•',k]; };
 function _compute(key){ const L=sec=>tasks.filter(t=>live(t)&&sectionOf(t)===sec);
   { const m=/^([pls]):(.*)$/.exec(key); if(m){ const f=RING_F[m[1].toUpperCase()]; return applyOrder(key,tasks.filter(t=>live(t)&&splitV(t[f]).includes(m[2])).sort((a,b)=>score(b)-score(a))); } }
@@ -267,7 +275,7 @@ function meetingsToday(day){ const list=calendar.filter(e=>e.date===day).map(e=>
 function nowNext(day){ const d=new Date(), cur=d.getHours()*60+d.getMinutes(); const L=meetingsToday(day);
   const now=L.filter(e=>e.start-5<=cur&&cur<e.end); const next=L.find(e=>e.start>cur&&!now.includes(e)); return {now:now[0]||null,next:next||null,L}; }
 function joinHref(e){ if(e.link&&/^(https?:|tel:)/i.test(e.link)) return e.link; const digits=(e.location||'').replace(/[^\d]/g,''); return digits.length>=10?'tel:'+digits:''; }
-let mSel=null, mSelAt=0; const nowMin=()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); };
+let mSel=null, mSelAt=0, incDay=null; const nowMin=()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); };
 function mtgNav(){ return meetingsToday(todayISO()).map(e=>Object.assign(e,{_today:1})).concat(meetingsToday(tomorrowISO())); }
 const todayMtgItems=()=>meetingsToday(todayISO()).map(e=>({_mtg:true,name:e.title,when:e.when,link:joinHref(e)}));
 
@@ -314,7 +322,13 @@ function demoData(){ const mk=(n,p,sec,days,pri)=>({id:'d'+Math.random(),created
 
 /* ===== radial render (no SVG / canvas / blur / animation) ===== */
 function renderRingSeg(){ const el=$('#ringSeg'); if(!el) return; el.innerHTML=[['P','Projects'],['L','Leads'],['S','Subs'],['C','Categories']].map(([k,l])=>'<button class="'+(ringMode===k?'on':'')+'" data-rm="'+k+'" title="Ring: '+l+'">'+k+'</button>').join('');
-  el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ ringMode=b.dataset.rm; SV('tb.ringMode',ringMode); renderAll(); }); }
+  el.querySelectorAll('[data-rm]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const same=ringMode===b.dataset.rm; ringMode=b.dataset.rm; ringPage=0; SV('tb.ringMode',ringMode); if(!same) renderAll(); const dd=$('#ringDD'); if(same&&dd&&dd.style.display==='block'){ dd.style.display='none'; return; } showRingDD(); }); }
+function showRingDD(){ let dd=$('#ringDD'); if(!dd){ dd=document.createElement('div'); dd.id='ringDD'; document.body.appendChild(dd); document.addEventListener('click',e=>{ if(!e.target.closest('#ringDD,#ringSeg')) dd.style.display='none'; }); }
+  const r=$('#ringSeg').getBoundingClientRect(); dd.style.left=Math.max(8,Math.min(innerWidth-300,r.left))+'px'; dd.style.top=(r.bottom+6)+'px';
+  const L=ringAll(), shown=new Set(ringKeys()); const nm={P:'Projects',L:'Leads',S:'Subs',C:'Categories'}[ringMode];
+  dd.innerHTML='<div class="rdh">'+nm+' · '+L.length+(ringMode==='C'?'':' · ring shows 8, rotates 3 min')+'</div>'+L.slice(0,150).map(x=>{ const k=Array.isArray(x)?x[0]:x, n=Array.isArray(x)?x[1]:itemsFor(k).length, [em,lab]=capOf(k);
+    return '<div class="rdr'+(shown.has(k)?' on':'')+'" data-k="'+esc(k)+'"><span>'+em+'</span><b>'+esc(lab)+'</b><i>'+n+'</i></div>'; }).join('');
+  dd.style.display='block'; dd.querySelectorAll('.rdr').forEach(r=>r.onclick=()=>{ dd.style.display='none'; openList(r.dataset.k); }); }
 function renderAll(){ clearIF(); renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
 window.addEventListener('hashchange',()=>{ window._gdShown=null; const gid=window.Guide&&Guide.hashId(); if(gid) openGuide(gid); });
 function renderHeader(){ const h=new Date().getHours(); $('#greet').textContent=(h<12?'GOOD MORNING':h<17?'GOOD AFTERNOON':'GOOD EVENING')+' ◎';
@@ -402,10 +416,12 @@ function renderCorners(){
        also.map(e=>{ const h2=joinHref(e); return '<div class="malso"><span class="nowtag">ALSO NOW</span> <b>'+esc(String(e.title||'').slice(0,40))+'</b>'+(h2?' <a class="mjoin" style="margin:4px 0 0" href="'+esc(h2)+'" target="_blank" rel="noopener">▶ Join</a>':'')+'</div>'; }).join('')+
        (nx&&!also.includes(nx)?'<div class="mnext">Next · '+(nx._today?'':'Tmrw ')+esc(nx.when||'')+' <b>'+esc(String(nx.title||'').slice(0,24))+'</b></div>':'');
   } else mh='<div class="none">No meetings today or tomorrow.</div>';
-  const inc=miniList('incoming',3);
+  const incT=incDay?tasks.filter(t=>live(t)&&t.createdTime&&isoOf(new Date(t.createdTime))===incDay).sort((a,b)=>Date.parse(b.createdTime)-Date.parse(a.createdTime)):itemsFor('incoming');
+  const inc={count:incT.length, html:'<div class="inclist">'+(incT.length?incT.slice(0,60).map(miniRow).join(''):'<div class="none">'+(incDay?'Nothing came in.':'—')+'</div>')+'</div>'};
+  const incNav='<span class="nnav"><button data-ip>‹</button><span class="nlbl'+(incDay?' past':'')+'">'+esc(dnLabel(incDay||todayISO()))+'</span><button data-in '+(incDay?'':'disabled')+'>›</button></span>';
   if(!$('#cxHost')){ $('#cTR').innerHTML='<div id="cxHost"></div><div id="cTRb" style="display:flex;flex-direction:column;gap:10px"></div>'; renderCx(); }
   $('#cTRb').innerHTML='<div class="pane meet'+(nn.now?' urgent':'')+'"><div class="ph" data-list="meeting">▣ Next Meeting<span class="pn">'+nn.L.length+'</span></div>'+mh+'</div>'+
-    '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span></div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div><div class="pane" id="cqPane" style="display:none"></div>';
+    '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span>'+incNav+'</div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div><div class="pane" id="cqPane" style="display:none"></div>';
   renderCQPane();
   const shortTime=x=>{ const r=String(x).match(/(\d+)\s*(h|hr|hour|m|min)/i); return r?'~'+r[1]+(/^h/i.test(r[2])?'h':'m'):''; };
   const oi=window.Guide?Guide.list(tasks):[];
@@ -420,6 +436,7 @@ function renderCorners(){
   const day=noteDay||todayISO(), isToday=day===todayISO(); const prev=$('#noteTa'), keep=(prev&&prev.dataset.day===day)?prev.value:null;
   $('#cBR').innerHTML='<div class="pane notes"><div class="ph" style="cursor:default">✎ '+(isToday?"Today's Notes":'Notes')+'<span class="nnav"><button data-dp>‹</button><span class="nlbl'+(isToday?'':' past')+'">'+esc(dnLabel(day))+'</span><button data-dn '+(isToday?'disabled':'')+'>›</button>'+(isToday?'':'<button data-dt>Today</button>')+'</span></div><textarea id="noteTa" placeholder="'+(isToday?'Jot anything — new page every day. ‹ for yesterday.':'Nothing on '+esc(dnLabel(day)))+'">'+(keep!=null?esc(keep):esc(dnGet()[day]||''))+'</textarea><div class="nfoot"><span id="noteSt"></span></div><div class="addrow"><input id="noteQ" placeholder="⌕ Search all notes…" value="'+esc(nq)+'"></div><div id="noteR" class="nres"></div></div>';
   // wiring
+  { const ip=$('#cTR [data-ip]'), inn=$('#cTR [data-in]'); if(ip) ip.onclick=e=>{ e.stopPropagation(); incDay=dnShift(incDay||todayISO(),-1); renderCorners(); layout(); }; if(inn) inn.onclick=e=>{ e.stopPropagation(); const n=dnShift(incDay||todayISO(),1); incDay=n>=todayISO()?null:n; renderCorners(); layout(); }; }
   { const mp=$('#cTR [data-mp]'), mn=$('#cTR [data-mn]'); if(mp)mp.onclick=e=>{ e.stopPropagation(); mSel=Math.max(0,mSel-1); mSelAt=Date.now(); renderCorners(); layout(); }; if(mn)mn.onclick=e=>{ e.stopPropagation(); mSel=mSel+1; mSelAt=Date.now(); renderCorners(); layout(); };
     const mc=$('#cTR .meet'); if(mc) mc.onclick=e=>{ if(e.target.closest('a,button,[data-list]')) return; openList('meeting'); }; }
   document.querySelectorAll('.corner [data-list]').forEach(h=>h.onclick=()=>openList(h.dataset.list));
@@ -446,7 +463,8 @@ async function noteSearchRemote(){ const q=nq.trim().toLowerCase(); if(q.length<
 /* layout: position core + bubbles in a ring (computed once per render / resize — cheap) */
 function layout(){ const st=$('#stage'); const W=st.clientWidth, H=st.clientHeight, CX=W/2, CY=H/2+8;
   { const ml=$('#cML'), tl=$('#cTL'), bl=$('#cBL'); if(ml&&tl&&bl){ const top=tl.offsetTop+tl.offsetHeight+10, bot=bl.offsetTop-10; ml.style.top=top+'px'; ml.style.height=Math.max(120,bot-top)+'px'; ml.style.transform='none'; }
-    const cl=$('#cqPane .cqlist'), tr=$('#cTR'), br=$('#cBR'); if(cl&&tr&&br){ cl.style.maxHeight='300px'; const over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop; if(over>0) cl.style.maxHeight=Math.max(70,300-over)+'px'; } }
+    const cl=$('#cqPane .cqlist'), tr=$('#cTR'), br=$('#cBR'); if(cl&&tr&&br){ cl.style.maxHeight='300px'; const over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop; if(over>0) cl.style.maxHeight=Math.max(70,300-over)+'px'; }
+    const il=$('#cTR .inclist'); if(il&&tr&&br){ il.style.maxHeight='none'; const over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop; if(over>0) il.style.maxHeight=Math.max(96,il.scrollHeight-over)+'px'; } }
   const m=Math.min(W,H); const CS=Math.max(176,Math.min(286,m*0.25)); const BS=Math.max(104,Math.min(140,m*0.135)); const R=Math.min(W,H)*0.34;
   const core=$('#core'); core.style.width=core.style.height=CS+'px'; core.style.left=(CX-CS/2)+'px'; core.style.top=(CY-CS/2)+'px';
   const r1=$('#ring1'), r2=$('#ring2'); const D1=R*2+BS*0.2, D2=CS+40;
