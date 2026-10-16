@@ -28,7 +28,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 /* core */
 .core{position:absolute;z-index:6;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px;cursor:pointer;
   background:radial-gradient(circle at 50% 42%,rgba(57,199,223,.15),rgba(9,16,20,.2) 72%);border:1.5px solid rgba(57,199,223,.55);box-shadow:0 0 30px rgba(57,199,223,.14)}
-.corner .pane .ph,.amb .h{cursor:grab}.moving{opacity:.85;z-index:30!important;cursor:grabbing!important}
+.corner .pane .ph,.amb .h,.cxpane,.cxpane .cxh,.cxpane .cxf{cursor:grab}.cxpane .cxchip{cursor:default}.moving{opacity:.85;z-index:30!important;cursor:grabbing!important}
 .core:hover{border-color:var(--cyan)}
 .core .cl{font:700 11px ui-monospace,Menlo,monospace;letter-spacing:4px;text-transform:uppercase;color:var(--cyan)}
 .core .cc{font:800 11px ui-monospace,Menlo,monospace;color:var(--dim);margin-top:2px}
@@ -496,7 +496,7 @@ function mvKey(el){ if(el.id==='core') return 'core'; if(el.classList.contains('
   const h=el.querySelector('.ph'); return 'p:'+((h&&h.dataset.list)||((h&&h.textContent)||'').replace(/[^A-Za-z]/g,'').slice(0,14)); }
 function applyMoves(){ document.querySelectorAll('#core,#bubbles .bub,.corner .pane,.corner .ampm').forEach(el=>{ const o=MV[mvKey(el)]; el.style.translate=o?o[0]+'px '+o[1]+'px':''; if(o) el.style.zIndex=el.closest('.corner')?'12':''; }); }
 addEventListener('pointerdown',e=>{ if(e.button!==0) return; const t=e.target; if(t.closest('a,button,input,textarea,select,.lrow,.tick,.rmcat,.nhit')) return;
-  const el=t.closest('#core,#bubbles .bub')||((t.closest('.ph'))&&t.closest('.corner .pane'))||((t.closest('.amb .h'))&&t.closest('.corner .ampm')); if(!el) return;
+  const el=t.closest('#core,#bubbles .bub')||((t.closest('.ph,.cxh,.cxf')||t.matches('.corner .pane,.cxb'))&&t.closest('.corner .pane'))||((t.closest('.amb .h'))&&t.closest('.corner .ampm')); if(!el) return;
   const o=MV[mvKey(el)]||[0,0]; mvDrag={el,k:mvKey(el),x:e.clientX,y:e.clientY,o,on:false}; },true);
 addEventListener('pointermove',e=>{ const d=mvDrag; if(!d) return; const dx=e.clientX-d.x, dy=e.clientY-d.y; if(!d.on){ if(Math.abs(dx)+Math.abs(dy)<6) return; d.on=true; d.el.classList.add('moving'); document.body.style.userSelect='none'; }
   d.el.style.translate=(d.o[0]+dx)+'px '+(d.o[1]+dy)+'px'; });
