@@ -570,7 +570,7 @@ body::before{ opacity:.7 }
 <script src="bills.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-16 13:55';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-16 14:13';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -1645,7 +1645,7 @@ const SHORTCUTS_TABLE='tblD5XnAycBjDTqzY';
 const scUrl=id=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+SHORTCUTS_TABLE+(id?('/'+id):'');
 let shortcuts=[]; try{ shortcuts=JSON.parse(localStorage.getItem('tb.shortcuts')||'[]'); }catch(e){}
 function loadShortcuts(force){
-  const fresh=(Date.now()-(+localStorage.getItem('tb.shortcuts.ts')||0))<30*60*1000;
+  const fresh=(Date.now()-(+localStorage.getItem('tb.shortcuts.ts')||0))<24*60*60*1000; // refresh once a day
   if(shortcuts.length&&fresh&&!force) return Promise.resolve(shortcuts);
   if(!cfg.apiKey) return Promise.resolve(shortcuts);
   const u=new URL(scUrl()); u.searchParams.set('pageSize','100');
