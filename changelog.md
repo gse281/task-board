@@ -238,3 +238,4 @@
 - 2026-10-15 13:15  build deployed
 - 2026-10-15 22:58  build deployed
 - 2026-10-15 23:00  build deployed
+- 2026-10-16 14:33  📂 Files in Use panel (files.js + Airtable 'Files in Use'); click → Finder via rmbopen://

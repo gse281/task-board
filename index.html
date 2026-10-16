@@ -62,6 +62,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .amb .h{display:flex;align-items:center;font:800 10px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;opacity:.85}.amb .h b{margin-left:auto}
 .amb .t{font-weight:700;font-size:13px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.5em}
 .amb .n{display:flex;justify-content:space-between;align-items:center}.amb .n button{width:24px;height:22px;border:0;border-radius:6px;background:rgba(0,0,0,.14);color:inherit;font-weight:800;cursor:pointer}
+.ivbtn{grid-column:1/-1;height:32px;border-radius:10px;border:1px solid var(--line);background:rgba(57,199,223,.07);color:var(--ink);font:700 12px ui-monospace,Menlo,monospace;letter-spacing:.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}.ivbtn:hover{border-color:var(--cyan);color:var(--cyan)}.ivbtn b{color:var(--cyan)}
 .amb .n span{font:700 10px ui-monospace,Menlo,monospace;opacity:.75}
 .cxpane{padding:10px!important}.cxb{max-height:min(260px,30vh);overflow:auto;margin-top:6px}
 .cxr{display:flex;align-items:center;gap:6px;padding:6px 2px;border-bottom:1px solid rgba(57,199,223,.08)}
@@ -126,6 +127,13 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .invchip button{border:0;background:transparent;color:var(--dim);cursor:pointer;font-size:12px}
 .invsend{font:800 13px ui-monospace,Menlo,monospace;color:#07141a;background:var(--cyan);border:0;border-radius:10px;padding:10px 16px;cursor:pointer;width:100%}
 .invsend:disabled{opacity:.4;cursor:default}
+.filist{display:flex;flex-direction:column;gap:4px}
+.fqrow{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--line)}
+.fqi{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
+.fqi b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fqi span{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fqrow .cardbtn{flex:none;border:1px solid var(--line);background:transparent;color:var(--dim);border-radius:7px;width:26px;height:26px;cursor:pointer}
+.fqrow .cardbtn:hover{color:#e8683c;border-color:#e8683c}
 /* weather */
 .wxstrip{display:flex;gap:4px}
 .wxc{flex:1;text-align:center;border-radius:7px;padding:4px 1px;background:rgba(57,199,223,.05)}
@@ -211,6 +219,8 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 <script src="photos.js"></script>
 <script src="guide.js"></script>
 <script src="claudeq.js"></script>
+<script src="invite.js"></script>
+<script src="files.js"></script>
 <script>
 "use strict";
 const $=s=>document.querySelector(s);
@@ -354,7 +364,7 @@ function showRingDD(){ let dd=$('#ringDD'); if(!dd){ dd=document.createElement('
     r.addEventListener('dragstart',()=>{ dragEl=r; r.classList.add('drag'); });
     r.addEventListener('dragover',e=>{ e.preventDefault(); if(!dragEl||dragEl===r) return; const b=r.getBoundingClientRect(); rdl.insertBefore(dragEl,(e.clientY-b.top)>b.height/2?r.nextSibling:r); });
     r.addEventListener('dragend',()=>{ r.classList.remove('drag'); const p=ringPref(); p.ord=[...rdl.querySelectorAll('.rdr')].map(x=>x.dataset.k); saveRingPref(p); ringPage=0; rer(); }); }); }
-function renderAll(){ clearIF(); renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
+function renderAll(){ clearIF(); if(window.Files&&!window._filesInit&&cfg&&cfg.apiKey){ window._filesInit=1; Files.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); Files.onChange(()=>{ if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.te')) return; renderCorners(); }); } renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
 window.addEventListener('hashchange',()=>{ window._gdShown=null; const gid=window.Guide&&Guide.hashId(); if(gid) openGuide(gid); });
 function renderHeader(){ const h=new Date().getHours(); $('#greet').textContent=(h<12?'GOOD MORNING':h<17?'GOOD AFTERNOON':'GOOD EVENING')+' ◎';
   const open=tasks.filter(live).length; const att=itemsFor('attention').length;
@@ -421,8 +431,12 @@ function focusCx(){ const q=$('#cxQ'); if(!q){ renderCx(); } const q2=$('#cxQ');
 /* ☀︎ Morning / ◑ Afternoon: two slim side-by-side boxes (iPhone gradients), one task each, rotating every 30s; ‹ › step; click → the list */
 const amI={morning:0,afternoon:0}, amAt={morning:0,afternoon:0};
 function amCycle(){ ['morning','afternoon'].forEach(k=>{ if(Date.now()-amAt[k]>120000) amI[k]++; }); renderAmPm(); }
+// 👥 Invite to the call — full shared screen (invite.js) in the Focus drawer
+function openCallInvite(){ ovh.innerHTML='👥 Invite to the call<button class="x" data-x>✕</button>'; ovb.innerHTML=''; ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; Invite.mount(ovb,{toast}); }
+if(window.Invite) Invite.init({key:()=>cfg.apiKey,base:()=>cfg.baseId});
 function renderAmPm(){ const el=$('#amPm'); if(!el) return; el.innerHTML=[['morning','am','☀︎ Morning'],['afternoon','pm','◑ Afternoon']].map(([k,c,l])=>{ const L=itemsFor(k); const i=L.length?((amI[k]%L.length)+L.length)%L.length:0; const t=L[i];
     return '<div class="amb '+c+'" data-amk="'+k+'"><div class="h">'+l+'<b>'+L.length+'</b></div><div class="t">'+(t?esc(cleanName(t)):'—')+'</div><div class="n"><button data-amd="-1" aria-label="Previous">‹</button><span>'+(L.length?(i+1)+' / '+L.length:'')+'</span><button data-amd="1" aria-label="Next">›</button></div></div>'; }).join('');
+  if(window.Invite){ el.insertAdjacentHTML('beforeend','<button class="ivbtn" data-ivopen title="Invite to the call">👥 Invite to the call <b>'+Invite.count('all')+'</b></button>'); el.querySelector('[data-ivopen]').onclick=openCallInvite; }
   el.querySelectorAll('.amb').forEach(b=>{ const k=b.dataset.amk; b.onclick=e=>{ if(e.target.closest('[data-amd]')) return; openList(k); };
     b.querySelectorAll('[data-amd]').forEach(x=>x.onclick=e=>{ e.stopPropagation(); amI[k]+=(+x.dataset.amd); amAt[k]=Date.now(); renderAmPm(); }); }); }
 /* corners */
@@ -454,6 +468,7 @@ function renderCorners(){
     (oi.length?'<div class="oisub">Desk tasks with guides · tap one to walk through it<br>~min = your time · d = days open</div><div class="oil">'+oi.map(t=>{ const od=Guide.overdue(t), m=Guide.meta(t);
       return '<div class="lrow" data-guide="'+t.id+'" title="'+esc(cleanName(t))+'"><span class="dot'+(od||Guide.ageDays(t)>=7?' o':'')+'" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(od?' o':'')+'">'+(m.on?'<span class="tm">step '+(m.on+1)+'/'+m.n+'</span>':m.time?'<span class="tm">'+esc(shortTime(m.time))+'</span>':'')+(od?od+'d late':Guide.ageDays(t)+'d')+'</span></div>'; }).join('')+'</div>':'<div class="none">All clear.</div>')+'</div>';
   document.querySelectorAll('#cML [data-guide]').forEach(r=>r.onclick=()=>openGuide(r.dataset.guide));
+  if(window.Files){ const FL=Files.list(); $('#cML').insertAdjacentHTML('beforeend','<div class="pane" id="filesPane" style="margin-top:10px"><div class="ph" style="cursor:default">▦ Files in Use<span class="pn">'+FL.length+'</span></div>'+(FL.length?'<div class="filist">'+FL.map(f=>Files.rowHTML(f)).join('')+'</div>':'<div class="none">Files Claude references show up here.</div>')+'</div>'); Files.wire($('#filesPane'),{toast}); }
   const td=todayISO(); const days=wx.filter(w=>w.date>=td).slice(0,7);
   const cell=w=>{ const nm=w.date===td?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(w.date+'T12:00:00').getDay()]; const tc=w.hi>=90?'hot':w.hi<=32?'cold':''; const amt=w.pr>0.02?w.pr.toFixed(2).replace(/^0/,'')+'"':'';
     return '<div class="wxc'+(w.date===td?' today':'')+(w.pr>0.08?' wet':'')+'"><div class="wd">'+nm+'</div><div class="we">'+wxEmoji(w.code)+'</div><div class="wt '+tc+'">'+w.hi+'°</div><div class="wp">'+amt+'</div></div>'; };
