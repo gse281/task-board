@@ -113,6 +113,19 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .meet .mnext{margin-top:8px;padding-top:7px;border-top:1px solid var(--line);color:var(--dim);font-size:11.5px}
 .meet .mnext b{color:var(--ink)}
 .nowtag{display:inline-block;font:800 9px ui-monospace,Menlo,monospace;letter-spacing:1px;background:var(--cyan);color:#07141a;border-radius:5px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+.minvite{margin:6px 0 0 8px;display:inline-block;font:700 11px ui-monospace,Menlo,monospace;color:var(--cyan);background:transparent;border:1px solid var(--line);border-radius:999px;padding:4px 10px;cursor:pointer}
+.minvite:hover{border-color:var(--cyan);background:rgba(57,199,223,.1)}
+.invres{display:flex;flex-direction:column;gap:4px;max-height:34vh;overflow:auto;margin:8px 0}
+.invr{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--line)}
+.invn{flex:1;min-width:0;display:flex;flex-direction:column}.invn b{font-size:13px}.invn i{font-style:normal;color:var(--dim);font-size:11px}
+.invadd{flex:none;width:28px;height:28px;border-radius:8px;border:1px solid var(--line);color:var(--cyan);background:transparent;font-size:16px;cursor:pointer}
+.invadd:hover{border-color:var(--cyan)}
+.invrow{display:flex;gap:6px;margin:6px 0}.invrow input{flex:1;min-width:0}.invrow button{flex:none;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--cyan);cursor:pointer}
+.invchips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.invchip{display:inline-flex;align-items:center;gap:6px;font:700 11px ui-monospace,Menlo,monospace;color:var(--ink);background:rgba(57,199,223,.12);border:1px solid var(--cyan);border-radius:999px;padding:3px 8px}
+.invchip button{border:0;background:transparent;color:var(--dim);cursor:pointer;font-size:12px}
+.invsend{font:800 13px ui-monospace,Menlo,monospace;color:#07141a;background:var(--cyan);border:0;border-radius:10px;padding:10px 16px;cursor:pointer;width:100%}
+.invsend:disabled{opacity:.4;cursor:default}
 /* weather */
 .wxstrip{display:flex;gap:4px}
 .wxc{flex:1;text-align:center;border-radius:7px;padding:4px 1px;background:rgba(57,199,223,.05)}
@@ -424,7 +437,7 @@ function renderCorners(){
     const nx=ML[mi+1];
     mh='<div class="mnav"><button data-mp '+(mi<=0?'disabled':'')+'>‹</button><span>'+(mi+1)+' / '+ML.length+(mt._today?'':' · Tomorrow')+'</span><button data-mn '+(mi>=ML.length-1?'disabled':'')+'>›</button></div>'+
        '<div class="mtime">'+esc(mt.when||'')+(isNow?'<span class="nowtag">NOW</span>':'')+'</div><div class="mtitle">'+esc(mt.title||'(untitled)')+'</div>'+(mt.location?'<div class="mloc">📍 '+esc(mt.location)+'</div>':'')+
-       (h?'<a class="mjoin'+(tel?' tel':'')+'" href="'+esc(h)+'"'+(tel?'':' target="_blank" rel="noopener"')+'>'+(tel?'📞 Call':'▶ Join')+'</a>':'')+
+       (h?'<a class="mjoin'+(tel?' tel':'')+'" href="'+esc(h)+'"'+(tel?'':' target="_blank" rel="noopener"')+'>'+(tel?'📞 Call':'▶ Join')+'</a>':'')+'<button class="minvite" data-minvite title="Text an invite to this call">☎︎ Invite</button>'+
        also.map(e=>{ const h2=joinHref(e); return '<div class="malso"><span class="nowtag">ALSO NOW</span> <b>'+esc(String(e.title||'').slice(0,40))+'</b>'+(h2?' <a class="mjoin" style="margin:4px 0 0" href="'+esc(h2)+'" target="_blank" rel="noopener">▶ Join</a>':'')+'</div>'; }).join('')+
        (nx&&!also.includes(nx)?'<div class="mnext">Next · '+(nx._today?'':'Tmrw ')+esc(nx.when||'')+' <b>'+esc(String(nx.title||'').slice(0,24))+'</b></div>':'');
   } else mh='<div class="none">No meetings today or tomorrow.</div>';
@@ -450,6 +463,7 @@ function renderCorners(){
   // wiring
   { const ip=$('#cTR [data-ip]'), inn=$('#cTR [data-in]'); if(ip) ip.onclick=e=>{ e.stopPropagation(); incDay=dnShift(incDay||todayISO(),-1); renderCorners(); layout(); }; if(inn) inn.onclick=e=>{ e.stopPropagation(); const n=dnShift(incDay||todayISO(),1); incDay=n>=todayISO()?null:n; renderCorners(); layout(); }; const itd=$('#cTR [data-itd]'); if(itd) itd.onclick=e=>{ e.stopPropagation(); incDay=null; renderCorners(); layout(); }; }
   { const mp=$('#cTR [data-mp]'), mn=$('#cTR [data-mn]'); if(mp)mp.onclick=e=>{ e.stopPropagation(); mSel=Math.max(0,mSel-1); mSelAt=Date.now(); renderCorners(); layout(); }; if(mn)mn.onclick=e=>{ e.stopPropagation(); mSel=mSel+1; mSelAt=Date.now(); renderCorners(); layout(); };
+    const mib=$('#cTR [data-minvite]'); if(mib&&mt) mib.onclick=e=>{ e.stopPropagation(); openInvite(mt); };
     const mc=$('#cTR .meet'); if(mc) mc.onclick=e=>{ if(e.target.closest('a,button,[data-list]')) return; openList('meeting'); }; }
   document.querySelectorAll('.corner [data-list]').forEach(h=>h.onclick=()=>openList(h.dataset.list));
   document.querySelectorAll('.corner .lrow[data-open]').forEach(r=>r.onclick=e=>{ if(e.target.closest('.tick'))return; openTask(r.dataset.open); });
@@ -576,6 +590,31 @@ function renderCQPane(){ const el=$('#cqPane'); if(!el||!window.CQ) return; cons
   el.style.display=''; el.classList.toggle('urgent',!!(n.approve||n.stale));
   el.innerHTML='<div class="ph" data-cqall>✨ Claude requests<span class="pn">'+L.length+'</span></div><div class="cqx-sum" style="margin:-3px 0 4px">'+CQ.summary()+'</div><div class="cqlist" style="max-height:300px;overflow:auto">'+top.concat(rest).map(q=>CQ.rowHTML(q)).join('')+'</div>';
   CQ.wire(el,{toast,onOpen:cqOpenTask}); el.querySelector('[data-cqall]').onclick=openCQList; layout(); }
+/* ☎︎ Invite to call — text the join info to one or more people (contacts search + add others, multi-select) */
+let invSel=[], invQ='';
+function invMsg(mt){ const parts=['Invite: '+(mt.title||'call')]; if(mt.when) parts.push(String(mt.when)); const h=joinHref(mt); if(h){ parts.push(h.indexOf('tel:')===0?('Call '+h.replace(/^tel:/,'')):('Join '+h)); } else if(mt.location){ parts.push('Dial '+mt.location); } return parts.join('\n'); }
+function openInvite(mt){ invSel=[]; invQ='';
+  ovh.innerHTML='☎︎ Invite · '+esc(String(mt.title||'call').slice(0,26))+'<button class="x" data-x>✕</button>';
+  const msg0=invMsg(mt);
+  const draw=()=>{
+    const hits=invQ.trim()?cxSearch(invQ.trim()):[];
+    const res=invQ.trim()?(hits.length?hits.map(c=>(c.p||[]).slice(0,2).map((p,i)=>'<div class="invr"><span class="invn"><b>'+esc(i?p:(c.n||p))+'</b>'+(i?'':(c.o?'<i>'+esc(c.o)+'</i>':'')+'<i>'+esc(p)+'</i>')+'</span><button class="invadd" data-add="'+esc((c.n||'')+'|'+p)+'">＋</button></div>').join('')).join(''):'<div class="none" style="padding:6px 2px">Not in Contacts — add a number below.</div>'):'';
+    const chips=invSel.length?'<div class="invchips">'+invSel.map((s,i)=>'<span class="invchip">'+esc(s.name||s.phone)+'<button data-del="'+i+'" aria-label="Remove">✕</button></span>').join('')+'</div>':'';
+    ovb.innerHTML='<div class="phint">Pick who to text the invite to.</div>'
+      +'<input id="invQ" class="rq" type="search" placeholder="Search contacts — type a name…" value="'+esc(invQ)+'" autocomplete="off">'
+      +'<div class="invres">'+res+'</div>'
+      +'<div class="invrow"><input id="invNm" class="rq" placeholder="Name (optional)"><input id="invPh" class="rq" placeholder="＋ Add a number" inputmode="tel"><button id="invAddM">Add</button></div>'
+      +chips
+      +'<label class="phint" style="margin-top:8px;display:block">Message</label><textarea id="invMsg" class="rq" rows="4" style="font:12px/1.4 ui-monospace,Menlo,monospace">'+esc(msg0)+'</textarea>'
+      +'<div style="margin-top:10px"><button class="invsend" id="invSend"'+(invSel.length?'':' disabled')+'>☎︎ Text '+(invSel.length||'')+' selected</button></div>';
+    const q=$('#invQ'); if(q){ q.oninput=()=>{ invQ=q.value; const p=q.selectionStart; draw(); const q2=$('#invQ'); if(q2){ q2.focus(); try{q2.setSelectionRange(p,p);}catch(e){} } }; }
+    ovb.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{ const ix=b.dataset.add.indexOf('|'); const nm=b.dataset.add.slice(0,ix), ph=b.dataset.add.slice(ix+1); if(ph&&!invSel.some(s=>s.phone===ph)) invSel.push({name:nm,phone:ph}); draw(); });
+    ovb.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ invSel.splice(+b.dataset.del,1); draw(); });
+    const am=$('#invAddM'); if(am) am.onclick=()=>{ const phe=$('#invPh'), ph=(phe.value||'').trim(); if(ph.replace(/\D/g,'').length<7){ phe.focus(); return; } const nm=($('#invNm').value||'').trim(); if(!invSel.some(s=>s.phone===ph)) invSel.push({name:nm,phone:ph}); draw(); };
+    const sd=$('#invSend'); if(sd) sd.onclick=()=>{ if(!invSel.length) return; const nums=invSel.map(s=>String(s.phone).replace(/[^\d+]/g,'')).join(','); const body=encodeURIComponent(($('#invMsg')||{}).value||msg0); const isApple=/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent); location.href='sms:'+nums+(isApple?'&':'?')+'body='+body; toast('Opening Messages…'); };
+  };
+  draw(); ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; setTimeout(()=>{ const q=$('#invQ'); if(q) q.focus(); },60);
+}
 function openCQList(){ const L=CQ.list(); ovh.innerHTML='✨ Claude requests · '+L.length+'<button class="x" data-x>✕</button>';
   ovb.innerHTML='<div class="phint">'+CQ.summary()+'</div>'+(L.length?L.map(q=>CQ.rowHTML(q)).join(''):'<div class="none">No requests this week.</div>');
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; CQ.wire(ovb,{toast,onOpen:cqOpenTask}); }
