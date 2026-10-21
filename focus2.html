@@ -567,6 +567,7 @@ function commitLocal(){
   st.edits={}; st.savedOrder=clone(st.order); st.savedSpheres=clone(st.spheres); st.savedAt=stamp();
 }
 function doSave(){
+  st.spheres.forEach(function(s){ s.items.forEach(function(iid){ applyBubbleEdit(iid,s); }); });   /* write every bubble's assignment (lead/project/category) even for items grouped earlier */
   if(!dirtyCount()) return;
   if(!live){ commitLocal(); render(); toast('Saved on this device'); return; }
   var btn=$('#saveBtn'); btn.disabled=true; btn.textContent='Saving…';
