@@ -209,10 +209,13 @@ var src=SNAP.map(function(r){return {id:r[0],text:r[1],project:r[2],lead:r[3],sl
 function clone(o){return JSON.parse(JSON.stringify(o));}
 function blankSpheres(n){var a=[];for(var i=0;i<n;i++)a.push({id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),kind:'recipient',value:'',name:'',phone:'',items:[]});return a;}
 function setEdit(id,f,v){ st.edits[id]=st.edits[id]||{}; st.edits[id][f]=v; }
-function applyBubbleEdit(id,s){ if(!s||!s.kind||s.kind==='recipient'||!s.value) return;
-  if(s.kind==='project') setEdit(id,'project',String(s.value).toUpperCase());
-  else if(s.kind==='lead') setEdit(id,'lead',s.value);
-  else if(s.kind==='category'){ var v=String(s.value).toLowerCase(); if(v==='morning'||v==='afternoon'){ setEdit(id,'slot',v); setEdit(id,'section',''); } else { setEdit(id,'section',v); setEdit(id,'slot',''); } } }
+function leadLabelFor(s){ if(s.leadLabel) return s.leadLabel; var nm=s.name||''; for(var i=0;i<leads.length;i++){ if(leads[i].name===nm||leads[i].label===nm) return leads[i].label; } return nm; }
+function applyBubbleEdit(id,s){ if(!s) return; var k=s.kind||'recipient';
+  if(k==='recipient'){ if(s.name) setEdit(id,'lead',leadLabelFor(s)); return; }   /* texting a person also assigns them as Lead */
+  if(!s.value) return;
+  if(k==='project') setEdit(id,'project',String(s.value).toUpperCase());
+  else if(k==='lead') setEdit(id,'lead',s.value);
+  else if(k==='category'){ var v=String(s.value).toLowerCase(); if(v==='morning'||v==='afternoon'){ setEdit(id,'slot',v); setEdit(id,'section',''); } else { setEdit(id,'section',v); setEdit(id,'slot',''); } } }
 var st={spheres:blankSpheres(8),filter:'morning',edits:{},savedEdits:{},order:null,savedOrder:null,savedSpheres:null,savedAt:''};
 function bucketOf(it){ return it.slot||it.section||''; }
 try{var sv=JSON.parse(lsGet(LS)||'null'); if(sv&&sv.spheres&&sv.spheres.length){ st=Object.assign(st,sv); }}catch(e){}
@@ -488,7 +491,7 @@ function openEdit(id){
 }
 
 function openWho(id){
-  var s=sph(id); var kind=s.kind||'recipient'; var pickCat=String(s.value||'').toLowerCase();
+  var s=sph(id); var kind=s.kind||'recipient'; var pickCat=String(s.value||'').toLowerCase(); var pickedLabel=s.leadLabel||'';
   var projs={}, leadNames={}; items.forEach(function(i){if(i.project)projs[i.project]=1;if(i.lead)leadNames[i.lead]=1;}); PROJ_ORDER.forEach(function(p){if(p)projs[p]=1;}); leads.forEach(function(l){leadNames[l.label]=1;});
   var cats=[['morning','AM call'],['afternoon','PM call'],['calls','Calls'],['nextup','Next Up'],['incoming','Incoming'],['bigticket','Big Ticket'],['sunday','Sunday'],['backlog','Backlog'],['focus','Focus']];
   function body(){
@@ -502,11 +505,11 @@ function openWho(id){
   function wire(){ var sc=$('#scrim');
     $('#bKind').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;kind=b.dataset.k;openSheet(body());wire();});
     var lv=sc.querySelector('.leads');
-    if(lv&&kind==='recipient') lv.addEventListener('click',function(e){var b=e.target.closest('[data-lead]'); if(!b)return; var l=leads[+b.dataset.lead]; $('#whoName').value=l.name; $('#whoPhone').value=l.phone;});
+    if(lv&&kind==='recipient') lv.addEventListener('click',function(e){var b=e.target.closest('[data-lead]'); if(!b)return; var l=leads[+b.dataset.lead]; $('#whoName').value=l.name; $('#whoPhone').value=l.phone; pickedLabel=l.label;});
     if(lv&&kind==='category') lv.addEventListener('click',function(e){var b=e.target.closest('[data-val]'); if(!b)return; pickCat=b.dataset.val; [].forEach.call(lv.children,function(x){x.style.outline=x===b?'2px solid var(--cyan)':'';}); });
     $('#whoCancel').onclick=closeSheet;
     $('#whoSave').onclick=function(){ s.kind=kind;
-      if(kind==='recipient'){ s.name=$('#whoName').value.trim(); s.phone=$('#whoPhone').value.trim(); s.value=''; }
+      if(kind==='recipient'){ s.name=$('#whoName').value.trim(); s.phone=$('#whoPhone').value.trim(); s.value=''; s.leadLabel=pickedLabel||s.leadLabel||''; }
       else if(kind==='category'){ s.value=pickCat||''; s.name=''; s.phone=''; }
       else { s.value=$('#bVal').value.trim(); s.name=''; s.phone=''; }
       st.spheres.filter(function(x){return x.id===s.id;}).forEach(function(x){x.items.forEach(function(iid){applyBubbleEdit(iid,s);});});
