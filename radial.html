@@ -543,7 +543,7 @@ function layout(){ const st=$('#stage'); const W=st.clientWidth, H=st.clientHeig
   if(typeof applyMoves==='function') applyMoves(); }
 addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setTimeout(layout,160); });
 /* ===== movable bubbles / core / panes: drag a bubble, the core, or a pane's header; offsets saved (CSS translate — no layout math) ===== */
-let MV=LS('focus.mv',{}); let mvDrag=null, mvJustDragged=0;
+let MV=LS('focus.mv',{}); let mvDrag=null, mvJustDragged=0; const GRID=24; const snap=v=>Math.round(v/GRID)*GRID;
 function mvKey(el){ if(el.id==='core') return 'core'; if(el.classList.contains('bub')) return 'b:'+el.dataset.key;
   if(el.id) return 'p:'+el.id; if(el.classList.contains('cxpane')) return 'p:cx'; if(el.classList.contains('notes')) return 'p:notes'; if(el.classList.contains('meet')) return 'p:meet';
   const h=el.querySelector('.ph'); return 'p:'+((h&&h.dataset.list)||((h&&h.textContent)||'').replace(/[^A-Za-z]/g,'').slice(0,14)); }
@@ -552,9 +552,9 @@ addEventListener('pointerdown',e=>{ if(e.button!==0) return; const t=e.target; i
   const el=t.closest('#core,#bubbles .bub')||((t.closest('.ph,.cxh,.cxf')||t.matches('.corner .pane,.cxb'))&&t.closest('.corner .pane'))||((t.closest('.amb .h'))&&t.closest('.corner .ampm')); if(!el) return;
   const o=MV[mvKey(el)]||[0,0]; mvDrag={el,k:mvKey(el),x:e.clientX,y:e.clientY,o,on:false}; },true);
 addEventListener('pointermove',e=>{ const d=mvDrag; if(!d) return; const dx=e.clientX-d.x, dy=e.clientY-d.y; if(!d.on){ if(Math.abs(dx)+Math.abs(dy)<6) return; d.on=true; d.el.classList.add('moving'); document.body.style.userSelect='none'; }
-  d.el.style.translate=(d.o[0]+dx)+'px '+(d.o[1]+dy)+'px'; });
+  d.el.style.translate=snap(d.o[0]+dx)+'px '+snap(d.o[1]+dy)+'px'; });
 addEventListener('pointerup',e=>{ const d=mvDrag; mvDrag=null; if(!d||!d.on) return; d.el.classList.remove('moving'); document.body.style.userSelect='';
-  MV[d.k]=[Math.round(d.o[0]+e.clientX-d.x),Math.round(d.o[1]+e.clientY-d.y)]; SV('focus.mv',MV); mvJustDragged=Date.now(); applyMoves(); toast('Position saved · ↺ LAYOUT resets'); });
+  MV[d.k]=[snap(d.o[0]+e.clientX-d.x),snap(d.o[1]+e.clientY-d.y)]; SV('focus.mv',MV); mvJustDragged=Date.now(); applyMoves(); toast('Snapped & saved · ↺ LAYOUT resets'); });
 addEventListener('click',e=>{ if(Date.now()-mvJustDragged<350){ e.stopPropagation(); e.preventDefault(); } },true);
 function resetMoves(){ MV={}; SV('focus.mv',MV); applyMoves(); toast('Layout reset'); }
 { const _rc=renderCorners; renderCorners=function(){ const r=_rc.apply(this,arguments); applyMoves(); return r; }; const _rb=renderBubbles; renderBubbles=function(){ const r=_rb.apply(this,arguments); applyMoves(); return r; }; }
