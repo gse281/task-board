@@ -310,7 +310,7 @@ function _compute(key){ const L=sec=>tasks.filter(t=>live(t)&&sectionOf(t)===sec
     case 'incoming': { const td=todayISO(); return applyOrder('incoming', tasks.filter(t=>live(t)&&(sectionOf(t)==='incoming'||(t.createdTime&&isoOf(new Date(t.createdTime))===td))).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0))); }
     case 'still': return applyOrder('still', tasks.filter(t=>live(t)&&daysOpen(t)>=10&&!t.project&&!t.lead).sort((a,b)=>daysOpen(b)-daysOpen(a)));
     case 'attention': return tasks.filter(t=>live(t)&&daysOpen(t)>=14).sort((a,b)=>daysOpen(b)-daysOpen(a));
-    case 'morning': case 'afternoon': return applyOrder(key, L(key).sort(byLeadProj));
+    case 'morning': case 'afternoon': return L(key).sort(byLeadProj);
     case 'calls': return applyOrder('calls', L('calls').sort((a,b)=>daysOpen(a)-daysOpen(b)).map((t,i)=>({t,i})).sort((a,b)=>((a.t.listOrder??1e9)-(b.t.listOrder??1e9))||a.i-b.i).map(x=>x.t));
     case 'nextup': return applyOrder('nextup', tasks.filter(t=>live(t)&&(sectionOf(t)==='nextup'||t.nextUp)).sort((a,b)=>((a.nuOrder??1e9)-(b.nuOrder??1e9))));
     case 'respond': return respond;

@@ -572,7 +572,7 @@ body::before{ opacity:.7 }
 <script src="files.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-20 21:17';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-20 21:24';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -2304,7 +2304,7 @@ function resetLayout(){ meta.slots={}; saveMeta(); render(); toast('↺ Grid res
 let GRID_COLS=10; const GRID_ROWS=2;
 // Adaptive columns: keep each column a comfortable ~190px, so the board reflows
 // to fewer/wider columns on a half-screen window instead of cramming 10 thin ones.
-function computeCols(W){ return W<560?1:2; }   /* Focus-feel: at most 2 wide columns (big panes) */
+function computeCols(W){ return Math.max(2, Math.min(10, Math.round((W-8)/190))); }
 function gridDims(nPanels){
   const board=document.getElementById('board'); const GAP=8;
   GRID_COLS=computeCols(board.clientWidth);

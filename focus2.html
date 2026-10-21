@@ -209,7 +209,8 @@ var src=SNAP.map(function(r){return {id:r[0],text:r[1],project:r[2],lead:r[3],sl
 function clone(o){return JSON.parse(JSON.stringify(o));}
 function blankSpheres(n){var a=[];for(var i=0;i<n;i++)a.push({id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),kind:'recipient',value:'',name:'',phone:'',items:[]});return a;}
 function setEdit(id,f,v){ st.edits[id]=st.edits[id]||{}; st.edits[id][f]=v; }
-function leadLabelFor(s){ if(s.leadLabel) return s.leadLabel; var nm=s.name||''; for(var i=0;i<leads.length;i++){ if(leads[i].name===nm||leads[i].label===nm) return leads[i].label; } return nm; }
+function leadLabelFor(s){ var cand=s.leadLabel||s.name||''; if(!cand) return ''; var lc=cand.toLowerCase();
+  for(var i=0;i<leads.length;i++){ if((leads[i].label||'').toLowerCase()===lc||(leads[i].name||'').toLowerCase()===lc) return leads[i].label; } return cand; }
 function applyBubbleEdit(id,s){ if(!s) return; var k=s.kind||'recipient';
   if(k==='recipient'){ if(s.name) setEdit(id,'lead',leadLabelFor(s)); return; }   /* texting a person also assigns them as Lead */
   if(!s.value) return;
