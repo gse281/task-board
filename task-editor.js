@@ -60,7 +60,7 @@ textarea.te-i{resize:vertical;min-height:44px}
 @media(max-width:420px){ .te-3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)} }
 /* iPhone: never wider than the sheet — every cell / input can shrink; date & time inputs included (iOS gives them an intrinsic min width) */
 .te,.te *{box-sizing:border-box}
-.te{width:100%;max-width:100vw;overflow:hidden;touch-action:pan-y}
+.te{max-width:100vw;overflow:hidden;touch-action:pan-y}
 .te-b{width:100%;overflow-x:hidden!important;overflow-y:auto;touch-action:pan-y;overscroll-behavior:contain}
 .te-r,.te-2>*,.te-3>*{min-width:0}
 .te-i{min-width:0;max-width:100%;display:block}
@@ -85,19 +85,19 @@ input.te-i{text-overflow:ellipsis}
 .cqs{font:700 10.5px ui-monospace,Menlo,monospace;letter-spacing:.8px;text-transform:uppercase;border:1px solid;border-radius:999px;padding:2px 8px}
 .cqt{color:#64838d;font-size:11.5px}.cqi{color:#bfe3ec;font-size:14px;margin-top:5px;white-space:pre-wrap;overflow-wrap:anywhere}
 .cqr{color:#eaf6fb;font-size:14px;margin-top:6px;white-space:pre-wrap;overflow-wrap:anywhere;background:rgba(20,36,42,.85);border-radius:9px;padding:8px 10px}
-.cqd{margin-top:8px}.cql{color:#e0a458;font-size:12.5px;font-weight:700;margin-bottom:5px;overflow-wrap:anywhere}
+.cqd{margin-top:8px}.cql{color:#39c7df;font-size:12.5px;font-weight:700;margin-bottom:5px;overflow-wrap:anywhere}
 .te-hide{display:none!important}
 .te-seg{display:flex;flex-wrap:wrap;gap:6px}
 .te-ch{height:36px;padding:0 12px;border-radius:18px;border:1px solid rgba(57,199,223,.25);background:rgba(20,36,42,.7);color:#cfeaf1;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center}
-.te-ch.on{background:#39c7df;border-color:#39c7df;color:#04161c}.te-ch.sug{border-color:#e0a458;color:#f0c27b}.te-ch.new{border-style:dashed;color:#62e08a}
+.te-ch.on{background:#39c7df;border-color:#39c7df;color:#04161c}.te-ch.sug{border-color:#39c7df;color:#39c7df}.te-ch.new{border-style:dashed;color:#62e08a}
 .te-dpick{position:relative;overflow:hidden}.te-dpick input{position:absolute;inset:0;opacity:0;width:100%;height:100%}
 .te-pk{margin-top:6px;padding:8px;border:1px solid rgba(57,199,223,.25);border-radius:12px;background:#0d1a20;max-height:240px;overflow:auto}
 .te-pkh{font:700 10px ui-monospace,Menlo,monospace;letter-spacing:1.3px;text-transform:uppercase;color:#64838d;margin:6px 2px 5px}.te-pkh:first-child{margin-top:0}
-.te-gl{background:none;border:0;color:#e0a458;font:700 10px ui-monospace,Menlo,monospace;letter-spacing:.8px;text-transform:lowercase;margin-left:6px;cursor:pointer;padding:4px 2px}
+.te-gl{background:none;border:0;color:#39c7df;font:700 10px ui-monospace,Menlo,monospace;letter-spacing:.8px;text-transform:lowercase;margin-left:6px;cursor:pointer;padding:4px 2px}
 .te-gs{display:flex;align-items:center;gap:6px;margin-top:5px}.te-gs:empty{display:none}
-.te-gv{flex:1;min-width:0;color:#f0c27b;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.te-gn{color:#64838d;font-size:12px}
-.te-gok,.te-gx{flex:none;width:40px;height:34px;border-radius:9px;border:1px solid rgba(224,164,88,.5);background:transparent;color:#62e08a;font-weight:800;cursor:pointer}.te-gx{color:#e5533a;border-color:rgba(229,83,58,.4)}
-.te-guessbar{display:flex;gap:8px;margin:0 0 12px}.te-gbtn{color:#f0c27b!important;border-color:rgba(224,164,88,.5)!important}
+.te-gv{flex:1;min-width:0;color:#39c7df;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.te-gn{color:#64838d;font-size:12px}
+.te-gok,.te-gx{flex:none;width:40px;height:34px;border-radius:9px;border:1px solid rgba(57,199,223,.5);background:transparent;color:#62e08a;font-weight:800;cursor:pointer}.te-gx{color:#e5533a;border-color:rgba(229,83,58,.4)}
+.te-guessbar{display:flex;gap:8px;margin:0 0 12px}.te-gbtn{color:#39c7df!important;border-color:rgba(57,199,223,.5)!important}
 .te-note{color:#64838d;font-size:12px;margin:0 2px 10px}
 `;
 function ensureCss(){ if(document.getElementById('te-css')) return; const s=document.createElement('style'); s.id='te-css'; s.textContent=CSS; document.head.appendChild(s); }
@@ -208,7 +208,7 @@ function wire(root,t){ const E=window.TE;
    Anything that messages / emails / spends comes back as a DRAFT with status "Needs approval" → Approve & send / Edit / Cancel here. ── */
 const CQ='tbliwVVKs3wdNRehV';
 const cqApi=(path,opt)=>{ const E=window.TE; return fetch('https://api.airtable.com/v0/'+E.base()+'/'+CQ+(path||''),Object.assign({headers:{Authorization:'Bearer '+E.key(),'Content-Type':'application/json'}},opt||{})).then(r=>r.ok?r.json():Promise.reject(r.status)); };
-const CQC={Queued:'#8aa6af',Working:'#39c7df','Needs approval':'#e0a458',Approved:'#6fd0e0',Done:'#62e08a',Failed:'#e5533a',Cancelled:'#64838d'};
+const CQC={Queued:'#8aa6af',Working:'#39c7df','Needs approval':'#39c7df',Approved:'#6fd0e0',Done:'#62e08a',Failed:'#e5533a',Cancelled:'#64838d'};
 async function cqLoad(t){ const u='?pageSize=6&filterByFormula='+encodeURIComponent("{ItemId}='"+t.id+"'")+'&sort%5B0%5D%5Bfield%5D=QueuedAt&sort%5B0%5D%5Bdirection%5D=desc'; const d=await cqApi(u); return (d.records||[]).map(r=>Object.assign({id:r.id},r.fields)); }
 /* One-tap "Chase it": queue a standing instruction to drive this task to done. Worked by the "claude-task-queue" scheduled task. */
 const CHASE_INSTR="CHASE TO DONE — drive this task to resolution, don't just describe it. Each run: 1) determine the single next concrete step; 2) gather what you need from Gmail / Calendar / Airtable / iMessage; 3) do it, or if it needs an outbound email or text, draft it and set this row Status='Needs approval' with the Draft filled for Roni to approve; 4) when approved or otherwise resolved, mark the task Done and text Roni a one-line status. Keep chasing on each run until it's closed.";
@@ -273,7 +273,7 @@ function open(t,opts){ const E=window.TE; if(!E||!t) return; ensureCss(); if(cur
 /* ── Plain labels: strip decorative emoji from category / section / pane headers → small theme-colored dot.
    Functional icons (call, text, join) live in buttons and are not touched. ── */
 const EMO=/^\s*(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}|[☀-➿⬀-⯿←-⇿■-◿])(?:️|︎|‍(?:\p{Extended_Pictographic}|\p{Emoji_Presentation}))*\s*/u;
-const DOTS=['#39c7df','#6fd0e0','#45b8d0','#8fd3ee','#5b8fb0','#7fc8b4','#b9a8f0','#e0a458','#9fdbe7'];
+const DOTS=['#39c7df','#6fd0e0','#45b8d0','#8fd3ee','#5b8fb0','#7fc8b4','#b9a8f0','#39c7df','#9fdbe7'];
 const dotColor=s=>{ let h=0; for(const c of String(s).toLowerCase()) h=(h*31+c.charCodeAt(0))>>>0; return DOTS[h%DOTS.length]; };
 function plainOne(el,iconOnly){ if(el.dataset.plain) return; el.dataset.plain='1';
   if(iconOnly){ if(EMO.test(el.textContent)&&!el.textContent.replace(EMO,'').trim()){ el.textContent=''; el.classList.add('te-ic'); } return; }

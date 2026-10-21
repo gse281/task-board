@@ -9,7 +9,7 @@
 <style>
 :root{
   --bg:#14110f; --panel:#1d1916; --panel2:#241f1b; --ink:#f5f3ee; --muted:#a8a29a;
-  --line:#2c2723; --accent:#e8683c; --green:#3a8f5f; --callg:#30D158; --callink:#0b1a10; --red:#c2553f; --blue:#5b8fb0;
+  --line:#2c2723; --accent:#39c7df; --green:#3a8f5f; --callg:#30D158; --callink:#0b1a10; --red:#c2553f; --blue:#5b8fb0;
   --radius:14px;
 }
 *{box-sizing:border-box}
@@ -359,7 +359,7 @@ a.tellink{color:var(--green);text-decoration:none}
 .wxd .wxt{font-size:10px;font-weight:800;color:var(--ink);margin-left:2px;vertical-align:middle}
 .wxd .wxt.hot{color:#ff7a4d}
 .wxd .wxt.cold{color:#6fb2d6}
-.wxd .wxt.xhot{color:#fff;background:#e8683c;border-radius:5px;padding:0 3px}
+.wxd .wxt.xhot{color:#fff;background:#39c7df;border-radius:5px;padding:0 3px}
 .wxd .wxt.xcold{color:#0b1a24;background:#8fd3ee;border-radius:5px;padding:0 3px}
 .wxd .wxmm{font-size:9px;color:var(--blue);font-weight:700}
 .wxd.wet{background:rgba(57,199,223,.14);border-color:var(--accent)}
@@ -391,26 +391,26 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 .backdrop{ backdrop-filter:blur(3px); }
 .search,.desk-add input,.add-inline input{ border-radius:12px; }
 /* the iPhone's warm gradient on primary/accent actions */
-.tb-btn.accent,.tb-btn.on,.btn.primary,.fab,#addBtn{ background:linear-gradient(180deg,#ef7a4f,#e0582f); border-color:#e0582f; }
-.chip.on{ background:linear-gradient(180deg,#ef7a4f,#e0582f); border-color:#e0582f; }
+.tb-btn.accent,.tb-btn.on,.btn.primary,.fab,#addBtn{ background:linear-gradient(180deg,#5fd6ea,#39c7df); border-color:#39c7df; }
+.chip.on{ background:linear-gradient(180deg,#5fd6ea,#39c7df); border-color:#39c7df; }
 /* iOS-thin scrollbars */
 .panel-body::-webkit-scrollbar,.board::-webkit-scrollbar,.contacts-results::-webkit-scrollbar{ width:7px;height:7px; }
 .panel-body::-webkit-scrollbar-thumb,.board::-webkit-scrollbar-thumb{ background:rgba(255,255,255,.13);border-radius:999px; }
 .panel-body::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,.22); }
 .panel-body::-webkit-scrollbar-track,.board::-webkit-scrollbar-track{ background:transparent; }
 /* ── P/S/L/C + filter chips: high-contrast states (WCAG AA ≥4.5:1) ──
-   selected/lit = SOLID orange #e8683c with near-black bold text (#111 on #e8683c ≈ 6.4:1);
+   selected/lit = SOLID orange #39c7df with near-black bold text (#111 on #39c7df ≈ 6.4:1);
    unselected = light text on dark (#f5f3ee on #1d1916 ≈ 15:1; muted #c9c3bb ≈ 10:1); dimmed no longer fades text out. */
 .mfbtn{color:var(--ink);background:var(--panel);border-color:#3a332d}
-.mfbtn.on,.mfbtn:active{background:#e8683c!important;border-color:#e8683c!important;color:#111!important;font-weight:900}
+.mfbtn.on,.mfbtn:active{background:#39c7df!important;border-color:#39c7df!important;color:#111!important;font-weight:900}
 .chip{color:#c9c3bb;border-color:#3a332d}
-.chip.on,.chip.on .n{background:#e8683c!important;background-image:none!important;border-color:#e8683c!important;color:#111!important;font-weight:800;opacity:1}
-.chip.lit,.fbub.lit{background:#e8683c!important;border-color:#e8683c!important;color:#111!important;box-shadow:none}
+.chip.on,.chip.on .n{background:#39c7df!important;background-image:none!important;border-color:#39c7df!important;color:#111!important;font-weight:800;opacity:1}
+.chip.lit,.fbub.lit{background:#39c7df!important;border-color:#39c7df!important;color:#111!important;box-shadow:none}
 .chip.lit .n,.fbub.lit .n{color:#111!important;opacity:.8}
 .chip.dimmed,.fbub.dimmed{opacity:.6}
 .plstag{color:#c9c3bb;border-color:#3a332d}
 .plstag.s{color:#5cc48a}.plstag.l{color:#7fb0d0}.plstag.p{color:#f08a5f}
-.plstag:hover,.plstag:focus-visible{background:#e8683c;color:#111;border-color:#e8683c}
+.plstag:hover,.plstag:focus-visible{background:#39c7df;color:#111;border-color:#39c7df}
 .meetnn{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap}
 .nnchip{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px 4px 3px 8px;font-size:12px;color:#c9c3bb;white-space:nowrap}
 .nnchip b{font-size:10px;letter-spacing:.8px;color:#c9c3bb}.nnchip.now{border-color:#e5533a}.nnchip.now b{color:#ff7a5c}
@@ -517,7 +517,7 @@ body::before{ opacity:.7 }
 #catov .ct{flex:1;min-width:0}
 #catov .cn{font-weight:600;font-size:15px;color:#eaf6fb;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 #catov .cm{color:#86a2ab;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
-#catov .cage{font:700 11px ui-monospace,Menlo,monospace;color:#86a2ab;flex:none} #catov .cage.o{color:#e8683c}
+#catov .cage{font:700 11px ui-monospace,Menlo,monospace;color:#86a2ab;flex:none} #catov .cage.o{color:#39c7df}
 #catov .ctick{width:30px;height:30px;border-radius:50%;border:1px solid rgba(57,199,223,.2);color:#86a2ab;flex:none;display:grid;place-items:center;font-size:15px;background:none}
 #catov .ctick:hover{color:#3a8f5f;border-color:#3a8f5f}
 #catov .catnone{color:#86a2ab;text-align:center;padding:40px}
@@ -572,7 +572,7 @@ body::before{ opacity:.7 }
 <script src="files.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-20 21:24';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-21 13:46';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -3993,7 +3993,7 @@ function openSettings(){
     <label class="field"><span class="lbl">Highlight color</span>
       <input class="inp" id="accentC" type="color" value="${accentNow()}" style="height:44px;padding:4px" oninput="setAccent(this.value)">
       <div class="note" style="margin-top:4px">Presets:
-        <button type="button" class="btn ghost" onclick="setAccent('#e8683c')">🟧 Orange-red</button>
+        <button type="button" class="btn ghost" onclick="setAccent('#39c7df')">🟧 Orange-red</button>
         <button type="button" class="btn ghost" onclick="setAccent('#e6c34a')">🟡 Yellow</button>
         <button type="button" class="btn ghost" onclick="setAccent('#39c7df')">🟠 Amber</button></div></label>
     <div class="field"><button type="button" class="btn ghost" onclick="resetLayout()">↺ Reset grid</button></div>
@@ -4002,7 +4002,7 @@ function openSettings(){
 }
 // Highlight color — user-chosen, persisted, applied over the CSS default.
 function setAccent(c){ if(!c)return; document.documentElement.style.setProperty('--accent',c); localStorage.setItem('accent',c); const inp=document.getElementById('accentC'); if(inp)inp.value=c; }
-function accentNow(){ return localStorage.getItem('accent') || (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()) || '#e8683c'; }
+function accentNow(){ return localStorage.getItem('accent') || (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()) || '#39c7df'; }
 (function(){ const a=localStorage.getItem('accent'); if(a)document.documentElement.style.setProperty('--accent',a); })();
 const val=id=>document.getElementById(id).value.trim();
 
