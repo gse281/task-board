@@ -140,6 +140,14 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .lrow:hover,.cxr:hover{transform:translateX(1px)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 #core.coredrop{outline:2px dashed var(--cyan);outline-offset:-5px}
+.fltrow{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}
+.fltlab{flex:none;width:64px;font:700 10px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--dim);padding-top:5px}
+.fltchips{flex:1;display:flex;flex-wrap:wrap;gap:5px}
+.fltchip{border:1px solid var(--line);border-radius:999px;padding:3px 9px;font-size:12px;color:var(--ink);background:transparent;cursor:pointer}
+.fltchip i{font-style:normal;color:var(--dim);font-size:10.5px}
+.fltchip:hover{border-color:var(--cyan);color:var(--cyan)}
+.pill{border:1px solid var(--line);border-radius:999px;padding:3px 10px;font:700 10px ui-monospace,Menlo,monospace;color:var(--dim);background:transparent;cursor:pointer}
+.pill:hover{color:var(--cyan);border-color:var(--cyan)}
 .bit[draggable]{cursor:grab}
 .corner .pane{position:relative}
 .rz{position:absolute;right:3px;bottom:3px;width:14px;height:14px;cursor:nwse-resize;border-right:2px solid var(--line);border-bottom:2px solid var(--line);border-bottom-right-radius:4px;opacity:.5;z-index:14;touch-action:none}
@@ -229,7 +237,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
   <div class="core" id="core"></div>
   <div id="bubbles"></div>
   <div class="corner tl" id="cTL"></div><div class="corner tr" id="cTR"></div><div class="corner ml" id="cML"></div><div class="corner bl" id="cBL"></div><div class="corner br" id="cBR"></div>
-  <div class="foot"><button id="mvReset" onclick="resetMoves()" title="Put bubbles and panes back">↺ LAYOUT</button><button id="cmdBtn2">⌘ ADD · JUMP · FIND</button><button id="homeToggle"></button><a href="focus2.html" title="Focus 2 — AM/PM calls">◉ FOCUS 2</a><a href="dashboard.html">⌂ DASHBOARD</a></div>
+  <div class="foot"><button id="mvReset" onclick="resetMoves()" title="Put bubbles and panes back">↺ LAYOUT</button><button id="cmdBtn2">⌘ ADD · JUMP · FIND</button><button id="fltBtn" onclick="openFilters()" title="Filter by Project · Sub · Lead · Category">▦ P·S·L·C</button><button id="homeToggle"></button><a href="focus2.html" title="Focus 2 — AM/PM calls">◉ FOCUS 2</a><a href="dashboard.html">⌂ DASHBOARD</a></div>
 </div>
 <div class="back" id="ov"><div class="card"><div class="cardh" id="ovh"></div><div class="cardb" id="ovb"></div></div></div>
 <div id="cmd"><div class="cmdbox"><div class="cmdin"><span>⌘</span><input id="cmdInp" placeholder="Add a task, jump to a list, or search everything…" autocomplete="off"></div><div class="cmdres" id="cmdRes"></div><div class="cmdhint">↑↓ move · ⏎ select · esc close · type then ⏎ to add</div></div></div>
@@ -684,6 +692,24 @@ function wireFboxDrag(){ const box=$('#filesBox'), h=box&&box.querySelector('[da
   h.onpointermove=e=>{ if(!drag) return; let L=ol+(e.clientX-sx), T=ot+(e.clientY-sy); L=Math.max(6,Math.min(L,innerWidth-60)); T=Math.max(6,Math.min(T,innerHeight-40)); box.style.left=L+'px'; box.style.top=T+'px'; };
   h.onpointerup=()=>{ if(!drag) return; drag=false; try{ localStorage.setItem('tb.fbox',JSON.stringify({l:parseInt(box.style.left),t:parseInt(box.style.top)})); }catch(_){} }; }
 addEventListener('resize',()=>{ if(!$('#filesBox').hidden) placeFbox(); });
+/* ▦ P·S·L·C filter bar — all Project / Sub / Lead / Category values as outlined clickable chips (like the dashboard) */
+function catName(sec){ const c=CAT[sec]; return c?c[1]:(sec||'—'); }
+function fltTally(fn){ const m={}; tasks.filter(t=>live(t)).forEach(t=>{ const v=fn(t); if(v) m[v]=(m[v]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])); }
+function openFilters(){
+  const rows=[['PROJECT','project',fltTally(t=>t.project)],['SUB','sub',fltTally(t=>t.sub)],['LEAD','lead',fltTally(t=>t.lead)],['CATEGORY','category',fltTally(t=>catName(sectionOf(t)))]];
+  ovh.innerHTML='▦ Filter · Project · Sub · Lead · Category<button class="x" data-x>✕</button>';
+  ovb.innerHTML=rows.map(([lab,field,ents])=>'<div class="fltrow"><span class="fltlab">'+lab+'</span><div class="fltchips">'+(ents.length?ents.map(([v,n])=>'<button class="fltchip" data-ff="'+esc(field)+'" data-fv="'+esc(v)+'">'+esc(v)+' <i>'+n+'</i></button>').join(''):'<span class="none">—</span>')+'</div></div>').join('');
+  ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv;
+  ovb.querySelectorAll('[data-ff]').forEach(b=>b.onclick=()=>openFiltered(b.dataset.ff,b.dataset.fv));
+}
+function openFiltered(field,value){
+  const match=t=>field==='project'?(t.project||'')===value:field==='sub'?(t.sub||'')===value:field==='lead'?(t.lead||'')===value:field==='category'?catName(sectionOf(t))===value:false;
+  const items=tasks.filter(t=>live(t)&&match(t)).sort(byLeadProj);
+  ovh.innerHTML='▦ '+esc(value)+' · '+items.length+'<button class="x" data-x>✕</button>';
+  ovb.innerHTML='<div class="phint"><button class="pill" data-back>‹ All filters</button> · tap a task to edit</div><div class="plist" id="plist">'+capRows(items,200)+'</div>';
+  ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; wireRows($('#plist'),null);
+  const bk=ovb.querySelector('[data-back]'); if(bk) bk.onclick=openFilters;
+}
 function openCQList(){ const L=CQ.list(); ovh.innerHTML='✨ Claude requests · '+L.length+'<button class="x" data-x>✕</button>';
   ovb.innerHTML='<div class="phint">'+CQ.summary()+'</div>'+(L.length?L.map(q=>CQ.rowHTML(q)).join(''):'<div class="none">No requests this week.</div>');
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; CQ.wire(ovb,{toast,onOpen:cqOpenTask}); }
