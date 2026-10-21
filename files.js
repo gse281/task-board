@@ -14,7 +14,8 @@ const list=()=>rows.filter(f=>!f.Done&&f.Path).sort((a,b)=>String(b.Added||'').l
 const finderURL=p=>'rmbopen://open?p='+encodeURIComponent(p);
 const webURL=(p,kind)=>'https://www.dropbox.com/'+(kind==='Folder'?'work':'preview')+p.split('/').map(encodeURIComponent).join('/')+(kind==='Folder'?'':'?role=work');
 function rowHTML(f){ const icon=f.Kind==='Folder'?'📁':'📄';
-  return `<div class="fqrow fi-row" data-file="${f.id}"><a class="fqi" href="${esc(finderURL(f.Path))}" title="Open in Finder" style="text-decoration:none;color:inherit"><b>${icon} ${esc(f.Name||f.Path.split('/').pop())}</b><span>${esc([f.Project,f.Note].filter(Boolean).join(' · ')||f.Path)}</span></a>
+  return `<div class="fqrow fi-row" data-file="${f.id}"><a class="fqi" href="${esc(finderURL(f.Path))}" title="Open in Finder (this Mac)" style="text-decoration:none;color:inherit"><b>${icon} ${esc(f.Name||f.Path.split('/').pop())}</b><span>${esc([f.Project,f.Note].filter(Boolean).join(' · ')||f.Path)}</span></a>
+    <a class="cardbtn fqweb" href="${esc(webURL(f.Path,f.Kind))}" target="_blank" rel="noopener" title="Open on the web (Dropbox) — works on any computer">↗</a>
     <button class="cardbtn" data-fidone title="Remove from list">✕</button></div>`; }
 function wire(root,o){ o=o||{}; root.querySelectorAll('[data-fidone]').forEach(b=>b.onclick=async e=>{ e.stopPropagation(); const id=b.closest('[data-file]').dataset.file; const r=rows.find(x=>x.id===id); if(r) r.Done=true; fire();
   try{ await api('/'+id,{method:'PATCH',body:JSON.stringify({fields:{Done:true}})}); o.toast&&o.toast('Removed from Files in Use'); }catch(err){ if(r) r.Done=false; fire(); o.toast&&o.toast('⚠︎ Not saved ('+err+')'); } }); }

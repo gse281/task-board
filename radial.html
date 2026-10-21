@@ -136,6 +136,9 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .fbox .fbh .fbt{flex:1;font:800 14px ui-monospace,Menlo,monospace;letter-spacing:1.5px;color:#cdeef5}
 .fbox .fbh .fbc{font:700 12px ui-monospace,Menlo,monospace;color:var(--dim)}
 .fbox .fbb{overflow:auto;max-height:40vh;padding:2px 12px 10px}
+.pane,.bub,.amb,.cxr,.cxchip,.cxc,.cxt,.minvite,.fbox,.fqrow,.lrow,.pill,.cmdbtn,.mjoin,.oinav button,.wxc,.fbc{transition:background-color .2s ease,border-color .2s ease,color .2s ease,transform .2s ease,opacity .2s ease}
+.lrow:hover,.cxr:hover{transform:translateX(1px)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .oinav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:9px;font:700 11px ui-monospace,Menlo,monospace;color:var(--dim);font-variant-numeric:tabular-nums}
 .oinav button{border:1px solid var(--line);background:transparent;color:var(--dim);border-radius:7px;width:28px;height:24px;cursor:pointer}
 .oinav button:hover{color:var(--cyan);border-color:var(--cyan)}
