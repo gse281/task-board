@@ -159,6 +159,7 @@ a.pill{text-decoration:none}
         <button type="button" data-f="morning">AM</button>
         <button type="button" data-f="afternoon">PM</button>
       </div>
+      <div style="margin-top:8px"><button type="button" class="pill go" id="addBtn">＋ Add item</button></div>
     </div>
     <div class="pool" id="pool"></div>
   </div>
@@ -263,9 +264,10 @@ function chipHTML(it,n,inSph){
 function projOrder(a,b){var ia=PROJ_ORDER.indexOf(a),ib=PROJ_ORDER.indexOf(b);return (ia<0?50:ia)-(ib<0?50:ib)||a.localeCompare(b);}
 function renderPool(){
   var free=items.filter(function(it){return !it.done&&!owner(it.id)&&(st.filter==='all'||it.slot===st.filter);});
-  var groups={}; free.forEach(function(it){(groups[it.project]=groups[it.project]||[]).push(it);});
+  var groups={}; free.forEach(function(it){var k=it.lead||'';(groups[k]=groups[k]||[]).push(it);});
   var n=0,h='';
-  Object.keys(groups).sort(projOrder).forEach(function(k){h+='<div class="grp"><h4>'+esc(k||'No project')+'</h4>'+groups[k].map(function(it){return chipHTML(it,++n,false);}).join('')+'</div>';});
+  Object.keys(groups).sort(function(a,b){if(!!a!==!!b)return a?-1:1;return a.localeCompare(b);}).forEach(function(k){
+    h+='<div class="grp"><h4>'+esc(k||'No lead')+'</h4>'+groups[k].slice().sort(function(x,y){return projOrder(x.project,y.project)||(x.text||'').localeCompare(y.text||'');}).map(function(it){return chipHTML(it,++n,false);}).join('')+'</div>';});
   $('#pool').innerHTML=h||'<div class="empty">All items placed.</div>';
   var open=items.filter(function(it){return !it.done;}), placed=open.filter(function(it){return owner(it.id);}).length;
   $('#coreCount').textContent=(open.length-placed)+' left · '+placed+' placed';
@@ -405,6 +407,27 @@ function openSheet(html){ closeSheet(); var s=document.createElement('div'); s.c
 function closeSheet(){var s=$('#scrim'); if(s) s.remove();}
 function note(t,cls){var n=$('#sNote'); if(n){n.textContent=t; n.className='note '+(cls||'');}}
 
+function openAdd(){
+  var leadNames={}; leads.forEach(function(l){leadNames[l.label]=1;}); items.forEach(function(i){if(i.lead)leadNames[i.lead]=1;});
+  var projs={}; items.forEach(function(i){if(i.project)projs[i.project]=1;}); PROJ_ORDER.forEach(function(p){if(p)projs[p]=1;});
+  var slot=st.filter==='afternoon'?'afternoon':'morning';
+  openSheet('<h3>Add item</h3>'+
+    '<label>Task<textarea id="aText" rows="2" style="min-height:60px"></textarea></label>'+
+    '<div class="row"><label>Project<input id="aProj" list="aProjL" autocomplete="off"></label><label>Lead<input id="aLead" list="aLeadL" autocomplete="off"></label></div>'+
+    '<datalist id="aProjL">'+Object.keys(projs).sort().map(function(p){return '<option value="'+esc(p)+'">';}).join('')+'</datalist>'+
+    '<datalist id="aLeadL">'+Object.keys(leadNames).sort().map(function(p){return '<option value="'+esc(p)+'">';}).join('')+'</datalist>'+
+    '<div class="seg" id="aSlot"><button type="button" data-v="morning"'+(slot!=='afternoon'?' class="on"':'')+'>AM call</button><button type="button" data-v="afternoon"'+(slot==='afternoon'?' class="on"':'')+'>PM call</button></div>'+
+    '<div class="acts"><button class="pill" type="button" id="aCancel">Cancel</button><button class="pill go" type="button" id="aSave">Add</button></div>');
+  $('#aSlot').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;slot=b.dataset.v;[].forEach.call(this.children,function(x){x.classList.toggle('on',x===b);});});
+  $('#aCancel').onclick=closeSheet;
+  $('#aSave').onclick=function(){ var t=$('#aText').value.trim(); if(!t){$('#aText').focus();return;} createItem({text:t,project:$('#aProj').value.trim().toUpperCase(),lead:$('#aLead').value.trim(),slot:slot}); closeSheet(); };
+  setTimeout(function(){var a=$('#aText'); if(a)a.focus();},30);
+}
+function createItem(v){
+  var tmp='new'+Date.now().toString(36); var rec={id:tmp,text:v.text,project:v.project||'',lead:v.lead||'',slot:v.slot||'morning',order:null,done:false};
+  src.push(rec); st.order.push(rec.id); render(); toast('Added'+(live?' · saving…':' on this device'));
+  if(live){ fetch('https://api.airtable.com/v0/'+BASE+'/'+encodeURIComponent(ITEMS),{method:'POST',headers:H(),body:JSON.stringify({typecast:true,records:[{fields:{Task:v.text,Project:v.project||'',SBLead:v.lead||'',MeetingSlot:v.slot,Status:'Open'}}]})}).then(function(r){return r.ok?r.json():null;}).then(function(d){ if(d&&d.records&&d.records[0]){ var nid=d.records[0].id, o=src.filter(function(x){return x.id===tmp;})[0]; if(o)o.id=nid; var oi=st.order.indexOf(tmp); if(oi>=0)st.order[oi]=nid; render(); toast('Saved to board'); } else toast('Could not save — kept on device'); },function(){toast('Could not reach Airtable — kept on device');}); }
+}
 function openEdit(id){
   var it=byId(id); if(!it) return;
   var projs={}; items.forEach(function(i){if(i.project)projs[i.project]=1;}); PROJ_ORDER.forEach(function(p){if(p)projs[p]=1;});
@@ -526,7 +549,7 @@ function doRevert(){
   $('#rvNo').onclick=closeSheet;
   $('#rvYes').onclick=function(){ st.edits={}; st.order=clone(st.savedOrder); st.spheres=clone(st.savedSpheres); selected=null; closeSheet(); render(); toast('Reverted'); };
 }
-$('#saveBtn').onclick=doSave; $('#revertBtn').onclick=doRevert;
+$('#saveBtn').onclick=doSave; $('#revertBtn').onclick=doRevert; $('#addBtn').onclick=openAdd;
 $('#resetBtn').onclick=function(){
   openSheet('<h3>Clear spheres</h3><div class="note">Move items back to the center. You can Revert until you Save.</div><div class="acts"><button class="pill" type="button" id="rNo">Cancel</button><button class="pill" type="button" id="rItems">Items only</button><button class="pill warn" type="button" id="rAll">Items + names</button></div>');
   $('#rNo').onclick=closeSheet;
