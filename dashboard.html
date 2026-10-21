@@ -469,7 +469,7 @@ body::before{ opacity:.7 }
 .task .projbadge::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px}
 .task .projbadge.empty{display:none}
 .task .plsline{order:2;display:contents}
-.task .cardacts{display:none;position:absolute;right:46px;top:50%;transform:translateY(-50%);gap:3px;background:#0b161b;border:1px solid rgba(57,199,223,.3);border-radius:8px;padding:2px;z-index:3;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.task .cardacts{display:none;position:absolute;right:8px;top:calc(100% - 5px);transform:none;gap:3px;background:#0b161b;border:1px solid rgba(57,199,223,.35);border-radius:8px;padding:3px;z-index:6;box-shadow:0 8px 22px rgba(0,0,0,.6);max-width:calc(100% - 16px);justify-content:flex-end}
 .task:hover .cardacts{display:flex}
 .task .cardbtn{font:600 11.5px -apple-system,system-ui,sans-serif!important;color:#bfe3ec!important;padding:4px 8px!important;border-radius:6px!important;border:0!important;background:transparent!important;white-space:nowrap}
 .task .cardbtn:hover{background:rgba(57,199,223,.16)!important;color:#eaf6fb!important}
@@ -572,7 +572,7 @@ body::before{ opacity:.7 }
 <script src="files.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-21 15:23';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-21 15:32';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
