@@ -139,6 +139,8 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .pane,.bub,.amb,.cxr,.cxchip,.cxc,.cxt,.minvite,.fbox,.fqrow,.lrow,.pill,.cmdbtn,.mjoin,.oinav button,.wxc,.fbc{transition:background-color .2s ease,border-color .2s ease,color .2s ease,transform .2s ease,opacity .2s ease}
 .lrow:hover,.cxr:hover{transform:translateX(1px)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+#core.coredrop{outline:2px dashed var(--cyan);outline-offset:-5px}
+.bit[draggable]{cursor:grab}
 .corner .pane{position:relative}
 .rz{position:absolute;right:3px;bottom:3px;width:14px;height:14px;cursor:nwse-resize;border-right:2px solid var(--line);border-bottom:2px solid var(--line);border-bottom-right-radius:4px;opacity:.5;z-index:14;touch-action:none}
 .rz:hover{opacity:1;border-color:var(--cyan)}
@@ -405,8 +407,8 @@ const bSel={}; const ORDERED=new Set(['calls','morning','afternoon','nextup']);
 const bubOf=(k,list)=>{ const sel=bSel[k]; const i=(sel&&Date.now()-sel.at<180000)?sel.i:bubIdx; return list.length?((i%list.length)+list.length)%list.length:0; };
 function renderBubbles(){ const box=$('#bubbles'); box.innerHTML=ringKeys().map(k=>{ const list=itemsFor(k); const ix=bubOf(k,list); const it=list.length?list[ix]:null; const [em,nm]=capOf(k);
     const cls='bub'+(list.length?'':' empty')+(hasStale(list)?' urgent':'');
-    const prev=it?'<div class="bit">'+bubPrev(it)+'</div>':'<div class="bit e">—</div>';
-    const nav=list.length>1?'<div class="bnav"><button data-bs="-1" aria-label="Previous task">▲</button><span>'+(ix+1)+'/'+list.length+'</span><button data-bs="1" aria-label="Next task">▼</button>'+(ORDERED.has(k)&&ix>0?'<button data-btop aria-label="Move to top" title="Move to top">⤒</button>':'')+'</div>':'';
+    const prev=it?'<div class="bit" draggable="true" data-id="'+esc(it.id)+'" title="Drag to the center to add to Focus">'+bubPrev(it)+'</div>':'<div class="bit e">—</div>';
+    const nav=list.length>1?'<div class="bnav"><button data-bs="-1" aria-label="Previous task">‹</button><span>'+(ix+1)+'/'+list.length+'</span><button data-bs="1" aria-label="Next task">›</button>'+(ORDERED.has(k)&&ix>0?'<button data-btop aria-label="Move to top" title="Move to top">⤒</button>':'')+'</div>':'';
     return '<div class="'+cls+'" data-key="'+esc(k)+'"><div class="bcap">'+em+' '+esc(nm)+'</div><div class="bn">'+list.length+'</div>'+prev+nav+'</div>'; }).join('');
   box.querySelectorAll('.bub').forEach(el=>{ const k=el.dataset.key; el.onclick=e=>{ if(e.target.closest('.bnav')) return; openList(k); };
     el.querySelectorAll('[data-bs]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const list=itemsFor(k); bSel[k]={i:bubOf(k,list)+(+b.dataset.bs),at:Date.now()}; renderBubbles(); layout(); });
@@ -587,6 +589,12 @@ function enableDrag(pl,key){ let dragEl=null;
     r.addEventListener('dragend',()=>{ r.classList.remove('drag'); pl.querySelectorAll('.over').forEach(x=>x.classList.remove('over')); order[key]=[...pl.querySelectorAll('.lrow[data-id]')].map(x=>x.dataset.id); saveOrder(); clearIF(); });
     r.addEventListener('dragover',e=>{ e.preventDefault(); if(!dragEl||dragEl===r)return; const rect=r.getBoundingClientRect(); const after=(e.clientY-rect.top)/rect.height>0.5; pl.querySelectorAll('.over').forEach(x=>x.classList.remove('over')); r.classList.add('over'); pl.insertBefore(dragEl, after?r.nextSibling:r); }); }); }
 
+/* drag any task row or bubble item onto the Focus core → set it to Now/Focus */
+document.addEventListener('dragstart',e=>{ const r=e.target.closest&&e.target.closest('.lrow[data-id],.bit[data-id]'); if(r&&r.dataset.id&&e.dataTransfer){ try{ e.dataTransfer.setData('text/tbid',r.dataset.id); e.dataTransfer.effectAllowed='copyMove'; }catch(_){} } });
+(function(){ const core=$('#core'); if(!core) return;
+  core.addEventListener('dragover',e=>{ if(e.dataTransfer&&(e.dataTransfer.types||[]).indexOf&&[].indexOf.call(e.dataTransfer.types,'text/tbid')>=0){ e.preventDefault(); core.classList.add('coredrop'); } });
+  core.addEventListener('dragleave',e=>{ if(!core.contains(e.relatedTarget)) core.classList.remove('coredrop'); });
+  core.addEventListener('drop',e=>{ core.classList.remove('coredrop'); const id=e.dataTransfer&&e.dataTransfer.getData('text/tbid'); if(id){ e.preventDefault(); moveSection(id,'focus'); toast('◎ Added to Focus'); } }); })();
 /* ===== overlays ===== */
 const ov=$('#ov'), ovh=$('#ovh'), ovb=$('#ovb');
 function closeOv(){ ov.classList.remove('show'); ovb.innerHTML=''; }
