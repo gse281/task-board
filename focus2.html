@@ -284,7 +284,7 @@ function renderSpheres(){
       '<button type="button" class="who" data-edit="'+s.id+'"><div class="nm'+(s.name?'':' unset')+'">'+esc(s.name||'+ who')+'</div>'+
       '<div class="ph">'+esc(s.phone?fmtPhone(s.phone):'tap to set')+'</div></button>'+
       '<div class="lst">'+(its.length?its.map(function(it){return chipHTML(it,0,true);}).join(''):'<div class="hint">drop items here</div>')+'</div>'+
-      '<div class="ft"><button type="button" data-clear="'+s.id+'"'+(its.length||s.name?'':' disabled')+'>CLEAR</button>'+
+      '<div class="ft"><button type="button" data-org="'+s.id+'"'+(its.length?'':' disabled')+' title="Organize these items">⇅</button><button type="button" data-clear="'+s.id+'"'+(its.length||s.name?'':' disabled')+'>CLEAR</button>'+
       '<button type="button" class="snd" data-send="'+s.id+'"'+(its.length?'':' disabled')+'>TEXT</button></div></div>';
   }).join('')+'<button type="button" class="addsph" id="addSph" title="Add sphere">+</button>';
   $('#sphs').innerHTML=h;
@@ -383,6 +383,7 @@ document.addEventListener('dblclick',function(e){ var c=e.target.closest('.chip'
 document.addEventListener('click',function(e){
   var b;
   if((b=e.target.closest('[data-edit]'))){ openWho(b.dataset.edit); return; }
+  if((b=e.target.closest('[data-org]'))){ openOrganize(b.dataset.org); return; }
   if((b=e.target.closest('[data-send]'))){ openSend(b.dataset.send); return; }
   if((b=e.target.closest('[data-clear]'))){ var s=sph(b.dataset.clear); if(s.items.length){s.items=[];} else {s.name='';s.phone='';} render(); return; }
   if(e.target.closest('#addSph')){ st.spheres.push(blankSpheres(1)[0]); render(); return; }
@@ -407,6 +408,20 @@ function openSheet(html){ closeSheet(); var s=document.createElement('div'); s.c
 function closeSheet(){var s=$('#scrim'); if(s) s.remove();}
 function note(t,cls){var n=$('#sNote'); if(n){n.textContent=t; n.className='note '+(cls||'');}}
 
+function openOrganize(id){ var s=sph(id);
+  var draw=function(){
+    openSheet('<h3>Organize · '+esc(s.name||'recipient')+'</h3>'+
+      (s.items.length?'<div class="batch">'+s.items.map(byId).filter(Boolean).map(function(it,i){return '<div class="bitem" style="flex-direction:row;align-items:center;gap:8px"><span style="flex:1;min-width:0">'+(i+1)+'. '+esc(label(it))+'</span><button class="pill" type="button" data-up="'+it.id+'"'+(i===0?' disabled':'')+'>↑</button><button class="pill" type="button" data-dn="'+it.id+'"'+(i===s.items.length-1?' disabled':'')+'>↓</button><button class="pill warn" type="button" data-rm="'+it.id+'" title="Back to center">✕</button></div>';}).join('')+'</div>':'<div class="note">No items yet — drag some onto this sphere.</div>')+
+      '<div class="acts"><button class="pill go" type="button" id="orgClose">Done</button></div>');
+    var sc=$('#scrim');
+    sc.addEventListener('click',function(e){ var b;
+      if((b=e.target.closest('[data-up]'))){ var i=s.items.indexOf(b.dataset.up); if(i>0){ var x=s.items.splice(i,1)[0]; s.items.splice(i-1,0,x); } render(); draw(); }
+      else if((b=e.target.closest('[data-dn]'))){ var i=s.items.indexOf(b.dataset.dn); if(i>=0&&i<s.items.length-1){ var x=s.items.splice(i,1)[0]; s.items.splice(i+1,0,x); } render(); draw(); }
+      else if((b=e.target.closest('[data-rm]'))){ detach(b.dataset.rm); render(); draw(); } });
+    $('#orgClose').onclick=closeSheet;
+  };
+  draw();
+}
 function openAdd(){
   var leadNames={}; leads.forEach(function(l){leadNames[l.label]=1;}); items.forEach(function(i){if(i.lead)leadNames[i.lead]=1;});
   var projs={}; items.forEach(function(i){if(i.project)projs[i.project]=1;}); PROJ_ORDER.forEach(function(p){if(p)projs[p]=1;});
