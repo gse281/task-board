@@ -572,7 +572,7 @@ body::before{ opacity:.7 }
 <script src="files.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-21 13:46';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-21 14:26';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -3993,9 +3993,9 @@ function openSettings(){
     <label class="field"><span class="lbl">Highlight color</span>
       <input class="inp" id="accentC" type="color" value="${accentNow()}" style="height:44px;padding:4px" oninput="setAccent(this.value)">
       <div class="note" style="margin-top:4px">Presets:
-        <button type="button" class="btn ghost" onclick="setAccent('#39c7df')">🟧 Orange-red</button>
-        <button type="button" class="btn ghost" onclick="setAccent('#e6c34a')">🟡 Yellow</button>
-        <button type="button" class="btn ghost" onclick="setAccent('#39c7df')">🟠 Amber</button></div></label>
+        <button type="button" class="btn ghost" onclick="setAccent('#39c7df')">🔵 Cyan</button>
+        <button type="button" class="btn ghost" onclick="setAccent('#5b8fb0')">🟦 Blue</button>
+        <button type="button" class="btn ghost" onclick="setAccent('#e6c34a')">🟡 Yellow</button></div></label>
     <div class="field"><button type="button" class="btn ghost" onclick="resetLayout()">↺ Reset grid</button></div>
     <div class="note">Keys are stored only in this browser (localStorage). Scope the Airtable token to just this base. Drag a panel by its header — it snaps into the 10×2 grid; whatever it lands on moves to the first open cell.</div>`,
    ()=>{cfg.apiKey=val('k');cfg.baseId=val('b');cfg.tableId=val('tb');cfg.anthropicKey=val('an');setAccent(val('accentC'));saveCfg();atFetch();});
@@ -4003,7 +4003,9 @@ function openSettings(){
 // Highlight color — user-chosen, persisted, applied over the CSS default.
 function setAccent(c){ if(!c)return; document.documentElement.style.setProperty('--accent',c); localStorage.setItem('accent',c); const inp=document.getElementById('accentC'); if(inp)inp.value=c; }
 function accentNow(){ return localStorage.getItem('accent') || (getComputedStyle(document.documentElement).getPropertyValue('--accent').trim()) || '#39c7df'; }
-(function(){ const a=localStorage.getItem('accent'); if(a)document.documentElement.style.setProperty('--accent',a); })();
+(function(){ let a=localStorage.getItem('accent'); const warm=['#e6c34a','#e8683c','#e0a458','#f0b44c','#d4b24a'];
+  if(a&&warm.indexOf(a.toLowerCase())>=0){ localStorage.removeItem('accent'); a=null; }   /* retire the old yellow/orange accents → cyan default */
+  if(a)document.documentElement.style.setProperty('--accent',a); })();
 const val=id=>document.getElementById(id).value.trim();
 
 /* ---------- Reference grid overlay ---------- */
