@@ -155,9 +155,12 @@ a.pill{text-decoration:none}
       <div class="cl">AM · PM calls</div>
       <div class="cc" id="coreCount"></div>
       <div class="filt" id="filt">
-        <button type="button" data-f="all" class="on">ALL</button>
-        <button type="button" data-f="morning">AM</button>
+        <button type="button" data-f="morning" class="on">AM</button>
         <button type="button" data-f="afternoon">PM</button>
+        <button type="button" data-f="calls">CALLS</button>
+        <button type="button" data-f="nextup">NEXT UP</button>
+        <button type="button" data-f="incoming">INCOMING</button>
+        <button type="button" data-f="all">ALL</button>
       </div>
       <div style="margin-top:8px"><button type="button" class="pill go" id="addBtn">＋ Add item</button></div>
     </div>
@@ -204,8 +207,14 @@ var FIELDS=['text','project','lead','slot','done'];
 var src=SNAP.map(function(r){return {id:r[0],text:r[1],project:r[2],lead:r[3],slot:r[4],order:null,done:false};});
 
 function clone(o){return JSON.parse(JSON.stringify(o));}
-function blankSpheres(n){var a=[];for(var i=0;i<n;i++)a.push({id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:'',phone:'',items:[]});return a;}
-var st={spheres:blankSpheres(8),filter:'all',edits:{},savedEdits:{},order:null,savedOrder:null,savedSpheres:null,savedAt:''};
+function blankSpheres(n){var a=[];for(var i=0;i<n;i++)a.push({id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),kind:'recipient',value:'',name:'',phone:'',items:[]});return a;}
+function setEdit(id,f,v){ st.edits[id]=st.edits[id]||{}; st.edits[id][f]=v; }
+function applyBubbleEdit(id,s){ if(!s||!s.kind||s.kind==='recipient'||!s.value) return;
+  if(s.kind==='project') setEdit(id,'project',String(s.value).toUpperCase());
+  else if(s.kind==='lead') setEdit(id,'lead',s.value);
+  else if(s.kind==='category'){ var v=String(s.value).toLowerCase(); if(v==='morning'||v==='afternoon'){ setEdit(id,'slot',v); setEdit(id,'section',''); } else { setEdit(id,'section',v); setEdit(id,'slot',''); } } }
+var st={spheres:blankSpheres(8),filter:'morning',edits:{},savedEdits:{},order:null,savedOrder:null,savedSpheres:null,savedAt:''};
+function bucketOf(it){ return it.slot||it.section||''; }
 try{var sv=JSON.parse(lsGet(LS)||'null'); if(sv&&sv.spheres&&sv.spheres.length){ st=Object.assign(st,sv); }}catch(e){}
 if(!st.savedSpheres) st.savedSpheres=clone(st.spheres);
 function persist(){lsSet(LS,JSON.stringify(st));}
@@ -263,7 +272,7 @@ function chipHTML(it,n,inSph){
 }
 function projOrder(a,b){var ia=PROJ_ORDER.indexOf(a),ib=PROJ_ORDER.indexOf(b);return (ia<0?50:ia)-(ib<0?50:ib)||a.localeCompare(b);}
 function renderPool(){
-  var free=items.filter(function(it){return !it.done&&!owner(it.id)&&(st.filter==='all'||it.slot===st.filter);});
+  var free=items.filter(function(it){return !it.done&&!owner(it.id)&&(st.filter==='all'||bucketOf(it)===st.filter);});
   var groups={}; free.forEach(function(it){var k=it.lead||'';(groups[k]=groups[k]||[]).push(it);});
   var n=0,h='';
   Object.keys(groups).sort(function(a,b){if(!!a!==!!b)return a?-1:1;return a.localeCompare(b);}).forEach(function(k){
@@ -279,13 +288,17 @@ function renderPool(){
 function renderSpheres(){
   var h=st.spheres.map(function(s){
     var its=s.items.map(byId).filter(Boolean);
+    var isR=(s.kind||'recipient')==='recipient';
+    var hasVal=isR?!!s.name:!!s.value;
+    var title=isR?(s.name||'+ who'):(s.value||('+ '+(s.kind||'tag')));
+    var sub=isR?(s.phone?fmtPhone(s.phone):'tap to set'):String(s.kind||'').toUpperCase();
     return '<div class="sph'+(its.length?' has':'')+(selected?' target':'')+'" data-sph="'+s.id+'">'+
       (its.length?'<span class="cnt">'+its.length+'</span>':'')+
-      '<button type="button" class="who" data-edit="'+s.id+'"><div class="nm'+(s.name?'':' unset')+'">'+esc(s.name||'+ who')+'</div>'+
-      '<div class="ph">'+esc(s.phone?fmtPhone(s.phone):'tap to set')+'</div></button>'+
+      '<button type="button" class="who" data-edit="'+s.id+'"><div class="nm'+(hasVal?'':' unset')+'">'+esc(title)+'</div>'+
+      '<div class="ph">'+esc(sub)+'</div></button>'+
       '<div class="lst">'+(its.length?its.map(function(it){return chipHTML(it,0,true);}).join(''):'<div class="hint">drop items here</div>')+'</div>'+
-      '<div class="ft"><button type="button" data-org="'+s.id+'"'+(its.length?'':' disabled')+' title="Organize these items">⇅</button><button type="button" data-clear="'+s.id+'"'+(its.length||s.name?'':' disabled')+'>CLEAR</button>'+
-      '<button type="button" class="snd" data-send="'+s.id+'"'+(its.length?'':' disabled')+'>TEXT</button></div></div>';
+      '<div class="ft"><button type="button" data-org="'+s.id+'"'+(its.length?'':' disabled')+' title="Organize these items">⇅</button><button type="button" data-clear="'+s.id+'"'+(its.length||hasVal?'':' disabled')+'>CLEAR</button>'+
+      (isR?'<button type="button" class="snd" data-send="'+s.id+'"'+(its.length?'':' disabled')+'>TEXT</button>':'')+'</div></div>';
   }).join('')+'<button type="button" class="addsph" id="addSph" title="Add sphere">+</button>';
   $('#sphs').innerHTML=h;
   layout();
@@ -317,7 +330,7 @@ function place(id,t){
   if(!t) return;
   if(t.before===id){ selected=null; render(); return; }
   detach(id);
-  if(t.sph){ var s=sph(t.sph); var i=t.before?s.items.indexOf(t.before):-1; if(i<0) s.items.push(id); else s.items.splice(i,0,id); }
+  if(t.sph){ var s=sph(t.sph); var i=t.before?s.items.indexOf(t.before):-1; if(i<0) s.items.push(id); else s.items.splice(i,0,id); applyBubbleEdit(id,s); }
   else if(t.before){ var o=st.order; o.splice(o.indexOf(id),1); o.splice(o.indexOf(t.before),0,id); }
   selected=null; render();
 }
@@ -475,14 +488,31 @@ function openEdit(id){
 }
 
 function openWho(id){
-  var s=sph(id);
-  var sc=openSheet('<h3>Recipient</h3><div class="leads">'+leads.map(function(l,i){return '<button type="button" data-lead="'+i+'">'+esc(l.label)+'</button>';}).join('')+'</div>'+
-    '<div class="row"><label>Name<input id="whoName" value="'+esc(s.name)+'" autocomplete="off"></label><label>Mobile<input id="whoPhone" inputmode="tel" value="'+esc(s.phone)+'" autocomplete="off"></label></div>'+
-    '<div class="acts"><button class="pill" type="button" id="whoCancel">Cancel</button><button class="pill go" type="button" id="whoSave">Apply</button></div>');
-  sc.querySelector('.leads').addEventListener('click',function(e){var b=e.target.closest('[data-lead]'); if(!b)return; var l=leads[+b.dataset.lead]; $('#whoName').value=l.name; $('#whoPhone').value=l.phone;});
-  $('#whoCancel').onclick=closeSheet;
-  $('#whoSave').onclick=function(){ s.name=$('#whoName').value.trim(); s.phone=$('#whoPhone').value.trim(); closeSheet(); render(); };
-  setTimeout(function(){var n=$('#whoName'); if(n) n.focus();},30);
+  var s=sph(id); var kind=s.kind||'recipient'; var pickCat=String(s.value||'').toLowerCase();
+  var projs={}, leadNames={}; items.forEach(function(i){if(i.project)projs[i.project]=1;if(i.lead)leadNames[i.lead]=1;}); PROJ_ORDER.forEach(function(p){if(p)projs[p]=1;}); leads.forEach(function(l){leadNames[l.label]=1;});
+  var cats=[['morning','AM call'],['afternoon','PM call'],['calls','Calls'],['nextup','Next Up'],['incoming','Incoming'],['bigticket','Big Ticket'],['sunday','Sunday'],['backlog','Backlog'],['focus','Focus']];
+  function body(){
+    var seg='<div class="seg" id="bKind">'+[['recipient','Person'],['project','Project'],['lead','Lead'],['category','Category']].map(function(k){return '<button type="button" data-k="'+k[0]+'"'+(kind===k[0]?' class="on"':'')+'>'+k[1]+'</button>';}).join('')+'</div>';
+    var inner;
+    if(kind==='recipient'){ inner='<div class="leads">'+leads.map(function(l,i){return '<button type="button" data-lead="'+i+'">'+esc(l.label)+'</button>';}).join('')+'</div><div class="row"><label>Name<input id="whoName" value="'+esc(s.name||'')+'" autocomplete="off"></label><label>Mobile<input id="whoPhone" inputmode="tel" value="'+esc(s.phone||'')+'" autocomplete="off"></label></div>'; }
+    else if(kind==='category'){ inner='<label>Category<div class="leads" id="catList">'+cats.map(function(c){return '<button type="button" data-val="'+c[0]+'"'+(pickCat===c[0]?' style="outline:2px solid var(--cyan)"':'')+'>'+esc(c[1])+'</button>';}).join('')+'</div></label><div class="note">Drop an item on this bubble → sets its category. Applies when you Save.</div>'; }
+    else { var listId=kind==='project'?'bProjL':'bLeadL'; var opts=Object.keys(kind==='project'?projs:leadNames).sort(); inner='<label>'+(kind==='project'?'Project':'Lead')+'<input id="bVal" list="'+listId+'" value="'+esc(s.value||'')+'" autocomplete="off"></label><datalist id="'+listId+'">'+opts.map(function(o){return '<option value="'+esc(o)+'">';}).join('')+'</datalist><div class="note">Drop an item here → sets its '+(kind==='project'?'project':'lead')+'. Applies on Save.</div>'; }
+    return '<h3>Bubble</h3>'+seg+inner+'<div class="acts"><button class="pill" type="button" id="whoCancel">Cancel</button><button class="pill go" type="button" id="whoSave">Apply</button></div>';
+  }
+  function wire(){ var sc=$('#scrim');
+    $('#bKind').addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;kind=b.dataset.k;openSheet(body());wire();});
+    var lv=sc.querySelector('.leads');
+    if(lv&&kind==='recipient') lv.addEventListener('click',function(e){var b=e.target.closest('[data-lead]'); if(!b)return; var l=leads[+b.dataset.lead]; $('#whoName').value=l.name; $('#whoPhone').value=l.phone;});
+    if(lv&&kind==='category') lv.addEventListener('click',function(e){var b=e.target.closest('[data-val]'); if(!b)return; pickCat=b.dataset.val; [].forEach.call(lv.children,function(x){x.style.outline=x===b?'2px solid var(--cyan)':'';}); });
+    $('#whoCancel').onclick=closeSheet;
+    $('#whoSave').onclick=function(){ s.kind=kind;
+      if(kind==='recipient'){ s.name=$('#whoName').value.trim(); s.phone=$('#whoPhone').value.trim(); s.value=''; }
+      else if(kind==='category'){ s.value=pickCat||''; s.name=''; s.phone=''; }
+      else { s.value=$('#bVal').value.trim(); s.name=''; s.phone=''; }
+      st.spheres.filter(function(x){return x.id===s.id;}).forEach(function(x){x.items.forEach(function(iid){applyBubbleEdit(iid,s);});});
+      closeSheet(); render(); };
+  }
+  openSheet(body()); wire();
 }
 
 function openSend(id){
@@ -539,7 +569,7 @@ function doSave(){
   var patches={}, orderChanged=JSON.stringify(st.order)!==JSON.stringify(st.savedOrder);
   Object.keys(st.edits).forEach(function(id){ var e=st.edits[id], f={};
     if('text' in e) f.Task=e.text; if('project' in e) f.Project=e.project; if('lead' in e) f.SBLead=e.lead;
-    if('slot' in e) f.MeetingSlot=e.slot; if(e.done) f.Status='Done';
+    if('slot' in e){ f.MeetingSlot=e.slot; if(e.slot) f.Section=''; } if('section' in e){ f.Section=e.section; if(e.section) f.MeetingSlot=''; } if(e.done) f.Status='Done';
     patches[id]=f; });
   if(orderChanged){ ['morning','afternoon'].forEach(function(sl){ var k=0;
     items.forEach(function(it){ if(it.done||it.slot!==sl) return; k++; var o=k*10; var s=src.filter(function(x){return x.id===it.id;})[0];
@@ -587,10 +617,10 @@ function loadLive(){
   var out=[];
   function page(off){
     var u=new URL('https://api.airtable.com/v0/'+BASE+'/'+encodeURIComponent(ITEMS));
-    u.searchParams.set('filterByFormula',"AND(OR({MeetingSlot}='morning',{MeetingSlot}='afternoon'),{Status}!='Done')");
+    u.searchParams.set('filterByFormula',"{Status}!='Done'");
     u.searchParams.set('pageSize','100'); if(off)u.searchParams.set('offset',off);
     return fetch(u,{headers:H()}).then(function(r){if(!r.ok)throw r.status;return r.json();}).then(function(d){
-      (d.records||[]).forEach(function(rec){var f=rec.fields;out.push({id:rec.id,text:flat(f.Task)||flat(f.Name),project:flat(f.Project).trim().toUpperCase(),lead:flat(f.SBLead).trim(),slot:flat(f.MeetingSlot).toLowerCase(),order:(f.ListOrder==null?null:+f.ListOrder),done:false});});
+      (d.records||[]).forEach(function(rec){var f=rec.fields;out.push({id:rec.id,text:flat(f.Task)||flat(f.Name),project:flat(f.Project).trim().toUpperCase(),lead:flat(f.SBLead).trim(),slot:flat(f.MeetingSlot).toLowerCase(),section:flat(f.Section).toLowerCase(),order:(f.ListOrder==null?null:+f.ListOrder),done:false});});
       return d.offset?page(d.offset):out;});
   }
   page().then(function(list){
