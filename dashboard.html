@@ -572,7 +572,7 @@ body::before{ opacity:.7 }
 <script src="files.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-16 16:19';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-20 20:22';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -1353,9 +1353,13 @@ function heightPx(id){ const h=meta.height&&meta.height[id]; return h?({1:'150px
 // A just-dragged ListOrder beats a stale Airtable read for 3 min (the save may not have landed yet)
 function loMap(){ try{ return JSON.parse(localStorage.getItem('loLocal')||'{}'); }catch(e){ return {}; } }
 function loFresh(id,v){ const m=loMap(), e=m[id]; return (e&&Date.now()-e.at<180000)?e.v:v; }
+function byLeadProjD(a,b){ const la=(a.lead||'').toLowerCase(),lb=(b.lead||'').toLowerCase(); if(!!la!==!!lb)return la?-1:1; if(la!==lb)return la<lb?-1:1;
+  const pa=(a.project||'').toLowerCase(),pb=(b.project||'').toLowerCase(); if(!!pa!==!!pb)return pa?-1:1; if(pa!==pb)return pa<pb?-1:1; return new Date(a.createdTime||0)-new Date(b.createdTime||0); }
 function orderRows(items,sec){
-  // Calls / Morning / Afternoon: shared drag order from Airtable ListOrder (same as the iPhone ≡ handle)
-  if(sec==='calls'||sec==='morning'||sec==='afternoon'){ if(items.some(t=>t.listOrder!=null)) return items.map((t,i)=>({t,i})).sort((a,b)=>((a.t.listOrder??1e9)-(b.t.listOrder??1e9))||a.i-b.i).map(x=>x.t); }
+  // Morning / Afternoon: sort by lead then project (Roni's standard)
+  if(sec==='morning'||sec==='afternoon'){ return [...items].sort(byLeadProjD); }
+  // Calls: shared drag order from Airtable ListOrder (same as the iPhone ≡ handle)
+  if(sec==='calls'){ if(items.some(t=>t.listOrder!=null)) return items.map((t,i)=>({t,i})).sort((a,b)=>((a.t.listOrder??1e9)-(b.t.listOrder??1e9))||a.i-b.i).map(x=>x.t); }
   const ord=meta.taskOrder&&meta.taskOrder[sec]; if(!ord)return items;
   return [...items].sort((a,b)=>{const ia=ord.indexOf(a.id),ib=ord.indexOf(b.id);return (ia<0?1e9:ia)-(ib<0?1e9:ib);});
 }

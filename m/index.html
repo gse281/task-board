@@ -672,6 +672,9 @@ mark{background:#e0a45855;color:inherit;border-radius:3px;padding:0 1px}
   background:#2b2521;border:1px solid #3a322c;border-radius:16px;padding:12px 14px 12px 16px;font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.4);
   transform:translateY(20px);opacity:0;pointer-events:none;transition:all .25s var(--ease)}
 #toast.on{transform:none;opacity:1;pointer-events:auto}
+#toast.top{top:calc(8px + env(safe-area-inset-top,0px));bottom:auto;transform:translateY(-20px)}#toast.top.on{transform:none}
+.cardzone .dnav{position:absolute;top:50%;z-index:4;width:44px;height:64px;margin-top:-32px;border:0;border-radius:14px;background:rgba(7,20,26,.28);color:rgba(234,246,251,.75);font-size:30px;font-weight:300;line-height:1;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}
+.cardzone .dnav:active{background:rgba(57,199,223,.35);color:#fff}.cardzone .dnav.l{left:2px}.cardzone .dnav.r{right:2px}
 #toast .tm{flex:1}
 #toast button{color:var(--accent);font-weight:800;padding:8px 10px;min-height:40px}
 .ptr{height:0;overflow:hidden;text-align:center;color:var(--muted);font-size:13px;transition:height .2s}
@@ -745,7 +748,7 @@ body{ background:radial-gradient(130% 120% at 50% 16%, #0d1920 0%, #0a1216 55%, 
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-16 16:19';   // stamped by deploy.sh
+const BUILD='2026-10-20 20:22';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -1660,7 +1663,9 @@ function setSlot(t,slot){
 /* ---------- queries ---------- */
 // ≡ drag order (Airtable ListOrder) wins; items never dragged keep their default order after the ordered ones
 function byListOrder(arr){ return arr.map((t,i)=>({t,i})).sort((a,b)=>((a.t.listOrder??1e9)-(b.t.listOrder??1e9))||a.i-b.i).map(x=>x.t); }
-function slotTasks(slot){ return byListOrder(tasks.filter(t=>liveCall(t)&&slotOf(t)===slot).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0))); } // newest first, then your drag order
+function byLeadProjM(a,b){ const la=(a.lead||'').toLowerCase(),lb=(b.lead||'').toLowerCase(); if(!!la!==!!lb)return la?-1:1; if(la!==lb)return la<lb?-1:1;
+  const pa=(a.project||'').toLowerCase(),pb=(b.project||'').toLowerCase(); if(!!pa!==!!pb)return pa?-1:1; if(pa!==pb)return pa<pb?-1:1; return daysOpen(a)-daysOpen(b); }
+function slotTasks(slot){ return tasks.filter(t=>liveCall(t)&&slotOf(t)===slot).sort(byLeadProjM); } // sorted by lead then project (Roni's standard)
 function groups(dim){
   const m=new Map();
   for(const t of tasks){ if(!live(t)) continue; const k=t[dim]||''; m.set(k,(m.get(k)||0)+1); }
@@ -2289,7 +2294,7 @@ function paintDeck(s){
   el.insertAdjacentHTML('beforeend',`<div class="deckwrap">
       <div class="progress"><span>${q.length} left</span><div class="bar"><i style="width:${pct}%;background:${barC}"></i></div><span>${s.handled||0} done</span></div>
       ${t.project||t.sub?`<div class="ref" style="--pc:${projColor(t.project)}"><span style="font-size:16px">📍</span><div style="min-width:0"><div class="rk">PROJECT · SUB · LEAD</div><div class="rv">${esc([t.project||'—',t.sub||'—',t.lead||'—'].join(' · '))}</div></div></div>`:''}
-      <div class="cardzone"><div class="tcard" id="top">${cardInner(t,r)}
+      <div class="cardzone"><button class="dnav l" data-dprev aria-label="Previous card">‹</button><button class="dnav r" data-dnext aria-label="Next card">›</button><div class="tcard" id="top">${cardInner(t,r)}
         <div class="stamp done">DONE</div><div class="stamp snz">SNOOZE</div><div class="stamp skip">NEXT</div>
         <div class="tint d">✓ DONE</div><div class="tint z">SNOOZE 10d 😴</div><div class="tint n">↑ NEXT</div></div>
         ${q.length>1?`<div class="upnext"><div class="h">Up next</div>${q.slice(1,5).map(x=>`<button data-jump="${x.id}"><span class="un">${esc(cleanName(x))}</span><span class="ud">${esc(r.kind==='group'&&r.dim==='project'?(x.lead||x.sub||''):(x.project||x.lead||''))}</span></button>`).join('')}</div>`:''}</div>
@@ -2314,6 +2319,7 @@ function paintDeck(s){
   top.querySelectorAll('[data-claude]').forEach(b=>b.onclick=e=>{e.stopPropagation(); TaskEditor.open(t,{claude:true});});
   top.querySelectorAll('[data-slotbtn]').forEach(b=>b.onclick=e=>{e.stopPropagation(); setSlot(t,b.dataset.slotbtn); paintDeck(s);});
   swipe(top,kind=>act(kind));
+  { const dp=el.querySelector('[data-dprev]'), dn=el.querySelector('[data-dnext]'); if(dp) dp.onclick=e=>{ e.stopPropagation(); buzz(6); act('back'); }; if(dn) dn.onclick=e=>{ e.stopPropagation(); buzz(6); act('fwd'); }; }
   // long-press Snooze = choose how long
   let lp; const sb=el.querySelector('[data-a="snooze"]');
   sb.addEventListener('touchstart',()=>{ lp=setTimeout(()=>{ lp='fired'; snoozeSheet(s,t,top); },480); },{passive:true});
@@ -2694,6 +2700,7 @@ function settingsSheet(){
 let tt;
 function toast(msg,undo){
   const el=document.getElementById('toast'), ub=document.getElementById('undoBtn');
+  { const top=stack[stack.length-1]; el.classList.toggle('top',!!(top&&top.route&&top.route.type==='deck')); }   // card/drill view: Undo shows at the top (thumb area stays clear)
   el.querySelector('.tm').textContent=msg; el.classList.add('on'); undoFn=undo||null; ub.classList.toggle('hidden',!undo);
   ub.onclick=async()=>{ const f=undoFn; undoFn=null; el.classList.remove('on'); if(f){ await f(); stack.forEach(s=>{ if(s.route.type==='deck'){ s.queue=null; s.handled=Math.max(0,(s.handled||0)-1); } }); render(); } };
   clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('on'), undo?4500:2200);

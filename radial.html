@@ -136,6 +136,9 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .fbox .fbh .fbt{flex:1;font:800 14px ui-monospace,Menlo,monospace;letter-spacing:1.5px;color:#cdeef5}
 .fbox .fbh .fbc{font:700 12px ui-monospace,Menlo,monospace;color:var(--dim)}
 .fbox .fbb{overflow:auto;max-height:40vh;padding:2px 12px 10px}
+.oinav{display:flex;align-items:center;justify-content:center;gap:12px;margin-top:9px;font:700 11px ui-monospace,Menlo,monospace;color:var(--dim);font-variant-numeric:tabular-nums}
+.oinav button{border:1px solid var(--line);background:transparent;color:var(--dim);border-radius:7px;width:28px;height:24px;cursor:pointer}
+.oinav button:hover{color:var(--cyan);border-color:var(--cyan)}
 .filist{display:flex;flex-direction:column;gap:4px}
 .fqrow{display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--line)}
 .fqi{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden}
@@ -281,6 +284,8 @@ function ringKeys(){ const A=ringAll().map(x=>x[0]), sel=ringPref().sel; let poo
   const pages=Math.max(1,Math.ceil(pool.length/8)); ringPage%=pages; return pool.slice(ringPage*8,ringPage*8+8); }
 let ringPage=0; setInterval(()=>{ if(document.hidden||document.querySelector('#bubbles .bub:hover')) return; ringPage++; clearIF(); renderBubbles(); layout(); },180000);
 const capOf=k=>{ const m=/^([pls]):(.*)$/.exec(k); if(m) return [{p:'▣',l:'◍',s:'◆'}[m[1]],m[2]]; return CAT[k]||['•',k]; };
+function byLeadProj(a,b){ const la=(a.lead||'').toLowerCase(), lb=(b.lead||'').toLowerCase(); if(!!la!==!!lb) return la?-1:1; if(la!==lb) return la<lb?-1:1;
+  const pa=(a.project||'').toLowerCase(), pb=(b.project||'').toLowerCase(); if(!!pa!==!!pb) return pa?-1:1; if(pa!==pb) return pa<pb?-1:1; return daysOpen(a)-daysOpen(b); }
 function _compute(key){ const L=sec=>tasks.filter(t=>live(t)&&sectionOf(t)===sec);
   { const m=/^([pls]):(.*)$/.exec(key); if(m){ const f=RING_F[m[1].toUpperCase()]; return applyOrder(key,tasks.filter(t=>live(t)&&splitV(t[f]).includes(m[2])).sort((a,b)=>score(b)-score(a))); } }
   switch(key){
@@ -289,7 +294,8 @@ function _compute(key){ const L=sec=>tasks.filter(t=>live(t)&&sectionOf(t)===sec
     case 'incoming': { const td=todayISO(); return applyOrder('incoming', tasks.filter(t=>live(t)&&(sectionOf(t)==='incoming'||(t.createdTime&&isoOf(new Date(t.createdTime))===td))).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0))); }
     case 'still': return applyOrder('still', tasks.filter(t=>live(t)&&daysOpen(t)>=10&&!t.project&&!t.lead).sort((a,b)=>daysOpen(b)-daysOpen(a)));
     case 'attention': return tasks.filter(t=>live(t)&&daysOpen(t)>=14).sort((a,b)=>daysOpen(b)-daysOpen(a));
-    case 'morning': case 'afternoon': case 'calls': return applyOrder(key, L(key).sort((a,b)=>daysOpen(a)-daysOpen(b)).map((t,i)=>({t,i})).sort((a,b)=>((a.t.listOrder??1e9)-(b.t.listOrder??1e9))||a.i-b.i).map(x=>x.t));
+    case 'morning': case 'afternoon': return applyOrder(key, L(key).sort(byLeadProj));
+    case 'calls': return applyOrder('calls', L('calls').sort((a,b)=>daysOpen(a)-daysOpen(b)).map((t,i)=>({t,i})).sort((a,b)=>((a.t.listOrder??1e9)-(b.t.listOrder??1e9))||a.i-b.i).map(x=>x.t));
     case 'nextup': return applyOrder('nextup', tasks.filter(t=>live(t)&&(sectionOf(t)==='nextup'||t.nextUp)).sort((a,b)=>((a.nuOrder??1e9)-(b.nuOrder??1e9))));
     case 'respond': return respond;
     case 'meeting': return todayMtgItems();
@@ -427,7 +433,7 @@ async function cxUse(name,phone){ const k=cxKey(phone); if(k.length<7||demo||!cf
 const cxRow=(n,o,p)=>{ const d=String(p).replace(/[^\d+]/g,''); return `<div class="cxr"><span class="cxn"><b>${esc(n||p)}</b>${o?`<i>${esc(o)}</i>`:''}<i>${esc(p)}</i></span><a class="cxc" href="tel:${esc(d)}" data-cu="${esc(n||'')}" title="Call (iPhone / FaceTime)">Call</a><a class="cxt" href="sms:${esc(d)}" data-cu="${esc(n||'')}" title="Text (Messages)">Text</a></div>`; };
 function cxHTML(){ const q=cxQ.trim(); let body='';
   if(!q){ const F=cuRows.filter(r=>!r.hidden&&(r.pinned||r.count)).sort((a,b)=>((+b.pinned)-(+a.pinned))||(cuNow(b)-cuNow(a))).slice(0,8);
-    body=F.length?`<div class="cxh">Frequent</div><div class="cxf">${F.map(r=>`<span class="cxchip"><b>${esc((r.name||r.phone).split(' ').slice(0,2).join(' '))}</b><a href="tel:${esc(String(r.phone).replace(/[^\d+]/g,''))}" data-cu="${esc(r.name)}" class="cxc">Call</a><a href="sms:${esc(String(r.phone).replace(/[^\d+]/g,''))}" data-cu="${esc(r.name)}" class="cxt">Text</a></span>`).join('')}</div>`:''; }
+    body=F.length?`<div class="cxh">Frequent</div>${F.map(r=>cxRow(r.name||r.phone,r.org||'',r.phone)).join('')}`:''; }
   else { const hits=cxSearch(q); const e=encodeURIComponent(q);
     body=(hits.length?hits.map(c=>(c.p||[]).slice(0,2).map((p,i)=>cxRow(i?'':c.n,i?'':c.o,p)).join('')).join(''):`<div class="none" style="padding:6px 2px">${cxContacts.length?'Not in Contacts — look it up:':'Contacts not loaded'}</div>`)
       +`<div class="cxlk"><a href="https://mail.google.com/mail/u/?authuser=rbenjamini%40gmail.com#search/${e}" target="_blank" rel="noopener">Gmail</a><a href="https://www.google.com/search?q=${encodeURIComponent(q+' phone')}" target="_blank" rel="noopener">Web</a><a href="https://claude.ai/new?q=${encodeURIComponent('Find the phone number for '+q+' — check my email and contacts')}" target="_blank" rel="noopener">Ask Claude</a><button data-cxsave>+ Save number</button></div>`; }
@@ -439,7 +445,7 @@ function renderCx(){ const host=document.querySelector('#cxHost'); if(!host) ret
 
 function focusCx(){ const q=$('#cxQ'); if(!q){ renderCx(); } const q2=$('#cxQ'); if(q2){ q2.scrollIntoView({block:'nearest'}); q2.focus(); q2.select(); const p=q2.closest('.pane'); if(p){ p.classList.add('urgent'); setTimeout(()=>p.classList.remove('urgent'),900); } } }
 /* ☀︎ Morning / ◑ Afternoon: two slim side-by-side boxes (iPhone gradients), one task each, rotating every 30s; ‹ › step; click → the list */
-const amI={morning:0,afternoon:0}, amAt={morning:0,afternoon:0};
+const amI={morning:0,afternoon:0}, amAt={morning:0,afternoon:0}; let oiI=0;
 function amCycle(){ ['morning','afternoon'].forEach(k=>{ if(Date.now()-amAt[k]>120000) amI[k]++; }); renderAmPm(); }
 // 👥 Invite to the call — full shared screen (invite.js) in the Focus drawer
 function openCallInvite(){ ovh.innerHTML='👥 Invite to the call<button class="x" data-x>✕</button>'; ovb.innerHTML=''; ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; Invite.mount(ovb,{toast}); }
@@ -473,11 +479,13 @@ function renderCorners(){
     '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span>'+incNav+'</div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div><div class="pane" id="cqPane" style="display:none"></div>';
   renderCQPane();
   const shortTime=x=>{ const r=String(x).match(/(\d+)\s*(h|hr|hour|m|min)/i); return r?'~'+r[1]+(/^h/i.test(r[2])?'h':'m'):''; };
-  const oi=window.Guide?Guide.list(tasks):[];
-  $('#cML').innerHTML='<div class="pane'+(oi.some(t=>Guide.overdue(t))?' urgent':'')+'"><div class="ph" style="cursor:default">▤ At the computer<span class="pn">'+oi.length+'</span></div>'+
-    (oi.length?'<div class="oisub">Desk tasks with guides · tap one to walk through it<br>~min = your time · d = days open</div><div class="oil">'+oi.map(t=>{ const od=Guide.overdue(t), m=Guide.meta(t);
-      return '<div class="lrow" data-guide="'+t.id+'" title="'+esc(cleanName(t))+'"><span class="dot'+(od||Guide.ageDays(t)>=7?' o':'')+'" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(od?' o':'')+'">'+(m.on?'<span class="tm">step '+(m.on+1)+'/'+m.n+'</span>':m.time?'<span class="tm">'+esc(shortTime(m.time))+'</span>':'')+(od?od+'d late':Guide.ageDays(t)+'d')+'</span></div>'; }).join('')+'</div>':'<div class="none">All clear.</div>')+'</div>';
+  const oi=window.Guide?Guide.list(tasks):[]; const oiN=oi.length; const oc=oiN?oi[((oiI%oiN)+oiN)%oiN]:null;
+  const ocRow=t=>{ const od=Guide.overdue(t), m=Guide.meta(t);
+    return '<div class="lrow" data-guide="'+t.id+'" title="'+esc(cleanName(t))+'"><span class="dot'+(od||Guide.ageDays(t)>=7?' o':'')+'" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(od?' o':'')+'">'+(m.on?'<span class="tm">step '+(m.on+1)+'/'+m.n+'</span>':m.time?'<span class="tm">'+esc(shortTime(m.time))+'</span>':'')+(od?od+'d late':Guide.ageDays(t)+'d')+'</span></div>'; };
+  $('#cML').innerHTML='<div class="pane'+(oi.some(t=>Guide.overdue(t))?' urgent':'')+'"><div class="ph" style="cursor:default">▤ At the computer<span class="pn">'+oiN+'</span></div>'+
+    (oc?('<div class="oione">'+ocRow(oc)+'<div class="oinav"><button data-oip aria-label="Previous">‹</button><span>'+((((oiI%oiN)+oiN)%oiN)+1)+' / '+oiN+'</span><button data-oin aria-label="Next">›</button></div></div>'):'<div class="none">All clear.</div>')+'</div>';
   document.querySelectorAll('#cML [data-guide]').forEach(r=>r.onclick=()=>openGuide(r.dataset.guide));
+  { const p=$('#cML [data-oip]'), n=$('#cML [data-oin]'); if(p)p.onclick=e=>{e.stopPropagation();oiI--;renderCorners();}; if(n)n.onclick=e=>{e.stopPropagation();oiI++;renderCorners();}; }
   renderFilesBox();
   const td=todayISO(); const days=wx.filter(w=>w.date>=td).slice(0,7);
   const cell=w=>{ const nm=w.date===td?'Today':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date(w.date+'T12:00:00').getDay()]; const tc=w.hi>=90?'hot':w.hi<=32?'cold':''; const amt=w.pr>0.02?w.pr.toFixed(2).replace(/^0/,'')+'"':'';
