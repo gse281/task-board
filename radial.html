@@ -98,6 +98,14 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .lrow .lm{color:var(--dim);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lrow .ld{font:700 11px ui-monospace,Menlo,monospace;color:var(--dim);flex:none}
 .lrow .ld.o{color:var(--orange)}
+/* STANDARD row + group headers (shared component) */
+.grphd{font:700 10px ui-monospace,Menlo,monospace;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin:11px 2px 5px}
+.grphd:first-child{margin-top:0}
+.lrow.std{background:rgba(13,26,33,.55);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:5px}
+.lrow.std:hover{border-color:rgba(57,199,223,.45);background:rgba(13,26,33,.85)}
+.lrow .lnum{flex:none;font:700 11px ui-monospace,Menlo,monospace;color:var(--dim);min-width:16px;text-align:center;font-variant-numeric:tabular-nums}
+.lrow .pchip{flex:none;font:700 9px ui-monospace,Menlo,monospace;letter-spacing:.4px;color:#07141a;background:var(--pc,#39c7df);border-radius:5px;padding:2px 6px;max-width:94px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase}
+.lrow .lchip{flex:none;font:700 9px ui-monospace,Menlo,monospace;letter-spacing:.4px;color:var(--cyan);border:1px solid var(--line);border-radius:5px;padding:1px 6px;white-space:nowrap}
 .lrow .rmcat,.lrow .tick{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);color:var(--dim);flex:none;display:grid;place-items:center;font-size:13px}
 .lrow .rmcat:hover{color:var(--cyan);border-color:var(--cyan)} .lrow .tick:hover{color:var(--green);border-color:var(--green)}
 .lrow.drag{opacity:.4} .lrow.over{box-shadow:inset 0 2px 0 var(--cyan)}
@@ -589,11 +597,23 @@ function resetMoves(){ MV={}; MVS={}; SV('focus.mv',MV); SV('focus.mvsize',MVS);
 { const _rc=renderCorners; renderCorners=function(){ const r=_rc.apply(this,arguments); applyMoves(); return r; }; const _rb=renderBubbles; renderBubbles=function(){ const r=_rb.apply(this,arguments); applyMoves(); return r; }; }
 
 /* ===== rows + lists ===== */
-function rowHTML(t){ const d=daysOpen(t);
-  return '<div class="lrow" data-id="'+t.id+'" draggable="true"><span class="grip">⋮⋮</span><span class="dot" style="background:'+projColor(t.project)+'"></span>'+
-    '<span class="lt"><span class="ln">'+esc(cleanName(t))+'</span>'+((t.project||t.lead)?'<span class="lm">'+esc([t.project,t.lead].filter(Boolean).join(' · '))+'</span>':'')+'</span>'+
+/* STANDARD task row (shared look across Focus/dashboard/iPhone/Focus 2): grip · dot · #n · project-chip · name · lead-chip · age · ⊘ ✓ */
+function rowHTML(t,n){ const d=daysOpen(t); const pj=t.project?String(t.project).split(',')[0].trim():'';
+  return '<div class="lrow std" data-id="'+t.id+'" draggable="true"><span class="grip">⋮⋮</span><span class="dot" style="background:'+projColor(t.project)+'"></span>'+
+    (n?'<span class="lnum">'+n+'</span>':'')+
+    (pj?'<span class="pchip" style="--pc:'+projColor(t.project)+'">'+esc(pj)+'</span>':'')+
+    '<span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span>'+
+    (t.lead?'<span class="lchip">'+esc(t.lead)+'</span>':'')+
     '<span class="ld'+(d>=21?' o':'')+'">'+d+'d</span><button class="rmcat" data-rm="'+t.id+'" title="Remove from category">⊘</button><button class="tick" data-done="'+t.id+'" title="Done">✓</button></div>'; }
-function capRows(items,n){ if(!items.length) return '<div class="none">Nothing here.</div>'; let h=items.slice(0,n).map(rowHTML).join(''); if(items.length>n) h+='<div class="none">+'+(items.length-n)+' more</div>'; return h; }
+function capRows(items,n){ if(!items.length) return '<div class="none">Nothing here.</div>'; let h=items.slice(0,n).map(t=>rowHTML(t)).join(''); if(items.length>n) h+='<div class="none">+'+(items.length-n)+' more</div>'; return h; }
+/* grouped by lead, numbered within the list — the standard list view */
+function groupRows(items,cap){ if(!items.length) return '<div class="none">Nothing here.</div>';
+  const g={}; items.forEach(t=>{ const k=(t.lead||'').trim(); (g[k]=g[k]||[]).push(t); });
+  const keys=Object.keys(g).sort((a,b)=>{ if(!!a!==!!b) return a?-1:1; return a.localeCompare(b); });
+  let n=0,shown=0,h=''; const lim=cap||200;
+  for(const k of keys){ if(shown>=lim) break; h+='<div class="grphd">'+esc(k||'NO LEAD')+'</div>';
+    for(const t of g[k]){ if(shown>=lim){ h+='<div class="none">+ more…</div>'; break; } h+=rowHTML(t,++n); shown++; } }
+  return h; }
 function wireRows(root,key){ if(!root)return; root.querySelectorAll('.lrow[data-id]').forEach(r=>{ const id=r.dataset.id;
   const dn=r.querySelector('[data-done]'); if(dn)dn.onclick=e=>{ e.stopPropagation(); markDone(id); r.remove(); };
   const rm=r.querySelector('[data-rm]'); if(rm)rm.onclick=e=>{ e.stopPropagation(); removeFromCat(id); r.remove(); };
@@ -649,7 +669,7 @@ function openList(key){ const em=capOf(key)[0],cap=capOf(key)[1]; const items=ke
   if(key==='respond'){ ovb.innerHTML='<div class="plist">'+(items.length?items.map(e=>'<div class="lrow">'+(e.link?'<a href="'+esc(e.link)+'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:flex;gap:10px;align-items:center;flex:1;min-width:0">':'<span style="display:flex;gap:10px;align-items:center;flex:1;min-width:0">')+'<span class="dot" style="background:'+projColor(e.project)+'"></span><span class="lt"><span class="ln">'+esc(e.name)+'</span><span class="lm">'+esc(e.project||'')+'</span></span>'+(e.link?'</a>':'</span>')+'</div>').join(''):'<div class="none">No replies.</div>')+'</div>';
     ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; return; }
   const canAdd=!/^(priority|still|attention)$/.test(key);
-  ovb.innerHTML=(canAdd?'<div class="addrow" style="margin:0 0 10px"><input id="ovAdd" placeholder="＋ Add to '+esc(cap)+'…"><button id="ovAddBtn">Add</button></div>':'')+'<div class="phint">Tap a task to edit · ⋮⋮ drag to reorder · ⊘ remove · ✓ done</div><div class="plist" id="plist">'+capRows(items,200)+'</div>';
+  ovb.innerHTML=(canAdd?'<div class="addrow" style="margin:0 0 10px"><input id="ovAdd" placeholder="＋ Add to '+esc(cap)+'…"><button id="ovAddBtn">Add</button></div>':'')+'<div class="phint">Tap a task to edit · ⋮⋮ drag to reorder · ⊘ remove · ✓ done</div><div class="plist" id="plist">'+groupRows(items,200)+'</div>';
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; wireRows($('#plist'),key);
   const oa=$('#ovAdd'); if(oa){ oa.setAttribute('enterkeyhint','done'); const go=()=>{ const v=oa.value.trim(); if(!v)return; oa.value=''; createTask(key,v); openList(key); const n=$('#ovAdd'); if(n)n.focus(); }; $('#ovAddBtn').onclick=go; oa.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.isComposing)go();}); } }
 
@@ -713,7 +733,7 @@ function openFiltered(field,value){
   const match=t=>field==='project'?(t.project||'')===value:field==='sub'?(t.sub||'')===value:field==='lead'?(t.lead||'')===value:field==='category'?catName(sectionOf(t))===value:false;
   const items=tasks.filter(t=>live(t)&&match(t)).sort(byLeadProj);
   ovh.innerHTML='▦ '+esc(value)+' · '+items.length+'<button class="x" data-x>✕</button>';
-  ovb.innerHTML='<div class="phint"><button class="pill" data-back>‹ All filters</button> · tap a task to edit</div><div class="plist" id="plist">'+capRows(items,200)+'</div>';
+  ovb.innerHTML='<div class="phint"><button class="pill" data-back>‹ All filters</button> · tap a task to edit</div><div class="plist" id="plist">'+groupRows(items,200)+'</div>';
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; wireRows($('#plist'),null);
   const bk=ovb.querySelector('[data-back]'); if(bk) bk.onclick=openFilters;
 }
