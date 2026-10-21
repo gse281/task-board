@@ -79,7 +79,7 @@ kbd{display:inline-block;background:var(--panel2);border:1px solid var(--line);b
 /* Triage: Done / Don't care / Auto-sort as three drop zones in one box */
 .triage-body{gap:6px}
 .tzone{border:1px dashed var(--line);border-radius:8px;padding:10px 8px;text-align:center;flex:1;display:flex;flex-direction:column;justify-content:center;min-height:44px}
-.tzone.tz-hot{border-color:var(--accent);background:rgba(224,164,88,.12)}
+.tzone.tz-hot{border-color:var(--accent);background:rgba(57,199,223,.12)}
 .tz-l{font-size:13px;font-weight:700}
 .tz-h{font-size:10px;color:var(--muted)}
 .trisub{border-top:1px solid var(--line);margin-top:6px;padding-top:4px}
@@ -97,7 +97,7 @@ kbd{display:inline-block;background:var(--panel2);border:1px solid var(--line);b
 .revrow.gone{opacity:.35}
 .revname{flex:1;font-size:14px;font-weight:600;cursor:pointer;min-width:0}
 .revtags{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px}
-.revsug{background:rgba(224,164,88,.14);border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;cursor:pointer}
+.revsug{background:rgba(57,199,223,.14);border:1px solid var(--accent);color:var(--accent);border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;cursor:pointer}
 /* 3-letter P/L/S bubbles under a task name */
 .plstag{display:inline-block;background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:5px;padding:1px 5px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;cursor:pointer;line-height:1.5}
 .plstag:hover{border-color:var(--accent);color:var(--ink)}
@@ -137,7 +137,7 @@ kbd{display:inline-block;background:var(--panel2);border:1px solid var(--line);b
 .whobtn{font-size:15px;font-weight:600;color:#f4efe9;text-decoration:none;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .whobtn i{font-style:normal;color:var(--muted);font-weight:400;font-size:12px}.whobtn.guess b{color:#f0b44c;font-weight:800}
 .whobtn.guess small{color:#f0b44c;font-size:11px;font-weight:700;border:1px solid #6b5422;border-radius:6px;padding:0 4px;margin-left:3px}
-.whobtn.none{color:#e0a458;font-size:13px}
+.whobtn.none{color:#39c7df;font-size:13px}
 .pcrow{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);color:var(--ink);padding:8px 6px;cursor:pointer;font-size:13px}.pcrow:hover{background:var(--panel2)}
 .cardbtn{background:none;border:1px solid transparent;color:var(--muted);cursor:pointer;font-size:14px;line-height:1;padding:2px 5px;border-radius:6px}
 .cardbtn:hover{border-color:var(--line);color:var(--ink)}
@@ -147,7 +147,7 @@ kbd{display:inline-block;background:var(--panel2);border:1px solid var(--line);b
 .task.open .details{display:block}
 .task .meta{color:var(--muted);font-size:11px;margin-top:0;display:flex;gap:5px;flex-wrap:wrap}
 .task .tag{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:0 6px;font-size:10px}
-.task .next{margin-top:5px;font-size:11px;color:var(--accent);background:rgba(224,164,88,.1);border-radius:6px;padding:5px 8px}
+.task .next{margin-top:5px;font-size:11px;color:var(--accent);background:rgba(57,199,223,.1);border-radius:6px;padding:5px 8px}
 .task .next.ndone{color:var(--green);background:rgba(58,143,95,.12)}
 .task .notepv{margin-top:4px;font-size:11px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 7px;line-height:1.3}
 .task.drop-before{border-top:2px solid var(--accent)}
@@ -171,7 +171,7 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .fbub{background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:700;transition:opacity .12s,box-shadow .12s}
 .fbub .n{color:var(--muted);font-size:10px;margin-left:5px}
 .fbub.p{border-left:3px solid var(--accent)} .fbub.l{border-left:3px solid var(--blue)} .fbub.s{border-left:3px solid var(--green)}
-.chip.lit,.fbub.lit{box-shadow:0 0 0 2px var(--accent);background:rgba(232,104,60,.16);opacity:1}
+.chip.lit,.fbub.lit{box-shadow:0 0 0 2px var(--accent);background:rgba(57,199,223,.16);opacity:1}
 .chip.dimmed,.fbub.dimmed{opacity:.3}
 .contacts-modal{max-width:460px;width:94vw}
 .contacts-results{max-height:60vh;overflow:auto;margin-top:6px}
@@ -198,7 +198,7 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .resp-item{border-top:1px solid var(--line);padding:9px 0}
 .resp-item .txt-from{font-size:12px;color:var(--muted)}
 .resp-item .txt-prev{font-size:13px;margin:2px 0 4px}
-.resp-next{font-size:12px;color:var(--accent);background:rgba(232,104,60,.1);border-radius:6px;padding:4px 7px;margin-bottom:6px}
+.resp-next{font-size:12px;color:var(--accent);background:rgba(57,199,223,.1);border-radius:6px;padding:4px 7px;margin-bottom:6px}
 .resp-draft{width:100%;min-height:72px;background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 9px;font-size:13px;line-height:1.4;resize:vertical;margin-bottom:6px}
 .resp-draft:focus{border-color:var(--accent);outline:none}
 .mfbtn{background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:12px 4px;font-size:12px;font-weight:700}
@@ -211,7 +211,7 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .mpane-top .madd{margin-bottom:6px}
 .bulk-toggle{width:100%;background:var(--panel);border:1px solid var(--line);color:var(--ink);border-radius:10px;padding:9px;font-size:14px;font-weight:800}
 .bulk-toggle.on{background:var(--accent);border-color:var(--accent);color:#14110f}
-.mrow2.bsel{background:rgba(224,164,88,.18);border-color:var(--accent)}
+.mrow2.bsel{background:rgba(57,199,223,.18);border-color:var(--accent)}
 .bchk{font-size:20px;line-height:1;color:var(--accent)}
 .bulkbar{position:fixed;left:8px;right:8px;bottom:8px;z-index:40;display:flex;gap:6px;align-items:center;background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:8px 10px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .bulkbar #bulkCount{font-size:12px;font-weight:800;color:var(--muted);margin-right:auto;white-space:nowrap}
@@ -255,7 +255,7 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .datepop .inp{width:200px}
 .dp-row{display:flex;gap:6px;margin-top:6px;justify-content:flex-end}
 .dobadge{display:inline-block;font-size:11px;color:var(--blue);background:rgba(91,143,176,.12);border-radius:6px;padding:2px 7px;margin:4px 0 0}
-.dobadge.due{color:var(--accent);background:rgba(224,164,88,.14)}
+.dobadge.due{color:var(--accent);background:rgba(57,199,223,.14)}
 .mas{display:flex;gap:4px;margin:3px 0 1px;flex-wrap:wrap}
 .masb{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:2px 8px;font-size:12px;font-weight:800;line-height:1.3}
 .masb.on{background:var(--accent);border-color:var(--accent);color:#14110f}
@@ -302,8 +302,8 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 /* Grid overlay */
 #grid{position:fixed;inset:0;z-index:15;pointer-events:none;display:none}
 #grid.on{display:block}
-.gcell{position:absolute;border-right:1px solid rgba(224,164,88,.18);border-bottom:1px solid rgba(224,164,88,.18)}
-.glabel{position:absolute;font-size:10px;color:rgba(224,164,88,.7);padding:2px 3px;font-weight:700}
+.gcell{position:absolute;border-right:1px solid rgba(57,199,223,.18);border-bottom:1px solid rgba(57,199,223,.18)}
+.glabel{position:absolute;font-size:10px;color:rgba(57,199,223,.7);padding:2px 3px;font-weight:700}
 
 /* Modal */
 .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;display:flex;align-items:center;justify-content:center;padding:16px}
@@ -325,7 +325,7 @@ textarea.inp{min-height:70px;resize:vertical}
   border:none;color:#14110f;font-size:28px;z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.4)}
 .empty{color:var(--muted);font-size:12px;text-align:center;padding:7px}
 a.tellink{color:var(--green);text-decoration:none}
-.demo-banner{margin:8px 12px 0;padding:8px 12px;background:rgba(224,164,88,.14);border:1px solid var(--accent);border-radius:10px;font-size:13px;display:flex;gap:10px;align-items:center}
+.demo-banner{margin:8px 12px 0;padding:8px 12px;background:rgba(57,199,223,.14);border:1px solid var(--accent);border-radius:10px;font-size:13px;display:flex;gap:10px;align-items:center}
 .demo-banner button{margin-left:auto;padding:6px 12px}
 .drag-handle{cursor:grab;color:var(--muted);font-size:13px;letter-spacing:-2px;user-select:none}
 .phead-ctrl{background:none;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:11px;padding:2px 6px}
@@ -335,7 +335,7 @@ a.tellink{color:var(--green);text-decoration:none}
 .reveal:hover,.donex:hover{background:var(--line)}
 .panel-sub{font-size:11px;color:var(--muted);padding:0 12px 6px;margin-top:-6px;border-bottom:1px solid var(--line)}
 .task.dragging{opacity:.35}
-.task.bigtix{border-color:var(--accent);background:rgba(224,164,88,.08);box-shadow:inset 3px 0 0 var(--accent)}
+.task.bigtix{border-color:var(--accent);background:rgba(57,199,223,.08);box-shadow:inset 3px 0 0 var(--accent)}
 .panel.dragging{opacity:.35}
 .ack-block{background:rgba(58,143,95,.08);border:1px solid rgba(58,143,95,.3);border-radius:8px;padding:7px 9px;margin-bottom:6px}
 .ack-h{font-size:11px;font-weight:700;color:var(--green);margin-bottom:4px}
@@ -362,7 +362,7 @@ a.tellink{color:var(--green);text-decoration:none}
 .wxd .wxt.xhot{color:#fff;background:#e8683c;border-radius:5px;padding:0 3px}
 .wxd .wxt.xcold{color:#0b1a24;background:#8fd3ee;border-radius:5px;padding:0 3px}
 .wxd .wxmm{font-size:9px;color:var(--blue);font-weight:700}
-.wxd.wet{background:rgba(224,164,88,.14);border-color:var(--accent)}
+.wxd.wet{background:rgba(57,199,223,.14);border-color:var(--accent)}
 .wxd.wet .wxmm{color:var(--accent)}
 .wxd.today{box-shadow:inset 0 0 0 1px var(--accent)}
 .idea{display:flex;gap:6px;align-items:flex-start;font-size:13px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
@@ -436,7 +436,7 @@ body::before{ content:''; position:fixed; inset:0; z-index:-1; pointer-events:no
 .projbadge{ box-shadow:0 0 0 1px rgba(57,199,223,.05) }
 kbd{ border-color:rgba(57,199,223,.3) }
 /* ═══════════ FOCUS COHESION — cyan/glass command-center look to match the Focus page ═══════════ */
-:root{ --accent:#39c7df; --muted:#86a2ab; --line:rgba(57,199,223,.2); --panel:rgba(12,24,29,.6); --panel2:rgba(18,34,40,.58); --red:#d77a68; }
+:root{ --accent:#39c7df; --muted:#86a2ab; --line:rgba(57,199,223,.2); --panel:rgba(12,24,29,.6); --panel2:rgba(18,34,40,.58); --red:#d77a68; --bg:#070d11; --ink:#eaf6fb; --callink:#06181e; }
 body{ background:radial-gradient(130% 120% at 50% 32%, #0b141a 0%, #070c10 62%, #04070a 100%); color:#eaf6fb; }
 body::before{ opacity:.7 }
 .topbar{ background:rgba(8,16,20,.62); -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px) }
@@ -572,7 +572,7 @@ body::before{ opacity:.7 }
 <script src="files.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-20 20:52';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-20 21:08';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -2168,7 +2168,7 @@ function mobileRow(t,opts){
   row.addEventListener('touchmove',e=>{ if(!act)return; const p=e.touches[0]; const mx=p.clientX-sx,my=p.clientY-sy;
     if(!decided){ if(Math.abs(mx)<8&&Math.abs(my)<8)return; if(Math.abs(my)>=Math.abs(mx)){act=false;return;} decided=true; }
     dx=mx; inner.style.transform='translateX('+Math.max(-130,Math.min(130,dx))+'px)';
-    row.style.background=dx<-45?'rgba(224,164,88,.18)':dx>45?'rgba(58,143,95,.18)':'';
+    row.style.background=dx<-45?'rgba(57,199,223,.18)':dx>45?'rgba(58,143,95,.18)':'';
     row.setAttribute('data-hint', dx<-45?'💤 snooze':dx>45?'✓ done':''); },{passive:true});
   row.addEventListener('touchend',()=>{ if(!act)return; act=false; inner.style.transform=''; row.style.background=''; row.removeAttribute('data-hint');
     if(dx<-80){ snoozeTask(t.id); } else if(dx>80){ markDone(t); } });
@@ -2853,7 +2853,7 @@ function fetchAutos(force){
 }
 function autoAgo(iso){ if(!iso) return '—'; const t=Date.parse(iso); if(isNaN(t)) return iso; const m=Math.round((Date.now()-t)/60000);
   if(m<0){ const h=Math.round(-m/60); return h<24?'in '+h+'h':'in '+Math.round(h/24)+'d'; } return m<60?m+'m ago':m<1440?Math.round(m/60)+'h ago':Math.round(m/1440)+'d ago'; }
-const AUTO_C={OK:'#3a8f5f',Failing:'#c2553f',Missed:'#e0a458',Paused:'#6f6861',Manual:'#5b8fb0',Unknown:'#a8a29a'};
+const AUTO_C={OK:'#3a8f5f',Failing:'#c2553f',Missed:'#39c7df',Paused:'#6f6861',Manual:'#5b8fb0',Unknown:'#a8a29a'};
 // 🖥 @Computer – Claude — every open item that needs Roni at the Mac (Project "@Computer – Claude").
 // Standing panel; hidden only when empty. ✓ marks it Done in Airtable (undoable).
 const isComputerItem=t=>/@computer/i.test(t.project||'')||/@computer/i.test(t.sectionRemote||'');
@@ -2915,7 +2915,7 @@ function leadRevPanel(){
   const body=document.createElement('div'); body.className='panel-body'; body.style.fontSize='12.5px'; const hp=heightPx('leadrev'); if(hp) body.style.maxHeight=hp;
   today.forEach(d=>{ const locked=d.status!=='Pending review'||late;
     const c=document.createElement('div'); c.style.cssText='border-bottom:1px solid var(--line);padding:6px 2px 8px';
-    c.innerHTML='<div style="display:flex;gap:6px;align-items:baseline"><b>'+esc(d.first||d.lead)+'</b><span style="color:var(--muted)">'+esc(d.lead)+'</span><span style="margin-left:auto;font-size:11px;font-weight:800;color:'+(d.status==='Approved'||d.status==='Sent'?'#3a8f5f':'#e0a458')+'">'+esc(late&&d.status==='Pending review'?'Expired':d.status)+'</span></div>';
+    c.innerHTML='<div style="display:flex;gap:6px;align-items:baseline"><b>'+esc(d.first||d.lead)+'</b><span style="color:var(--muted)">'+esc(d.lead)+'</span><span style="margin-left:auto;font-size:11px;font-weight:800;color:'+(d.status==='Approved'||d.status==='Sent'?'#3a8f5f':'#39c7df')+'">'+esc(late&&d.status==='Pending review'?'Expired':d.status)+'</span></div>';
     d.lines.forEach((l,i)=>{ const r=document.createElement('div'); r.style.cssText='display:flex;gap:4px;align-items:center;margin-top:4px';
       r.innerHTML='<span style="color:var(--muted);width:14px">'+(i+1)+'</span>'+(locked?'<span style="flex:1">'+(l.flag?'⭐ ':'')+esc(l.text)+'</span>':'<input class="inp" style="flex:1;padding:3px 6px;font-size:12px" value="'+esc(l.text)+'"><select class="inp" style="width:28px;padding:2px" title="Swap for another item"><option value="">⇄</option>'+ldPool(d).slice(0,40).map(t=>'<option value="'+t.id+'">'+esc(ldLine(t).slice(0,80))+'</option>').join('')+'</select><button class="mini" title="Drop">✕</button>');
       if(!locked){ const inp=r.querySelector('input'); inp.addEventListener('change',()=>{ l.text=inp.value.trim()||l.text; ldSave(d); });
@@ -2970,7 +2970,7 @@ function callInvitePanel(){
     const h=document.createElement('div'); h.style.cssText='display:flex;align-items:center;gap:6px;margin:8px 0 2px;font-weight:800';
     h.innerHTML=esc(t)+' <span style="color:var(--muted);font-weight:600">'+L.length+'</span><a class="mini" style="margin-left:auto;text-decoration:none" href="'+smsMany(L)+'">Invite group</a>'; body.appendChild(h);
     L.forEach(c=>{ const r=document.createElement('div'); r.style.cssText='display:flex;align-items:center;gap:5px;padding:3px 0;border-bottom:1px solid var(--line)';
-      r.innerHTML='<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>'+esc(c.name)+'</b> <button class="mini" data-tr style="color:'+(c.guess?'#e0a458':'var(--muted)')+'" title="Set trade">'+(c.guess?'≈ ':'')+esc(c.trade||'Other')+'</button></span>'
+      r.innerHTML='<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><b>'+esc(c.name)+'</b> <button class="mini" data-tr style="color:'+(c.guess?'#39c7df':'var(--muted)')+'" title="Set trade">'+(c.guess?'≈ ':'')+esc(c.trade||'Other')+'</button></span>'
         +'<button class="mini'+(c.slots.includes('morning')?' on':'')+'" data-fl="morning">AM</button><button class="mini'+(c.slots.includes('afternoon')?' on':'')+'" data-fl="afternoon">PM</button>'
         +'<a class="mini" style="text-decoration:none;background:var(--callg);color:var(--callink)" href="sms:'+c.phone.replace(/[^\d+]/g,'')+'&body='+encodeURIComponent(ccMsg)+'" data-cu="'+esc(c.name)+'">Invite</a><button class="mini" data-rm title="Remove from the roster">✕</button>';
       r.querySelectorAll('[data-fl]').forEach(b=>b.onclick=()=>{ const fl=b.dataset.fl; c.slots=c.slots.includes(fl)?c.slots.filter(x=>x!==fl):[...c.slots,fl]; ccPatchD(c.id,{Slots:c.slots}); render(); });
@@ -3145,7 +3145,7 @@ function automationsPanel(){
   const open=window._autoOpen!=null?window._autoOpen:false;   // condensed by default; the issues show in the row itself
   const head=document.createElement('div'); head.className='panel-head';
   head.innerHTML='<span class="drag-handle" title="Drag to reorder" draggable="true">⋮⋮</span><h3>⚙️ Automations</h3>'
-    +'<span class="autosum" data-atog title="Tap to '+(open?'collapse':'expand')+'">· '+nOK+' OK'+(nFail?' · <b style="color:#e5533a">'+nFail+' failing</b>':'')+(nMiss?' · <b style="color:#e0a458">'+nMiss+' missed</b>':'')+' '+(open?'▴':'▾')+'</span>'
+    +'<span class="autosum" data-atog title="Tap to '+(open?'collapse':'expand')+'">· '+nOK+' OK'+(nFail?' · <b style="color:#e5533a">'+nFail+' failing</b>':'')+(nMiss?' · <b style="color:#39c7df">'+nMiss+' missed</b>':'')+' '+(open?'▴':'▾')+'</span>'
     +'<span class="scratch-stat" title="Feed refreshed every 2h by the automations-status task">feed '+autoAgo(fresh)+'</span><button class="mini" data-ar title="Reload">↻</button>';
   p.appendChild(head); wirePanel(p,head,'automations');
   head.querySelector('[data-ar]').onclick=e=>{ e.stopPropagation(); fetchAutos(true); };
@@ -3165,7 +3165,7 @@ function automationsPanel(){
   if(leads.length) h+='<div style="margin-top:10px;font-weight:800">📲 Lead texts · last 7 days</div>'
     +'<div style="display:grid;grid-template-columns:1fr auto auto auto;gap:2px 10px;margin-top:4px;color:var(--muted)"><span></span><span>sent</span><span>replied</span><span>no reply</span></div>'
     +leads.map(l=>'<div title="'+esc(l.detail)+'" style="display:grid;grid-template-columns:1fr auto auto auto;gap:2px 10px;padding:3px 0;border-bottom:1px solid var(--line)"><span><b>'+esc(l.name)+'</b> <span style="color:var(--muted)">'+esc(l.detail)+'</span></span>'
-      +'<span style="text-align:right">'+l.sent+'</span><span style="text-align:right;color:'+(l.replied?'#3a8f5f':'#c2553f')+'">'+l.replied+'</span><span style="text-align:right;color:'+(l.noreply?'#e0a458':'inherit')+'">'+l.noreply+'</span></div>').join('');
+      +'<span style="text-align:right">'+l.sent+'</span><span style="text-align:right;color:'+(l.replied?'#3a8f5f':'#c2553f')+'">'+l.replied+'</span><span style="text-align:right;color:'+(l.noreply?'#39c7df':'inherit')+'">'+l.noreply+'</span></div>').join('');
   body.innerHTML=h; p.appendChild(body);
   p.addEventListener('drop',e=>{const d=e.dataTransfer.getData('text/plain');if(d&&d.startsWith('panel:'))reorderPanels(d.slice(6),'automations');});
   return p;
@@ -3917,7 +3917,7 @@ function popOut(sectionId,title){
     h3{margin:0 0 10px;font-size:15px} .t{background:#241f1b;border:1px solid #2c2723;border-radius:8px;padding:8px 10px;margin-bottom:6px}
     .m{color:#a8a29a;font-size:12px} .hint{color:#a8a29a;font-size:11px;margin-bottom:10px}
     .add{display:flex;gap:6px;margin-bottom:10px} .add input{flex:1;background:#241f1b;border:1px solid #2c2723;border-radius:8px;color:#f5f3ee;padding:9px 10px;font:inherit}
-    .add button{background:#e0a458;border:0;border-radius:8px;color:#14110f;font-weight:700;font-size:17px;padding:0 14px;cursor:pointer}</style>
+    .add button{background:#39c7df;border:0;border-radius:8px;color:#14110f;font-weight:700;font-size:17px;padding:0 14px;cursor:pointer}</style>
     <h3>${esc(title)} — <span id="cnt">${rows.length}</span></h3>
     <div class="add"><input id="an" placeholder="Add a task to ${esc(title)}…" autofocus><button id="ab">＋</button></div>
     <div class="hint">Click ⧉ in the app again to refresh existing items</div>
@@ -3995,7 +3995,7 @@ function openSettings(){
       <div class="note" style="margin-top:4px">Presets:
         <button type="button" class="btn ghost" onclick="setAccent('#e8683c')">🟧 Orange-red</button>
         <button type="button" class="btn ghost" onclick="setAccent('#e6c34a')">🟡 Yellow</button>
-        <button type="button" class="btn ghost" onclick="setAccent('#e0a458')">🟠 Amber</button></div></label>
+        <button type="button" class="btn ghost" onclick="setAccent('#39c7df')">🟠 Amber</button></div></label>
     <div class="field"><button type="button" class="btn ghost" onclick="resetLayout()">↺ Reset grid</button></div>
     <div class="note">Keys are stored only in this browser (localStorage). Scope the Airtable token to just this base. Drag a panel by its header — it snaps into the 10×2 grid; whatever it lands on moves to the first open cell.</div>`,
    ()=>{cfg.apiKey=val('k');cfg.baseId=val('b');cfg.tableId=val('tb');cfg.anthropicKey=val('an');setAccent(val('accentC'));saveCfg();atFetch();});
@@ -4017,7 +4017,7 @@ function buildGrid(){
   for(let r=0;r<d.rows;r++)for(let c=0;c<GRID_COLS;c++){
     const {x,y}=slotXY(r*GRID_COLS+c,d);
     const cell=document.createElement('div'); cell.className='gcell';
-    cell.style.cssText=`left:${left+x}px;top:${top+y}px;width:${d.cw}px;height:${d.ch}px;border:1px dashed rgba(224,164,88,.35)`;
+    cell.style.cssText=`left:${left+x}px;top:${top+y}px;width:${d.cw}px;height:${d.ch}px;border:1px dashed rgba(57,199,223,.35)`;
     const l=document.createElement('div'); l.className='glabel';
     l.style.cssText=`left:${left+x+4}px;top:${top+y+3}px`; l.textContent=(r*GRID_COLS+c+1);
     g.appendChild(cell); g.appendChild(l);
