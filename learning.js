@@ -13,21 +13,31 @@ const G_TOTAL=GITTIN.reduce((a,b)=>a+b,0);
 const LS=k=>{ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }, SS=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
 const today=()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const clean=s=>String(s||'').replace(/<sup[^>]*>.*?<\/sup>/g,'').replace(/<i class="footnote">.*?<\/i>/g,'').replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ').replace(/\{[פס]\}/g,'').trim();
+// ONE sanitizer for every Sefaria string (Mikra, Onkelos, Mishnah, Birkat Hamazon, English): real HTML parse → footnotes/markers removed, <br> → space,
+// ALL entities decoded (named + numeric, incl. double-encoded "&amp;thinsp;"), odd spaces normalised, {פ}{ס} section marks dropped.
+const _dp=(typeof DOMParser!=='undefined')?new DOMParser():null;
+function clean(s){ s=String(s==null?'':s); if(!s) return '';
+  for(let pass=0;pass<3;pass++){ if(_dp){ const doc=_dp.parseFromString('<!doctype html><body>'+s+'</body>','text/html'); doc.querySelectorAll('sup,i.footnote,.footnote,.footnote-marker,script,style').forEach(n=>n.remove()); doc.querySelectorAll('br').forEach(b=>b.replaceWith(' ')); s=doc.body.textContent||''; }
+    else s=s.replace(/<sup[^>]*>[\s\S]*?<\/sup>|<i class="footnote">[\s\S]*?<\/i>/g,'').replace(/<[^>]+>/g,' ').replace(/&nbsp;|&thinsp;/g,' ').replace(/&amp;/g,'&');
+    if(!/&(#\d+|#x[0-9a-f]+|[a-z][a-z0-9]{1,30});/i.test(s)) break; s=s.replace(/</g,'&lt;'); }
+  return s.replace(/[\u00a0\u2000-\u200a\u202f\u205f]/g,' ').replace(/[\u200b\u200e\u200f\ufeff]/g,'').replace(/\{[פס]\}/g,'').replace(/\s+/g,' ').trim(); }
 const heNum=n=>{ const o=['','א','ב','ג','ד','ה','ו','ז','ח','ט'], t=['','י','כ','ל','מ','נ','ס','ע','פ','צ']; if(n===15) return 'טו'; if(n===16) return 'טז'; return (t[Math.floor(n/10)]||'')+(o[n%10]||''); };
 
+try{ Object.keys(localStorage).filter(k=>/^learn\.(gt|pt|bhE)\./.test(k)).forEach(k=>localStorage.removeItem(k)); }catch(e){}   // texts cached before the sanitizer
 let st=LS('learn.state')||{at:0,g:{ch:1,m:1,done:0},p:{name:'',ref:'',idx:0},log:{}};
 const E=()=>window.TE||{key:()=>'',base:()=>''};
 /* Progress sync (AppNotes "learning"). Per-track timestamps (g.at / p.at) set ONLY by Roni's own steps; defaults never carry one,
    so a fresh device / new PWA install can't overwrite real progress. Merge: newer per-track step wins; with no timestamps, furthest wins; log = per-day max.
    Nothing is written to Airtable until the first pull has merged the remote copy; every write re-reads + merges first. */
-let pulled=false, pullTries=0, pushT=null, rid=null;
+let pulled=false, pullTries=0, pushT=null, rid=null, pushFn=null;
 const say=m=>{ try{ if(typeof window.toast==='function') window.toast(m); }catch(e){} };
 const gOrd=g=>{ let n=0; for(let c=1;c<(g&&g.ch||1);c++) n+=GITTIN[c-1]; return n+((g&&g.m)||1)-1; };
-function pickG(a,b){ if(!a) return b; if(!b) return a; const x=a.at||0, y=b.at||0; if(x!==y) return x>y?a:b; return gOrd(a)>=gOrd(b)?Object.assign({},a,{done:Math.max(a.done||0,b.done||0)}):Object.assign({},b,{done:Math.max(a.done||0,b.done||0)}); }
-function pickP(a,b){ if(!a||!a.name) return b||a; if(!b||!b.name) return a; const x=a.at||0, y=b.at||0;
+function pickG(a,b){ if(!a) return b; if(!b) return a; const U=[...new Set([...(a.learned||[]),...(b.learned||[])])].sort((x,y)=>x-y); const w=pickG0(a,b); return Object.assign({},w,{learned:U,done:U.length}); }
+function pickG0(a,b){ const x=a.at||0, y=b.at||0; if(x!==y) return x>y?a:b; return gOrd(a)>=gOrd(b)?Object.assign({},a,{done:Math.max(a.done||0,b.done||0)}):Object.assign({},b,{done:Math.max(a.done||0,b.done||0)}); }
+function pickP(a,b){ const w=pickP0(a,b); if(a&&b&&a.name&&a.name===b.name){ const U=[...new Set([...(a.learned||[]),...(b.learned||[])])].sort((x,y)=>x-y); return Object.assign({},w,{learned:U}); } return w; }
+function pickP0(a,b){ if(!a||!a.name) return b||a; if(!b||!b.name) return a; const x=a.at||0, y=b.at||0;
   if(a.name===b.name){ if(x!==y) return x>y?a:b; return (a.idx||0)>=(b.idx||0)?a:b; } return x>=y?a:b; }
-function merge(a,b){ if(!b) return a; if(!a) return b; const log={}; const la=a.log||{}, lb=b.log||{}; new Set([...Object.keys(la),...Object.keys(lb)]).forEach(d=>log[d]=Math.max(la[d]||0,lb[d]||0));
+function merge(a,b){ a=migrate(a); b=migrate(b); if(!b) return a; if(!a) return b; const log={}; const la=a.log||{}, lb=b.log||{}; new Set([...Object.keys(la),...Object.keys(lb)]).forEach(d=>log[d]=Math.max(la[d]||0,lb[d]||0));
   return {at:Math.max(a.at||0,b.at||0),g:pickG(a.g,b.g),p:pickP(a.p,b.p),log}; }
 const same=(a,b)=>JSON.stringify([a.g,a.p,a.log])===JSON.stringify([b.g,b.p,b.log]);
 const anUrl=()=>'https://api.airtable.com/v0/'+E().base()+'/'+AN;
@@ -41,9 +51,14 @@ async function pull(){ const k=E().key(); if(!k){ if(++pullTries<40) setTimeout(
     if(!x||!same(m,x)) await write(); await ensureParsha(); }
   catch(e){ if(!pulled&&++pullTries<40) setTimeout(pull,4000); } }
 function push(){ st.at=Date.now(); SS('learn.state',st); fire(); if(!pulled){ pull(); return; } clearTimeout(pushT);
-  pushT=setTimeout(async()=>{ if(!E().key()) return; try{ const x=await remote(); const m=merge(st,x); if(!same(m,st)){ st=m; SS('learn.state',st); fire(); } await write(); }
-    catch(e){ say('⚠︎ Learning progress not saved ('+e+') — will retry'); clearTimeout(pushT); pushT=setTimeout(push,15000); } },700); }
+  pushFn=async()=>{ pushT=null; if(!E().key()) return; try{ const x=await remote(); const m=merge(st,x); if(!same(m,st)){ st=m; SS('learn.state',st); fire(); } await write(); }
+    catch(e){ say('⚠︎ Learning progress not saved ('+e+') — will retry'); clearTimeout(pushT); pushT=setTimeout(push,15000); } }; pushT=setTimeout(pushFn,500); }
+const flushPush=()=>{ if(pushT&&pushFn){ clearTimeout(pushT); pushFn(); } };   // closing the reader / leaving the app saves right away
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) flushPush(); });
 const touch=t=>{ st[t].at=Date.now(); };
+const rng=n=>Array.from({length:Math.max(0,n|0)},(_,i)=>i);
+function migrate(x){ if(!x) return x; x.g=x.g||{ch:1,m:1}; x.p=x.p||{name:'',idx:0}; if(!Array.isArray(x.g.learned)) x.g.learned=rng(Math.max(x.g.done||0,gOrd(x.g))); if(!Array.isArray(x.p.learned)) x.p.learned=rng(x.p.idx||0); return x; }
+const gLearned=()=>{ migrate(st); return new Set(st.g.learned); }, pLearned=()=>{ migrate(st); return new Set(st.p.learned); };
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pull(); });
 const subs=[]; const fire=()=>subs.forEach(f=>{ try{ f(); }catch(e){} });
 function logToday(n){ const d=today(); st.log[d]=Math.max(0,(st.log[d]||0)+n); for(const k of Object.keys(st.log)) if(k<isoBack(60)) delete st.log[k]; }
@@ -52,9 +67,9 @@ function streak(){ let n=0; for(let i=(st.log[today()]?0:1);;i++){ if(st.log[iso
 
 /* ── Mishnah Gittin ── */
 const gIdx=()=>GITTIN.slice(0,st.g.ch-1).reduce((a,b)=>a+b,0)+(st.g.m-1);           // 0-based position
-const gPct=()=>Math.round(Math.min(G_TOTAL,st.g.done||gIdx())/G_TOTAL*100);
+const gPct=()=>Math.round(Math.min(G_TOTAL,gLearned().size)/G_TOTAL*100);
 const gRef=()=>'Gittin '+st.g.ch+':'+st.g.m;
-async function gChapter(ch,lang){ const key='learn.gt.'+ch+'.'+lang; const c=LS(key); if(c) return c;
+async function gChapter(ch,lang){ const key='learn.gt2.'+ch+'.'+lang; const c=LS(key); if(c) return c;
   const v=lang==='en'?'english':'hebrew'; const d=await fetch(SEF+'/v3/texts/Mishnah_Gittin.'+ch+'?version='+v).then(r=>r.json());
   const t=((d.versions||[])[0]||{}).text||[]; const arr=(Array.isArray(t)?t:[t]).map(clean); SS(key,arr); return arr; }
 function gMove(dir){ let {ch,m}=st.g; if(dir>0){ if(m<GITTIN[ch-1]) m++; else if(ch<9){ ch++; m=1; } else return false; } else { if(m>1) m--; else if(ch>1){ ch--; m=GITTIN[ch-1]; } else return false; } st.g.ch=ch; st.g.m=m; return true; }
@@ -66,19 +81,19 @@ async function parsha(){ const c=LS('learn.cal'); const d0=today(); if(c&&c.day=
 function flatten(d){ const t=((d.versions||[])[0]||{}).text||[]; const s=d.sections||[], e=d.toSections||[]; const c0=+s[0], v0=+s[1]; const out=[];
   if(Array.isArray(t)&&Array.isArray(t[0])) t.forEach((ch,i)=>ch.forEach((x,j)=>out.push({c:c0+i,v:(i===0?v0:1)+j,t:clean(x)})));
   else (Array.isArray(t)?t:[t]).forEach((x,j)=>out.push({c:c0,v:v0+j,t:clean(x)})); return out; }
-async function parshaText(cal){ const key='learn.pt.'+cal.url; const c=LS(key); if(c) return c;
+async function parshaText(cal){ const key='learn.pt2.'+cal.url; const c=LS(key); if(c) return c;
   const [m,o]=await Promise.all([fetch(SEF+'/v3/texts/'+cal.url+'?version=hebrew').then(r=>r.json()),fetch(SEF+'/v3/texts/Onkelos_'+cal.url).then(r=>r.json())]);
   const M=flatten(m), O=flatten(o); const om=new Map(O.map(x=>[x.c+':'+x.v,x.t]));
   const book=(cal.ref||'').split(' ')[0]; const al=(cal.aliyot||[]).map(a=>{ const r=a.replace(book+' ','').split('-')[0].split(':'); return {c:+r[0],v:+r[1]}; });
   const verses=M.map(x=>({c:x.c,v:x.v,m:x.t,o:om.get(x.c+':'+x.v)||'',a:al.reduce((n,a,i)=>(x.c>a.c||(x.c===a.c&&x.v>=a.v))?i+1:n,1)}));
-  const v={book,verses}; SS(key,v); for(const k of Object.keys(localStorage)) if(k.startsWith('learn.pt.')&&k!==key) localStorage.removeItem(k); return v; }
-async function ensureParsha(){ const cal=await parsha(); if(!cal) return null; if(st.p.name!==cal.name){ if(!pulled||!st.p.name){ if(!st.p.name){ st.p={name:cal.name,ref:cal.ref,idx:0}; SS('learn.state',st); } } else { st.p={name:cal.name,ref:cal.ref,idx:0,at:Date.now()}; push(); } } return cal; }
+  const v={book,verses}; SS(key,v); for(const k of Object.keys(localStorage)) if(k.startsWith('learn.pt2.')&&k!==key) localStorage.removeItem(k); return v; }
+async function ensureParsha(){ const cal=await parsha(); if(!cal) return null; if(st.p.name!==cal.name){ if(!pulled||!st.p.name){ if(!st.p.name){ st.p={name:cal.name,ref:cal.ref,idx:0,learned:[]}; SS('learn.state',st); } } else { st.p={name:cal.name,ref:cal.ref,idx:0,learned:[],at:Date.now()}; push(); } } return cal; }
 function daysToShabbat(){ const d=new Date().getDay(); return d===6?0:6-d; }
 
 /* ── Birkat Hamazon (Siddur Ashkenaz) · Me'ein Shalosh / Al HaMichya · Borei Nefashot — scrolling reader, cached offline.
    Additions are tagged from the siddur's own instructions; the ones that apply TODAY (Hebrew calendar) are highlighted, the rest fold away. ── */
 const BH_REFS={bh:['Siddur Edot HaMizrach, Post Meal Blessing'],ms:['Siddur Edot HaMizrach, Al Hamihya'],bn:['Siddur Edot HaMizrach, Blessings on Enjoyments',11,13]};   // Nusach Edot HaMizrach
-async function bhText(k){ const key='learn.bhE.'+k; const c=LS(key); if(c&&c.length) return c; const [ref,a,b]=BH_REFS[k]; const d=await fetch(SEF+'/v3/texts/'+encodeURIComponent(ref)+'?version=hebrew').then(r=>r.json());
+async function bhText(k){ const key='learn.bhE2.'+k; const c=LS(key); if(c&&c.length) return c; const [ref,a,b]=BH_REFS[k]; const d=await fetch(SEF+'/v3/texts/'+encodeURIComponent(ref)+'?version=hebrew').then(r=>r.json());
   const t=((d.versions||[])[0]||{}).text||[]; let arr=(Array.isArray(t[0])?t.flat():(Array.isArray(t)?t:[t])).map(clean).filter(x=>x); if(a!=null) arr=arr.slice(a,b); SS(key,arr); return arr; }
 function hebDate(d){ try{ const p=new Intl.DateTimeFormat('en-u-ca-hebrew',{month:'long',day:'numeric'}).formatToParts(d); return {m:(p.find(x=>x.type==='month')||{}).value||'',d:+((p.find(x=>x.type==='day')||{}).value||0)}; }catch(e){ return {m:'',d:0}; } }
 function dayFlags(){ const now=new Date(); const shabbat=now.getDay()===6||(now.getDay()===5&&now.getHours()>=17); const eve=now.getHours()>=18?new Date(now.getTime()+864e5):now; const h=hebDate(eve), m=h.m, dd=h.d;
@@ -147,11 +162,11 @@ async function openBH(){ css(); close(); rd=document.createElement('div'); rd.cl
   draw(); }
 
 /* ── summaries for home rows / desktop panel ── */
-function summary(){ const cal=LS('learn.cal'), pt=cal&&LS('learn.pt.'+cal.url); const n=pt?pt.verses.length:0, i=Math.min(st.p.idx||0,n);
-  return { g:{pos:gRef(),pct:gPct(),done:st.g.done||gIdx(),total:G_TOTAL}, p:{name:cal?cal.name:'Parsha',he:cal?cal.he:'',pct:n?Math.round(i/n*100):0,i,n,left:n-i,pos:pt&&pt.verses[i]?('Aliyah '+pt.verses[i].a+' · pasuk '+(i+1)+' of '+n):'',shabbat:daysToShabbat()}, today:st.log[today()]||0, streak:streak() }; }
+function summary(){ const cal=LS('learn.cal'), pt=cal&&LS('learn.pt2.'+cal.url); const n=pt?pt.verses.length:0, i=Math.min(st.p.idx||0,n);
+  return { g:{pos:gRef(),pct:gPct(),done:gLearned().size,total:G_TOTAL}, p:{name:cal?cal.name:'Parsha',he:cal?cal.he:'',pct:n?Math.round(Math.min(n,pLearned().size)/n*100):0,i,n,left:Math.max(0,n-pLearned().size),pos:pt&&pt.verses[i]?('Aliyah '+pt.verses[i].a+' · pasuk '+(i+1)+' of '+n):'',shabbat:daysToShabbat()}, today:st.log[today()]||0, streak:streak() }; }
 function previews(){ const out={g:'',p:'',o:''};
-  const gc=LS('learn.gt.'+st.g.ch+'.he'); if(gc) out.g=gc[st.g.m-1]||''; else if(!previews._g){ previews._g=1; gChapter(st.g.ch,'he').then(()=>{ previews._g=0; fire(); }).catch(()=>{ previews._g=0; }); }
-  const cal=LS('learn.cal'), pt=cal&&LS('learn.pt.'+cal.url); if(pt){ const v=pt.verses[Math.min(st.p.idx||0,pt.verses.length-1)]; if(v){ out.p=v.m; out.o=v.o; } }
+  const gc=LS('learn.gt2.'+st.g.ch+'.he'); if(gc) out.g=gc[st.g.m-1]||''; else if(!previews._g){ previews._g=1; gChapter(st.g.ch,'he').then(()=>{ previews._g=0; fire(); }).catch(()=>{ previews._g=0; }); }
+  const cal=LS('learn.cal'), pt=cal&&LS('learn.pt2.'+cal.url); if(pt){ const v=pt.verses[Math.min(st.p.idx||0,pt.verses.length-1)]; if(v){ out.p=v.m; out.o=v.o; } }
   return out; }
 function rowsHTML(){ css(); const S=summary(), P=previews(); const bar=p=>`<span class="lcbar"><i style="width:${p}%"></i></span>`;
   const arrows=k=>`<div class="lcar"><button class="lca" data-lstep="${k}:-1" aria-label="Back">‹</button><button class="lca" data-lstep="${k}:1" aria-label="Learned — next">›</button></div>`;
@@ -210,6 +225,8 @@ const CSS=`.lrn{display:flex;flex-direction:column;gap:6px;margin:0 0 12px}
 .lrnav .bk{width:62px}
 .lrnv{display:flex;gap:6px;align-items:center;margin:8px 0 2px;flex-wrap:wrap}
 .lrnv button{height:36px;border-radius:10px;border:1px solid rgba(57,199,223,.3);background:rgba(20,36,42,.7);color:#eaf6fb;font:700 13px/1 -apple-system,system-ui,sans-serif;padding:0 10px;cursor:pointer;white-space:nowrap}
+.lrnv .lrmore{width:40px;padding:0;font-size:14px;letter-spacing:1px}.lrnv .lrmore.on{background:rgba(57,199,223,.18)}
+.lrmenu{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 2px;padding:8px;border:1px solid rgba(57,199,223,.2);border-radius:10px;background:rgba(10,20,26,.9)}.lrmenu button{height:34px;border-radius:9px;border:1px solid #e0a458;background:transparent;color:#e0a458;font-weight:700;padding:0 12px;cursor:pointer}.lrmenu span{color:#8aa6af;font-size:12px}
 .lrnv .lrpick{flex:1;min-width:120px;font-size:15px;font-family:"Times New Roman",serif}.lrnv .home{background:#e0a458;border-color:#e0a458;color:#1a0e07}
 .lrnv .sec{font-size:12px;height:32px}.lrnv .sec.on{background:#39c7df;color:#04161c;border-color:#39c7df}
 .lrmap{max-height:42vh;overflow:auto;border:1px solid rgba(57,199,223,.18);border-radius:12px;padding:8px;margin:6px 0;background:rgba(10,20,26,.92);flex:none}
@@ -239,7 +256,7 @@ function zoomUI(el){ if(!el||el._zw) return; el._zw=1;
   ['gesturestart','gesturechange'].forEach(ev=>el.addEventListener(ev,e=>e.preventDefault(),{passive:false})); }
 function css(){ if(document.getElementById('lr-css')) return; const s=document.createElement('style'); s.id='lr-css'; s.textContent=CSS; document.head.appendChild(s); }
 let rd=null;
-function close(){ if(rd){ rd.remove(); rd=null; } fire(); }
+function close(){ if(rd){ rd.remove(); rd=null; } flushPush(); fire(); }
 /* ── Reader with navigation. VIEW (what's on screen) is separate from saved PROGRESS (st.g / st.p).
    Browsing (pickers, ‹ ›, swipe, week ‹ ›) never changes progress; only ✓, "Set as my place" and "Mark done up to here" do. ── */
 const AL_HE=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שביעי','מפטיר'], GCH_HE=['א','ב','ג','ד','ה','ו','ז','ח','ט'];
@@ -259,70 +276,74 @@ function maftirIdx(cal,pt){ const a8=(cal.aliyot8||[])[7]; if(a8){ const r=a8.re
 const say2=m=>{ try{ if(typeof window.toast==='function') window.toast(m); }catch(e){} };
 
 async function open(track){ css(); close(); rd=document.createElement('div'); rd.className='lrd'; document.body.appendChild(rd); zoomUI(rd); let en=LS('learn.en')||false;
-  let vg={ch:st.g.ch,m:st.g.m}, vp={off:0,i:st.p.idx||0}, mapOpen=false, selAl=0, cal=null, pt=null, loadedOff=null;
-  const gBrowsing=()=>vg.ch!==st.g.ch||vg.m!==st.g.m, pBrowsing=()=>vp.off!==0||vp.i!==(st.p.idx||0);
+  // ONE rule: the reader opens where he last was; every move is saved (local + Airtable, per track). ✓ = learned + next. % = learned count.
+  let vg={ch:st.g.ch,m:st.g.m}, vp={off:0,i:st.p.idx||0}, mapOpen=false, menuOpen=false, selAl=0, cal=null, pt=null, loadedOff=null;
+  const savePos=()=>{ if(track==='g'){ if(st.g.ch===vg.ch&&st.g.m===vg.m) return; st.g.ch=vg.ch; st.g.m=vg.m; touch('g'); push(); }
+    else if(vp.off===0){ if((st.p.idx||0)===vp.i) return; st.p.idx=vp.i; touch('p'); push(); } };
   const draw=async()=>{ if(!rd) return; const sc=rd.querySelector('.lrmap'), mapSc=sc?sc.scrollTop:0;
-    if(track==='g'){ const {ch,m}=vg, ord=gOrdCM(ch,m), doneN=gDoneN(), placeOrd=gIdx(), br=gBrowsing();
+    const menu=menuOpen?`<div class="lrmenu"><button data-markdone>Mark done up to here</button><span>— for catching up after a break</span></div>`:'';
+    if(track==='g'){ const {ch,m}=vg, ord=gOrdCM(ch,m), L=gLearned();
       const map=mapOpen?'<div class="lrmap">'+GITTIN.map((n,ci)=>'<div class="lrmr"><b data-gch="'+(ci+1)+'">פרק '+GCH_HE[ci]+'</b><div class="lrcells">'+Array.from({length:n},(_,mi)=>{ const o=gOrdCM(ci+1,mi+1);
-          return '<button class="lrc'+(o<doneN?' d':'')+(o===placeOrd?' pl':'')+(ci+1===ch&&mi+1===m?' v':'')+'" data-gm="'+(ci+1)+':'+(mi+1)+'">'+heNum(mi+1)+'</button>'; }).join('')+'</div></div>').join('')+'<div class="lrkey"><i class="d"></i>done <i class="pl"></i>my place <i class="v"></i>showing</div></div>':'';
+          return '<button class="lrc'+(L.has(o)?' d':'')+(ci+1===ch&&mi+1===m?' v':'')+'" data-gm="'+(ci+1)+':'+(mi+1)+'">'+heNum(mi+1)+'</button>'; }).join('')+'</div></div>').join('')+'<div class="lrkey"><i class="d"></i>learned <i class="v"></i>you are here</div></div>':'';
       rd.innerHTML=`<div class="lrh"><b>Mishnah Gittin</b><button class="lrtog${en?' on':''}" data-en>English</button><button class="lrx" data-x>✕</button></div>
-        <div class="lrnv"><button data-chp aria-label="Previous chapter">‹ פרק</button><button class="lrpick" data-map>פרק ${GCH_HE[ch-1]} · משנה ${heNum(m)} ▾</button><button data-chn aria-label="Next chapter">פרק ›</button>${br?`<button class="home" data-home>↩ My place ${st.g.ch}:${st.g.m}</button>`:''}</div>
-        <div class="lrpos">${br?'<span class="lrbrowse">Browsing</span> · ':''}Gittin ${ch}:${m} · ${gPct()}% done · learned today ${st.log[today()]||0}${streak()?' · 🔥 '+streak():''}</div><div class="lrpb"><i style="width:${gPct()}%"></i></div>${map}
-        <div class="lrbody"><div class="lrlab">פרק ${heNum(ch)} משנה ${heNum(m)}${ord<doneN?' · ✓':''}</div><div class="lrhe">Loading…</div></div>
-        <div class="lrnav"><button class="bk" data-bk aria-label="Previous">‹</button><button class="nx" data-nx>${br?'✓ Learned this → next':'✓ Done → next'}</button><button class="bk" data-fw aria-label="Next">›</button></div>
-        <div class="lrsub"><button data-setplace${br?'':' disabled'}>Set as my place</button><button data-markdone>Mark done up to here</button></div>`;
+        <div class="lrnv"><button data-chp aria-label="Previous chapter">‹ פרק</button><button class="lrpick" data-map>פרק ${GCH_HE[ch-1]} · משנה ${heNum(m)} ▾</button><button data-chn aria-label="Next chapter">פרק ›</button><button class="lrmore${menuOpen?' on':''}" data-menu aria-label="More">•••</button></div>${menu}
+        <div class="lrpos">Gittin ${ch}:${m} · ${gPct()}% learned (${L.size}/${G_TOTAL}) · today ${st.log[today()]||0}${streak()?' · 🔥 '+streak():''}</div><div class="lrpb"><i style="width:${gPct()}%"></i></div>${map}
+        <div class="lrbody"><div class="lrlab">פרק ${heNum(ch)} משנה ${heNum(m)}${L.has(ord)?' · ✓ learned':''}</div><div class="lrhe">Loading…</div></div>
+        <div class="lrnav"><button class="bk" data-bk aria-label="Previous">‹</button><button class="nx" data-nx>✓ Learned this → next</button><button class="bk" data-fw aria-label="Next">›</button></div>`;
       const m2=rd.querySelector('.lrmap'); if(m2){ m2.scrollTop=mapSc; if(!mapSc){ const v=m2.querySelector('.lrc.v'); if(v) v.scrollIntoView({block:'center'}); } }
       try{ const he=await gChapter(ch,'he'); const box=rd&&rd.querySelector('.lrhe'); if(!box||vg.ch!==ch||vg.m!==m) return; box.textContent=he[m-1]||'';
         if(en){ const e2=await gChapter(ch,'en'); const b2=rd&&rd.querySelector('.lrbody'); if(b2&&vg.ch===ch&&vg.m===m) b2.insertAdjacentHTML('beforeend','<div class="lren">'+esc(e2[m-1]||'')+'</div>'); } }
       catch(e){ const b=rd&&rd.querySelector('.lrhe'); if(b) b.textContent='Couldn’t load from Sefaria — check the connection.'; } }
-    else { if(!pt||loadedOff!==vp.off){ rd.innerHTML=`<div class="lrh"><b>Shnayim Mikra · Echad Targum</b><button class="lrx" data-x>✕</button></div><div class="lrnv"><button data-home>↩ This week</button></div><div class="lrpos">Loading the parsha…</div><div class="lrbody"></div>`;
-        rd.querySelector('[data-x]').onclick=close; rd.querySelector('[data-home]').onclick=()=>{ vp={off:0,i:st.p.idx||0}; draw(); }; const want=vp.off;
+    else { if(!pt||loadedOff!==vp.off){ rd.innerHTML=`<div class="lrh"><b>Shnayim Mikra · Echad Targum</b><button class="lrx" data-x>✕</button></div><div class="lrpos">Loading the parsha…</div><div class="lrbody"></div>`;
+        rd.querySelector('[data-x]').onclick=close; const want=vp.off;
         try{ const c2=await parshaAt(want); const p2=await ptAt(c2,want); if(want!==vp.off) return; cal=c2; pt=p2; loadedOff=want; }catch(e){ const p=rd&&rd.querySelector('.lrpos'); if(p) p.textContent='Couldn’t load from Sefaria — check the connection.'; return; } }
-      if(!rd) return; const n=pt.verses.length; vp.i=Math.max(0,Math.min(vp.i,n-1)); const i=vp.i, v=pt.verses[i], cur=vp.off===0, placeI=st.p.idx||0, br=pBrowsing(), mf=maftirIdx(cal,pt);
-      const alOf=k=>k>=mf&&(cal.aliyot8||[]).length>7?8:pt.verses[k].a; const pct=cur?Math.round(placeI/n*100):0; const wk=vp.off===0?'this week':vp.off===1?'next week':vp.off===-1?'last week':(vp.off>0?'in '+vp.off+' weeks':(-vp.off)+' weeks ago');
+      if(!rd) return; const n=pt.verses.length; vp.i=Math.max(0,Math.min(vp.i,n-1)); const i=vp.i, v=pt.verses[i], cur=vp.off===0, L=cur?pLearned():new Set(), mf=maftirIdx(cal,pt);
+      const alOf=k=>k>=mf&&(cal.aliyot8||[]).length>7?8:pt.verses[k].a; const pct=cur?Math.round(L.size/n*100):0; const wk=vp.off===1?'next week':vp.off===-1?'last week':(vp.off>0?'in '+vp.off+' weeks':(-vp.off)+' weeks ago');
       const sa=selAl||alOf(i); const idxs=pt.verses.map((x,k)=>k).filter(k=>sa===8?k>=mf:pt.verses[k].a===sa);
       const map=mapOpen?`<div class="lrmap"><div class="lral">${AL_HE.map((h,k)=>`<button class="${sa===k+1?'on':''}" data-al="${k+1}">${h}</button>`).join('')}</div>
-          <div class="lrcells">${idxs.map(k=>{ const x=pt.verses[k]; return `<button class="lrc w${cur&&k<placeI?' d':''}${cur&&k===placeI?' pl':''}${k===i?' v':''}" data-pi="${k}" title="${x.c}:${x.v}">${x.c}:${x.v}</button>`; }).join('')}</div>
-          <div class="lrjump"><input type="number" inputmode="numeric" min="1" max="${n}" placeholder="Jump to pasuk # (1–${n})" data-jn><button data-jgo>Go</button></div>${cur?'<div class="lrkey"><i class="d"></i>done <i class="pl"></i>my place <i class="v"></i>showing</div>':''}</div>`:'';
+          <div class="lrcells">${idxs.map(k=>{ const x=pt.verses[k]; return `<button class="lrc w${L.has(k)?' d':''}${k===i?' v':''}" data-pi="${k}" title="${x.c}:${x.v}">${x.c}:${x.v}</button>`; }).join('')}</div>
+          <div class="lrjump"><input type="number" inputmode="numeric" min="1" max="${n}" placeholder="Jump to pasuk # (1–${n})" data-jn><button data-jgo>Go</button></div><div class="lrkey"><i class="d"></i>learned <i class="v"></i>you are here</div></div>`:'';
       rd.innerHTML=`<div class="lrh"><b>Parashat ${esc(cal.name)} · Mikra + Targum</b><button class="lrx" data-x>✕</button></div>
-        <div class="lrnv"><button data-wkp aria-label="Previous week's parsha">‹ week</button><button class="lrpick" data-map>${esc(cal.he||cal.name)} · ${AL_HE[alOf(i)-1]} ▾</button><button data-wkn aria-label="Next week's parsha">week ›</button>${br?`<button class="home" data-home>↩ My place</button>`:''}</div>
-        <div class="lrpos">${vp.off?`<span class="lrbrowse">Browsing ${esc(cal.name)} (${wk})</span> · `:br?'<span class="lrbrowse">Browsing</span> · ':''}${AL_HE[alOf(i)-1]} · pasuk ${i+1} of ${n}${cur?' · '+pct+'% done · '+(n-placeI)+' left'+(daysToShabbat()?' · '+daysToShabbat()+'d to Shabbat':' · Shabbat'):''}${cur?`<div class="lrpb" style="margin-top:6px"><i style="width:${pct}%"></i></div>`:''}</div>${map}
-        <div class="lrbody">${cur&&placeI>=n&&!br?'<div class="lrlab">Parsha complete ✓</div>':''}<div class="lrlab">${esc(pt.book)} ${v.c}:${v.v} · מקרא${cur&&i<placeI?' · ✓':''}</div><div class="lrhe">${esc(v.m)}</div><div class="lrtg"><div class="lrlab">תרגום אונקלוס</div>${esc(v.o)}</div></div>
-        <div class="lrnav"><button class="bk" data-bk aria-label="Previous">‹</button><button class="nx" data-nx>${!cur?'› Next pasuk':br?'✓ Learned this → next':'✓ Next pasuk'}</button><button class="bk" data-fw aria-label="Next">›</button></div>
-        ${cur?`<div class="lrsub"><button data-setplace${br?'':' disabled'}>Set as my place</button><button data-markdone>Mark done up to here</button></div>`:'<div class="lrsub"><span>Looking ahead/back — your progress stays on this week’s parsha.</span></div>'}`;
+        <div class="lrnv"><button data-wkp aria-label="Previous week's parsha">‹ week</button><button class="lrpick" data-map>${esc(cal.he||cal.name)} · ${AL_HE[alOf(i)-1]} ▾</button><button data-wkn aria-label="Next week's parsha">week ›</button>${cur?`<button class="lrmore${menuOpen?' on':''}" data-menu aria-label="More">•••</button>`:`<button data-thisweek>This week</button>`}</div>${cur?menu:''}
+        <div class="lrpos">${cur?'':`Looking at ${esc(cal.name)} (${wk}) · `}${AL_HE[alOf(i)-1]} · pasuk ${i+1} of ${n}${cur?' · '+pct+'% learned · '+(n-L.size)+' left'+(daysToShabbat()?' · '+daysToShabbat()+'d to Shabbat':' · Shabbat'):''}${cur?`<div class="lrpb" style="margin-top:6px"><i style="width:${pct}%"></i></div>`:''}</div>${map}
+        <div class="lrbody">${cur&&L.size>=n?'<div class="lrlab">Parsha complete ✓</div>':''}<div class="lrlab">${esc(pt.book)} ${v.c}:${v.v} · מקרא${L.has(i)?' · ✓ learned':''}</div><div class="lrhe">${esc(v.m)}</div><div class="lrtg"><div class="lrlab">תרגום אונקלוס</div>${esc(v.o)}</div></div>
+        <div class="lrnav"><button class="bk" data-bk aria-label="Previous">‹</button><button class="nx" data-nx>${cur?'✓ Learned this → next':'› Next pasuk'}</button><button class="bk" data-fw aria-label="Next">›</button></div>`;
       const m2=rd.querySelector('.lrmap'); if(m2){ m2.scrollTop=mapSc; if(!mapSc){ const vv=m2.querySelector('.lrc.v'); if(vv) vv.scrollIntoView({block:'center'}); } } }
     wire(); };
+  const go=()=>{ savePos(); draw(); };
   const view=d=>{ if(track==='g'){ let {ch,m}=vg; if(d>0){ if(m<GITTIN[ch-1]) m++; else if(ch<9){ ch++; m=1; } else return; } else { if(m>1) m--; else if(ch>1){ ch--; m=GITTIN[ch-1]; } else return; } vg={ch,m}; }
-    else { const n=pt?pt.verses.length:0; const j=vp.i+d; if(j<0||j>=n) return; vp.i=j; } selAl=0; draw(); };
-  const setPlace=(mark)=>{ if(track==='g'){ const o=gOrdCM(vg.ch,vg.m); if(mark){ st.g.done=o+1; let {ch,m}=vg; if(m<GITTIN[ch-1]) m++; else if(ch<9){ ch++; m=1; } st.g.ch=ch; st.g.m=m; vg={ch,m}; } else { st.g.ch=vg.ch; st.g.m=vg.m; st.g.done=o; } }
-    else { if(vp.off!==0) return; const n=pt?pt.verses.length:0; if(mark){ st.p.idx=Math.min(n,vp.i+1); vp.i=Math.min(n-1,vp.i+1); } else st.p.idx=vp.i; }
-    touch(track); push(); say2(mark?'✓ Marked done up to here':'📍 Set as your place'); draw(); };
-  const done=()=>{ if(track==='g'){ if(gBrowsing()) return setPlace(true); const was=gIdx(); if(gMove(1)||was===G_TOTAL-1){ st.g.done=Math.max(st.g.done||0,was+1); logToday(1); touch('g'); push(); } vg={ch:st.g.ch,m:st.g.m}; }
-    else { if(vp.off!==0) return view(1); if(pBrowsing()){ logToday(1); return setPlace(true); } const n=pt?pt.verses.length:0; if((st.p.idx||0)<n){ st.p.idx=(st.p.idx||0)+1; logToday(1); touch('p'); push(); } vp.i=Math.min(n-1,st.p.idx); }
-    if(navigator.vibrate) navigator.vibrate(8); draw(); };
+    else { const n=pt?pt.verses.length:0; const j=vp.i+d; if(j<0||j>=n) return; vp.i=j; } selAl=0; go(); };
+  const learnedNext=()=>{ if(track==='g'){ const o=gOrdCM(vg.ch,vg.m), L=gLearned(); if(!L.has(o)){ st.g.learned.push(o); logToday(1); } st.g.done=st.g.learned.length; touch('g'); push(); if(o<G_TOTAL-1) view(1); else draw(); }
+    else { if(vp.off!==0) return view(1); const L=pLearned(); if(!L.has(vp.i)){ st.p.learned.push(vp.i); logToday(1); } touch('p'); push(); const n=pt?pt.verses.length:0; if(vp.i<n-1) view(1); else draw(); }
+    if(navigator.vibrate) navigator.vibrate(8); };
+  const markUpTo=()=>{ if(track==='g'){ const o=gOrdCM(vg.ch,vg.m); const L=gLearned(); for(let k=0;k<=o;k++) L.add(k); st.g.learned=[...L].sort((a,b)=>a-b); st.g.done=st.g.learned.length; touch('g'); }
+    else { if(vp.off!==0) return; const L=pLearned(); for(let k=0;k<=vp.i;k++) L.add(k); st.p.learned=[...L].sort((a,b)=>a-b); touch('p'); }
+    push(); menuOpen=false; say2('✓ Marked done up to here'); draw(); };
   function wire(){ if(!rd) return; const q=s=>rd.querySelector(s), on=(s,f)=>{ const b=q(s); if(b) b.onclick=f; };
     on('[data-x]',close); on('[data-en]',()=>{ en=!en; SS('learn.en',en); draw(); });
-    on('[data-nx]',done); on('[data-bk]',()=>view(-1)); on('[data-fw]',()=>view(1)); on('[data-map]',()=>{ mapOpen=!mapOpen; draw(); });
-    on('[data-home]',()=>{ if(track==='g') vg={ch:st.g.ch,m:st.g.m}; else vp={off:0,i:st.p.idx||0}; selAl=0; draw(); });
-    on('[data-setplace]',()=>setPlace(false)); on('[data-markdone]',()=>{ if(confirm(track==='g'?'Mark everything up to Gittin '+vg.ch+':'+vg.m+' as done?':'Mark this week’s parsha done up to this pasuk?')) setPlace(true); });
-    on('[data-chp]',()=>{ if(vg.ch>1){ vg={ch:vg.ch-1,m:1}; draw(); } }); on('[data-chn]',()=>{ if(vg.ch<9){ vg={ch:vg.ch+1,m:1}; draw(); } });
+    on('[data-nx]',learnedNext); on('[data-bk]',()=>view(-1)); on('[data-fw]',()=>view(1)); on('[data-map]',()=>{ mapOpen=!mapOpen; draw(); });
+    on('[data-menu]',()=>{ menuOpen=!menuOpen; draw(); }); on('[data-markdone]',()=>{ if(confirm(track==='g'?'Mark everything up to Gittin '+vg.ch+':'+vg.m+' as learned?':'Mark this week’s parsha learned up to this pasuk?')) markUpTo(); });
+    on('[data-thisweek]',()=>{ vp={off:0,i:st.p.idx||0}; selAl=0; draw(); });
+    on('[data-chp]',()=>{ if(vg.ch>1){ vg={ch:vg.ch-1,m:1}; go(); } }); on('[data-chn]',()=>{ if(vg.ch<9){ vg={ch:vg.ch+1,m:1}; go(); } });
     on('[data-wkp]',()=>{ vp={off:vp.off-1,i:0}; selAl=0; draw(); }); on('[data-wkn]',()=>{ vp={off:vp.off+1,i:0}; selAl=0; draw(); });
-    rd.querySelectorAll('[data-gm]').forEach(b=>b.onclick=()=>{ const [c,mm]=b.dataset.gm.split(':').map(Number); vg={ch:c,m:mm}; draw(); });
-    rd.querySelectorAll('[data-gch]').forEach(b=>b.onclick=()=>{ vg={ch:+b.dataset.gch,m:1}; draw(); });
-    rd.querySelectorAll('[data-al]').forEach(b=>b.onclick=()=>{ selAl=+b.dataset.al; const k=selAl===8?maftirIdx(cal,pt):pt.verses.findIndex(x=>x.a===selAl); if(k>=0) vp.i=k; draw(); });
-    rd.querySelectorAll('[data-pi]').forEach(b=>b.onclick=()=>{ vp.i=+b.dataset.pi; draw(); });
-    const jn=q('[data-jn]'), go=()=>{ const k=+jn.value; if(k>=1&&pt&&k<=pt.verses.length){ vp.i=k-1; selAl=0; draw(); } }; if(jn){ on('[data-jgo]',go); jn.onkeydown=e=>{ if(e.key==='Enter') go(); }; }
-    const ps=q('.lrpos'); if(ps){ ps.style.cursor='pointer'; ps.title='Open the picker'; ps.onclick=e=>{ if(e.target.closest('button')) return; mapOpen=!mapOpen; draw(); }; } }
+    rd.querySelectorAll('[data-gm]').forEach(b=>b.onclick=()=>{ const [c,mm]=b.dataset.gm.split(':').map(Number); vg={ch:c,m:mm}; go(); });
+    rd.querySelectorAll('[data-gch]').forEach(b=>b.onclick=()=>{ vg={ch:+b.dataset.gch,m:1}; go(); });
+    rd.querySelectorAll('[data-al]').forEach(b=>b.onclick=()=>{ selAl=+b.dataset.al; const k=selAl===8?maftirIdx(cal,pt):pt.verses.findIndex(x=>x.a===selAl); if(k>=0) vp.i=k; go(); });
+    rd.querySelectorAll('[data-pi]').forEach(b=>b.onclick=()=>{ vp.i=+b.dataset.pi; go(); });
+    const jn=q('[data-jn]'), jgo=()=>{ const k=+jn.value; if(k>=1&&pt&&k<=pt.verses.length){ vp.i=k-1; selAl=0; go(); } }; if(jn){ on('[data-jgo]',jgo); jn.onkeydown=e=>{ if(e.key==='Enter') jgo(); }; }
+    const ps=q('.lrpos'); if(ps){ ps.style.cursor='pointer'; ps.title='Open the picker'; ps.onclick=()=>{ mapOpen=!mapOpen; draw(); }; } }
   let x0=null,y0=0; rd.addEventListener('touchstart',e=>{ if(e.touches.length>1||e.target.closest('.lrmap,input')){ x0=null; return; } x0=e.touches[0].clientX; y0=e.touches[0].clientY; },{passive:true});
   rd.addEventListener('touchend',e=>{ if(x0==null) return; const dx=e.changedTouches[0].clientX-x0, dy=e.changedTouches[0].clientY-y0; x0=null; if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.4) view(dx<0?1:-1); });
-  document.addEventListener('keydown',function k(e){ if(!rd){ document.removeEventListener('keydown',k); return; } if(e.target&&/INPUT|TEXTAREA/.test(e.target.tagName)) return; if(e.key==='Escape') close(); if(e.key==='ArrowLeft') view(1); if(e.key==='ArrowRight') view(-1); if(e.key==='Enter') done(); });
+  document.addEventListener('keydown',function k(e){ if(!rd){ document.removeEventListener('keydown',k); return; } if(e.target&&/INPUT|TEXTAREA/.test(e.target.tagName)) return; if(e.key==='Escape') close(); if(e.key==='ArrowLeft') view(1); if(e.key==='ArrowRight') view(-1); if(e.key==='Enter') learnedNext(); });
   draw(); }
 
 setTimeout(pull,600); setInterval(()=>{ if(!document.hidden) pull(); },3*60000);
 ensureParsha().then(cal=>cal&&parshaText(cal)).then(()=>fire()).catch(()=>{});
 // step a track from outside the reader (home ‹ › arrows): › = learned → next, ‹ = back
-function step(track,dir){ touch(track); if(track==='g'){ if(dir>0){ const was=gIdx(); if(gMove(1)||was===G_TOTAL-1){ st.g.done=Math.max(st.g.done||0,was+1); logToday(1); } } else gMove(-1); }
-  else { const cal=LS('learn.cal'), pt=cal&&LS('learn.pt.'+cal.url); const n=pt?pt.verses.length:0; if(dir>0){ if((st.p.idx||0)<n){ st.p.idx=(st.p.idx||0)+1; logToday(1); } } else st.p.idx=Math.max(0,(st.p.idx||0)-1); }
+// home card ‹ ›: › = this one learned → next, ‹ = back one. Same saved place as the reader.
+function step(track,dir){ migrate(st); touch(track); if(track==='g'){ if(dir>0){ const o=gIdx(); if(!st.g.learned.includes(o)){ st.g.learned.push(o); logToday(1); } st.g.done=st.g.learned.length; gMove(1); } else gMove(-1); }
+  else { const cal=LS('learn.cal'), pt=cal&&LS('learn.pt2.'+cal.url); const n=pt?pt.verses.length:0; const i=st.p.idx||0;
+    if(dir>0){ if(i<n&&!st.p.learned.includes(i)){ st.p.learned.push(i); logToday(1); } st.p.idx=Math.min(Math.max(0,n-1),i+1); } else st.p.idx=Math.max(0,i-1); }
   push(); }
 window.Learning={rowsHTML,wireRows,open,openBH,close,summary,step,dayFlags,onChange:f=>subs.push(f)};
 setTimeout(()=>{ ['bh','ms','bn'].forEach(k=>bhText(k).catch(()=>{})); },3000);   // cache for offline

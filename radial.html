@@ -106,6 +106,15 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .lrow .lnum{flex:none;font:700 11px ui-monospace,Menlo,monospace;color:var(--dim);min-width:16px;text-align:center;font-variant-numeric:tabular-nums}
 .lrow .pchip{flex:none;font:700 9px ui-monospace,Menlo,monospace;letter-spacing:.4px;color:#07141a;background:var(--pc,#39c7df);border-radius:5px;padding:2px 6px;max-width:94px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase}
 .lrow .lchip{flex:none;font:700 9px ui-monospace,Menlo,monospace;letter-spacing:.4px;color:var(--cyan);border:1px solid var(--line);border-radius:5px;padding:1px 6px;white-space:nowrap}
+/* left vertical filter rail — faint in the background, click a chip → filtered list */
+#fltrail{position:absolute;left:0;top:52px;bottom:48px;width:148px;overflow-y:auto;overflow-x:hidden;z-index:2;opacity:.32;padding:4px 8px 20px;transition:opacity .25s;scrollbar-width:thin;-webkit-mask-image:linear-gradient(90deg,#000 76%,transparent);mask-image:linear-gradient(90deg,#000 76%,transparent)}
+#fltrail:hover{opacity:1;z-index:20}
+#fltrail::-webkit-scrollbar{width:5px}#fltrail::-webkit-scrollbar-thumb{background:var(--line);border-radius:4px}
+#fltrail .fh{font:700 9px ui-monospace,Menlo,monospace;letter-spacing:1.5px;color:var(--cyan);margin:11px 2px 4px;text-transform:uppercase}
+#fltrail .fh:first-child{margin-top:0}
+#fltrail .fc{display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%;text-align:left;border:1px solid var(--line);background:rgba(9,18,24,.5);color:var(--ink);border-radius:7px;padding:3px 7px;margin-bottom:3px;font-size:11px;cursor:pointer;white-space:nowrap;overflow:hidden}
+#fltrail .fc:hover{border-color:var(--cyan);color:var(--cyan)}
+#fltrail .fc b{color:var(--dim);font:700 9px ui-monospace,Menlo,monospace;flex:none}
 .lrow .rmcat,.lrow .tick{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);color:var(--dim);flex:none;display:grid;place-items:center;font-size:13px}
 .lrow .rmcat:hover{color:var(--cyan);border-color:var(--cyan)} .lrow .tick:hover{color:var(--green);border-color:var(--green)}
 .lrow.drag{opacity:.4} .lrow.over{box-shadow:inset 0 2px 0 var(--cyan)}
@@ -243,6 +252,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 <body>
 <div id="stage">
   <div class="ring r1" id="ring1"></div><div class="ring r2" id="ring2"></div>
+  <div id="fltrail"></div>
   <div class="top"><span class="greet" id="greet">FOCUS</span><span class="sum" id="sum"></span><button class="cmdbtn cxbtn" id="cxBtn" title="Call someone — contacts search (/)">🔍 CONTACTS</button><span class="ringseg" id="ringSeg" title="Ring shows: Projects / Leads / Subs / Categories"></span><button class="cmdbtn" id="cmdBtn">⌘ ADD · JUMP · FIND</button><a class="cmdbtn" href="focus2.html" style="text-decoration:none">◉ FOCUS 2</a><a class="cmdbtn" href="dashboard.html" style="text-decoration:none">⌂ DASHBOARD</a><span class="clk" id="clk"></span></div>
   <div class="core" id="core"></div>
   <div id="bubbles"></div>
@@ -406,7 +416,11 @@ function showRingDD(){ let dd=$('#ringDD'); if(!dd){ dd=document.createElement('
     r.addEventListener('dragstart',()=>{ dragEl=r; r.classList.add('drag'); });
     r.addEventListener('dragover',e=>{ e.preventDefault(); if(!dragEl||dragEl===r) return; const b=r.getBoundingClientRect(); rdl.insertBefore(dragEl,(e.clientY-b.top)>b.height/2?r.nextSibling:r); });
     r.addEventListener('dragend',()=>{ r.classList.remove('drag'); const p=ringPref(); p.ord=[...rdl.querySelectorAll('.rdr')].map(x=>x.dataset.k); saveRingPref(p); ringPage=0; rer(); }); }); }
-function renderAll(){ clearIF(); if(window.Files&&!window._filesInit&&cfg&&cfg.apiKey){ window._filesInit=1; Files.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); Files.onChange(()=>{ if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.te')) return; renderFilesBox(); }); } renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
+function renderFltRail(){ const el=$('#fltrail'); if(!el) return;
+  const secs=[['PROJECT','project',fltTally(t=>t.project)],['SUB','sub',fltTally(t=>t.sub)],['LEAD','lead',fltTally(t=>t.lead)],['CATEGORY','category',fltTally(t=>catName(sectionOf(t)))]];
+  el.innerHTML=secs.map(([lab,field,ents])=>'<div class="fh">'+lab+'</div>'+(ents.length?ents.map(([v,n])=>'<button class="fc" data-ff="'+esc(field)+'" data-fv="'+esc(v)+'" title="'+esc(v)+' · '+n+'">'+esc(v)+'<b>'+n+'</b></button>').join(''):'<div class="fh" style="color:var(--dim)">—</div>')).join('');
+  el.querySelectorAll('[data-ff]').forEach(b=>b.onclick=()=>openFiltered(b.dataset.ff,b.dataset.fv)); }
+function renderAll(){ clearIF(); if(window.Files&&!window._filesInit&&cfg&&cfg.apiKey){ window._filesInit=1; Files.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); Files.onChange(()=>{ if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.te')) return; renderFilesBox(); }); } renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); renderFltRail(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
 window.addEventListener('hashchange',()=>{ window._gdShown=null; const gid=window.Guide&&Guide.hashId(); if(gid) openGuide(gid); });
 function renderHeader(){ const h=new Date().getHours(); $('#greet').textContent=(h<12?'GOOD MORNING':h<17?'GOOD AFTERNOON':'GOOD EVENING')+' ◎';
   const open=tasks.filter(live).length; const att=itemsFor('attention').length;
