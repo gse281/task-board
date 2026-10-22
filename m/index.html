@@ -452,6 +452,7 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .clb{flex:none;height:40px;display:inline-flex;align-items:center;justify-content:center;padding:0 11px;border-radius:11px;background:var(--panel2);color:var(--ink);font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap}
 .clb.clcall{background:var(--callg);color:var(--callink)}.clb.add{color:var(--gold);border:1px dashed #6b5640;background:none}
 .clgh{display:flex;justify-content:space-between;margin:14px 6px 6px;font-weight:800;font-size:13px;color:var(--muted)}
+.lgh{display:flex;justify-content:space-between;align-items:center;margin:13px 8px 5px;font:800 10px ui-monospace,Menlo,monospace;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}.lgh:first-child{margin-top:4px}.lgh span{color:var(--muted)}
 /* home status row (bottom, scrolls with page) */
 .homebar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:22px 0 4px;padding:10px 4px;border-top:1px solid var(--line)}
 .hbstat{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:13px;min-width:0}
@@ -756,7 +757,7 @@ body{ background:radial-gradient(130% 120% at 50% 16%, #0d1920 0%, #0a1216 55%, 
 <div id="toast"><span class="tm"></span><button class="hidden" id="undoBtn">Undo</button></div>
 
 <script>
-const BUILD='2026-10-22 09:17';   // stamped by deploy.sh
+const BUILD='2026-10-22 09:24';   // stamped by deploy.sh
 /* ============================================================
    Data model — shares the desktop dashboard's conventions:
    Items table: Task, Project, SBLead (lead), Sub (sub-category),
@@ -1412,7 +1413,10 @@ function paintSlotList(s){
         ${m?`<a class="clb clcall" href="${esc(telOf(m.phone))}"${cuA(m.who)} data-join>📞 Call</a><a class="clb" href="${esc(smsOf(m.phone))}"${cuA(m.who)} data-join aria-label="Text">💬 Text</a>`:`<button class="clb add" data-addnum>＋ Add number</button>`}</div></div>`; };
   const grp=()=>{ const G=callGroups();
     return Object.entries(G).filter(([k,v])=>v.length).map(([k,v])=>`<div class="clgh">${k==='Today'?'📞 Today':k==='Tomorrow'?'🌙 Tomorrow':k==='Later'?'🗓 Later':'Anytime'} <span>${v.length}</span></div>`+v.map(t=>callRow(t).replace('<div class="swr" ','<div class="swr" data-g="'+k+'" ')).join('')).join(''); };
-  const body=items.length?(isCalls?grp():items.map(rowFor).join(''))
+  const grpByLead=()=>{ const g={}; items.forEach(t=>{const k=(t.lead||'').trim();(g[k]=g[k]||[]).push(t);});
+    const keys=Object.keys(g).sort((a,b)=>{ if(!!a!==!!b) return a?-1:1; return a.localeCompare(b); });
+    return keys.map(k=>`<div class="lgh">${esc((k||'NO LEAD').toUpperCase())} <span>${g[k].length}</span></div>`+g[k].map(rowFor).join('')).join(''); };
+  const body=items.length?(isCalls?grp():grpByLead())
     :`<div class="empty" style="padding-top:50px"><div class="big2">${S.em}</div><h2>No ${esc(S.label.toLowerCase())} items</h2><p style="color:var(--dim);padding:0 24px">Add one above${isCalls?'':', or tap '+S.em+' on any task'}.</p></div>`;
   el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">${S.em} ${esc(S.label)}</div>${items.length?'<button class="statsbtn" data-clear>CLEAR</button>':''}<button class="statsbtn" data-run>▶ RUN</button><button class="icon" data-add aria-label="Add">＋</button></div>
     ${isCalls?'':`<div class="panetop">${wxToday()}${letterRow()}</div>`}
