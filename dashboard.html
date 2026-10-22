@@ -463,7 +463,10 @@ body::before{ opacity:.7 }
 .task:hover{border-color:rgba(57,199,223,.4)!important;background:rgba(20,36,42,.8)!important}
 .task .name{order:1;flex:1 1 0;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13.5px!important;font-weight:600;line-height:1.3;margin:0!important;padding:0!important;display:block!important}
 .task .topright{order:3;position:static!important;display:flex;align-items:center;gap:4px;margin-left:auto}
-.task .topright .reveal,.task .details,.task .next,.task .notepv,.task .plsrow,.task .dobadge,.task .row{display:none!important}
+.task .topright .reveal,.task .details,.task .next,.task .notepv,.task .dobadge,.task .row{display:none!important}
+.task .plsrow{display:flex!important;gap:4px;flex-wrap:wrap;margin-top:3px}
+.task .plstag.empty{display:none!important}
+.task .plstag.l{color:#8fd3ee;border-color:rgba(57,199,223,.25)}
 .task .age{font:600 11px ui-monospace,Menlo,monospace;color:#64838d}
 .task .projbadge{background:transparent!important;border:0!important;color:#9fdbe7!important;font:700 11.5px ui-monospace,Menlo,monospace!important;padding:0 8px 0 0!important;margin:0!important;max-width:110px;overflow:hidden;text-overflow:ellipsis;vertical-align:baseline}
 .task .projbadge::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:currentColor;margin-right:6px;vertical-align:1px}
@@ -572,7 +575,7 @@ body::before{ opacity:.7 }
 <script src="files.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-22 09:41';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-22 09:43';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -3258,6 +3261,7 @@ function taskEl(t,sectionId){
   el.addEventListener('click',e=>{ if(bulkMode||e.target.closest('button,a,input,textarea,select')) return; openDetail(t); });
   // Project ID badge to the LEFT of the description text — shown everywhere, including the searched/filtered pane.
   { const pb=document.createElement('button'); pb.className='projbadge'+(t.project?'':' empty'); pb.textContent=t.project||'＋P';
+    if(t.project) pb.style.color=catColor(t.project);   // per-project colored dot + label (standard-row look)
     pb.title=t.project?('Project: '+t.project+' — click to change'):'Set project';
     pb.onclick=e=>{e.stopPropagation();pickAssign(t,'project');}; nm.insertBefore(pb, nm.firstChild); }
   const np=el.querySelector('.notepv'); if(np){ np.style.cursor='pointer'; np.onclick=e=>{e.stopPropagation();editNotes(t);}; }
@@ -3310,7 +3314,7 @@ function taskEl(t,sectionId){
     // one tag per value (multiple allowed); ＋ shown when a dimension is empty
     const add=(cls,dim,ti)=>{const vs=valsOf(t,dim);
       if(vs.length){ vs.forEach(v=>{const s=document.createElement('button');s.className='plstag '+cls;s.textContent=v.slice(0,3);s.title=ti+': '+v+' — click to edit';s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);};pr.appendChild(s);}); }
-      else { const s=document.createElement('button');s.className='plstag '+cls;s.textContent='＋'+cls.toUpperCase();s.title='Set '+ti.toLowerCase();s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);};pr.appendChild(s); } };
+      else { const s=document.createElement('button');s.className='plstag empty '+cls;s.textContent='＋'+cls.toUpperCase();s.title='Set '+ti.toLowerCase();s.onclick=e=>{e.stopPropagation();pickAssign(t,dim);};pr.appendChild(s); } };
     add('s','sub','Sub'); add('l','lead','Lead');   // project now shown as a badge left of the title
     // P/S/L tags on the left, action buttons (check/bell/pin/remove) to their RIGHT, same line.
     const plsline=document.createElement('div'); plsline.className='plsline';
