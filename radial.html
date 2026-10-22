@@ -258,7 +258,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
   <div class="core" id="core"></div>
   <div id="bubbles"></div>
   <div class="corner tl" id="cTL"></div><div class="corner tr" id="cTR"></div><div class="corner ml" id="cML"></div><div class="corner bl" id="cBL"></div><div class="corner br" id="cBR"></div>
-  <div class="foot"><button id="mvReset" onclick="resetMoves()" title="Put bubbles and panes back">↺ LAYOUT</button><button id="cmdBtn2">⌘ ADD · JUMP · FIND</button><button id="fltBtn" onclick="openFilters()" title="Filter by Project · Sub · Lead · Category">▦ P·S·L·C</button><button id="cxFootBtn" onclick="focusCx()" title="Call / contacts — search, copy, add">👤 CONTACTS</button><button id="homeToggle"></button><a href="focus2.html" title="Focus 2 — AM/PM calls">◉ FOCUS 2</a><a href="dashboard.html">⌂ DASHBOARD</a></div>
+  <div class="foot"><button id="mvReset" onclick="resetMoves()" title="Put bubbles and panes back">↺ LAYOUT</button><button id="cmdBtn2">⌘ ADD · JUMP · FIND</button><button id="fltBtn" onclick="openFilters()" title="Filter by Project · Sub · Lead · Category">▦ P·S·L·C</button><button id="cxFootBtn" onclick="openContacts()" title="Contacts — search, copy, text, call, add">👤 CONTACTS</button><button id="homeToggle"></button><a href="focus2.html" title="Focus 2 — AM/PM calls">◉ FOCUS 2</a><a href="dashboard.html">⌂ DASHBOARD</a></div>
 </div>
 <div class="back" id="ov"><div class="card"><div class="cardh" id="ovh"></div><div class="cardb" id="ovb"></div></div></div>
 <div id="cmd"><div class="cmdbox"><div class="cmdin"><span>⌘</span><input id="cmdInp" placeholder="Add a task, jump to a list, or search everything…" autocomplete="off"></div><div class="cmdres" id="cmdRes"></div><div class="cmdhint">↑↓ move · ⏎ select · esc close · type then ⏎ to add</div></div></div>
@@ -734,6 +734,20 @@ function wireFboxDrag(){ const box=$('#filesBox'), h=box&&box.querySelector('[da
   h.onpointermove=e=>{ if(!drag) return; let L=ol+(e.clientX-sx), T=ot+(e.clientY-sy); L=Math.max(6,Math.min(L,innerWidth-60)); T=Math.max(6,Math.min(T,innerHeight-40)); box.style.left=L+'px'; box.style.top=T+'px'; };
   h.onpointerup=()=>{ if(!drag) return; drag=false; try{ localStorage.setItem('tb.fbox',JSON.stringify({l:parseInt(box.style.left),t:parseInt(box.style.top)})); }catch(_){} }; }
 addEventListener('resize',()=>{ if(!$('#filesBox').hidden) placeFbox(); });
+/* 👤 Contacts — full stable modal (dashboard-style): search · copy · text · call · add. No jumping (lives in the #ov overlay). */
+function openContacts(){ ovh.innerHTML='👤 Contacts<button class="x" data-x>✕</button>'; let q='';
+  function draw(){ const ql=q.trim(); let body;
+    if(ql){ const hits=cxSearch(ql); body=hits.length?hits.map(c=>(c.p||[]).slice(0,3).map((p,i)=>cxRow(i?'':c.n,i?'':c.o,p)).join('')).join(''):'<div class="none" style="padding:10px 2px">Not in contacts — ＋ to add.</div>'; }
+    else { const F=cuRows.filter(r=>!r.hidden&&(r.pinned||r.count)).sort((a,b)=>((+b.pinned)-(+a.pinned))||(cuNow(b)-cuNow(a))).slice(0,24);
+      body=F.length?'<div class="cxh">Frequent</div>'+F.map(r=>cxRow(r.name||r.phone,r.org||'',r.phone)).join(''):'<div class="none" style="padding:10px 2px">Type a name or number to search.</div>'; }
+    ovb.innerHTML='<div class="cxtop"><input id="ctQ" class="rq" type="search" placeholder="Search contacts — name or number…" value="'+esc(q)+'" autocomplete="off"><button id="ctAdd" title="Add a contact">＋</button></div><div class="cxb" style="max-height:64vh;margin-top:8px">'+body+'</div>';
+    const inp=$('#ctQ'); if(inp) inp.oninput=()=>{ q=inp.value; const p=inp.selectionStart; draw(); const i2=$('#ctQ'); if(i2){ i2.focus(); try{i2.setSelectionRange(p,p);}catch(e){} } };
+    ovb.querySelectorAll('[data-cp]').forEach(b=>b.onclick=()=>copyNum(b.dataset.cp));
+    ovb.querySelectorAll('a[data-cu]').forEach(a=>a.addEventListener('click',()=>cxUse(a.dataset.cu,decodeURIComponent(a.getAttribute('href').replace(/^(tel:|sms:)/,'')))));
+    const add=$('#ctAdd'); if(add) add.onclick=()=>addContactPrompt(q);
+  }
+  draw(); try{cxLoad();}catch(e){} ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; setTimeout(()=>{ const i=$('#ctQ'); if(i) i.focus(); },60);
+}
 /* ▦ P·S·L·C filter bar — all Project / Sub / Lead / Category values as outlined clickable chips (like the dashboard) */
 function catName(sec){ const c=CAT[sec]; return c?c[1]:(sec||'—'); }
 function fltTally(fn){ const m={}; tasks.filter(t=>live(t)).forEach(t=>{ const v=fn(t); if(v) m[v]=(m[v]||0)+1; }); return Object.entries(m).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])); }
