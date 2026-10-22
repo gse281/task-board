@@ -201,6 +201,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .back{position:fixed;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(3,7,10,.86);padding:20px}
 .back.show{display:flex}
 .card{width:min(580px,94vw);max-height:90vh;display:flex;flex-direction:column;background:var(--card);border:1px solid rgba(57,199,223,.4);border-radius:18px;overflow:hidden}
+.back.ivwide .card{width:min(1200px,97vw);max-height:94vh}
 .cardh{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--line);font:700 12px ui-monospace,Menlo,monospace;letter-spacing:2px;text-transform:uppercase;color:var(--cyan)}
 .cardh .x{margin-left:auto;width:32px;height:32px;border-radius:50%;border:1px solid var(--line);color:var(--dim);font-size:16px;display:grid;place-items:center}
 .cardh .x:hover{color:var(--cyan);border-color:var(--cyan)}
@@ -493,7 +494,7 @@ function focusCx(){ const q=$('#cxQ'); if(!q){ renderCx(); } const q2=$('#cxQ');
 const amI={morning:0,afternoon:0}, amAt={morning:0,afternoon:0}; let oiI=0;
 function amCycle(){ ['morning','afternoon'].forEach(k=>{ if(Date.now()-amAt[k]>120000) amI[k]++; }); renderAmPm(); }
 // 👥 Invite to the call — full shared screen (invite.js) in the Focus drawer
-function openCallInvite(){ ovh.innerHTML='👥 Invite to the call<button class="x" data-x>✕</button>'; ovb.innerHTML=''; ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; Invite.mount(ovb,{toast}); }
+function openCallInvite(){ ovh.innerHTML='👥 Invite to the call<button class="x" data-x>✕</button>'; ovb.innerHTML=''; ov.classList.add('show','ivwide'); ovh.querySelector('[data-x]').onclick=closeOv; Invite.mount(ovb,{toast}); }
 if(window.Invite) Invite.init({key:()=>cfg.apiKey,base:()=>cfg.baseId});
 function renderAmPm(){ const el=$('#amPm'); if(!el) return; el.innerHTML=[['morning','am','☀︎ Morning'],['afternoon','pm','◑ Afternoon']].map(([k,c,l])=>{ const L=itemsFor(k); const i=L.length?((amI[k]%L.length)+L.length)%L.length:0; const t=L[i];
     return '<div class="amb '+c+'" data-amk="'+k+'"><div class="h">'+l+'<b>'+L.length+'</b></div><div class="t">'+(t?esc(cleanName(t)):'—')+'</div><div class="n"><button data-amd="-1" aria-label="Previous">‹</button><span>'+(L.length?(i+1)+' / '+L.length:'')+'</span><button data-amd="1" aria-label="Next">›</button></div></div>'; }).join('');
@@ -646,7 +647,7 @@ document.addEventListener('dragstart',e=>{ const r=e.target.closest&&e.target.cl
   core.addEventListener('drop',e=>{ core.classList.remove('coredrop'); const id=e.dataTransfer&&e.dataTransfer.getData('text/tbid'); if(id){ e.preventDefault(); moveSection(id,'focus'); toast('◎ Added to Focus'); } }); })();
 /* ===== overlays ===== */
 const ov=$('#ov'), ovh=$('#ovh'), ovb=$('#ovb');
-function closeOv(){ ov.classList.remove('show'); ovb.innerHTML=''; }
+function closeOv(){ ov.classList.remove('show','ivwide'); ovb.innerHTML=''; }
 ov.addEventListener('click',e=>{ if(e.target===ov) closeOv(); });
 addEventListener('keydown',e=>{ if(e.key==='Escape') closeOv(); });
 /* ===== the ONE universal task editor (task-editor.js), same as iPhone + grid. Focus sections appear as Category chips. ===== */
