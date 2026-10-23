@@ -32,26 +32,36 @@ function save(fields,id){ const c=cfg(); if(!c.apiKey) return Promise.resolve(nu
     body:JSON.stringify(id?{fields,typecast:true}:{records:[{fields}],typecast:true})}).then(r=>r.ok?r.json():null).then(d=>d?(id?d:d.records[0]):null).catch(()=>null); }
 function del(id){ const c=cfg(); if(!c.apiKey||!id) return Promise.resolve(); return fetch(url(id),{method:'DELETE',headers:{Authorization:'Bearer '+c.apiKey}}).catch(()=>{}); }
 
-// ---------- keyboard geometry (units; Apple extended layout) ----------
-const K=[]; const k=(id,lab,x,y,w,h)=>K.push({id,lab,x,y,w:w||1,h:h||1});
-k('Esc','esc',0,0);
-['F1','F2','F3','F4'].forEach((f,i)=>k(f,f,2+i,0)); ['F5','F6','F7','F8'].forEach((f,i)=>k(f,f,6.5+i,0)); ['F9','F10','F11','F12'].forEach((f,i)=>k(f,f,11+i,0));
-['F13','F14','F15'].forEach((f,i)=>k(f,f,15.5+i,0)); ['F16','F17','F18','F19'].forEach((f,i)=>k(f,f,19+i,0));
-let y=1.25; '`1234567890-='.split('').forEach((c,i)=>k(c,c,i,y)); k('Backspace','⌫ delete',13,y,2);
-k('Ins','fn',15.5,y); k('Home','home',16.5,y); k('PgUp','pg up',17.5,y); k('NumClear','clear',19,y); k('Num=','=',20,y); k('Num/','/',21,y); k('Num*','*',22,y);
-y=2.25; k('Tab','⇥ tab',0,y,1.5); 'QWERTYUIOP[]'.split('').forEach((c,i)=>k(c,c,1.5+i,y)); k('\\','\\',13.5,y,1.5);
-k('DelFwd','⌦',15.5,y); k('End','end',16.5,y); k('PgDn','pg dn',17.5,y); ['7','8','9'].forEach((c,i)=>k('Num'+c,c,19+i,y)); k('Num-','−',22,y);
-y=3.25; k('Caps','⇪ caps',0,y,1.75); "ASDFGHJKL;'".split('').forEach((c,i)=>k(c,c,1.75+i,y)); k('Return','⏎ return',12.75,y,2.25);
-['4','5','6'].forEach((c,i)=>k('Num'+c,c,19+i,y)); k('Num+','+',22,y);
-y=4.25; k('ShiftL','⇧ shift',0,y,2.25); 'ZXCVBNM,./'.split('').forEach((c,i)=>k(c,c,2.25+i,y)); k('ShiftR','⇧ shift',12.25,y,2.75);
-k('Up','↑',16.5,y); ['1','2','3'].forEach((c,i)=>k('Num'+c,c,19+i,y)); k('NumEnter','enter',22,y,1,2);
-y=5.25; k('CtrlL','⌃ ctrl',0,y,1.25); k('AltL','⌥ opt',1.25,y,1.25); k('CmdL','⌘ cmd',2.5,y,1.5); k('Space','',4,y,7); k('CmdR','⌘ cmd',11,y,1.5); k('AltR','⌥ opt',12.5,y,1.25); k('CtrlR','⌃ ctrl',13.75,y,1.25);
-k('Left','←',15.5,y); k('Down','↓',16.5,y); k('Right','→',17.5,y); k('Num0','0',19,y,2); k('Num.','.',21,y);
-const KW=23, KH=6.25, VY=1.22;
+// ---------- keyboard geometry (units) — Roni's desk: macropad (left) + 75% board ----------
+const K=[]; const k=(id,lab,x,y,w,h,o)=>K.push(Object.assign({id,lab,x,y,w:w||1,h:h||1},o||{}));
+// Macropad: 5×6 grid + knob. cap = keycap legend; bare = switch without a cap; empty = open socket.
+const PX=0, MX=5.75;
+const PAD=[ // [col,row,cap,kind]
+ [0,0,'knob','knob'],[1,0,'','bare'],[2,0,'Z'],[3,0,'Y'],[4,0,'⌄'],
+ [0,1,'F1'],[1,1,'','bare'],[2,1,'','bare'],[3,1,'','bare'],[4,1,'','bare'],
+ [0,2,'','bare'],[1,2,'','bare'],[2,2,'','bare'],[3,2,'','bare'],[4,2,'','empty'],
+ [0,3,'🔒'],[1,3,'','bare'],[2,3,'','bare'],[3,3,'','bare'],[4,3,'','bare'],
+ [0,4,'esc'],[1,4,'','bare'],[2,4,'','bare'],[3,4,'X'],[4,4,'C'],
+ [0,5,'⇧ shift'],[1,5,'🎙'],[2,5,'','empty'],[3,5,'V'],[4,5,'','empty']];
+// Best guesses from the caps + your F-key macros; click a pad key to change what it sends.
+const PAD_DEF={P20:'F15',P30:'',P40:'',P01:'F1',P03:'Cmd+Ctrl+Q',P04:'Esc',P05:'Shift',P15:'F14',P34:'F8',P44:'F17',P35:'F18'};
+PAD.forEach(([c,r,cap,kind])=>k('P'+c+r,cap,PX+c,r,1,1,{pad:1,kind:kind||'cap'}));
+// 75% board (16u). F-row caps are novelty legends; shown faintly at right.
+const FCAP=['□','<','>','^','⌄','!','@','#','$','%','&','(',')','_','–'];
+k('Esc','esc',MX,0,1,1,{cap:'🍎'}); FCAP.forEach((c,i)=>k('F'+(i+1),'F'+(i+1),MX+1+i,0,1,1,{cap:c}));
+let y=1; '`1234567890'.split('').forEach((c,i)=>k(c,c,MX+i,y)); k('-','-',MX+11,y,1,1,{cap:'△'}); k('=','=',MX+12,y,1,1,{cap:'○'}); k('Backspace','⌫ backspace',MX+13,y,2); k('DelFwd','del ⌦',MX+15,y);
+y=2; k('Tab','⇥ tab',MX,y,1.5); 'QWERTYUIOP[]'.split('').forEach((c,i)=>k(c,c,MX+1.5+i,y)); k('\\','\\',MX+13.5,y,1.5); k('PgUp','pg up',MX+15,y,1,1,{cap:''});
+y=3; k('Caps','⇪ caps',MX,y,1.75); "ASDFGHJKL;'".split('').forEach((c,i)=>k(c,c,MX+1.75+i,y)); k('Return','⏎ return',MX+12.75,y,2.25); k('PgDn','pg dn',MX+15,y,1,1,{cap:'?'});
+y=4; k('ShiftL','⇧ shift',MX,y,2.25); 'ZXCVBNM,./'.split('').forEach((c,i)=>k(c,c,MX+2.25+i,y)); k('ShiftR','⇧ shift',MX+12.25,y,1.75); k('Up','↑',MX+14,y); k('End','end',MX+15,y);
+y=5; k('PrtSc','prtsc',MX,y,1.25); k('AltL','⌥ option',MX+1.25,y,1.25); k('CmdL','⌘ command',MX+2.5,y,1.25); k('Space','',MX+3.75,y,6.25); k('CmdR','⌘ cmd',MX+10,y); k('CtrlR','⌃ control',MX+11,y); k('Fn','fn',MX+12,y);
+k('Left','←',MX+13,y); k('Down','↓',MX+14,y); k('Right','→',MX+15,y);
+const KW=MX+16, KH0=6, VY=1.22;
+const BOARD=new Set(K.filter(x=>!x.pad).map(x=>x.id));
 const MODS=['Caps','Cmd','Ctrl','Alt','Shift'], GLYPH={Caps:'⇪',Cmd:'⌘',Ctrl:'⌃',Alt:'⌥',Shift:'⇧'}, MODNAME={Caps:'Caps',Cmd:'Cmd',Ctrl:'Ctrl',Alt:'Opt',Shift:'Shift'};
-const MODKEYS={Caps:['Caps'],Cmd:['CmdL','CmdR'],Ctrl:['CtrlL','CtrlR'],Alt:['AltL','AltR'],Shift:['ShiftL','ShiftR']};
+const MODKEYS={Caps:['Caps'],Cmd:['CmdL','CmdR'],Ctrl:['CtrlR'],Alt:['AltL'],Shift:['ShiftL','ShiftR']};
 const KEYMOD={}; Object.keys(MODKEYS).forEach(m=>MODKEYS[m].forEach(id=>KEYMOD[id]=m));
-const LABEL={}; K.forEach(x=>LABEL[x.id]=x.lab||'space');
+const LABEL={}; K.forEach(x=>{ if(!x.pad) LABEL[x.id]=x.lab||'space'; });
+const lab=id=>LABEL[id]||(/^P\d\d$/.test(id)?'Pad key':id.replace(/^Num/,'num '));
 
 // ---------- parse "Ctrl+Shift+Enter", "Alt+E,S,V", "Ctrl+PgUp / PgDn", "Ctrl+1…4", "Caps Lock+V" ----------
 const MODTOK={cmd:'Cmd',command:'Cmd','⌘':'Cmd',win:'Cmd',windows:'Cmd',super:'Cmd',meta:'Cmd',ctrl:'Ctrl',control:'Ctrl','⌃':'Ctrl',ctl:'Ctrl',alt:'Alt',opt:'Alt',option:'Alt','⌥':'Alt',shift:'Shift','⇧':'Shift',caps:'Caps','caps lock':'Caps',capslock:'Caps',hyper:'Caps','⇪':'Caps'};
@@ -94,7 +104,13 @@ const glyphs=mods=>MODS.filter(m=>mods.has(m)).map(m=>GLYPH[m]).join('');
 
 // ---------- state ----------
 let st={tab:'kb',mode:'all',mods:[],cats:[],sel:''}; try{ Object.assign(st,JSON.parse(ls.get('tb.scx')||'{}')); }catch(e){}
-const keep=()=>ls.set('tb.scx',JSON.stringify({tab:st.tab,mode:st.mode,mods:st.mods,cats:st.cats}));
+if(!st.pad||typeof st.pad!=='object') st.pad={};
+const keep=()=>ls.set('tb.scx',JSON.stringify({tab:st.tab,mode:st.mode,mods:st.mods,cats:st.cats,pad:st.pad}));
+const padSendStr=id=>(id in st.pad)?st.pad[id]:(PAD_DEF[id]||'');
+const padGuess=id=>!(id in st.pad)&&!!PAD_DEF[id];
+function padSend(id){ const str=padSendStr(id); if(!str) return null; const p=parse(str)[0]; if(!p) { const m=MODTOK[str.toLowerCase()]; return m?{mods:new Set([m]),key:'',mod:m}:null; }
+  if(!p.keys.length){ const ms=[...p.mods]; return ms.length===1?{mods:p.mods,key:'',mod:ms[0]}:null; }
+  return {mods:p.mods,key:p.keys[0],mod:''}; }
 const CATCOL={'My Macros':'#39c7df','Excel':'#3fb27f','macOS':'#e2b04a','Other':'#b58cf0'};
 const EXTRA=['#e8683c','#6aa6ff','#e07bb5','#a3c24a'];
 function catColor(c){ if(CATCOL[c]) return CATCOL[c]; const cats=allCats(); const i=cats.filter(x=>!CATCOL[x]).indexOf(c); return EXTRA[(i<0?0:i)%EXTRA.length]; }
@@ -148,6 +164,23 @@ const CSS=`
 .scx-k.dim{opacity:.22}
 .scx-k.sel{box-shadow:0 0 0 2px #fff,0 0 22px rgba(57,199,223,.5);z-index:2}
 .scx-k.press{transform:translateY(2px);box-shadow:0 0 0 2px var(--ac),0 0 26px rgba(57,199,223,.7)}
+.scx-padbg,.scx-kbbg{position:absolute;border-radius:14px}
+.scx-padbg{background:#07090b;border:1px solid #1f262b}
+.scx-kbbg{background:rgba(220,235,240,.035);border:1px solid rgba(160,205,220,.10)}
+.scx-k .cap{position:absolute;top:.3em;right:.45em;font-size:.95em;color:var(--dim);opacity:.75}
+.scx-k.pad .lg{display:flex;gap:.4em;align-items:baseline;width:100%}
+.scx-k .snd{margin-left:auto;font:700 .82em ui-monospace,Menlo,monospace;color:var(--ac);background:rgba(57,199,223,.12);border-radius:4px;padding:0 .3em}
+.scx-k .snd.g{color:#e2b04a;background:rgba(226,176,74,.12)}
+.scx-k.bare{background:radial-gradient(circle at 50% 50%,rgba(200,40,40,.45) 0 22%,#120c0c 24%);border-color:#2a1515;opacity:.55}
+.scx-k.bare.has{opacity:1}
+.scx-k.bare:hover{opacity:.9}
+.scx-sock{position:absolute;border-radius:7px;border:1px dashed rgba(160,205,220,.12)}
+.scx-knob{position:absolute;border-radius:50%;background:radial-gradient(circle at 40% 35%,#3a4247,#0c0f11 70%);border:1px solid #2b3338;box-shadow:inset 0 -3px 6px rgba(0,0,0,.6)}
+.scx-xl{position:absolute;display:flex;align-items:center;justify-content:flex-end;padding-right:.8em;font:700 .9em ui-monospace,Menlo,monospace;color:var(--dim);letter-spacing:1px}
+.scx-k.xk{border-style:dashed}
+.scx-padset{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 10px}
+.scx-padset input{background:var(--p2);border:1px solid var(--ln);border-radius:8px;padding:6px 10px;color:var(--ink);font:600 13px ui-monospace,Menlo,monospace;width:220px}
+.scx-padset .rec.on{color:#04131a!important;background:#e8683c!important;border-color:#e8683c!important}
 .scx-hint{text-align:center;font:600 11px ui-monospace,Menlo,monospace;color:var(--dim);padding:2px 16px 10px}
 .scx-det{flex:1;min-height:150px;margin:0 16px 16px;border:1px solid var(--ln);border-radius:12px;background:var(--p);padding:12px 14px}
 .scx-det h4{margin:0 0 8px;font:800 12px ui-monospace,Menlo,monospace;letter-spacing:1.5px;text-transform:uppercase;color:var(--ac)}
@@ -185,7 +218,7 @@ function injectCSS(){ if(document.getElementById('scx-css')) return; const s=doc
 const kbdHTML=keys=>String(keys||'').split(/\s+\/\s+/).map(alt=>esc(alt).split('+').map(x=>x.trim()).filter(Boolean).map(x=>'<kbd>'+x+'</kbd>').join('<span class="kp">+</span>')).join(' <span class="kp">/</span> ');
 
 // ---------- modal ----------
-let root=null, held=new Set(), pressed='', onKey=null, onKeyUp=null, onRes=null;
+let root=null, padRec='', held=new Set(), pressed='', onKey=null, onKeyUp=null, onRes=null;
 function close(){ if(!root) return; root.remove(); root=null; removeEventListener('keydown',onKey,true); removeEventListener('keyup',onKeyUp,true); removeEventListener('resize',onRes); removeEventListener('blur',clearHeld); }
 function clearHeld(){ if(held.size){ held.clear(); if(root&&st.tab==='kb') drawKB(); } }
 
@@ -201,28 +234,53 @@ function index(){
 }
 function viewLayer(){ if(held.size) return MODS.filter(m=>held.has(m)).join('+'); return st.mode==='exact'?MODS.filter(m=>st.mods.includes(m)).join('+'):null; }
 
+function bindingsFor(key,map,L,q){
+  // returns {bs, mod, send}
+  if(key.pad){
+    if(key.kind==='empty'||key.kind==='knob') return {bs:[],mod:'',send:null};
+    const sd=padSend(key.id); if(!sd) return {bs:[],mod:'',send:null};
+    if(sd.mod) return {bs:[],mod:sd.mod,send:sd};
+    const want=L===null?layerOf(sd.mods):layerOf(new Set([...sd.mods,...(L?L.split('+'):[])]));
+    let bs=(map[sd.key]||[]).filter(b=>b.layer===want); if(q) bs=bs.filter(b=>b.hit);
+    return {bs,mod:'',send:sd};
+  }
+  let bs=map[key.id]||[]; if(L!==null) bs=bs.filter(b=>b.layer===L); if(q) bs=bs.filter(b=>b.hit);
+  return {bs,mod:KEYMOD[key.id]||'',send:null};
+}
+function sendLabel(sd){ return sd?(glyphs(sd.mods)+(sd.key?lab(sd.key):'')).trim():''; }
 function drawKB(){
   const body=root.querySelector('.scx-body');
-  if(!body.querySelector('.scx-kb')) body.innerHTML='<div class="scx-kbw"><div class="scx-kb"></div></div><div class="scx-hint">Hold ⌘ ⌃ ⌥ ⇧ (or Caps Lock = ⇪ hyper) to see that layer · click a key for details · press any key to find it</div><div class="scx-det"></div>';
+  if(!body.querySelector('.scx-kb')) body.innerHTML='<div class="scx-kbw"><div class="scx-kb"></div></div><div class="scx-hint">Hold ⌘ ⌃ ⌥ ⇧ (or Caps Lock = ⇪ hyper) to see that layer · click a key for details · click a pad key to set what it sends · press any key to find it</div><div class="scx-det"></div>';
   const wrap=body.querySelector('.scx-kbw'), kb=body.querySelector('.scx-kb');
-  const avail=wrap.clientWidth-32, u=Math.max(36,Math.min(74,avail/KW)), gap=Math.max(3,u*.07);
-  kb.style.width=(KW*u)+'px'; kb.style.height=(KH*u*VY)+'px'; kb.style.fontSize=Math.max(8.5,u*.165)+'px';
   const {map,q}=index(), L=viewLayer();
+  // keys with shortcuts that aren't on the board or sent by a pad key
+  const padKeys=new Set(K.filter(x=>x.pad).map(x=>{ const sd=padSend(x.id); return sd&&sd.key; }).filter(Boolean));
+  const extra=Object.keys(map).filter(id=>!BOARD.has(id)&&!padKeys.has(id)).sort((a,b)=>(+a.slice(1)||0)-(+b.slice(1)||0)||a.localeCompare(b));
+  const keys=K.concat(extra.map((id,i)=>({id,lab:lab(id),x:MX+i*1.1,y:KH0+0.35,w:1,h:1,extra:1})));
+  const KH=KH0+(extra.length?1.35:0);
+  const avail=wrap.clientWidth-32, u=Math.max(36,Math.min(80,avail/KW)), gap=Math.max(3,u*.07);
+  kb.style.width=(KW*u)+'px'; kb.style.height=(KH*u*VY)+'px'; kb.style.fontSize=Math.max(8.5,u*.165)+'px';
   const activeMods=held.size?[...held]:(st.mode==='exact'?st.mods:[]);
-  let h='';
-  K.forEach(key=>{
-    const mod=KEYMOD[key.id];
-    let all=(map[key.id]||[]); let bs=L===null?all:all.filter(b=>b.layer===L);
-    if(q) bs=bs.filter(b=>b.hit);
+  let h='<div class="scx-padbg" style="left:'+(-0.18*u)+'px;top:'+(-0.18*u*VY)+'px;width:'+(5.36*u-gap)+'px;height:'+((KH0+0.36)*u*VY-gap)+'px"></div>'+
+        '<div class="scx-kbbg" style="left:'+((MX-0.18)*u)+'px;top:'+(-0.18*u*VY)+'px;width:'+(16.36*u-gap)+'px;height:'+((KH0+0.36)*u*VY-gap)+'px"></div>';
+  if(extra.length) h+='<div class="scx-xl" style="left:'+(0)+'px;top:'+((KH0+0.35)*u*VY)+'px;width:'+(5*u)+'px;height:'+(u*VY-gap)+'px">not on your board ›</div>';
+  keys.forEach(key=>{
+    const pos='left:'+(key.x*u)+'px;top:'+(key.y*u*VY)+'px;width:'+(key.w*u-gap)+'px;height:'+(key.h*u*VY-gap)+'px';
+    if(key.kind==='empty'){ h+='<div class="scx-sock" style="'+pos+'"></div>'; return; }
+    if(key.kind==='knob'){ h+='<div class="scx-knob" style="'+pos+'" title="Knob"></div>'; return; }
+    const {bs,mod,send}=bindingsFor(key,map,L,q);
     const cats=[...new Set(bs.map(b=>b.s.cat||'Other'))];
     const kc=cats.length?catColor(cats[0]):'#39c7df';
-    const cls=['scx-k']; if(mod){cls.push('mod'); if(activeMods.includes(mod)) cls.push('on');}
-    if(bs.length) cls.push('has'); else if(!mod&&(q||L!==null)) cls.push('dim');
-    if(st.sel===key.id) cls.push('sel'); if(pressed===key.id) cls.push('press');
+    const cls=['scx-k']; if(key.pad) cls.push('pad'); if(key.kind==='bare') cls.push('bare'); if(key.extra) cls.push('xk');
+    if(mod){cls.push('mod'); if(activeMods.includes(mod)) cls.push('on');}
+    if(bs.length) cls.push('has'); else if(!mod&&(q||L!==null||key.kind==='bare')) cls.push('dim');
+    if(st.sel===key.id) cls.push('sel');
+    if(pressed&&(pressed===key.id||(send&&!send.mods.size&&send.key===pressed))) cls.push('press');
     const max=key.h>1?5:(key.w>=2?3:2);
-    const lines=bs.slice(0,max).map(b=>'<div class="b" style="--kc:'+catColor(b.s.cat||'Other')+'">'+(L===null&&b.layer?'<i>'+glyphs(b.mods)+'</i>':'')+esc(b.s.action)+(b.qual?' <span style="color:var(--dim)">('+esc(b.qual)+')</span>':'')+'</div>').join('');
-    h+='<button type="button" class="'+cls.join(' ')+'" data-k="'+key.id+'" style="--kc:'+kc+';left:'+(key.x*u)+'px;top:'+(key.y*u*VY)+'px;width:'+(key.w*u-gap)+'px;height:'+(key.h*u*VY-gap)+'px" title="'+esc(LABEL[key.id])+'">'+
-      '<span class="lg">'+esc(key.lab)+'</span>'+(cats.length>1?'<span class="cs">'+cats.map(c=>'<span style="background:'+catColor(c)+'"></span>').join('')+'</span>':'')+
+    const lines=bs.slice(0,max).map(b=>'<div class="b" style="--kc:'+catColor(b.s.cat||'Other')+'">'+(L===null&&b.layer&&!key.pad?'<i>'+glyphs(b.mods)+'</i>':'')+esc(b.s.action)+(b.qual?' <span style="color:var(--dim)">('+esc(b.qual)+')</span>':'')+'</div>').join('');
+    const top=key.pad?(esc(key.lab)+(send?'<span class="snd'+(padGuess(key.id)?' g':'')+'">'+esc(sendLabel(send))+'</span>':'')):esc(key.lab);
+    h+='<button type="button" class="'+cls.join(' ')+'" data-k="'+key.id+'" style="--kc:'+kc+';'+pos+'" title="'+esc(key.pad?'Pad key'+(send?' → sends '+sendLabel(send):' — click to set'):lab(key.id))+'">'+
+      '<span class="lg">'+top+'</span>'+(key.cap?'<span class="cap">'+esc(key.cap)+'</span>':'')+(cats.length>1?'<span class="cs">'+cats.map(c=>'<span style="background:'+catColor(c)+'"></span>').join('')+'</span>':'')+
       '<span class="bl">'+lines+(bs.length>max?'<span class="more">+'+(bs.length-max)+' more</span>':'')+'</span></button>';
   });
   kb.innerHTML=h;
@@ -247,10 +305,28 @@ function drawDetail(map,L){
       (rows.length?rows.sort((a,b)=>a.sort-b.sort).map(s=>rowHTML(s)).join(''):'<div class="e">Nothing on this layer yet.</div>'));
     return;
   }
+  const pk=K.find(x=>x.id===st.sel&&x.pad);
+  if(pk){
+    const sd=padSend(pk.id), str=padSendStr(pk.id);
+    let rows=[]; if(sd&&sd.key){ const lay=layerOf(sd.mods); rows=(map[sd.key]||[]).filter(b=>b.layer===lay); }
+    det.innerHTML='<h4>Pad key'+(pk.lab?' “'+esc(pk.lab)+'”':' (no cap)')+(sd?' · sends '+esc(sendLabel(sd)):'')+'</h4>'+
+      '<div class="scx-padset"><span class="e">Sends</span><input id="scxPad" value="'+esc(str)+'" placeholder="e.g. F15, Cmd+Ctrl+Q, Shift" autocomplete="off">'+
+      '<button type="button" class="scx-btn rec" id="scxPadRec">● RECORD</button><button type="button" class="scx-btn go" id="scxPadSave">SET</button>'+
+      (pk.id in st.pad?'<button type="button" class="scx-btn" id="scxPadReset">RESET</button>':'')+
+      (padGuess(pk.id)?'<span class="e">my guess from the cap — fix it if wrong</span>':'')+'</div>'+
+      (sd&&sd.mod?'<div class="e">Acts as the '+esc(MODNAME[sd.mod])+' modifier.</div>':rows.length?rows.map(b=>rowHTML(b.s)).join(''):(sd?'<div class="e">No shortcut on '+esc(sendLabel(sd))+' yet. <button type="button" class="scx-btn" data-addkey>＋ ADD</button></div>':'<div class="e">Not set. Type what this key sends (as programmed in the pad’s software), or press RECORD then the pad key.</div>'));
+    const inp=det.querySelector('#scxPad'), recB=det.querySelector('#scxPadRec');
+    const set=v=>{ st.pad[pk.id]=v.trim(); keep(); draw(); };
+    det.querySelector('#scxPadSave').onclick=()=>set(inp.value);
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); set(inp.value); } });
+    if(det.querySelector('#scxPadReset')) det.querySelector('#scxPadReset').onclick=()=>{ delete st.pad[pk.id]; keep(); draw(); };
+    recB.onclick=()=>{ padRec=pk.id; recB.classList.add('on'); recB.textContent='● PRESS THE PAD KEY…'; };
+    return;
+  }
   const bs=(map[st.sel]||[]); const seen=new Set(), rows=[];
   bs.forEach(b=>{ if(!seen.has(b.s)){ seen.add(b.s); rows.push(b); } });
   rows.sort((a,b)=>a.layer.length-b.layer.length||a.s.sort-b.s.sort);
-  det.innerHTML='<h4>'+esc(LABEL[st.sel])+' · '+rows.length+' shortcut'+(rows.length===1?'':'s')+' <button type="button" class="scx-btn" data-addkey style="margin-left:10px">＋ Add on this key</button></h4>'+
+  det.innerHTML='<h4>'+esc(lab(st.sel))+' · '+rows.length+' shortcut'+(rows.length===1?'':'s')+' <button type="button" class="scx-btn" data-addkey style="margin-left:10px">＋ Add on this key</button></h4>'+
     (rows.length?rows.map(b=>rowHTML(b.s)).join(''):'<div class="e">Nothing mapped to this key.</div>');
 }
 function drawList(){
@@ -293,13 +369,13 @@ function openEdit(s,preset){
     '<div class="acts">'+(shortcuts.includes(s)?'<button type="button" class="scx-btn del" id="scxDel">DELETE</button>':'')+'<span class="sp"></span><button type="button" class="scx-btn" id="scxCancel">CANCEL</button><button type="button" class="scx-btn go" id="scxSave">SAVE</button></div></div>';
   root.querySelector('.scx-bar').style.display='none';
   const $=id=>body.querySelector('#'+id);
-  const prev=()=>{ const p=parse($('scxK').value); $('scxPrev').innerHTML=p.length?p.map(x=>'<kbd>'+esc((glyphs(x.mods)+' '+x.keys.map(k=>LABEL[k]||k).join(' · ')).trim())+'</kbd>'+(x.seq?'<span class="kp"> then '+esc(x.seq)+'</span>':'')).join(' <span class="kp">/</span> '):'<span class="kp">—</span>'; };
+  const prev=()=>{ const p=parse($('scxK').value); $('scxPrev').innerHTML=p.length?p.map(x=>'<kbd>'+esc((glyphs(x.mods)+' '+x.keys.map(k=>lab(k)).join(' · ')).trim())+'</kbd>'+(x.seq?'<span class="kp"> then '+esc(x.seq)+'</span>':'')).join(' <span class="kp">/</span> '):'<span class="kp">—</span>'; };
   $('scxK').addEventListener('input',prev); prev();
   let rec=false; const recB=$('scxRec');
   recB.onclick=()=>{ rec=!rec; recB.classList.toggle('on',rec); recB.textContent=rec?'● PRESS KEYS…':'● RECORD'; };
   body._rec=e=>{ if(!rec) return false; const id=CODE[e.code]; if(!id||KEYMOD[id]) return true;
     const m=[]; if(e.metaKey&&e.ctrlKey&&e.altKey&&e.shiftKey) m.push('Caps Lock'); else { if(e.metaKey)m.push('Cmd'); if(e.ctrlKey)m.push('Ctrl'); if(e.altKey)m.push('Alt'); if(e.shiftKey)m.push('Shift'); }
-    let nm=LABEL[id]; nm={'⌫ delete':'Delete','⇥ tab':'Tab','⏎ return':'Enter','space':'Space','⌦':'Del','pg up':'PgUp','pg dn':'PgDn','↑':'Up','↓':'Down','←':'Left','→':'Right','esc':'Esc'}[nm]||(id.startsWith('Num')?'Num'+nm:nm);
+    const nm=recName(id);
     $('scxK').value=m.concat([nm]).join('+'); prev(); rec=false; recB.classList.remove('on'); recB.textContent='● RECORD'; return true; };
   const back=()=>{ root.querySelector('.scx-bar').style.display=''; body.innerHTML=''; body._rec=null; draw(); };
   $('scxCancel').onclick=back;
@@ -317,10 +393,11 @@ function openEdit(s,preset){
   setTimeout(()=>{ const i=$(preset&&preset.keys?'scxA':'scxK'); if(i) i.focus(); },30);
 }
 
+function recName(id){ const n={Backspace:'Delete',Return:'Enter',Space:'Space',DelFwd:'Del',PgUp:'PgUp',PgDn:'PgDn',Up:'Up',Down:'Down',Left:'Left',Right:'Right',Esc:'Esc',Tab:'Tab',Home:'Home',End:'End',PrtSc:'PrtSc',Fn:'Fn'}[id]; return n||(id.startsWith('Num')?'Num'+id.slice(3):id); }
 // event.code -> key id
 const CODE={Escape:'Esc',Backquote:'`',Minus:'-',Equal:'=',Backspace:'Backspace',Tab:'Tab',BracketLeft:'[',BracketRight:']',Backslash:'\\',CapsLock:'Caps',Semicolon:';',Quote:"'",Enter:'Return',
   ShiftLeft:'ShiftL',ShiftRight:'ShiftR',Comma:',',Period:'.',Slash:'/',ControlLeft:'CtrlL',ControlRight:'CtrlR',AltLeft:'AltL',AltRight:'AltR',MetaLeft:'CmdL',MetaRight:'CmdR',OSLeft:'CmdL',OSRight:'CmdR',Space:'Space',
-  ArrowUp:'Up',ArrowDown:'Down',ArrowLeft:'Left',ArrowRight:'Right',Home:'Home',End:'End',PageUp:'PgUp',PageDown:'PgDn',Delete:'DelFwd',Insert:'Ins',Help:'Ins',Fn:'Ins',
+  ArrowUp:'Up',ArrowDown:'Down',ArrowLeft:'Left',ArrowRight:'Right',Home:'Home',End:'End',PageUp:'PgUp',PageDown:'PgDn',Delete:'DelFwd',Insert:'Ins',Help:'Ins',Fn:'Fn',PrintScreen:'PrtSc',
   NumLock:'NumClear',NumpadEqual:'Num=',NumpadDivide:'Num/',NumpadMultiply:'Num*',NumpadSubtract:'Num-',NumpadAdd:'Num+',NumpadEnter:'NumEnter',NumpadDecimal:'Num.'};
 for(let i=0;i<26;i++){ const c=String.fromCharCode(65+i); CODE['Key'+c]=c; }
 for(let i=0;i<10;i++){ CODE['Digit'+i]=String(i); CODE['Numpad'+i]='Num'+i; }
@@ -351,7 +428,7 @@ function open(){
     if((b=t.closest('[data-cat]'))){ const c=b.dataset.cat, all=allCats();
       if(e.altKey||e.metaKey){ st.cats=[c]; } else { let on=st.cats.length?st.cats.slice():all.slice(); on=on.includes(c)?on.filter(x=>x!==c):on.concat([c]); st.cats=on.length===all.length||!on.length?[]:on; }
       keep(); draw(); return; }
-    if((b=t.closest('.scx-k'))){ const id=b.dataset.k; if(KEYMOD[id]){ toggleMod(KEYMOD[id]); return; } st.sel=st.sel===id?'':id; draw(); return; }
+    if((b=t.closest('.scx-k'))){ const id=b.dataset.k; if(KEYMOD[id]){ toggleMod(KEYMOD[id]); return; } if(e.altKey&&/^P\d\d$/.test(id)){ const sd=padSend(id); if(sd&&sd.mod){ toggleMod(sd.mod); return; } } st.sel=st.sel===id?'':id; draw(); return; }
     if((b=t.closest('[data-fav]'))){ const s=findS(b.closest('[data-sid]').dataset.sid); if(!s) return; s.fav=!s.fav; cache(); if(s.id) save({Fav:s.fav},s.id); draw(); return; }
     if((b=t.closest('[data-edit]'))){ const s=findS(b.closest('[data-sid]').dataset.sid); if(s) openEdit(s); return; }
   });
@@ -360,6 +437,9 @@ function open(){
     if(!root) return;
     const body=root.querySelector('.scx-body');
     if(body._rec&&body._rec(e)){ e.preventDefault(); e.stopPropagation(); return; }
+    if(padRec){ const id=CODE[e.code]; if(e.key==='Escape'){ padRec=''; draw(); e.preventDefault(); e.stopPropagation(); return; }
+      if(id){ e.preventDefault(); e.stopPropagation(); const m=[]; if(e.metaKey&&e.ctrlKey&&e.altKey&&e.shiftKey&&!KEYMOD[id]) m.push('Caps Lock'); else { if(e.metaKey&&id!=='CmdL'&&id!=='CmdR')m.push('Cmd'); if(e.ctrlKey&&id!=='CtrlR')m.push('Ctrl'); if(e.altKey&&id!=='AltL')m.push('Alt'); if(e.shiftKey&&!/^Shift/.test(id))m.push('Shift'); }
+        const nm=KEYMOD[id]?KEYMOD[id]:recName(id); st.pad[padRec]=m.concat([nm]).join('+'); padRec=''; keep(); draw(); } return; }
     const tag=(e.target.tagName||'').toLowerCase();
     if(e.key==='Escape'&&tag!=='input'){ e.preventDefault(); e.stopPropagation(); if(st.sel&&st.tab==='kb'){ st.sel=''; draw(); } else close(); return; }
     if(tag==='input'||tag==='textarea') { e.stopPropagation(); return; }
@@ -389,9 +469,9 @@ function toggleMod(m){
   keep(); draw();
 }
 function keysFor(id){
-  const L=st.mode==='exact'?st.mods:[]; const nm={Backspace:'Delete',Return:'Enter',Space:'Space',DelFwd:'Del',PgUp:'PgUp',PgDn:'PgDn',Up:'Up',Down:'Down',Left:'Left',Right:'Right',Esc:'Esc',Tab:'Tab',Home:'Home',End:'End',Ins:'Fn'}[id]||(id.startsWith('Num')?'Num'+(LABEL[id]):id);
-  return L.map(m=>m==='Caps'?'Caps Lock':m).concat([nm]).join('+');
+  const pk=K.find(x=>x.id===id&&x.pad); if(pk){ return padSendStr(id); }
+  const L=st.mode==='exact'?st.mods:[];
+  return L.map(m=>m==='Caps'?'Caps Lock':m).concat([recName(id)]).join('+');
 }
-
 window.Shortcuts={open,close,load,parse};
 })();
