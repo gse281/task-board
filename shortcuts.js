@@ -45,14 +45,17 @@ const PAD=[ // [col,row,cap,send,kind,w,h] — sends read from Keychron Launcher
  [0,5,'⇧ shift','Shift'],[1,5,'🎙','F14','',2,1],[3,5,'V','F18']];
 const PAD_DEF={}; PAD.forEach(([c,r,cap,send])=>PAD_DEF['P'+c+r]=send);
 PAD.forEach(([c,r,cap,send,kind,w,h])=>k('P'+c+r,cap,PX+c,r,w||1,h||1,{pad:1,kind:kind||'cap'}));
-// 75% board (16u). F-row caps are novelty legends; shown faintly at right.
-const FCAP=['□','<','>','^','⌄','!','@','#','$','%','&','(',')','_','–'];
-k('Esc','esc',MX,0,1,1,{cap:'🍎'}); FCAP.forEach((c,i)=>k('F'+(i+1),'F'+(i+1),MX+1+i,0,1,1,{cap:c}));
-let y=1; '`1234567890'.split('').forEach((c,i)=>k(c,c,MX+i,y)); k('-','-',MX+11,y,1,1,{cap:'△'}); k('=','=',MX+12,y,1,1,{cap:'○'}); k('Backspace','⌫ backspace',MX+13,y,2); k('DelFwd','del ⌦',MX+15,y);
-y=2; k('Tab','⇥ tab',MX,y,1.5); 'QWERTYUIOP[]'.split('').forEach((c,i)=>k(c,c,MX+1.5+i,y)); k('\\','\\',MX+13.5,y,1.5); k('PgUp','pg up',MX+15,y,1,1,{cap:''});
-y=3; k('Caps','⇪ caps',MX,y,1.75); "ASDFGHJKL;'".split('').forEach((c,i)=>k(c,c,MX+1.75+i,y)); k('Return','⏎ return',MX+12.75,y,2.25); k('PgDn','pg dn',MX+15,y,1,1,{cap:'?'});
-y=4; k('ShiftL','⇧ shift',MX,y,2.25); 'ZXCVBNM,./'.split('').forEach((c,i)=>k(c,c,MX+2.25+i,y)); k('ShiftR','⇧ shift',MX+12.25,y,1.75); k('Up','↑',MX+14,y); k('End','end',MX+15,y);
-y=5; k('PrtSc','prtsc',MX,y,1.25); k('AltL','⌥ option',MX+1.25,y,1.25); k('CmdL','⌘ command',MX+2.5,y,1.25); k('Space','',MX+3.75,y,6.25); k('CmdR','⌘ cmd',MX+10,y); k('CtrlR','⌃ control',MX+11,y); k('Fn','fn',MX+12,y);
+// 75% board: Keychron K3 Pro, Layer 0 as programmed in Keychron Launcher (10/23). cap = the novelty keycap legend.
+// Keys that send a shifted symbol (! @ # … : ? + *) work like pad keys: they show what their combo does.
+const SYM=(id,lab,send,x,y,cap)=>{ k(id,lab,x,y,1,1,{pad:1,main:1,kind:'cap',cap:cap||''}); PAD_DEF[id]=send; };
+k('Esc','esc',MX,0,1,1,{cap:'🍎'}); k('F4','F4',MX+1,0,1,1,{cap:'□'}); k('F2','F2',MX+2,0,1,1,{cap:'<'}); k('F3','F3',MX+3,0,1,1,{cap:'>'}); k('F6','F6',MX+4,0,1,1,{cap:'^'}); k('F5','F5',MX+5,0,1,1,{cap:'⌄'});
+[['!','1'],['@','2'],['#','3'],['$','4'],['%','5'],['&','7'],['(','9'],[')','0']].forEach(([c,d],i)=>SYM('S'+d,c,'Shift+'+d,MX+6+i,0));
+k('-','-',MX+14,0,1,1,{cap:'_'}); k('=','=',MX+15,0,1,1,{cap:'–'});
+let y=1; '`1234567890'.split('').forEach((c,i)=>k(c,c,MX+i,y)); k('F10','F10',MX+11,y,1,1,{cap:'△'}); k('F9','F9',MX+12,y,1,1,{cap:'○'}); k('Backspace','⌫ backspace',MX+13,y,2); k('DelFwd','del ⌦',MX+15,y);
+y=2; k('Tab','⇥ tab',MX,y,1.5); 'QWERTYUIOP'.split('').forEach((c,i)=>k(c,c,MX+1.5+i,y)); SYM('SPlus','+','Shift+=',MX+11.5,y,'['); SYM('SStar','*','Shift+8',MX+12.5,y,']'); k('\\','\\',MX+13.5,y,1.5); k('F16','F16',MX+15,y,1,1,{cap:''});
+y=3; k('Caps','⇪ caps',MX,y,1.75); 'ASDFGHJKL'.split('').forEach((c,i)=>k(c,c,MX+1.75+i,y)); SYM('SColon',':','Shift+;',MX+10.75,y,';'); k("'","'",MX+11.75,y); k('Return','⏎ enter',MX+12.75,y,2.25); SYM('SQ','?','Shift+/',MX+15,y,'?');
+y=4; k('ShiftL','⇧ shift',MX,y,2.25); 'ZXCVBNM,./'.split('').forEach((c,i)=>k(c,c,MX+2.25+i,y)); k('ShiftR','⇧ shift',MX+12.25,y,1.75); k('Up','↑',MX+14,y); k('F12','F12',MX+15,y,1,1,{cap:'end'});
+y=5; k('SShot','sshot',MX,y,1.25,1,{cap:'prtsc'}); k('AltL','⌥ opt',MX+1.25,y,1.25); k('CmdL','⌘ cmd',MX+2.5,y,1.25); k('Space','',MX+3.75,y,6.25); k('CmdR','⌘ cmd',MX+10,y); k('CtrlR','⌃ ctrl',MX+11,y); k('Fn','fn (1)',MX+12,y);
 k('Left','←',MX+13,y); k('Down','↓',MX+14,y); k('Right','→',MX+15,y);
 const KW=MX+16, KH0=6, VY=1.22;
 const BOARD=new Set(K.filter(x=>!x.pad).map(x=>x.id));
@@ -279,7 +282,7 @@ function drawKB(){
     const max=key.h>1?5:(key.w>=2?3:2);
     const lines=bs.slice(0,max).map(b=>'<div class="b" style="--kc:'+catColor(b.s.cat||'Other')+'">'+(L===null&&b.layer&&!key.pad?'<i>'+glyphs(b.mods)+'</i>':'')+esc(b.s.action)+(b.qual?' <span style="color:var(--dim)">('+esc(b.qual)+')</span>':'')+'</div>').join('');
     const top=key.pad?(esc(key.lab)+(send?'<span class="snd'+(padGuess(key.id)?' g':'')+'">'+esc(sendLabel(send))+'</span>':'')):esc(key.lab);
-    h+='<button type="button" class="'+cls.join(' ')+'" data-k="'+key.id+'" style="--kc:'+kc+';'+pos+'" title="'+esc(key.pad?'Pad key'+(send?' → sends '+sendLabel(send):' — click to set'):lab(key.id))+'">'+
+    h+='<button type="button" class="'+cls.join(' ')+'" data-k="'+key.id+'" style="--kc:'+kc+';'+pos+'" title="'+esc(key.pad?(key.main?'Key':'Pad key')+(send?' → sends '+sendLabel(send):' — click to set'):lab(key.id))+'">'+
       '<span class="lg">'+top+'</span>'+(key.cap?'<span class="cap">'+esc(key.cap)+'</span>':'')+(cats.length>1?'<span class="cs">'+cats.map(c=>'<span style="background:'+catColor(c)+'"></span>').join('')+'</span>':'')+
       '<span class="bl">'+lines+(bs.length>max?'<span class="more">+'+(bs.length-max)+' more</span>':'')+'</span></button>';
   });
@@ -306,14 +309,15 @@ function drawDetail(map,L){
     return;
   }
   const pk=K.find(x=>x.id===st.sel&&x.pad);
+  const kn=pk&&pk.main?'Key':'Pad key';
   if(pk){
     const sd=padSend(pk.id), str=padSendStr(pk.id);
     let rows=[]; if(sd&&sd.key){ const lay=layerOf(sd.mods); rows=(map[sd.key]||[]).filter(b=>b.layer===lay); }
-    det.innerHTML='<h4>Pad key'+(pk.lab?' “'+esc(pk.lab)+'”':' (no cap)')+(sd?' · sends '+esc(sendLabel(sd)):'')+'</h4>'+
+    det.innerHTML='<h4>'+kn+(pk.lab?' “'+esc(pk.lab)+'”':' (no cap)')+(sd?' · sends '+esc(sendLabel(sd)):'')+'</h4>'+
       '<div class="scx-padset"><span class="e">Sends</span><input id="scxPad" value="'+esc(str)+'" placeholder="e.g. F15, Cmd+Ctrl+Q, Shift" autocomplete="off">'+
       '<button type="button" class="scx-btn rec" id="scxPadRec">● RECORD</button><button type="button" class="scx-btn go" id="scxPadSave">SET</button>'+
       (pk.id in st.pad?'<button type="button" class="scx-btn" id="scxPadReset">RESET</button>':'')+
-      '<span class="e">'+((pk.id in st.pad)?'your override':'from Keychron Launcher, Layer 0')+'</span>'+'</div>'+
+      '<span class="e">'+((pk.id in st.pad)?'your override':(pk.main?'K3 Pro':'K0 Max')+' · Keychron Launcher, Layer 0')+'</span>'+'</div>'+
       (sd&&sd.mod?'<div class="e">Acts as the '+esc(MODNAME[sd.mod])+' modifier.</div>':rows.length?rows.map(b=>rowHTML(b.s)).join(''):(sd?'<div class="e">No shortcut on '+esc(sendLabel(sd))+' yet. <button type="button" class="scx-btn" data-addkey>＋ ADD</button></div>':'<div class="e">Not set. Type what this key sends (as programmed in the pad’s software), or press RECORD then the pad key.</div>'));
     const inp=det.querySelector('#scxPad'), recB=det.querySelector('#scxPadRec');
     const set=v=>{ st.pad[pk.id]=v.trim(); keep(); draw(); };
