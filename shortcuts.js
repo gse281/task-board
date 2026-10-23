@@ -36,16 +36,15 @@ function del(id){ const c=cfg(); if(!c.apiKey||!id) return Promise.resolve(); re
 const K=[]; const k=(id,lab,x,y,w,h,o)=>K.push(Object.assign({id,lab,x,y,w:w||1,h:h||1},o||{}));
 // Macropad: 5×6 grid + knob. cap = keycap legend; bare = switch without a cap; empty = open socket.
 const PX=0, MX=5.75;
-const PAD=[ // [col,row,cap,kind]
- [0,0,'knob','knob'],[1,0,'','bare'],[2,0,'Z'],[3,0,'Y'],[4,0,'⌄'],
- [0,1,'F1'],[1,1,'','bare'],[2,1,'','bare'],[3,1,'','bare'],[4,1,'','bare'],
- [0,2,'','bare'],[1,2,'','bare'],[2,2,'','bare'],[3,2,'','bare'],[4,2,'','empty'],
- [0,3,'🔒'],[1,3,'','bare'],[2,3,'','bare'],[3,3,'','bare'],[4,3,'','bare'],
- [0,4,'esc'],[1,4,'','bare'],[2,4,'','bare'],[3,4,'X'],[4,4,'C'],
- [0,5,'⇧ shift'],[1,5,'🎙'],[2,5,'','empty'],[3,5,'V'],[4,5,'','empty']];
-// Best guesses from the caps + your F-key macros; click a pad key to change what it sends.
-const PAD_DEF={P20:'F15',P30:'',P40:'',P01:'F1',P03:'Cmd+Ctrl+Q',P04:'Esc',P05:'Shift',P15:'F14',P34:'F8',P44:'F17',P35:'F18'};
-PAD.forEach(([c,r,cap,kind])=>k('P'+c+r,cap,PX+c,r,1,1,{pad:1,kind:kind||'cap'}));
+const PAD=[ // [col,row,cap,send,kind,w,h] — sends read from Keychron Launcher (K0 Max RGB, Layer 0), 10/23
+ [0,0,'🔊 mute','Mute','knob'],[1,0,'','F17','bare'],[2,0,'Z','F18'],[3,0,'Y','F19'],[4,0,'⌄','F8'],
+ [0,1,'F1','Esc'],[1,1,'','Esc','bare'],[2,1,'','F15','bare'],[3,1,'','Shift','bare'],[4,1,'','Home','bare'],
+ [0,2,'','Esc','bare'],[1,2,'','F1','bare'],[2,2,'','F6','bare'],[3,2,'','F21','bare'],[4,2,'','F16','bare',1,2],
+ [0,3,'🔒','F16'],[1,3,'','F2','bare'],[2,3,'','F4','bare'],[3,3,'','F3','bare'],
+ [0,4,'esc','Esc'],[1,4,'','F8','bare'],[2,4,'','F7','bare'],[3,4,'X','F19'],[4,4,'C','F17','',1,2],
+ [0,5,'⇧ shift','Shift'],[1,5,'🎙','F14','',2,1],[3,5,'V','F18']];
+const PAD_DEF={}; PAD.forEach(([c,r,cap,send])=>PAD_DEF['P'+c+r]=send);
+PAD.forEach(([c,r,cap,send,kind,w,h])=>k('P'+c+r,cap,PX+c,r,w||1,h||1,{pad:1,kind:kind||'cap'}));
 // 75% board (16u). F-row caps are novelty legends; shown faintly at right.
 const FCAP=['□','<','>','^','⌄','!','@','#','$','%','&','(',')','_','–'];
 k('Esc','esc',MX,0,1,1,{cap:'🍎'}); FCAP.forEach((c,i)=>k('F'+(i+1),'F'+(i+1),MX+1+i,0,1,1,{cap:c}));
@@ -107,7 +106,7 @@ let st={tab:'kb',mode:'all',mods:[],cats:[],sel:''}; try{ Object.assign(st,JSON.
 if(!st.pad||typeof st.pad!=='object') st.pad={};
 const keep=()=>ls.set('tb.scx',JSON.stringify({tab:st.tab,mode:st.mode,mods:st.mods,cats:st.cats,pad:st.pad}));
 const padSendStr=id=>(id in st.pad)?st.pad[id]:(PAD_DEF[id]||'');
-const padGuess=id=>!(id in st.pad)&&!!PAD_DEF[id];
+const padGuess=id=>false;
 function padSend(id){ const str=padSendStr(id); if(!str) return null; const p=parse(str)[0]; if(!p) { const m=MODTOK[str.toLowerCase()]; return m?{mods:new Set([m]),key:'',mod:m}:null; }
   if(!p.keys.length){ const ms=[...p.mods]; return ms.length===1?{mods:p.mods,key:'',mod:ms[0]}:null; }
   return {mods:p.mods,key:p.keys[0],mod:''}; }
@@ -172,9 +171,10 @@ const CSS=`
 .scx-k .snd{margin-left:auto;font:700 .82em ui-monospace,Menlo,monospace;color:var(--ac);background:rgba(57,199,223,.12);border-radius:4px;padding:0 .3em}
 .scx-k .snd.g{color:#e2b04a;background:rgba(226,176,74,.12)}
 .scx-k.bare{background:radial-gradient(circle at 50% 50%,rgba(200,40,40,.45) 0 22%,#120c0c 24%);border-color:#2a1515;opacity:.55}
-.scx-k.bare.has{opacity:1}
+.scx-k.bare.has{opacity:1;background:linear-gradient(color-mix(in srgb,var(--kc) 22%,#151010),color-mix(in srgb,var(--kc) 10%,#0f0b0b));border-color:rgba(200,60,60,.45)}
 .scx-k.bare:hover{opacity:.9}
 .scx-sock{position:absolute;border-radius:7px;border:1px dashed rgba(160,205,220,.12)}
+.scx-k.knob{border-radius:50%!important;background:radial-gradient(circle at 40% 35%,#3a4247,#0c0f11 70%)!important;align-items:center;justify-content:center}
 .scx-knob{position:absolute;border-radius:50%;background:radial-gradient(circle at 40% 35%,#3a4247,#0c0f11 70%);border:1px solid #2b3338;box-shadow:inset 0 -3px 6px rgba(0,0,0,.6)}
 .scx-xl{position:absolute;display:flex;align-items:center;justify-content:flex-end;padding-right:.8em;font:700 .9em ui-monospace,Menlo,monospace;color:var(--dim);letter-spacing:1px}
 .scx-k.xk{border-style:dashed}
@@ -237,7 +237,7 @@ function viewLayer(){ if(held.size) return MODS.filter(m=>held.has(m)).join('+')
 function bindingsFor(key,map,L,q){
   // returns {bs, mod, send}
   if(key.pad){
-    if(key.kind==='empty'||key.kind==='knob') return {bs:[],mod:'',send:null};
+    if(key.kind==='empty') return {bs:[],mod:'',send:null};
     const sd=padSend(key.id); if(!sd) return {bs:[],mod:'',send:null};
     if(sd.mod) return {bs:[],mod:sd.mod,send:sd};
     const want=L===null?layerOf(sd.mods):layerOf(new Set([...sd.mods,...(L?L.split('+'):[])]));
@@ -267,11 +267,11 @@ function drawKB(){
   keys.forEach(key=>{
     const pos='left:'+(key.x*u)+'px;top:'+(key.y*u*VY)+'px;width:'+(key.w*u-gap)+'px;height:'+(key.h*u*VY-gap)+'px';
     if(key.kind==='empty'){ h+='<div class="scx-sock" style="'+pos+'"></div>'; return; }
-    if(key.kind==='knob'){ h+='<div class="scx-knob" style="'+pos+'" title="Knob"></div>'; return; }
+    
     const {bs,mod,send}=bindingsFor(key,map,L,q);
     const cats=[...new Set(bs.map(b=>b.s.cat||'Other'))];
     const kc=cats.length?catColor(cats[0]):'#39c7df';
-    const cls=['scx-k']; if(key.pad) cls.push('pad'); if(key.kind==='bare') cls.push('bare'); if(key.extra) cls.push('xk');
+    const cls=['scx-k']; if(key.pad) cls.push('pad'); if(key.kind==='bare') cls.push('bare'); if(key.kind==='knob') cls.push('knob'); if(key.extra) cls.push('xk');
     if(mod){cls.push('mod'); if(activeMods.includes(mod)) cls.push('on');}
     if(bs.length) cls.push('has'); else if(!mod&&(q||L!==null||key.kind==='bare')) cls.push('dim');
     if(st.sel===key.id) cls.push('sel');
@@ -313,7 +313,7 @@ function drawDetail(map,L){
       '<div class="scx-padset"><span class="e">Sends</span><input id="scxPad" value="'+esc(str)+'" placeholder="e.g. F15, Cmd+Ctrl+Q, Shift" autocomplete="off">'+
       '<button type="button" class="scx-btn rec" id="scxPadRec">● RECORD</button><button type="button" class="scx-btn go" id="scxPadSave">SET</button>'+
       (pk.id in st.pad?'<button type="button" class="scx-btn" id="scxPadReset">RESET</button>':'')+
-      (padGuess(pk.id)?'<span class="e">my guess from the cap — fix it if wrong</span>':'')+'</div>'+
+      '<span class="e">'+((pk.id in st.pad)?'your override':'from Keychron Launcher, Layer 0')+'</span>'+'</div>'+
       (sd&&sd.mod?'<div class="e">Acts as the '+esc(MODNAME[sd.mod])+' modifier.</div>':rows.length?rows.map(b=>rowHTML(b.s)).join(''):(sd?'<div class="e">No shortcut on '+esc(sendLabel(sd))+' yet. <button type="button" class="scx-btn" data-addkey>＋ ADD</button></div>':'<div class="e">Not set. Type what this key sends (as programmed in the pad’s software), or press RECORD then the pad key.</div>'));
     const inp=det.querySelector('#scxPad'), recB=det.querySelector('#scxPadRec');
     const set=v=>{ st.pad[pk.id]=v.trim(); keep(); draw(); };
