@@ -573,6 +573,7 @@ body::before{ opacity:.7 }
 <script src="bills.js"></script>
 <script src="invite.js"></script>
 <script src="files.js"></script>
+<script src="shortcuts.js"></script>
 <script>
 "use strict";
 const BUILD='2026-10-22 09:43';   // replaced with deploy date/time by deploy.sh
@@ -1671,7 +1672,8 @@ function scSave(fields,id){ if(!cfg.apiKey) return Promise.resolve(null);
   return fetch(scUrl(id),o).then(r=>r.ok?r.json():null).then(d=>d?(id?d:d.records[0]):null); }
 function scDelete(id){ if(!cfg.apiKey||!id) return Promise.resolve(); return fetch(scUrl(id),{method:'DELETE',headers:{Authorization:'Bearer '+cfg.apiKey}}).catch(()=>{}); }
 function kbd(keys){ return esc(keys||'').split('+').map(k=>'<kbd>'+esc(k.trim())+'</kbd>').join('<span class="kbdp">+</span>'); }
-function openShortcuts(){
+function openShortcuts(){ if(window.Shortcuts) return Shortcuts.open(); return openShortcutsOld(); }
+function openShortcutsOld(){
   const bd=document.createElement('div'); bd.className='backdrop';
   const box=document.createElement('div'); box.className='modal sc-modal'; box.innerHTML='<h3>⌨️ Shortcuts</h3>';
   const bar=document.createElement('div'); bar.style.cssText='display:flex;gap:6px;margin:6px 0 4px';
