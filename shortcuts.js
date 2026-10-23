@@ -57,6 +57,12 @@ y=3; k('Caps','⇪ caps',MX,y,1.75); 'ASDFGHJKL'.split('').forEach((c,i)=>k(c,c,
 y=4; k('ShiftL','⇧ shift',MX,y,2.25); 'ZXCVBNM,./'.split('').forEach((c,i)=>k(c,c,MX+2.25+i,y)); k('ShiftR','⇧ shift',MX+12.25,y,1.75); k('Up','↑',MX+14,y); k('F12','F12',MX+15,y,1,1,{cap:'end'});
 y=5; k('SShot','sshot',MX,y,1.25,1,{cap:'prtsc'}); k('AltL','⌥ opt',MX+1.25,y,1.25); k('CmdL','⌘ cmd',MX+2.5,y,1.25); k('Space','',MX+3.75,y,6.25); k('CmdR','⌘ cmd',MX+10,y); k('CtrlR','⌃ ctrl',MX+11,y); k('Fn','fn (1)',MX+12,y);
 k('Left','←',MX+13,y); k('Down','↓',MX+14,y); k('Right','→',MX+15,y);
+// K3 Pro Layer 1 (hold fn): board key id -> what it sends. '~' = non-keycode function (label only). Others fall through to Layer 0.
+const FN={F4:'F1',F2:'F2',F3:'F3',F6:'F4',F5:'F5',S1:'F6',S2:'F7',S3:'F8',S4:'F9',S5:'F10',S7:'F11',S9:'F12','=':'~RGB on/off',
+ '1':'~BT 1','2':'~BT 2','3':'~BT 3',Tab:'~RGB on/off',Q:'~RGB mode +',W:'~bright +',E:'~hue +',R:'~sat +',T:'~effect speed +',
+ A:'~RGB mode −',S:'~bright −',D:'~hue −',F:'~sat −',G:'~effect speed −',B:'~battery',N:'~NKRO','/':'F19',ShiftR:'F20',Up:'F6',
+ CmdR:'F17',CtrlR:'F18',Left:'Home',Down:'F7',Right:'F13'};
+const fnKey=id=>{ const f=FN[id]; if(!f||f[0]==='~') return ''; const p=parse(f)[0]; return p&&p.keys[0]||''; };
 const KW=MX+16, KH0=6, VY=1.22;
 const BOARD=new Set(K.filter(x=>!x.pad).map(x=>x.id));
 const MODS=['Caps','Cmd','Ctrl','Alt','Shift'], GLYPH={Caps:'⇪',Cmd:'⌘',Ctrl:'⌃',Alt:'⌥',Shift:'⇧'}, MODNAME={Caps:'Caps',Cmd:'Cmd',Ctrl:'Ctrl',Alt:'Opt',Shift:'Shift'};
@@ -107,7 +113,7 @@ const glyphs=mods=>MODS.filter(m=>mods.has(m)).map(m=>GLYPH[m]).join('');
 // ---------- state ----------
 let st={tab:'kb',mode:'all',mods:[],cats:[],sel:''}; try{ Object.assign(st,JSON.parse(ls.get('tb.scx')||'{}')); }catch(e){}
 if(!st.pad||typeof st.pad!=='object') st.pad={};
-const keep=()=>ls.set('tb.scx',JSON.stringify({tab:st.tab,mode:st.mode,mods:st.mods,cats:st.cats,pad:st.pad}));
+const keep=()=>ls.set('tb.scx',JSON.stringify({tab:st.tab,mode:st.mode,mods:st.mods,cats:st.cats,pad:st.pad,fn:st.fn}));
 const padSendStr=id=>(id in st.pad)?st.pad[id]:(PAD_DEF[id]||'');
 const padGuess=id=>false;
 function padSend(id){ const str=padSendStr(id); if(!str) return null; const p=parse(str)[0]; if(!p) { const m=MODTOK[str.toLowerCase()]; return m?{mods:new Set([m]),key:'',mod:m}:null; }
@@ -166,6 +172,9 @@ const CSS=`
 .scx-k.dim{opacity:.22}
 .scx-k.sel{box-shadow:0 0 0 2px #fff,0 0 22px rgba(57,199,223,.5);z-index:2}
 .scx-k.press{transform:translateY(2px);box-shadow:0 0 0 2px var(--ac),0 0 26px rgba(57,199,223,.7)}
+.scx-k.fnl{background:linear-gradient(#2a2238,#1d1828);border-color:rgba(181,140,240,.35)}
+.scx-k .b.fnt{color:#c9a8ff}
+.scx-k .b i.fnp{color:#b58cf0;font-size:.85em;margin-right:3px}
 .scx-padbg,.scx-kbbg{position:absolute;border-radius:14px}
 .scx-padbg{background:#07090b;border:1px solid #1f262b}
 .scx-kbbg{background:rgba(220,235,240,.035);border:1px solid rgba(160,205,220,.10)}
@@ -239,6 +248,12 @@ function viewLayer(){ if(held.size) return MODS.filter(m=>held.has(m)).join('+')
 
 function bindingsFor(key,map,L,q){
   // returns {bs, mod, send}
+  if(st.fn&&!(key.pad&&!key.main)){
+    const f=FN[key.id]; if(!f) return {bs:[],mod:KEYMOD[key.id]||'',send:null,trans:true};
+    if(f[0]==='~') return {bs:[],mod:'',send:null,fnlab:f.slice(1)};
+    const fk=fnKey(key.id); let bs=map[fk]||[]; if(L!==null) bs=bs.filter(b=>b.layer===L); else bs=bs.filter(b=>b.layer===''); if(q) bs=bs.filter(b=>b.hit);
+    return {bs,mod:'',send:{mods:new Set(),key:fk,mod:''},fnsend:1};
+  }
   if(key.pad){
     if(key.kind==='empty') return {bs:[],mod:'',send:null};
     const sd=padSend(key.id); if(!sd) return {bs:[],mod:'',send:null};
@@ -253,11 +268,11 @@ function bindingsFor(key,map,L,q){
 function sendLabel(sd){ return sd?(glyphs(sd.mods)+(sd.key?lab(sd.key):'')).trim():''; }
 function drawKB(){
   const body=root.querySelector('.scx-body');
-  if(!body.querySelector('.scx-kb')) body.innerHTML='<div class="scx-kbw"><div class="scx-kb"></div></div><div class="scx-hint">Hold ⌘ ⌃ ⌥ ⇧ (or Caps Lock = ⇪ hyper) to see that layer · click a key for details · click a pad key to set what it sends · press any key to find it</div><div class="scx-det"></div>';
+  if(!body.querySelector('.scx-kb')) body.innerHTML='<div class="scx-kbw"><div class="scx-kb"></div></div><div class="scx-hint">Hold ⌘ ⌃ ⌥ ⇧ (or Caps Lock = ⇪ hyper) to see that layer · click fn for the K3 Pro Fn layer · click a key for details · click a pad key to set what it sends · press any key to find it</div><div class="scx-det"></div>';
   const wrap=body.querySelector('.scx-kbw'), kb=body.querySelector('.scx-kb');
   const {map,q}=index(), L=viewLayer();
   // keys with shortcuts that aren't on the board or sent by a pad key
-  const padKeys=new Set(K.filter(x=>x.pad).map(x=>{ const sd=padSend(x.id); return sd&&sd.key; }).filter(Boolean));
+  const padKeys=new Set(K.filter(x=>x.pad).map(x=>{ const sd=padSend(x.id); return sd&&sd.key; }).filter(Boolean)); Object.keys(FN).forEach(id=>{ const f=fnKey(id); if(f) padKeys.add(f); });
   const extra=Object.keys(map).filter(id=>!BOARD.has(id)&&!padKeys.has(id)).sort((a,b)=>(+a.slice(1)||0)-(+b.slice(1)||0)||a.localeCompare(b));
   const keys=K.concat(extra.map((id,i)=>({id,lab:lab(id),x:MX+i*1.1,y:KH0+0.35,w:1,h:1,extra:1})));
   const KH=KH0+(extra.length?1.35:0);
@@ -271,17 +286,18 @@ function drawKB(){
     const pos='left:'+(key.x*u)+'px;top:'+(key.y*u*VY)+'px;width:'+(key.w*u-gap)+'px;height:'+(key.h*u*VY-gap)+'px';
     if(key.kind==='empty'){ h+='<div class="scx-sock" style="'+pos+'"></div>'; return; }
     
-    const {bs,mod,send}=bindingsFor(key,map,L,q);
+    const {bs,mod,send,trans,fnlab,fnsend}=bindingsFor(key,map,L,q);
+    let fnb=[]; if(!st.fn&&L===null&&!(key.pad&&!key.main)){ const fk=fnKey(key.id); if(fk) fnb=(map[fk]||[]).filter(b=>b.layer===''&&(!q||b.hit)); }
     const cats=[...new Set(bs.map(b=>b.s.cat||'Other'))];
     const kc=cats.length?catColor(cats[0]):'#39c7df';
     const cls=['scx-k']; if(key.pad) cls.push('pad'); if(key.kind==='bare') cls.push('bare'); if(key.kind==='knob') cls.push('knob'); if(key.extra) cls.push('xk');
-    if(mod){cls.push('mod'); if(activeMods.includes(mod)) cls.push('on');}
-    if(bs.length) cls.push('has'); else if(!mod&&(q||L!==null||key.kind==='bare')) cls.push('dim');
+    if(mod){cls.push('mod'); if(activeMods.includes(mod)) cls.push('on');} if(key.id==='Fn'){ cls.push('mod'); if(st.fn) cls.push('on'); }
+    if(bs.length||fnb.length) cls.push('has'); else if(fnlab) cls.push('fnl'); else if(trans||(!mod&&(q||L!==null||key.kind==='bare'))) cls.push('dim');
     if(st.sel===key.id) cls.push('sel');
     if(pressed&&(pressed===key.id||(send&&!send.mods.size&&send.key===pressed))) cls.push('press');
     const max=key.h>1?5:(key.w>=2?3:2);
-    const lines=bs.slice(0,max).map(b=>'<div class="b" style="--kc:'+catColor(b.s.cat||'Other')+'">'+(L===null&&b.layer&&!key.pad?'<i>'+glyphs(b.mods)+'</i>':'')+esc(b.s.action)+(b.qual?' <span style="color:var(--dim)">('+esc(b.qual)+')</span>':'')+'</div>').join('');
-    const top=key.pad?(esc(key.lab)+(send?'<span class="snd'+(padGuess(key.id)?' g':'')+'">'+esc(sendLabel(send))+'</span>':'')):esc(key.lab);
+    const lines=(fnlab?'<div class="b fnt">'+esc(fnlab)+'</div>':'')+bs.slice(0,max).map(b=>'<div class="b" style="--kc:'+catColor(b.s.cat||'Other')+'">'+(L===null&&b.layer&&!key.pad?'<i>'+glyphs(b.mods)+'</i>':'')+esc(b.s.action)+(b.qual?' <span style="color:var(--dim)">('+esc(b.qual)+')</span>':'')+'</div>').join('')+fnb.slice(0,Math.max(1,max-bs.length)).map(b=>'<div class="b" style="--kc:'+catColor(b.s.cat||'Other')+'"><i class="fnp">fn</i>'+esc(b.s.action)+'</div>').join('');
+    const top=fnsend?(esc(key.lab)+'<span class="snd">fn→'+esc(lab(send.key))+'</span>'):key.pad?(esc(key.lab)+(send?'<span class="snd'+(padGuess(key.id)?' g':'')+'">'+esc(sendLabel(send))+'</span>':'')):esc(key.lab);
     h+='<button type="button" class="'+cls.join(' ')+'" data-k="'+key.id+'" style="--kc:'+kc+';'+pos+'" title="'+esc(key.pad?(key.main?'Key':'Pad key')+(send?' → sends '+sendLabel(send):' — click to set'):lab(key.id))+'">'+
       '<span class="lg">'+top+'</span>'+(key.cap?'<span class="cap">'+esc(key.cap)+'</span>':'')+(cats.length>1?'<span class="cs">'+cats.map(c=>'<span style="background:'+catColor(c)+'"></span>').join('')+'</span>':'')+
       '<span class="bl">'+lines+(bs.length>max?'<span class="more">+'+(bs.length-max)+' more</span>':'')+'</span></button>';
@@ -324,6 +340,7 @@ function drawDetail(map,L){
     det.querySelector('#scxPadSave').onclick=()=>set(inp.value);
     inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); set(inp.value); } });
     if(det.querySelector('#scxPadReset')) det.querySelector('#scxPadReset').onclick=()=>{ delete st.pad[pk.id]; keep(); draw(); };
+    if(pk.main) det.insertAdjacentHTML('beforeend',fnHTML(pk.id,map));
     recB.onclick=()=>{ padRec=pk.id; recB.classList.add('on'); recB.textContent='● PRESS THE PAD KEY…'; };
     return;
   }
@@ -331,7 +348,13 @@ function drawDetail(map,L){
   bs.forEach(b=>{ if(!seen.has(b.s)){ seen.add(b.s); rows.push(b); } });
   rows.sort((a,b)=>a.layer.length-b.layer.length||a.s.sort-b.s.sort);
   det.innerHTML='<h4>'+esc(lab(st.sel))+' · '+rows.length+' shortcut'+(rows.length===1?'':'s')+' <button type="button" class="scx-btn" data-addkey style="margin-left:10px">＋ Add on this key</button></h4>'+
-    (rows.length?rows.map(b=>rowHTML(b.s)).join(''):'<div class="e">Nothing mapped to this key.</div>');
+    (rows.length?rows.map(b=>rowHTML(b.s)).join(''):'<div class="e">Nothing mapped to this key.</div>')+fnHTML(st.sel,map);
+}
+function fnHTML(id,map){
+  const f=FN[id]; if(!f) return '';
+  if(f[0]==='~') return '<h4 style="margin-top:14px">fn + '+esc(lab(id))+' → '+esc(f.slice(1))+'</h4>';
+  const fk=fnKey(id), rows=(map[fk]||[]).filter(b=>b.layer==='');
+  return '<h4 style="margin-top:14px">fn + '+esc(lab(id))+' → sends '+esc(lab(fk))+'</h4>'+(rows.length?rows.map(b=>rowHTML(b.s)).join(''):'<div class="e">No shortcut on '+esc(lab(fk))+'.</div>');
 }
 function drawList(){
   const body=root.querySelector('.scx-body'); const q=root.querySelector('.scx-q').value.trim().toLowerCase();
@@ -349,8 +372,9 @@ function drawBar(){
   const exact=st.mode==='exact';
   let h='';
   if(kb){
-    h+='<span class="lbl">Layer</span><button type="button" class="scx-chip'+(!exact&&!held.size?' on':'')+'" data-layer="all">ALL</button>'+
+    h+='<span class="lbl">Layer</span><button type="button" class="scx-chip'+(!exact&&!held.size&&!st.fn?' on':'')+'" data-layer="all">ALL</button>'+
       '<button type="button" class="scx-chip'+(exact&&!st.mods.length&&!held.size?' on':'')+'" data-layer="plain">PLAIN</button>'+
+      '<button type="button" class="scx-chip'+(st.fn?' on':'')+'" data-fn title="K3 Pro Layer 1 — what keys do while holding fn">FN</button>'+
       MODS.map(m=>'<button type="button" class="scx-chip'+((held.size?held.has(m):exact&&st.mods.includes(m))?' on':'')+'" data-mod="'+m+'">'+GLYPH[m]+' '+MODNAME[m].toUpperCase()+'</button>').join('')+'<span class="scx-sep"></span>';
   }
   h+='<span class="lbl">Show</span>'+allCats().map(c=>{ const n=shortcuts.filter(s=>(s.cat||'Other')===c).length; const off=st.cats.length&&!st.cats.includes(c);
@@ -427,12 +451,13 @@ function open(){
     if((b=t.closest('[data-tab]'))){ st.tab=b.dataset.tab; keep(); root.querySelector('.scx-body').innerHTML=''; draw(); return; }
     if(t.closest('[data-add]')){ openEdit(null,st.tab==='kb'&&st.sel?{keys:keysFor(st.sel)}:null); return; }
     if(t.closest('[data-addkey]')){ openEdit(null,{keys:keysFor(st.sel)}); return; }
-    if((b=t.closest('[data-layer]'))){ held.clear(); if(b.dataset.layer==='all'){ st.mode='all'; } else { st.mode='exact'; st.mods=[]; } keep(); draw(); return; }
+    if(t.closest('[data-fn]')){ st.fn=!st.fn; keep(); draw(); return; }
+    if((b=t.closest('[data-layer]'))){ held.clear(); st.fn=false; if(b.dataset.layer==='all'){ st.mode='all'; } else { st.mode='exact'; st.mods=[]; } keep(); draw(); return; }
     if((b=t.closest('[data-mod]'))){ toggleMod(b.dataset.mod); return; }
     if((b=t.closest('[data-cat]'))){ const c=b.dataset.cat, all=allCats();
       if(e.altKey||e.metaKey){ st.cats=[c]; } else { let on=st.cats.length?st.cats.slice():all.slice(); on=on.includes(c)?on.filter(x=>x!==c):on.concat([c]); st.cats=on.length===all.length||!on.length?[]:on; }
       keep(); draw(); return; }
-    if((b=t.closest('.scx-k'))){ const id=b.dataset.k; if(KEYMOD[id]){ toggleMod(KEYMOD[id]); return; } if(e.altKey&&/^P\d\d$/.test(id)){ const sd=padSend(id); if(sd&&sd.mod){ toggleMod(sd.mod); return; } } st.sel=st.sel===id?'':id; draw(); return; }
+    if((b=t.closest('.scx-k'))){ const id=b.dataset.k; if(KEYMOD[id]){ toggleMod(KEYMOD[id]); return; } if(id==='Fn'){ st.fn=!st.fn; keep(); draw(); return; } if(e.altKey&&/^P\d\d$/.test(id)){ const sd=padSend(id); if(sd&&sd.mod){ toggleMod(sd.mod); return; } } st.sel=st.sel===id?'':id; draw(); return; }
     if((b=t.closest('[data-fav]'))){ const s=findS(b.closest('[data-sid]').dataset.sid); if(!s) return; s.fav=!s.fav; cache(); if(s.id) save({Fav:s.fav},s.id); draw(); return; }
     if((b=t.closest('[data-edit]'))){ const s=findS(b.closest('[data-sid]').dataset.sid); if(s) openEdit(s); return; }
   });
