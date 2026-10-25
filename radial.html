@@ -163,7 +163,9 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .fbox .fbh .fdot{width:10px;height:10px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px rgba(57,199,223,.8);flex:none}
 .fbox .fbh .fbt{flex:1;font:800 14px ui-monospace,Menlo,monospace;letter-spacing:1.5px;color:#cdeef5}
 .fbox .fbh .fbc{font:700 12px ui-monospace,Menlo,monospace;color:var(--dim)}
-.fbox .fbb{overflow:auto;max-height:40vh;padding:2px 12px 10px}
+.fbox .fbb{overflow:auto;flex:1;min-height:0;padding:2px 12px 10px}
+.fbox-float{resize:both;min-width:200px;min-height:90px;max-height:none!important}
+#cML .pane.xlp{flex:none}#cML .xll{max-height:21vh;overflow-y:auto;overflow-x:hidden;margin:0 -4px}
 .pane,.bub,.amb,.cxr,.cxchip,.cxc,.cxt,.minvite,.fbox,.fqrow,.lrow,.pill,.cmdbtn,.mjoin,.oinav button,.wxc,.fbc{transition:background-color .2s ease,border-color .2s ease,color .2s ease,transform .2s ease,opacity .2s ease}
 .lrow:hover,.cxr:hover{transform:translateX(1px)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -543,7 +545,8 @@ function renderCorners(){
   const ocRow=t=>{ const od=Guide.overdue(t), m=Guide.meta(t);
     return '<div class="lrow" data-guide="'+t.id+'" title="'+esc(cleanName(t))+'"><span class="dot'+(od||Guide.ageDays(t)>=7?' o':'')+'" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(od?' o':'')+'">'+(m.on?'<span class="tm">step '+(m.on+1)+'/'+m.n+'</span>':m.time?'<span class="tm">'+esc(shortTime(m.time))+'</span>':'')+(od?od+'d late':Guide.ageDays(t)+'d')+'</span></div>'; };
   $('#cML').innerHTML='<div class="pane'+(oi.some(t=>Guide.overdue(t))?' urgent':'')+'"><div class="ph" style="cursor:default">▤ At the computer<span class="pn">'+oiN+'</span></div>'+
-    (oc?('<div class="oione">'+ocRow(oc)+'<div class="oinav"><button data-oip aria-label="Previous">‹</button><span>'+((((oiI%oiN)+oiN)%oiN)+1)+' / '+oiN+'</span><button data-oin aria-label="Next">›</button></div></div>'):'<div class="none">All clear.</div>')+'</div>';
+    (oc?('<div class="oione">'+ocRow(oc)+'<div class="oinav"><button data-oip aria-label="Previous">‹</button><span>'+((((oiI%oiN)+oiN)%oiN)+1)+' / '+oiN+'</span><button data-oin aria-label="Next">›</button></div></div>'):'<div class="none">All clear.</div>')+'</div>'
+    +[['bigticket','◆ Big Tix'],['nextup','⇥ Next Up']].map(([k,lab])=>{ const L=itemsFor(k); return '<div class="pane xlp"><div class="ph" data-list="'+k+'">'+lab+'<span class="pn">'+L.length+'</span></div><div class="xll">'+(L.length?L.slice(0,40).map(miniRow).join(''):'<div class="none">Empty.</div>')+'</div></div>'; }).join('');
   document.querySelectorAll('#cML [data-guide]').forEach(r=>r.onclick=()=>openGuide(r.dataset.guide));
   { const p=$('#cML [data-oip]'), n=$('#cML [data-oin]'); if(p)p.onclick=e=>{e.stopPropagation();oiI--;renderCorners();}; if(n)n.onclick=e=>{e.stopPropagation();oiI++;renderCorners();}; }
   renderFilesBox();
@@ -745,7 +748,12 @@ function renderFilesBox(){ const box=$('#filesBox'); if(!box) return; if(!window
   const FL=Files.list(); box.hidden=false;
   box.innerHTML='<div class="fbh" data-fdrag><span class="fdot"></span><span class="fbt">Files in Use</span><span class="fbc">'+FL.length+' open</span></div>'+
     '<div class="fbb">'+(FL.length?'<div class="filist">'+FL.map(f=>Files.rowHTML(f)).join('')+'</div>':'<div class="none" style="padding:8px 2px">Files Claude references show up here.</div>')+'</div>';
-  Files.wire(box,{toast}); placeFbox(); wireFboxDrag(); }
+  Files.wire(box,{toast}); placeFbox(); wireFboxDrag(); sizeFbox(); }
+function sizeFbox(){ const box=$('#filesBox'); if(!box||box.hidden) return; let z=null; try{ z=JSON.parse(localStorage.getItem('tb.fbox.size')||'null'); }catch(e){}
+  if(z&&z.w&&z.h){ box.style.width=z.w+'px'; box.style.height=z.h+'px'; }
+  else { const h=box.querySelector('.fbh'), rows=box.querySelectorAll('.fbb .filist > *'); let H=(h?h.offsetHeight:44)+12; if(rows.length){ for(let i=0;i<Math.min(2,rows.length);i++) H+=rows[i].offsetHeight; } else H+=40; box.style.height=H+'px'; }
+  if(!window._fboxRO&&window.ResizeObserver){ let t=0; window._fboxRO=new ResizeObserver(()=>{ if(!window._fboxUser) return; clearTimeout(t); t=setTimeout(()=>{ try{ localStorage.setItem('tb.fbox.size',JSON.stringify({w:box.offsetWidth,h:box.offsetHeight})); }catch(e){} },300); }); window._fboxRO.observe(box);
+    box.addEventListener('pointerdown',e=>{ const r=box.getBoundingClientRect(); if(e.clientX>r.right-18&&e.clientY>r.bottom-18) window._fboxUser=1; }); } }
 function placeFbox(){ const box=$('#filesBox'); if(!box) return; let p=null; try{ p=JSON.parse(localStorage.getItem('tb.fbox')||'null'); }catch(e){}
   let L=p?p.l:16, T=p?p.t:72; L=Math.max(6,Math.min(L,innerWidth-60)); T=Math.max(56,Math.min(T,innerHeight-50)); box.style.left=L+'px'; box.style.top=T+'px'; }
 function wireFboxDrag(){ const box=$('#filesBox'), h=box&&box.querySelector('[data-fdrag]'); if(!h) return; let sx,sy,ol,ot,drag=false;

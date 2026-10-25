@@ -575,7 +575,7 @@ body::before{ opacity:.7 }
 <script src="files.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-25 12:54';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-25 17:13';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -4225,8 +4225,7 @@ function applyLaunchParams(){
 }
 
 /* ====== Click a panel title → Focus-style full-list modal (like clicking a bubble on Focus) ====== */
-const CATPAL=['#39c7df','#5eead4','#67E8F9','#60A5FA','#A78BFA','#818CF8','#34D399','#2dd4bf','#7dd3fc','#c4b5fd','#4ADE80','#38bdf8'];
-function catColor(p){ if(!p) return '#5e7a84'; let h=0; for(const c of String(p).toUpperCase()) h=(h*31+c.charCodeAt(0))>>>0; return CATPAL[h%CATPAL.length]; }
+function catColor(p){ const CATPAL=['#39c7df','#5eead4','#67E8F9','#60A5FA','#A78BFA','#818CF8','#34D399','#2dd4bf','#7dd3fc','#c4b5fd','#4ADE80','#38bdf8']; if(!p) return '#5e7a84'; let h=0; for(const c of String(p).toUpperCase()) h=(h*31+c.charCodeAt(0))>>>0; return CATPAL[h%CATPAL.length]; }   // palette inside: was a TDZ crash when render() ran first
 function catRow(t){ const d=daysOpen(t);
   return '<div class="catrow" data-id="'+t.id+'"><span class="cdot" style="background:'+catColor(t.project)+'"></span>'+
     '<span class="ct"><span class="cn">'+esc(cleanName(t))+'</span>'+((t.project||t.lead)?'<span class="cm">'+esc([t.project,t.lead].filter(Boolean).join(' · '))+'</span>':'')+'</span>'+
