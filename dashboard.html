@@ -575,7 +575,7 @@ body::before{ opacity:.7 }
 <script src="files.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-22 09:43';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-25 12:52';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -1159,6 +1159,7 @@ function blankFocus(logDay){
 }
 // Fires when the clock passes 11 PM (live if the app is open; caught up on the next open if it was closed).
 function focusBlankTick(){
+  return;   // 2026-10-25 Roni: Now/Focus is NEVER auto-cleared — it stays until he changes it.
   const now=new Date(), b=new Date(now); b.setHours(23,0,0,0);
   if(now<b) b.setDate(b.getDate()-1);          // most recent 11 PM that has already passed
   const bt=b.getTime();

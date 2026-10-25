@@ -64,6 +64,11 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .amb .n{display:flex;justify-content:space-between;align-items:center}.amb .n button{width:24px;height:22px;border:0;border-radius:6px;background:rgba(0,0,0,.14);color:inherit;font-weight:800;cursor:pointer}
 .ivbtn{grid-column:1/-1;height:32px;border-radius:10px;border:1px solid var(--line);background:rgba(57,199,223,.07);color:var(--ink);font:700 12px ui-monospace,Menlo,monospace;letter-spacing:.5px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}.ivbtn:hover{border-color:var(--cyan);color:var(--cyan)}.ivbtn b{color:var(--cyan)}
 .amb .n span{font:700 10px ui-monospace,Menlo,monospace;opacity:.75}
+.ctbar{display:flex;gap:6px;margin:4px 0}.ctin{width:100%;box-sizing:border-box;background:rgba(20,36,42,.85);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:9px 10px;font-size:14px;outline:none;font-family:inherit}.ctin:focus{border-color:var(--cyan)}textarea.ctin{resize:vertical;margin:6px 0}
+.ctres{max-height:62vh;overflow:auto;margin-top:6px}.ctrow{border-top:1px solid var(--line);padding:8px 0}.cthead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px}.ctname{font-weight:800;font-size:15px;color:var(--ink)}.ctorg{color:var(--dim);font-size:12px}
+.ctnum{display:flex;gap:6px;align-items:center;margin:3px 0}.ctcopy{flex:1;text-align:left;background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 10px;font-size:14px;font-variant-numeric:tabular-nums;cursor:pointer}
+.ctact{flex:0 0 auto;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:16px;text-decoration:none;color:var(--ink);cursor:pointer}.ctact:hover,.ctcopy:hover{border-color:var(--cyan)}
+.cthint{font-size:12px;color:var(--dim);margin:2px 0 4px}.ctlbl{display:block;font-size:11px;color:var(--dim);margin:6px 0 2px}.ctacts{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}.ctbtn{background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer}.ctbtn.pri{border-color:var(--cyan);color:var(--cyan)}
 .cxpane{padding:8px!important}.cxb{max-height:min(190px,23vh);overflow:auto;margin-top:5px}
 .cxtop{display:flex;gap:6px;align-items:center}.cxtop #cxAdd{flex:none;width:34px;height:34px;border:1px solid var(--line);background:transparent;color:var(--cyan);border-radius:9px;font-size:18px;cursor:pointer}.cxtop #cxAdd:hover{border-color:var(--cyan)}
 .cxcp{flex:none;font-size:12px;font-weight:700;border:1px solid var(--line);color:var(--cyan);background:transparent;border-radius:7px;padding:3px 7px;cursor:pointer}.cxcp:hover{border-color:var(--cyan)}
@@ -107,13 +112,17 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .lrow .pchip{flex:none;font:700 9px ui-monospace,Menlo,monospace;letter-spacing:.4px;color:#07141a;background:var(--pc,#39c7df);border-radius:5px;padding:2px 6px;max-width:94px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase}
 .lrow .lchip{flex:none;font:700 9px ui-monospace,Menlo,monospace;letter-spacing:.4px;color:var(--cyan);border:1px solid var(--line);border-radius:5px;padding:1px 6px;white-space:nowrap}
 /* left vertical filter rail — faint in the background, click a chip → filtered list */
-#fltrail{position:absolute;left:56%;right:6px;top:52px;bottom:48px;display:flex;gap:7px;align-items:flex-start;z-index:2;opacity:.75;transition:opacity .25s;overflow:hidden}
+#fltrail{position:absolute;left:56%;right:6px;top:52px;bottom:48px;display:flex;flex-direction:column;gap:6px;z-index:2;opacity:.8;transition:opacity .25s;overflow:hidden}
 #fltrail:hover{opacity:1;z-index:20}
-#fltrail .fcol{flex:1;min-width:0;height:100%;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;scrollbar-width:thin}
-#fltrail .fcol::-webkit-scrollbar{width:4px}#fltrail .fcol::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
-#fltrail .fh{font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--cyan);margin:0 0 4px;position:sticky;top:0;background:var(--bg,#070d11);padding:3px 0}
-#fltrail .fc{display:flex;align-items:center;justify-content:space-between;gap:4px;border:1px solid var(--line);background:rgba(9,18,24,.6);color:var(--ink);border-radius:6px;padding:3px 6px;margin-bottom:3px;font-size:10.5px;cursor:pointer;white-space:nowrap;overflow:hidden}
+#fltrail .fcols{flex:1;min-height:0;display:flex;gap:7px}
+#fltrail .fcol{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;min-height:0}
+#fltrail .fsec{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;scrollbar-width:thin}
+#fltrail .fsec::-webkit-scrollbar{width:4px}#fltrail .fsec::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+#fltrail .fh{font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--cyan);margin:0 0 4px;position:sticky;top:0;background:var(--bg,#070d11);padding:3px 0;z-index:1}
+#fltrail .fc{display:flex;align-items:center;justify-content:space-between;gap:4px;flex:none;border:1px solid var(--line);background:rgba(9,18,24,.6);color:var(--ink);border-radius:6px;padding:3px 6px;margin-bottom:3px;font-size:10.5px;cursor:pointer;white-space:nowrap;overflow:hidden}
+#fltrail .fc span{overflow:hidden;text-overflow:ellipsis}
 #fltrail .fc:hover{border-color:var(--cyan);color:var(--cyan)}
+#fltrail .fc.fnone{border-style:dashed;color:var(--orange)}#fltrail .fc.fnone:hover{color:var(--cyan)}
 #fltrail .fc b{color:var(--dim);font:700 9px ui-monospace,Menlo,monospace;flex:none}
 .lrow .rmcat,.lrow .tick{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);color:var(--dim);flex:none;display:grid;place-items:center;font-size:13px}
 .lrow .rmcat:hover{color:var(--cyan);border-color:var(--cyan)} .lrow .tick:hover{color:var(--green);border-color:var(--green)}
@@ -418,8 +427,13 @@ function showRingDD(){ let dd=$('#ringDD'); if(!dd){ dd=document.createElement('
     r.addEventListener('dragover',e=>{ e.preventDefault(); if(!dragEl||dragEl===r) return; const b=r.getBoundingClientRect(); rdl.insertBefore(dragEl,(e.clientY-b.top)>b.height/2?r.nextSibling:r); });
     r.addEventListener('dragend',()=>{ r.classList.remove('drag'); const p=ringPref(); p.ord=[...rdl.querySelectorAll('.rdr')].map(x=>x.dataset.k); saveRingPref(p); ringPage=0; rer(); }); }); }
 function renderFltRail(){ const el=$('#fltrail'); if(!el) return;
-  const secs=[['P','project',fltTally(t=>t.project)],['L','lead',fltTally(t=>t.lead)],['S','sub',fltTally(t=>t.sub)],['C','category',fltTally(t=>catName(sectionOf(t)))]];
-  el.innerHTML=secs.map(([lab,field,ents])=>'<div class="fcol"><div class="fh">'+lab+'</div>'+(ents.length?ents.map(([v,n])=>'<button class="fc" data-ff="'+esc(field)+'" data-fv="'+esc(v)+'" title="'+esc(v)+' · '+n+'">'+esc(v)+'<b>'+n+'</b></button>').join(''):'')+'</div>').join('');
+  const L=tasks.filter(t=>live(t)); const miss=f=>L.filter(t=>!String(t[f]||'').trim()).length;
+  const noAll=L.filter(t=>!String(t.project||'').trim()&&!String(t.lead||'').trim()&&!String(t.sub||'').trim()).length;
+  const chip=(field,v,n,lbl,cls)=>'<button class="fc'+(cls?' '+cls:'')+'" data-ff="'+esc(field)+'" data-fv="'+esc(v)+'" title="'+esc(lbl||v)+' · '+n+'"><span>'+esc(lbl||v)+'</span><b>'+n+'</b></button>';
+  const sec=(lab,field,ents)=>{ const nm=field==='category'?0:miss(field); return '<div class="fsec"><div class="fh">'+lab+'</div>'+ents.map(([v,n])=>chip(field,v,n)).join('')+(nm?chip(field,'',nm,'∅ no '+field,'fnone'):'')+'</div>'; };
+  el.innerHTML=(noAll?chip('__none','',noAll,'∅ No P · L · S — '+noAll+' tasks','fnone'):'')
+    +'<div class="fcols"><div class="fcol">'+sec('P','project',fltTally(t=>t.project))+sec('S','sub',fltTally(t=>t.sub))+'</div>'
+    +'<div class="fcol">'+sec('L','lead',fltTally(t=>t.lead))+sec('C','category',fltTally(t=>catName(sectionOf(t))))+'</div></div>';
   el.querySelectorAll('[data-ff]').forEach(b=>b.onclick=()=>openFiltered(b.dataset.ff,b.dataset.fv)); }
 function renderAll(){ clearIF(); if(window.Files&&!window._filesInit&&cfg&&cfg.apiKey){ window._filesInit=1; Files.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); Files.onChange(()=>{ if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.te')) return; renderFilesBox(); }); } renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); renderFltRail(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
 window.addEventListener('hashchange',()=>{ window._gdShown=null; const gid=window.Guide&&Guide.hashId(); if(gid) openGuide(gid); });
@@ -464,7 +478,7 @@ let cxLast=0; function cxLoad(){ if(cxBusy||demo||!cfg.apiKey||Date.now()-cxLast
   if(Date.now()-cuAt>30*6e4){ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CU_TABLE); u.searchParams.set('pageSize','100');
     jobs.push(fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{ if(d&&d.records){ cuRows=d.records.map(x=>({id:x.id,name:x.fields.Name||'',phone:x.fields.Phone||'',count:+x.fields.Count||0,score:+x.fields.Score||0,last:x.fields.LastUsed?Date.parse(x.fields.LastUsed):0,pinned:!!x.fields.Pinned,hidden:!!x.fields.Hidden})); cuAt=Date.now(); } }).catch(()=>{})); }
   if(!jobs.length){ cxBusy=false; return; }   // nothing to fetch → no re-render (re-rendering here called cxLoad again in an endless loop)
-  Promise.all(jobs).then(()=>{ cxBusy=false; if(!document.activeElement||document.activeElement.id!=='cxQ') renderCx(); }); }
+  Promise.all(jobs).then(()=>{ cxBusy=false; if(window._ctDraw&&ov.classList.contains('show')&&document.activeElement&&document.activeElement.id!=='ctQ') window._ctDraw(); }); }
 function cxSearch(q){ q=q.toLowerCase(); const dq=q.replace(/\D/g,''); const out=[]; for(const c of cxContacts){ const hit=(c.n||'').toLowerCase().includes(q)||(c.o||'').toLowerCase().includes(q)||(dq.length>=3&&(c.p||[]).some(p=>String(p).replace(/\D/g,'').includes(dq))); if(hit&&(c.p||[]).length){ out.push(c); if(out.length>=8) break; } } return out; }
 const cuNow=r=>r.score*Math.pow(0.5,(Date.now()-r.last)/CU_HALF);
 async function cxUse(name,phone){ const k=cxKey(phone); if(k.length<7||demo||!cfg.apiKey) return; const base='https://api.airtable.com/v0/'+cfg.baseId+'/'+CU_TABLE, H={Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'};
@@ -489,7 +503,7 @@ function renderCx(){ const host=document.querySelector('#cxHost'); if(!host) ret
   const add=host.querySelector('#cxAdd'); if(add) add.onclick=()=>addContactPrompt(cxQ);
   const sv=host.querySelector('[data-cxsave]'); if(sv) sv.onclick=()=>addContactPrompt(cxQ); }
 
-function focusCx(){ const q=$('#cxQ'); if(!q){ renderCx(); } const q2=$('#cxQ'); if(q2){ q2.scrollIntoView({block:'nearest'}); q2.focus(); q2.select(); const p=q2.closest('.pane'); if(p){ p.classList.add('urgent'); setTimeout(()=>p.classList.remove('urgent'),900); } } }
+function focusCx(){ return openContacts(); const q=$('#cxQ'); if(!q){ renderCx(); } const q2=$('#cxQ'); if(q2){ q2.scrollIntoView({block:'nearest'}); q2.focus(); q2.select(); const p=q2.closest('.pane'); if(p){ p.classList.add('urgent'); setTimeout(()=>p.classList.remove('urgent'),900); } } }
 /* ☀︎ Morning / ◑ Afternoon: two slim side-by-side boxes (iPhone gradients), one task each, rotating every 30s; ‹ › step; click → the list */
 const amI={morning:0,afternoon:0}, amAt={morning:0,afternoon:0}; let oiI=0;
 function amCycle(){ ['morning','afternoon'].forEach(k=>{ if(Date.now()-amAt[k]>120000) amI[k]++; }); renderAmPm(); }
@@ -520,7 +534,7 @@ function renderCorners(){
   const incT=incItems();
   const inc={count:incT.length, html:'<div class="inclist">'+(incT.length?incT.slice(0,60).map(miniRow).join(''):'<div class="none">'+(incDay?'Nothing came in.':'—')+'</div>')+'</div>'};
   const incNav='<span class="nnav"><button data-ip>‹</button><span class="nlbl'+(incDay?' past':'')+'">'+esc(dnLabel(incDay||todayISO()))+'</span><button data-in '+(incDay?'':'disabled')+'>›</button>'+(incDay?'<button data-itd class="tdy">Today</button>':'')+'</span>';
-  if(!$('#cxHost')){ $('#cTR').innerHTML='<div id="cxHost"></div><div id="cTRb" style="display:flex;flex-direction:column;gap:10px"></div>'; renderCx(); }
+  if(!$('#cTRb')){ $('#cTR').innerHTML='<div id="cTRb" style="display:flex;flex-direction:column;gap:10px"></div>'; }
   $('#cTRb').innerHTML='<div class="pane meet'+(nn.now?' urgent':'')+'"><div class="ph" data-list="meeting">▣ Next Meeting<span class="pn">'+nn.L.length+'</span></div>'+mh+'</div>'+
     '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span>'+incNav+'</div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div><div class="pane" id="cqPane" style="display:none"></div>';
   renderCQPane();
@@ -583,6 +597,11 @@ function layout(){ const st=$('#stage'); const W=st.clientWidth, H=st.clientHeig
     let left=CX+R*Math.cos(a)-BS/2, top=CY+R*Math.sin(a)-BS/2;
     left=Math.max(6,Math.min(W-BS-6,left)); top=Math.max(50,Math.min(H-BS-54,top));
     b.style.width=b.style.height=BS+'px'; b.style.left=left+'px'; b.style.top=top+'px'; }
+  { const fr=$('#fltrail'); if(fr){ let lx=0; ['#cTL','#cML','#cBL'].forEach(q=>{ const e=$(q); if(e&&e.offsetWidth) lx=Math.max(lx,e.offsetLeft+e.offsetWidth); });
+      let rx=CX-CS/2; for(let i=0;i<n;i++) rx=Math.min(rx,parseFloat(bs[i].style.left)||rx);
+      const L0=lx+12, R0=rx-12;
+      if(R0-L0>=170){ fr.style.left=L0+'px'; fr.style.right='auto'; fr.style.width=(R0-L0)+'px'; fr.style.display=''; }
+      else { fr.style.left=''; fr.style.right=''; fr.style.width=''; fr.style.display='none'; } } }
   if(typeof applyMoves==='function') applyMoves(); }
 addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setTimeout(layout,160); });
 /* ===== movable bubbles / core / panes: drag a bubble, the core, or a pane's header; offsets saved (CSS translate — no layout math) ===== */
@@ -734,19 +753,62 @@ function wireFboxDrag(){ const box=$('#filesBox'), h=box&&box.querySelector('[da
   h.onpointermove=e=>{ if(!drag) return; let L=ol+(e.clientX-sx), T=ot+(e.clientY-sy); L=Math.max(6,Math.min(L,innerWidth-60)); T=Math.max(6,Math.min(T,innerHeight-40)); box.style.left=L+'px'; box.style.top=T+'px'; };
   h.onpointerup=()=>{ if(!drag) return; drag=false; try{ localStorage.setItem('tb.fbox',JSON.stringify({l:parseInt(box.style.left),t:parseInt(box.style.top)})); }catch(_){} }; }
 addEventListener('resize',()=>{ if(!$('#filesBox').hidden) placeFbox(); });
-/* 👤 Contacts — full stable modal (dashboard-style): search · copy · text · call · add. No jumping (lives in the #ov overlay). */
-function openContacts(){ ovh.innerHTML='👤 Contacts<button class="x" data-x>✕</button>'; let q='';
-  function draw(){ const ql=q.trim(); let body;
-    if(ql){ const hits=cxSearch(ql); body=hits.length?hits.map(c=>(c.p||[]).slice(0,3).map((p,i)=>cxRow(i?'':c.n,i?'':c.o,p)).join('')).join(''):'<div class="none" style="padding:10px 2px">Not in contacts — ＋ to add.</div>'; }
-    else { const F=cuRows.filter(r=>!r.hidden&&(r.pinned||r.count)).sort((a,b)=>((+b.pinned)-(+a.pinned))||(cuNow(b)-cuNow(a))).slice(0,24);
-      body=F.length?'<div class="cxh">Frequent</div>'+F.map(r=>cxRow(r.name||r.phone,r.org||'',r.phone)).join(''):'<div class="none" style="padding:10px 2px">Type a name or number to search.</div>'; }
-    ovb.innerHTML='<div class="cxtop"><input id="ctQ" class="rq" type="search" placeholder="Search contacts — name or number…" value="'+esc(q)+'" autocomplete="off"><button id="ctAdd" title="Add a contact">＋</button></div><div class="cxb" style="max-height:64vh;margin-top:8px">'+body+'</div>';
-    const inp=$('#ctQ'); if(inp) inp.oninput=()=>{ q=inp.value; const p=inp.selectionStart; draw(); const i2=$('#ctQ'); if(i2){ i2.focus(); try{i2.setSelectionRange(p,p);}catch(e){} } };
-    ovb.querySelectorAll('[data-cp]').forEach(b=>b.onclick=()=>copyNum(b.dataset.cp));
-    ovb.querySelectorAll('a[data-cu]').forEach(a=>a.addEventListener('click',()=>cxUse(a.dataset.cu,decodeURIComponent(a.getAttribute('href').replace(/^(tel:|sms:)/,'')))));
-    const add=$('#ctAdd'); if(add) add.onclick=()=>addContactPrompt(q);
-  }
-  draw(); try{cxLoad();}catch(e){} ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; setTimeout(()=>{ const i=$('#ctQ'); if(i) i.focus(); },60);
+/* 👤 Contacts — same as the dashboard: search name / number / company · tap number to copy · 📋 💬 📞 · ➕ paste-a-signature add (ContactsAdded table) */
+const CX_ADD_TABLE='tblMz61uZtH5DeDl1';
+let cxAdded=(()=>{ try{ return JSON.parse(localStorage.getItem('contactsAdded')||'[]'); }catch(e){ return []; } })();
+function cxLoadAdded(){ if(demo||!cfg.apiKey) return Promise.resolve(cxAdded);
+  const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CX_ADD_TABLE); u.searchParams.set('pageSize','100');
+  return fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():null).then(d=>{ if(d&&d.records){
+    cxAdded=d.records.map(r=>({n:flat(r.fields.Name)||'',o:flat(r.fields.Org)||'',p:(flat(r.fields.Phones)||'').split(/[,\n]/).map(x=>x.trim()).filter(Boolean),email:flat(r.fields.Email)||'',_rid:r.id})).filter(c=>c.n);
+    try{ localStorage.setItem('contactsAdded',JSON.stringify(cxAdded)); }catch(e){} } return cxAdded; }).catch(()=>cxAdded); }
+const cxDig=x=>String(x||'').replace(/\D/g,'');
+function ctSearch(q){ q=(q||'').trim().toLowerCase(); if(!q) return []; const dq=cxDig(q), out=[];
+  for(const c of cxAdded.concat(cxContacts)){ const nm=(c.n||'').toLowerCase(), og=(c.o||'').toLowerCase(); let hit=nm.includes(q)||(og&&og.includes(q));
+    if(!hit&&dq.length>=3) hit=(c.p||[]).some(x=>cxDig(x).includes(dq)); if(hit){ out.push(c); if(out.length>=60) break; } } return out; }
+function cxFmt(raw){ const d=cxDig(raw); if(d.length===10) return '('+d.slice(0,3)+') '+d.slice(3,6)+'-'+d.slice(6); if(d.length===11&&d[0]==='1') return '1 ('+d.slice(1,4)+') '+d.slice(4,7)+'-'+d.slice(7); return (raw||'').trim(); }
+function cxParseSig(text){ const lines=(text||'').replace(/ /g,' ').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+  const emailRe=/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i, urlRe=/^(https?:\/\/|www\.)|\.(com|net|org|io|co|us|biz|info)(\/|$)/i, phoneRe=/(\+?\d[\d\s().\-]{7,}\d)/;
+  const coRe=/\b(LLC|L\.L\.C|Inc|Incorporated|Corp|Corporation|Company|Co|Ltd|LLP|L\.P|LP|Holdings|Capital|Partners|Group|Ventures|Advisors|Advisers|Management|Mgmt|Realty|Properties|Associates|Bank|Trust|Fund|Equity|Enterprises|Solutions|Development)\b/i;
+  let email=''; const phones=[], tl=[];
+  for(const L of lines){ const em=L.match(emailRe); if(em&&!email) email=em[0]; if(em&&L.replace(emailRe,'').replace(/[<>()|·•,\s]/g,'').length<2) continue;
+    const ph=L.match(phoneRe); if(ph&&cxDig(ph[1]).length>=10){ if(!/\bfax\b/i.test(L)) phones.push(cxFmt(ph[1])); continue; }
+    if(!em&&urlRe.test(L)) continue; if(!em) tl.push(L); }
+  let n='',o=''; if(tl.length){ n=tl[0]; const rest=tl.slice(1); o=rest.find(l=>coRe.test(l))||rest[rest.length-1]||''; }
+  if(!n&&email) n=email.split('@')[0].replace(/[._\-]+/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  return {n,o,p:phones,email}; }
+function cxSaveNew(c){ cxAdded.unshift(c); try{ localStorage.setItem('contactsAdded',JSON.stringify(cxAdded)); }catch(e){}
+  if(demo||!cfg.apiKey) return Promise.resolve(c);
+  return fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+CX_ADD_TABLE,{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
+    body:JSON.stringify({records:[{fields:{Name:c.n,Org:c.o||'',Phones:(c.p||[]).join(', '),Email:c.email||'',Added:new Date().toISOString()}}],typecast:true})})
+    .then(r=>r.ok?r.json():null).then(d=>{ if(d&&d.records&&d.records[0]) c._rid=d.records[0].id; return c; }).catch(()=>c); }
+function openAddContact(back){ ovh.innerHTML='➕ Add contact<button class="x" data-x>✕</button>'; ovh.querySelector('[data-x]').onclick=back;
+  ovb.innerHTML='<div class="cthint">Paste an email signature (name, company, phones, email) and tap Parse. Fix anything before saving.</div>'
+   +'<textarea id="acT" class="ctin" rows="6" placeholder="Sam Sparks\nTavros Holdings LLC\nssparks@tavroscapital.com\nO: (212) 518-4942\nC: (973) 207-2488"></textarea>'
+   +'<div id="acF" style="display:none">'+[['acN','Name'],['acO','Company'],['acP','Phone(s) — comma separated'],['acE','Email']].map(([i,l])=>'<label class="ctlbl">'+l+'</label><input id="'+i+'" class="ctin">').join('')+'</div>'
+   +'<div class="ctacts"><button id="acParse" class="ctbtn pri">Parse ↓</button><button id="acSave" class="ctbtn pri" style="display:none">Save contact</button><button id="acCancel" class="ctbtn">Cancel</button></div>';
+  const ta=$('#acT'), sv=$('#acSave'), pb=$('#acParse');
+  pb.onclick=()=>{ if(!ta.value.trim()){ toast('Paste a signature first'); return; } const c=cxParseSig(ta.value);
+    $('#acN').value=c.n||''; $('#acO').value=c.o||''; $('#acP').value=(c.p||[]).join(', '); $('#acE').value=c.email||'';
+    $('#acF').style.display='block'; sv.style.display=''; pb.textContent='Re-parse ↻'; setTimeout(()=>$('#acN').focus(),30); };
+  sv.onclick=()=>{ const c={n:$('#acN').value.trim(),o:$('#acO').value.trim(),p:$('#acP').value.split(/[,\n]/).map(cxFmt).filter(Boolean),email:$('#acE').value.trim()};
+    if(!c.n){ toast('Needs a name'); $('#acN').focus(); return; } sv.disabled=true; cxSaveNew(c).then(()=>{ toast('✅ Added '+c.n); back(c.n); }); };
+  $('#acCancel').onclick=()=>back(); setTimeout(()=>ta.focus(),40); }
+function openContacts(prefill){ let q=prefill||'';
+  const shell=()=>{ ovh.innerHTML='👤 Contacts<button class="x" data-x>✕</button>'; ovh.querySelector('[data-x]').onclick=closeOv;
+    ovb.innerHTML='<div class="ctbar"><input id="ctQ" class="ctin" type="search" placeholder="Search name, number, or company…" autocomplete="off"><button id="ctAdd" class="ctact" title="Add a contact (paste a signature)">➕</button></div><div id="ctRes" class="ctres"></div>';
+    const inp=$('#ctQ'); inp.value=q; inp.oninput=()=>{ q=inp.value; draw(); };
+    $('#ctAdd').onclick=()=>openAddContact(nm=>{ if(nm) q=nm; shell(); });
+    draw(); setTimeout(()=>{ const i=$('#ctQ'); if(i) i.focus(); },40); };
+  const draw=()=>{ const R=$('#ctRes'); if(!R) return; const ql=q.trim();
+    if(!cxContacts.length&&!cxAdded.length){ R.innerHTML='<div class="none" style="padding:10px 2px">No contacts loaded yet — they sync from your Mac automatically. Check your Airtable key if this stays empty.</div>'; return; }
+    if(!ql){ R.innerHTML='<div class="none" style="padding:10px 2px">'+(cxContacts.length+cxAdded.length)+' contacts loaded. Start typing to search, or tap ➕ to add one.</div>'; return; }
+    const hits=ctSearch(ql); if(!hits.length){ R.innerHTML='<div class="none" style="padding:10px 2px">No matches.</div>'; return; }
+    R.innerHTML=hits.map(c=>'<div class="ctrow"><div class="cthead"><span class="ctname">'+esc(c.n)+'</span>'+(c.o?'<span class="ctorg">'+esc(c.o)+'</span>':'')+'</div>'
+      +(c.p||[]).map(num=>{ const d=String(num).replace(/[^\d+]/g,''); return '<div class="ctnum"><button class="ctcopy" data-cp="'+esc(num)+'" title="Copy number">'+esc(num)+'</button><button class="ctact" data-cp="'+esc(num)+'" title="Copy number">📋</button><a class="ctact" href="sms:'+esc(d)+'" data-cu="'+esc(c.n||'')+'" title="Text">💬</a><a class="ctact" href="tel:'+esc(d)+'" data-cu="'+esc(c.n||'')+'" title="Call">📞</a></div>'; }).join('')+'</div>').join('');
+    R.querySelectorAll('[data-cp]').forEach(b=>b.onclick=()=>copyNum(b.dataset.cp));
+    R.querySelectorAll('a[data-cu]').forEach(a=>a.addEventListener('click',()=>cxUse(a.dataset.cu,decodeURIComponent(a.getAttribute('href').replace(/^(tel:|sms:)/,''))))); };
+  window._ctDraw=draw; shell(); ov.classList.add('show');
+  try{ cxLast=0; cxLoad(); }catch(e){} cxLoadAdded().then(draw);
 }
 /* ▦ P·S·L·C filter bar — all Project / Sub / Lead / Category values as outlined clickable chips (like the dashboard) */
 function catName(sec){ const c=CAT[sec]; return c?c[1]:(sec||'—'); }
@@ -759,9 +821,10 @@ function openFilters(){
   ovb.querySelectorAll('[data-ff]').forEach(b=>b.onclick=()=>openFiltered(b.dataset.ff,b.dataset.fv));
 }
 function openFiltered(field,value){
-  const match=t=>field==='project'?(t.project||'')===value:field==='sub'?(t.sub||'')===value:field==='lead'?(t.lead||'')===value:field==='category'?catName(sectionOf(t))===value:false;
+  const blank=f=>!String(t_[f]||'').trim(); let t_;
+  const match=t=>(t_=t, field==='__none')?(blank('project')&&blank('lead')&&blank('sub')):(value===''&&field!=='category')?blank(field):field==='project'?(t.project||'')===value:field==='sub'?(t.sub||'')===value:field==='lead'?(t.lead||'')===value:field==='category'?catName(sectionOf(t))===value:false;
   const items=tasks.filter(t=>live(t)&&match(t)).sort(byLeadProj);
-  ovh.innerHTML='▦ '+esc(value)+' · '+items.length+'<button class="x" data-x>✕</button>';
+  ovh.innerHTML='▦ '+esc(field==='__none'?'No P · L · S':value===''?'No '+field:value)+' · '+items.length+'<button class="x" data-x>✕</button>';
   ovb.innerHTML='<div class="phint"><button class="pill" data-back>‹ All filters</button> · tap a task to edit</div><div class="plist" id="plist">'+groupRows(items,200)+'</div>';
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; wireRows($('#plist'),null);
   const bk=ovb.querySelector('[data-back]'); if(bk) bk.onclick=openFilters;
