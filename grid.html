@@ -174,6 +174,9 @@ textarea.inp{min-height:110px;resize:vertical;font-family:inherit}
 .chip.lit,.fbub.lit{box-shadow:0 0 0 2px var(--accent);background:rgba(57,199,223,.16);opacity:1}
 .chip.dimmed,.fbub.dimmed{opacity:.3}
 .contacts-modal{max-width:460px;width:94vw}
+.panes-modal{max-width:520px;width:94vw}.panes-list{max-height:62vh;overflow:auto;display:flex;flex-direction:column;gap:2px}
+.pane-li{display:flex;align-items:center;gap:8px;padding:5px 4px;border-bottom:1px solid var(--line)}.pane-li label{flex:1;display:flex;align-items:center;gap:8px;cursor:pointer;font-size:14px}.pane-li.off span{color:var(--muted)}
+.phead-ctrl.pane-pin{opacity:.35}.phead-ctrl.pane-pin.on{opacity:1;border-color:var(--hud,#39c7df)}.panel-head:hover .pane-pin{opacity:.8}.panel-head .pane-pin.on{opacity:1}
 .contacts-results{max-height:60vh;overflow:auto;margin-top:6px}
 .contact-row{border-top:1px solid var(--line);padding:8px 0}
 .contact-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:4px}
@@ -543,6 +546,7 @@ body::before{ opacity:.7 }
     <button class="tb-btn" id="picBtn" title="Photo → list">📷</button>
     <button class="tb-btn" id="undoBtn" title="Undo last action (⌘Z)">↩ Undo</button>
     <button class="tb-btn" id="contactsBtn" title="Contacts search">👤</button>
+    <button class="tb-btn" id="panesBtn" title="All panes — show / hide / keep open">▦ Panes</button>
     <button class="tb-btn" id="scBtn" title="⌨️ Shortcuts cheat-sheet (press ?)">⌨️</button>
     <a class="tb-btn" id="focusCoreBtn" href="radial.html?focus=1" title="◎ Focus — the home screen" style="text-decoration:none;color:var(--ink);display:inline-flex;align-items:center">◎ Focus</a>
     <a class="tb-btn" id="focus2Btn" href="focus2.html" title="Focus 2 — AM/PM calls" style="text-decoration:none;color:var(--ink);display:inline-flex;align-items:center">◉ Focus 2</a>
@@ -575,7 +579,7 @@ body::before{ opacity:.7 }
 <script src="files.js"></script>
 <script>
 "use strict";
-const BUILD='2026-10-25 13:18';   // replaced with deploy date/time by deploy.sh
+const BUILD='2026-10-25 13:23';   // replaced with deploy date/time by deploy.sh
 // Changelog shown on the 🔧 wrench (newest first). deploy.sh also appends a line to changelog.md.
 const CHANGES=[
   {v:'2026-10-09 · ◎ Focus Core HUD', d:'New radial "Focus Core" view — Now/Focus in the center, every category orbiting in draggable bubbles that flip one item every 30s. It’s now your HOME screen (toggle on the HUD: ★ Home Focus / Grid). The grid got a matching cyan HUD skin. ◎ Focus (top bar) opens the HUD; ⌂ Dashboard returns. Tap a bubble to jump to that list + open the item.'},
@@ -690,6 +694,33 @@ function demoTasks(){
 const saveCfg = ()=>localStorage.setItem(LS.cfg, JSON.stringify(cfg));
 const saveAug = ()=>localStorage.setItem(LS.aug, JSON.stringify(aug));
 const saveMeta= ()=>localStorage.setItem(LS.meta,JSON.stringify(meta));
+/* ▦ Panes: ✕ closes a pane (remembered), 📌 keeps it open (no ✕), ▦ Panes lists every pane */
+const paneClosed=id=>(meta.closedPanes||[]).includes(id)&&!(meta.pinnedPanes||[]).includes(id);
+const panePinned=id=>(meta.pinnedPanes||[]).includes(id);
+function paneName(id){ const n=meta.paneNames&&meta.paneNames[id]; if(n) return n;
+  const b=(typeof BUCKETS!=='undefined'&&BUCKETS.find(x=>x.id===id))||(typeof STUBS!=='undefined'&&STUBS.find(x=>x.id===id))||(meta.customCats||[]).find(c=>c.id===id);
+  const FB={computer:'🖥 @Computer – Claude',leadrev:'📨 Lead texts review',callinvite:'👥 Invite to the call',frequent:'⭐ Frequent',nupicks:'⏫ Next Up',suggested:'✨ Suggested next up',claudeq:'✨ Claude requests',bills:'💵 Bills & Taxes',files:'📁 Files in Use',learning:'📚 Learning',priority:'▲ Priority',spotlight:'🔦 Spotlight',stillopen:'❓ Still open',parked:'🅿️ Parked',scratch:'🗒 Notes',automations:'⚙️ Automations'};
+  return (b&&(b.name||b.title))||FB[id]||id; }
+function setPaneClosed(id,closed){ const c=new Set(meta.closedPanes||[]); closed?c.add(id):c.delete(id); meta.closedPanes=[...c]; saveMeta(); }
+function setPanePinned(id,on){ const c=new Set(meta.pinnedPanes||[]); on?c.add(id):c.delete(id); meta.pinnedPanes=[...c]; if(on) setPaneClosed(id,false); saveMeta(); }
+function decoratePane(el,id){ if(!el||!el.querySelector) return; const head=el.querySelector('.panel-head'); if(!head) return;
+  const h3=head.querySelector('h3'); if(h3){ const t=h3.textContent.trim(); if(t){ meta.paneNames=meta.paneNames||{}; if(meta.paneNames[id]!==t){ meta.paneNames[id]=t; saveMeta(); } } }
+  if(head.querySelector('[data-pane-x]')) return; const pin=panePinned(id);
+  const pb=document.createElement('button'); pb.className='phead-ctrl pane-pin'+(pin?' on':''); pb.dataset.panePin=id; pb.textContent='📌'; pb.title=pin?'Kept open — click to allow closing':'Keep this pane open';
+  pb.onclick=e=>{ e.stopPropagation(); setPanePinned(id,!pin); render(); };
+  head.appendChild(pb);
+  if(!pin){ const xb=document.createElement('button'); xb.className='phead-ctrl pane-x'; xb.dataset.paneX=id; xb.textContent='✕'; xb.title='Close this pane (▦ Panes brings it back)';
+    xb.onclick=e=>{ e.stopPropagation(); setPaneClosed(id,true); render(); toast('Closed '+paneName(id)+' — ▦ Panes to reopen'); }; head.appendChild(xb); } }
+function openPanes(){ const bd=document.createElement('div'); bd.className='backdrop'; const box=document.createElement('div'); box.className='modal panes-modal';
+  const draw=()=>{ const ids=orderedPanels(); const open=ids.filter(id=>!paneClosed(id)).length;
+    box.innerHTML='<h3>▦ Panes</h3><div style="font-size:12px;color:var(--muted);margin:2px 0 8px">'+open+' of '+ids.length+' showing · ☑ show · 📌 keep open (can\'t be ✕\'d)</div><div class="panes-list">'+
+      ids.map(id=>'<div class="pane-li'+(paneClosed(id)?' off':'')+'"><label><input type="checkbox" data-pshow="'+esc(id)+'"'+(paneClosed(id)?'':' checked')+(panePinned(id)?' disabled':'')+'> <span>'+esc(paneName(id))+'</span></label><button class="phead-ctrl pane-pin'+(panePinned(id)?' on':'')+'" data-ppin="'+esc(id)+'" title="Keep open">📌</button></div>').join('')+
+      '</div><div class="modal-actions"><button class="btn" data-all>Show all</button><button class="btn primary" data-x>Done</button></div>';
+    box.querySelectorAll('[data-pshow]').forEach(c=>c.onchange=()=>{ setPaneClosed(c.dataset.pshow,!c.checked); render(); draw(); });
+    box.querySelectorAll('[data-ppin]').forEach(b=>b.onclick=()=>{ setPanePinned(b.dataset.ppin,!panePinned(b.dataset.ppin)); render(); draw(); });
+    box.querySelector('[data-all]').onclick=()=>{ meta.closedPanes=[]; saveMeta(); render(); draw(); };
+    box.querySelector('[data-x]').onclick=()=>bd.remove(); };
+  draw(); bd.appendChild(box); bd.addEventListener('click',e=>{ if(e.target===bd) bd.remove(); }); document.body.appendChild(bd); }
 const A = id => (aug[id] = aug[id]||{});
 
 /* Phone book from the brief's call rosters (name -> number) for one-tap calls */
@@ -1431,6 +1462,8 @@ function render(){
   const notSnoozed=t=>!(A(t.id).snoozeUntil>Date.now());
   const openVisible = tasks.filter(t=>t.status==='Open' && visible(t) && notSnoozed(t));
   orderedPanels().forEach(id=>{
+    if(paneClosed(id)) return;   // ✕'d panes stay closed (▦ Panes to bring back)
+    const _n0=board.children.length;
     const stub=STUBS.find(s=>s.id===id);
     if(id==='stillopen') board.appendChild(stillOpenPanel());
     else if(id==='priority') board.appendChild(panelEl('priority','▲ Priority', priorityList().filter(t=>visible(t)&&notSnoozed(t)).slice(0,10), false));
@@ -1461,6 +1494,7 @@ function render(){
       if(b.id==='incoming') items=items.filter(t=>daysOpen(t)===0);   // Incoming = today only
       if(b.id==='morning'||b.id==='afternoon') items=items.slice().sort((x,y)=>new Date(y.createdTime||0)-new Date(x.createdTime||0));   // newest first, oldest at the bottom
       board.appendChild(panelEl(b.id,b.name,items,true)); }
+    if(board.children.length>_n0) decoratePane(board.children[_n0],id);
     // Opened bulb (project/lead/sub) sits right after Incoming so you can drag between them
     if(id==='incoming' && activeBulb) board.appendChild(bulbPanel());
   });
@@ -4145,6 +4179,7 @@ document.addEventListener('keydown',e=>{ if((e.metaKey||e.ctrlKey)&&e.key==='z'&
 document.getElementById('refreshBtn').onclick=()=>{ meta.lastSecondary=0; saveMeta(); location.reload(); };   // manual refresh = force a FULL pull (incl. Emails/Texts/Outbox/Improvements)
 document.getElementById('settingsBtn').onclick=openSettings;
 { const cb=document.getElementById('contactsBtn'); if(cb)cb.onclick=()=>openContacts(); }
+{ const pb=document.getElementById('panesBtn'); if(pb)pb.onclick=()=>openPanes(); }
 { const sb=document.getElementById('scBtn'); if(sb)sb.onclick=()=>openShortcuts(); }
 // Press "?" (Shift+/) anywhere outside an input to pop the Shortcuts cheat-sheet.
 document.addEventListener('keydown',e=>{ if(e.key==='?' && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target.tagName||'')) && !e.target.isContentEditable && !document.querySelector('.sc-modal')){ e.preventDefault(); openShortcuts(); } });
