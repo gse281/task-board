@@ -48,6 +48,7 @@ input,textarea{font:inherit;color:var(--ink);background:var(--card2);border:1px 
 .corehd .cc{font:700 11px var(--mono);color:var(--dim);margin-top:2px;font-variant-numeric:tabular-nums}
 .filt{display:flex;gap:6px;justify-content:center;margin-top:8px;flex-wrap:wrap}
 .filt button{font:700 10px var(--mono);letter-spacing:1px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);color:var(--dim)}
+.pkgrid{display:flex;flex-wrap:wrap;gap:5px}.pkgrid button{font:700 11px var(--mono);padding:4px 9px;border-radius:8px;border:1px solid var(--line);color:var(--ink,#cdeef5);background:transparent;cursor:pointer}.pkgrid button i{color:var(--dim);font-style:normal;margin-left:4px}.pkgrid button:hover,.pkgrid button.on{border-color:var(--cyan);color:var(--cyan)}.pkgrid button.pknone{border-style:dashed;color:var(--warn,#f59e0b)}
 .filt button.on{color:var(--bg);background:var(--cyan);border-color:var(--cyan)}
 .pool{flex:1;min-height:0;overflow:auto;padding:4px 16% 20%;display:flex;flex-direction:column;gap:10px}
 .grp{display:flex;flex-direction:column;gap:4px}
@@ -161,6 +162,7 @@ a.pill{text-decoration:none}
         <button type="button" data-f="nextup">NEXT UP</button>
         <button type="button" data-f="incoming">INCOMING</button>
         <button type="button" data-f="all">ALL</button>
+        <button type="button" data-pick="1" id="pickBtn" title="Show any Project / Lead / Sub / Category, or items with none">▦ P·L·S·C</button>
       </div>
       <div style="margin-top:8px"><button type="button" class="pill go" id="addBtn">＋ Add item</button></div>
     </div>
@@ -276,7 +278,7 @@ function chipHTML(it,n,inSph){
 }
 function projOrder(a,b){var ia=PROJ_ORDER.indexOf(a),ib=PROJ_ORDER.indexOf(b);return (ia<0?50:ia)-(ib<0?50:ib)||a.localeCompare(b);}
 function renderPool(){
-  var free=items.filter(function(it){return !it.done&&!owner(it.id)&&(st.filter==='all'||bucketOf(it)===st.filter);});
+  var free=items.filter(function(it){return !it.done&&!owner(it.id)&&fMatch(it);});
   var groups={}; free.forEach(function(it){var k=it.lead||'';(groups[k]=groups[k]||[]).push(it);});
   var n=0,h='';
   Object.keys(groups).sort(function(a,b){if(!!a!==!!b)return a?-1:1;return a.localeCompare(b);}).forEach(function(k){
@@ -284,7 +286,8 @@ function renderPool(){
   $('#pool').innerHTML=h||'<div class="empty">All items placed.</div>';
   var open=items.filter(function(it){return !it.done;}), placed=open.filter(function(it){return owner(it.id);}).length;
   $('#coreCount').textContent=(open.length-placed)+' left · '+placed+' placed';
-  [].forEach.call(document.querySelectorAll('#filt button'),function(b){b.classList.toggle('on',b.dataset.f===st.filter);});
+  [].forEach.call(document.querySelectorAll('#filt button[data-f]'),function(b){b.classList.toggle('on',b.dataset.f===st.filter);});
+  var pb=$('#pickBtn'); if(pb){ var cu=fLabel(st.filter); pb.classList.toggle('on',!!cu); pb.textContent=cu?'▦ '+cu:'▦ P·L·S·C'; }
   var used=st.spheres.filter(function(s){return s.items.length;}).length, dc=dirtyCount();
   $('#stat').innerHTML='<b>'+open.length+'</b> items · <b>'+used+'</b> recipients · '+(dc?'<span class="dirty">unsaved changes</span>':(st.savedAt?'saved '+esc(st.savedAt):(live?'live':'snapshot 10/15 6:35a')));
   $('#saveBtn').disabled=!dc; $('#revertBtn').disabled=!dc;
@@ -404,6 +407,7 @@ document.addEventListener('click',function(e){
   if((b=e.target.closest('[data-send]'))){ openSend(b.dataset.send); return; }
   if((b=e.target.closest('[data-clear]'))){ var s=sph(b.dataset.clear); if(s.items.length){s.items=[];} else {s.name='';s.phone='';} render(); return; }
   if(e.target.closest('#addSph')){ st.spheres.push(blankSpheres(1)[0]); render(); return; }
+  if((b=e.target.closest('#filt button[data-pick]'))){ openPick(); return; }
   if((b=e.target.closest('#filt button'))){ st.filter=b.dataset.f; render(); return; }
   if(selected&&!e.target.closest('.chip')){
     var t=e.target.closest('.sph'); if(t){ place(selected,{sph:t.dataset.sph}); return; }
@@ -422,6 +426,25 @@ document.addEventListener('keydown',function(e){
 // ---------- sheets ----------
 function openSheet(html){ closeSheet(); var s=document.createElement('div'); s.className='scrim'; s.id='scrim'; s.innerHTML='<div class="sheet" role="dialog">'+html+'</div>';
   s.addEventListener('click',function(e){if(e.target===s)closeSheet();}); document.body.appendChild(s); return s; }
+/* ▦ main-bubble filter: any Project / Lead / Sub / Category value, or items with none */
+var F_NM={p:'project',l:'lead',s:'sub',c:'category'};
+function splitV(v){return String(v||'').split(',').map(function(x){return x.trim();}).filter(Boolean);}
+function fval(it,k){ return k==='c'?(bucketOf(it)?[bucketOf(it)]:[]):splitV(it[F_NM[k]]); }
+function fMatch(it){ var f=st.filter; if(f==='all') return true;
+  if(f==='none') return !splitV(it.project).length&&!splitV(it.lead).length&&!splitV(it.sub).length;
+  var m=/^([plsc]):(.*)$/.exec(f); if(m){ var vs=fval(it,m[1]); return m[2]===''?!vs.length:vs.some(function(v){return v.toLowerCase()===m[2].toLowerCase();}); }
+  return bucketOf(it)===f; }
+function fLabel(f){ if(f==='none') return 'No P·L·S'; var m=/^([plsc]):(.*)$/.exec(f||''); if(!m) return ''; return m[1].toUpperCase()+': '+(m[2]||'none'); }
+function openPick(){ var open=items.filter(function(it){return !it.done;});
+  var noAll=open.filter(function(it){return !splitV(it.project).length&&!splitV(it.lead).length&&!splitV(it.sub).length;}).length;
+  var btn=function(f,lab,n,cls){return '<button type="button" data-pf="'+esc(f)+'" class="'+(cls||'')+(st.filter===f?' on':'')+'">'+esc(lab)+' <i>'+n+'</i></button>';};
+  var h='<h3>Main bubble shows…</h3><div class="pkgrid">'+btn('none','∅ No P · L · S',noAll,'pknone')+'</div>';
+  ['p','l','s','c'].forEach(function(k){ var cnt={},none=0; open.forEach(function(it){ var vs=fval(it,k); if(!vs.length) none++; vs.forEach(function(v){cnt[v]=(cnt[v]||0)+1;}); });
+    var keys=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]||a.localeCompare(b);});
+    h+='<label>'+{p:'Project',l:'Lead',s:'Sub',c:'Category'}[k]+'</label><div class="pkgrid">'+keys.map(function(v){return btn(k+':'+v,v,cnt[v]);}).join('')+(none?btn(k+':','∅ no '+F_NM[k],none,'pknone'):'')+'</div>'; });
+  h+='<div class="acts"><button class="pill" type="button" data-pf="all">Show all</button><button class="pill" type="button" id="pkX">Close</button></div>';
+  var sc=openSheet(h); sc.querySelector('#pkX').onclick=closeSheet;
+  [].forEach.call(sc.querySelectorAll('[data-pf]'),function(b){ b.onclick=function(){ st.filter=b.dataset.pf; closeSheet(); render(); }; }); }
 function closeSheet(){var s=$('#scrim'); if(s) s.remove();}
 function note(t,cls){var n=$('#sNote'); if(n){n.textContent=t; n.className='note '+(cls||'');}}
 
@@ -625,7 +648,7 @@ function loadLive(){
     u.searchParams.set('filterByFormula',"{Status}!='Done'");
     u.searchParams.set('pageSize','100'); if(off)u.searchParams.set('offset',off);
     return fetch(u,{headers:H()}).then(function(r){if(!r.ok)throw r.status;return r.json();}).then(function(d){
-      (d.records||[]).forEach(function(rec){var f=rec.fields;out.push({id:rec.id,text:flat(f.Task)||flat(f.Name),project:flat(f.Project).trim().toUpperCase(),lead:flat(f.SBLead).trim(),slot:flat(f.MeetingSlot).toLowerCase(),section:flat(f.Section).toLowerCase(),order:(f.ListOrder==null?null:+f.ListOrder),done:false});});
+      (d.records||[]).forEach(function(rec){var f=rec.fields;out.push({id:rec.id,text:flat(f.Task)||flat(f.Name),project:flat(f.Project).trim().toUpperCase(),lead:flat(f.SBLead).trim(),sub:flat(f.Sub).trim(),slot:flat(f.MeetingSlot).toLowerCase(),section:flat(f.Section).toLowerCase(),order:(f.ListOrder==null?null:+f.ListOrder),done:false});});
       return d.offset?page(d.offset):out;});
   }
   page().then(function(list){
