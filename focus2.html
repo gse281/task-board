@@ -171,6 +171,9 @@ a.pill{text-decoration:none}
   <div class="sphs" id="sphs"></div>
 </div>
 <div id="toastHost"></div>
+<script src="task-editor.js"></script>
+<script src="photos.js"></script>
+<script src="claudeq.js"></script>
 
 <script>
 (function(){
@@ -483,7 +486,7 @@ function createItem(v){
   src.push(rec); st.order.push(rec.id); render(); toast('Added'+(live?' · saving…':' on this device'));
   if(live){ fetch('https://api.airtable.com/v0/'+BASE+'/'+encodeURIComponent(ITEMS),{method:'POST',headers:H(),body:JSON.stringify({typecast:true,records:[{fields:{Task:v.text,Project:v.project||'',SBLead:v.lead||'',MeetingSlot:v.slot,Status:'Open'}}]})}).then(function(r){return r.ok?r.json():null;}).then(function(d){ if(d&&d.records&&d.records[0]){ var nid=d.records[0].id, o=src.filter(function(x){return x.id===tmp;})[0]; if(o)o.id=nid; var oi=st.order.indexOf(tmp); if(oi>=0)st.order[oi]=nid; render(); toast('Saved to board'); } else toast('Could not save — kept on device'); },function(){toast('Could not reach Airtable — kept on device');}); }
 }
-function openEdit(id){
+function openQuickEdit(id){
   var it=byId(id); if(!it) return;
   var projs={}; items.forEach(function(i){if(i.project)projs[i.project]=1;}); PROJ_ORDER.forEach(function(p){if(p)projs[p]=1;});
   var leadNames={}; leads.forEach(function(l){leadNames[l.label]=1;}); items.forEach(function(i){if(i.lead)leadNames[i.lead]=1;});
@@ -512,6 +515,64 @@ function openEdit(id){
   $('#eApply').onclick=function(){apply();};
   $('#eDone').onclick=function(){apply({done:true}); toast('Marked done · Save to keep');};
   setTimeout(function(){var t=$('#eText'); if(!t) return; t.focus(); t.setSelectionRange(t.value.length,t.value.length);},30);
+}
+
+/* ===== Full editor: the SAME shared task-editor.js Focus uses (every field, saves straight to Airtable, undoable) ===== */
+var RAW={};
+var ED_KEYS={Task:'name',Project:'project',SBLead:'lead',Sub:'sub',Status:'status',Priority:'priorityRaw',DoDate:'doDate',ReminderAt:'remindAt',NextStep:'next',Notes:'notes',CallContact:'callWho',Phone:'phone',RoniFlag:'flag',NextUp:'nextUp',TextExclude:'textEx',NextUpOrder:'nuOrder'};
+var SEC_LAB={focus:'Focus',morning:'Morning call',afternoon:'Afternoon call',calls:'Calls',nextup:'Next Up',bigticket:'Big Ticket',sunday:'Sunday',parked:'Parked',incoming:'Incoming'};
+var teCache={};
+function isoDay(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function teTask(it){
+  var r=RAW[it.id]||{f:{},ct:''}, f=r.f, t=teCache[it.id]||{};
+  Object.assign(t,{id:it.id,createdTime:r.ct,name:it.text,project:it.project||'',lead:it.lead||'',sub:it.sub||flat(f.Sub).trim(),status:flat(f.Status)||'Open',
+    slotRemote:it.slot||'',sectionRemote:it.section||'',doDate:flat(f.DoDate).slice(0,10),priorityRaw:flat(f.Priority),typeRemote:flat(f.Type).toLowerCase(),
+    phone:flat(f.Phone),next:flat(f.NextStep),notes:flat(f.Notes),callWho:flat(f.CallContact),nextUp:flat(f.NextUp).slice(0,10),
+    nuOrder:(f.NextUpOrder==null?null:+f.NextUpOrder),remindAt:flat(f.ReminderAt),textEx:!!f.TextExclude,flag:!!f.RoniFlag,photos:Array.isArray(f.Photos)?f.Photos:[]});
+  teCache[it.id]=t; return t;
+}
+function srcRec(id){return src.filter(function(x){return x.id===id;})[0];}
+function dropEdit(id,k){ var e=st.edits[id]; if(e){ delete e[k]; if(!Object.keys(e).length) delete st.edits[id]; } var v=st.savedEdits[id]; if(v){ delete v[k]; if(!Object.keys(v).length) delete st.savedEdits[id]; } }
+var MIRROR={Task:'text',Project:'project',SBLead:'lead',Sub:'sub'};
+function patchItem(id,fields){ if(!live||!/^rec/.test(id)) return Promise.resolve(true);
+  return fetch('https://api.airtable.com/v0/'+BASE+'/'+encodeURIComponent(ITEMS)+'/'+id,{method:'PATCH',headers:H(),body:JSON.stringify({fields:fields,typecast:true})})
+    .then(function(r){ if(!r.ok) toast('Save failed '+r.status); return r.ok; },function(){ toast('Offline'); return false; }); }
+function rawSet(id,k,v){ RAW[id]=RAW[id]||{f:{},ct:''}; RAW[id].f[k]=v; }
+function toastU(m,undo){ var h=$('#toastHost'); var t=document.createElement('div'); t.className='toast'; t.style.zIndex='9600'; t.textContent=m;
+  if(undo){ var b=document.createElement('button'); b.textContent='Undo'; b.style.cssText='margin-left:12px;color:var(--cyan);font-weight:800'; b.onclick=function(){ t.remove(); undo(); }; t.appendChild(b); }
+  [].forEach.call(h.children,function(x){x.remove();}); h.appendChild(t); setTimeout(function(){t.remove();},undo?5000:2000); }
+window.TE={ key:function(){return live?cfg.apiKey:'';}, base:function(){return BASE;}, table:function(){return ITEMS;},
+  esc:esc, all:function(){ return items.map(teTask); }, today:function(){return isoDay(new Date());},
+  extraCats:function(){return ['nextup','bigticket','sunday'];}, catLabel:function(k){return SEC_LAB[String(k).toLowerCase()]||'';},
+  get:function(t,f){ var v=t[ED_KEYS[f]]; return v==null?'':v; },
+  set:function(t,f,v){ t[ED_KEYS[f]]=(v==null?'':v); rawSet(t.id,f,v);
+    var s=srcRec(t.id);
+    if(MIRROR[f]){ var val=(v==null?'':String(v)); if(f==='Project') val=val.toUpperCase(); if(s) s[MIRROR[f]]=val; dropEdit(t.id,MIRROR[f]); }
+    if(f==='Status'&&s){ s.done=!!(v&&v!=='Open'); dropEdit(t.id,'done'); }
+    if(f==='NextUp'&&!v) t.nuOrder=null; },
+  patch:function(id,f){ return patchItem(id,f); },
+  nextOrder:function(){ return items.map(teTask).reduce(function(m,x){return Math.max(m,x.nuOrder||0);},0)+10; },
+  refresh:function(){ render(); }, contactGuess:function(){return null;}, undo:function(m,fn){ toastU('✎ '+m,fn); },
+  done:function(t){ var s=srcRec(t.id); if(s) s.done=true; dropEdit(t.id,'done'); patchItem(t.id,{Status:'Done'}); render();
+    toastU('✓ Done',function(){ if(s) s.done=false; patchItem(t.id,{Status:'Open'}); render(); }); },
+  snooze:function(t,d,date){ var prev=t.doDate; var dd=date||isoDay(new Date(Date.now()+d*864e5)); t.doDate=dd; rawSet(t.id,'DoDate',dd); patchItem(t.id,{DoDate:dd}); render();
+    toastU('Snoozed to '+dd,function(){ t.doDate=prev; rawSet(t.id,'DoDate',prev); patchItem(t.id,{DoDate:prev||null}); render(); }); },
+  cat:function(t){ var c=t.slotRemote||t.sectionRemote||''; return c==='backlog'?'':c; },
+  catRaw:function(t){ return {sr:t.sectionRemote||'',m:t.slotRemote||'',ty:t.typeRemote||''}; },
+  setCat:function(t,v){ v=String(v||''); var s=srcRec(t.id), f={};
+    if(v==='morning'||v==='afternoon'){ t.slotRemote=v; t.sectionRemote=''; f={MeetingSlot:v,Section:''}; }
+    else if(v==='calls'){ t.slotRemote=''; t.sectionRemote='calls'; t.typeRemote='call'; f={Section:'calls',MeetingSlot:'',Type:'call'}; }
+    else if(!v){ t.slotRemote=''; t.sectionRemote='backlog'; f={Section:'backlog',MeetingSlot:''}; if(t.typeRemote==='call'){ t.typeRemote=''; f.Type=null; } }
+    else { t.slotRemote=''; t.sectionRemote=v.toLowerCase(); f={Section:v,MeetingSlot:''}; }
+    if(s){ s.slot=t.slotRemote; s.section=t.sectionRemote; } dropEdit(t.id,'slot'); dropEdit(t.id,'section');
+    patchItem(t.id,f); render(); },
+  restoreCat:function(t,p){ var s=srcRec(t.id); t.sectionRemote=p.sr; t.slotRemote=p.m; t.typeRemote=p.ty; if(s){ s.slot=p.m; s.section=p.sr; }
+    patchItem(t.id,Object.assign({Section:p.sr,MeetingSlot:p.m},p.ty==='call'?{Type:'call'}:{})); render(); } };
+try{ if(typeof window.toast!=='function') window.toast=toast; }catch(e){}
+function openEdit(id){
+  var it=byId(id); if(!it) return;
+  if(!window.TaskEditor){ openQuickEdit(id); return; }
+  closeSheet(); TaskEditor.open(teTask(it));
 }
 
 function openWho(id){
@@ -648,7 +709,7 @@ function loadLive(){
     u.searchParams.set('filterByFormula',"{Status}!='Done'");
     u.searchParams.set('pageSize','100'); if(off)u.searchParams.set('offset',off);
     return fetch(u,{headers:H()}).then(function(r){if(!r.ok)throw r.status;return r.json();}).then(function(d){
-      (d.records||[]).forEach(function(rec){var f=rec.fields;out.push({id:rec.id,text:flat(f.Task)||flat(f.Name),project:flat(f.Project).trim().toUpperCase(),lead:flat(f.SBLead).trim(),sub:flat(f.Sub).trim(),slot:flat(f.MeetingSlot).toLowerCase(),section:flat(f.Section).toLowerCase(),order:(f.ListOrder==null?null:+f.ListOrder),done:false});});
+      (d.records||[]).forEach(function(rec){var f=rec.fields;RAW[rec.id]={f:f,ct:rec.createdTime};out.push({id:rec.id,text:flat(f.Task)||flat(f.Name),project:flat(f.Project).trim().toUpperCase(),lead:flat(f.SBLead).trim(),sub:flat(f.Sub).trim(),slot:flat(f.MeetingSlot).toLowerCase(),section:flat(f.Section).toLowerCase(),order:(f.ListOrder==null?null:+f.ListOrder),done:false});});
       return d.offset?page(d.offset):out;});
   }
   page().then(function(list){
