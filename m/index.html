@@ -229,6 +229,7 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .txi .nx{margin-bottom:8px;line-height:1.4}
 .txi .nx b{color:var(--muted);font-size:11px;letter-spacing:.6px;text-transform:uppercase;display:block}
 .txb{display:flex;flex-wrap:wrap;gap:6px}
+.coptb{border:0;cursor:pointer;font-weight:900;letter-spacing:1px}.qbtn.coptb{flex:none;width:50px}
 .txb button,.txb a{min-height:38px;padding:0 12px;border-radius:11px;background:var(--panel2);font-weight:700;font-size:13.5px;display:inline-flex;align-items:center;gap:5px;color:var(--ink);text-decoration:none}
 .txb .on{outline:2px solid var(--accent)}
 .bbar{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:10px;padding:10px 16px calc(12px + var(--sab));flex:none;border-top:1px solid var(--line);background:rgba(20,17,15,.96)}
@@ -940,7 +941,7 @@ function freqHTML(){ const F=frequent(8); if(!F.length) return '';
   return `<div class="frqh">⭐ Frequent</div><div class="frq">${F.map(([k,r])=>`<div class="frc${r.pinned?' pin':''}"><button class="frn" data-frk="${k}">${r.pinned?'📌 ':''}${esc((r.name||r.phone).split(' ').slice(0,2).join(' '))}</button><a class="frb frcall" href="${esc(telOf(r.phone))}"${cuA(r.name)} aria-label="Call">📞</a><a class="frb" href="${esc(smsOf(r.phone))}"${cuA(r.name)} aria-label="Text">💬</a></div>`).join('')}</div>`; }
 function cuCompany(ph){ const k=cuKey(ph); const c=contacts.find(c=>(c.p||[]).some(p=>cuKey(p)===k)); return c&&c.o||''; }
 function freqRows(F,home){ return F.map(([k,r])=>`<div class="fqrow"><button class="fqi"${home?'':` data-frk="${k}"`}><b>${r.pinned?'📌 ':''}${esc(r.name||r.phone)}</b><span>${esc(cuCompany(r.phone)||r.phone)}</span></button>
-  <a class="fqc" href="${esc(telOf(r.phone))}"${cuA(r.name)} data-join>📞 Call</a><a class="fqt" href="${esc(smsOf(r.phone))}"${cuA(r.name)} data-join aria-label="Text">💬</a><button class="fqe" data-frk="${k}" aria-label="Edit">⋯</button></div>`).join(''); }
+  <a class="fqc" href="${esc(telOf(r.phone))}"${cuA(r.name)} data-join>📞 Call</a><a class="fqt" href="${esc(smsOf(r.phone))}"${cuA(r.name)} data-join aria-label="Text">💬</a>${copt(r.phone,r.name,'fqt')}<button class="fqe" data-frk="${k}" aria-label="Edit">⋯</button></div>`).join(''); }
 function freqCard(){ const FA=frequent(8); if(FA.length) freqIdx=((freqIdx%FA.length)+FA.length)%FA.length; const F=FA.length?[FA[freqIdx]]:[]; const all=Object.values(cu).filter(r=>!r.hidden&&(r.pinned||r.count)).length;
   return `<div class="review frqcard" data-freqall role="button" tabindex="0"><div class="fqhd"><span>⭐ Frequent</span>${all>0?`<button class="fqall" data-freqall2>See all ${all} ›</button>`:''}</div>
     ${F.length?(FA.length>1?pg('freq',freqRows(F,true),(freqIdx+1)+' of '+FA.length):freqRows(F,true)):'<div class="ap" style="padding:6px 2px">Call or text someone and they’ll show up here.</div>'}</div>`; }
@@ -955,6 +956,7 @@ function paintFreq(s){ const el=s.el; const keep=el.querySelector('.scroll'); co
 function wireFreq(root,redraw){ root.querySelectorAll('[data-frk]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const k=b.dataset.frk, r=cu[k]; if(!r) return;
   sheet(`<h3>${esc(r.name||r.phone)}</h3><div class="ap" style="margin:-4px 2px 12px">${esc(r.phone)} · used ${r.count||0}×</div>
     <div class="row2"><a class="pill acc" href="${esc(telOf(r.phone))}"${cuA(r.name)} data-close style="text-align:center;text-decoration:none">📞 Call</a><a class="pill" href="${esc(smsOf(r.phone))}"${cuA(r.name)} data-close style="text-align:center;text-decoration:none">💬 Text</a></div>
+    <div class="row2"><a class="pill" href="facetime:${e164(r.phone)}"${cuA(r.name)} data-close style="text-align:center;text-decoration:none">🎥 FaceTime</a><a class="pill" href="whatsapp://send?phone=${e164(r.phone).slice(1)}"${cuA(r.name)} data-close style="text-align:center;text-decoration:none">🟢 WhatsApp</a></div>
     <div class="row2"><button class="pill" data-pin>${r.pinned?'Unpin':'📌 Pin to front'}</button><button class="pill" data-hide>Remove from Frequent</button></div>`,(sh,close)=>{
     sh.querySelector('[data-pin]').onclick=()=>{ cuSet(k,{pinned:!r.pinned}); close(); redraw&&redraw(); };
     sh.querySelector('[data-hide]').onclick=()=>{ cuSet(k,{hidden:true,pinned:false}); close(); toast('Removed from Frequent'); redraw&&redraw(); }; }); }); }
@@ -1030,6 +1032,12 @@ function pickCallContact(t,after){
 // one contacts load attempt per minute — prevents a repaint→load→repaint loop when contacts can't load (no token / offline)
 let _ctTry=0; const contactsTry=()=>{ if(Date.now()-_ctTry<60000) return false; _ctTry=Date.now(); return true; };
 const telOf=p=>'tel:'+String(p).replace(/[^\d+]/g,''), smsOf=p=>'sms:'+String(p).replace(/[^\d+]/g,'');
+// ⋯ More ways to call: FaceTime video / audio, WhatsApp (opens the chat — WhatsApp has no link that starts a call; tap 📞/🎥 there).
+const e164=p=>{ let d=String(p||'').replace(/\D/g,''); if(d.length===10) d='1'+d; return '+'+d; };
+const copt=(ph,name,cls)=>`<button type="button" class="${cls||''} coptb" data-copt="${esc(ph||'')}" data-coptn="${esc(name||'')}" aria-label="More ways to call">⋯</button>`;
+const coptRows=(ph,name)=>`<a class="sbtn" href="${esc(telOf(ph))}"${cuA(name)} data-close><span class="si">📞</span>Phone call</a><a class="sbtn" href="facetime:${e164(ph)}"${cuA(name)} data-close><span class="si">🎥</span>FaceTime</a><a class="sbtn" href="facetime-audio:${e164(ph)}"${cuA(name)} data-close><span class="si">🎧</span>FaceTime Audio</a><a class="sbtn" href="whatsapp://send?phone=${e164(ph).slice(1)}"${cuA(name)} data-close><span class="si">🟢</span><span>WhatsApp<small style="display:block;color:var(--dim);font-weight:500;font-size:12.5px">opens the chat — tap 📞 or 🎥 there</small></span></a><a class="sbtn" href="${esc(smsOf(ph))}"${cuA(name)} data-close><span class="si">💬</span>Text</a>`;
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-copt]'); if(!b) return; e.preventDefault(); e.stopPropagation(); const ph=b.dataset.copt, n=b.dataset.coptn; if(!ph) return; buzz(6);
+  sheet(`<h3>${esc(n||ph)}</h3><div class="ap" style="margin:-4px 0 10px">${esc(ph)}</div>${coptRows(ph,n)}<button class="sbtn cancel" data-close>Cancel</button>`,()=>{}); },true);
 // The Calls pane's exact order (groups Today → Tomorrow → Anytime → Later, each by ListOrder). Home reads the same list.
 function callGroups(){ const td=todayISO(), tm=tomorrowISO(); const G={Today:[],Tomorrow:[],Anytime:[],Later:[]};
   callTasksAll().forEach(t=>{ const d=callWhen(t).day; (d&&d<=td?G.Today:d===tm?G.Tomorrow:!d?G.Anytime:G.Later).push(t); });
@@ -1410,7 +1418,7 @@ function wireDialer(root,keepQ){ const ci=root.querySelector('.cxsearch'), cr=ro
     const hits=searchContacts(q).slice(0,keepQ?8:40);
     cr.innerHTML=grpBar()+(hits.length?hits.map(c=>(c.p||[]).map((p,i)=>{ const d=p.replace(/[^\d+]/g,''); const sel=!!cxGroup[d];
         return '<div class="cxrow'+(i?' more':'')+'"><div class="cxinfo">'+(i?'':'<b>'+esc(c.n)+'</b>'+(c.o?'<span class="cxsub">'+esc(c.o)+'</span>':''))+'<span class="cxp">'+esc(p)+'</span></div>'
-          +'<div class="cxbtns"><button class="cxsel'+(sel?' on':'')+'" data-grp="'+esc(d)+'" data-grpn="'+esc(c.n)+'" aria-label="Add to group text">'+(sel?'✓':'＋')+'</button><a class="cxb cxcall" href="tel:'+esc(d)+'"'+cuA(c.n)+'>📞 Call</a><a class="cxb" href="sms:'+esc(d)+'"'+cuA(c.n)+' aria-label="Text">💬</a></div></div>'; }).join('')).join('')
+          +'<div class="cxbtns"><button class="cxsel'+(sel?' on':'')+'" data-grp="'+esc(d)+'" data-grpn="'+esc(c.n)+'" aria-label="Add to group text">'+(sel?'✓':'＋')+'</button><a class="cxb cxcall" href="tel:'+esc(d)+'"'+cuA(c.n)+'>📞 Call</a><a class="cxb" href="sms:'+esc(d)+'"'+cuA(c.n)+' aria-label="Text">💬</a>'+copt(d,c.n,'cxb')+'</div></div>'; }).join('')).join('')
       :'<div class="cxhint">'+(contacts.length?'No match':'Loading contacts…')+'</div>');
     cr.insertAdjacentHTML('beforeend',lookupHTML(q,!hits.length)); wireLookup(cr,null); wireGrp(); };
   ci.addEventListener('input',drawCx); drawCx(); if(!contacts.length&&contactsTry()) loadContacts().then(drawCx);
@@ -1427,7 +1435,7 @@ function paintSlotList(s){
   const callRow=t=>{ const m=callMatch(t), w=callWhen(t);
     return `<div class="swr" data-id="${t.id}"><div class="swbg"><span class="swdone">✓ Done</span><span class="swacts"><button class="swnu" data-nu>⏫ Next</button><button class="swrm" data-rm>⊘ Remove</button><button class="swsz" data-snz>😴 Snooze</button></span></div>
       <div class="sl clr" data-open role="button"><span class="dragh" data-drag aria-label="Hold and drag to reorder">≡</span><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="clt"><span class="tk">${esc(cleanName(t))}</span><span class="cls">${w.min!=null?esc(hhmm(w.min))+' · ':''}${whoHTML(m)}</span></span>
-        ${m?`<a class="clb clcall" href="${esc(telOf(m.phone))}"${cuA(m.who)} data-join>📞 Call</a><a class="clb" href="${esc(smsOf(m.phone))}"${cuA(m.who)} data-join aria-label="Text">💬 Text</a>`:`<button class="clb add" data-addnum>＋ Add number</button>`}</div></div>`; };
+        ${m?`<a class="clb clcall" href="${esc(telOf(m.phone))}"${cuA(m.who)} data-join>📞 Call</a><a class="clb" href="${esc(smsOf(m.phone))}"${cuA(m.who)} data-join aria-label="Text">💬 Text</a>${copt(m.phone,m.who,'clb')}`:`<button class="clb add" data-addnum>＋ Add number</button>`}</div></div>`; };
   const grp=()=>{ const G=callGroups();
     return Object.entries(G).filter(([k,v])=>v.length).map(([k,v])=>`<div class="clgh">${k==='Today'?'📞 Today':k==='Tomorrow'?'🌙 Tomorrow':k==='Later'?'🗓 Later':'Anytime'} <span>${v.length}</span></div>`+v.map(t=>callRow(t).replace('<div class="swr" ','<div class="swr" data-g="'+k+'" ')).join('')).join(''); };
   const grpByLead=()=>{ const g={}; items.forEach(t=>{const k=(t.lead||'').trim();(g[k]=g[k]||[]).push(t);});
@@ -2115,7 +2123,7 @@ function paintHome(s){
 `,
         calls:()=>`
       ${(()=>{ const {now,next,tmr}=callsNowNext();
-        const btns=t=>{ const m=callMatch(t); return m?`<a class="nnjoin tel" href="${esc(telOf(m.phone))}"${cuA(m.who)} data-join>📞 Call</a><a class="nntxt" href="${esc(smsOf(m.phone))}"${cuA(m.who)} data-join aria-label="Text">💬</a>`:`<span class="nnjoin tel dis" aria-disabled="true">📞 Call</span><span class="nntxt dis">💬</span>`; };
+        const btns=t=>{ const m=callMatch(t); return m?`<a class="nnjoin tel" href="${esc(telOf(m.phone))}"${cuA(m.who)} data-join>📞 Call</a><a class="nntxt" href="${esc(smsOf(m.phone))}"${cuA(m.who)} data-join aria-label="Text">💬</a>${copt(m.phone,m.who,'nntxt')}`:`<span class="nnjoin tel dis" aria-disabled="true">📞 Call</span><span class="nntxt dis">💬</span>`; };
         const row=(tag,t)=>{ const w=callWhen(t), m=callMatch(t); const when=w.min!=null?hhmm(w.min):(w.day&&w.day<todayISO()?'overdue':w.day===todayISO()?'today':'');
           return `<div class="bub slim"><div class="bubl"><div class="bub1"><span class="nntag ${tag==='NOW'?'now':''}">${tag}</span>${when&&when!==tag?`<span class="bubwhen">${esc(when)}</span>`:''}<b>${esc(cleanName(t))}</b></div><div class="bubwho">${whoHTML(m,t.id)}${m&&m.phone&&m.who?`<span class="bubph">${esc(m.phone)}</span>`:''}</div></div><div class="bubb">${btns(t)}</div></div>`; };
         return `<div class="review meetcard slimc" data-calls role="button" tabindex="0" style="display:block">
@@ -2380,7 +2388,7 @@ function cardInner(t,r){
     <div class="meta">${esc(meta)}</div>
     <div class="bodyx">${t.next?`<div class="ns"><b>Next step</b>${esc(t.next)}</div>`:''}${t.notes?`<div class="ns"><b>Notes</b>${esc(t.notes)}</div>`:''}</div>
     <div class="quick">
-      ${ph?`<a class="qbtn qcall" href="tel:${esc(ph)}" onclick="event.stopPropagation()">📞 Call</a><a class="qbtn" href="sms:${esc(ph)}" onclick="event.stopPropagation()">💬</a>`:''}
+      ${ph?`<a class="qbtn qcall" href="tel:${esc(ph)}" onclick="event.stopPropagation()">📞 Call</a><a class="qbtn" href="sms:${esc(ph)}" onclick="event.stopPropagation()">💬</a>${copt(ph,t.lead||'','qbtn')}`:''}
       ${isSlotDeck?'':`<button class="qbtn" data-slotbtn="morning" style="${sl==='morning'?'outline:2px solid #39c7df':''}">🌅</button><button class="qbtn" data-slotbtn="afternoon" style="${sl==='afternoon'?'outline:2px solid #6fd0e0':''}">☀️</button>`}
       <button class="qbtn" data-edit>✎ Edit</button>
       <button class="qbtn" data-claude>✨ Claude</button>
@@ -2615,7 +2623,7 @@ function rowHTML(t,dim,open){
   return `<div class="rw ${open&&open.has(t.id)?'open':''}" data-id="${t.id}"><div class="bgL">✓ DONE</div><div class="bgR">SNOOZE 10d 😴</div>
     <div class="row3"><button class="tick" aria-label="Done">✓</button><div class="tt"><div class="tn">${esc(cleanName(t))}</div><div class="tm">${bits.join(' · ')}</div></div><button class="tsnz" aria-label="Snooze">😴</button></div>
     <div class="tx"><div><div class="txi">${t.next?`<div class="nx"><b>Next step</b>${esc(t.next)}</div>`:''}${t.notes?`<div class="nx"><b>Notes</b>${esc(t.notes)}</div>`:''}
-      <div class="txb">${t.phone?`<a href="tel:${esc(t.phone)}">📞 Call</a><a href="sms:${esc(t.phone)}">💬</a>`:''}
+      <div class="txb">${t.phone?`<a href="tel:${esc(t.phone)}">📞 Call</a><a href="sms:${esc(t.phone)}">💬</a>${copt(t.phone,t.lead||'','')}`:''}
       <button data-sl="morning" class="${sl==='morning'?'on':''}">🌅 AM</button><button data-sl="afternoon" class="${sl==='afternoon'?'on':''}">☀️ PM</button>
       <button data-edit>✎ Edit</button><button data-nu class="${t.nextUp?'on':''}">⏫ Next up</button><button data-z="1">🌙 Tmrw</button><button data-z="30">🗓 Month</button><button data-note>📝</button>${hasCategory(t)?'<button data-unfile>⊘ Uncategorize</button>':''}</div></div></div></div></div>`;
 }
@@ -2687,7 +2695,7 @@ function editTask(t){ TaskEditor.open(t); }
 function moreSheet(s,t){
   const sl=slotOf(t), ph=t.phone;
   sheet(`<h3>${esc(cleanName(t))}</h3>
-    ${ph?`<a class="sbtn" href="tel:${esc(ph)}"><span class="si">📞</span>Call ${esc(t.lead||ph)}</a><a class="sbtn" href="sms:${esc(ph)}"><span class="si">💬</span>Text</a>`:''}
+    ${ph?`<a class="sbtn" href="tel:${esc(ph)}"><span class="si">📞</span>Call ${esc(t.lead||ph)}</a><a class="sbtn" href="facetime:${e164(ph)}"><span class="si">🎥</span>FaceTime</a><a class="sbtn" href="whatsapp://send?phone=${e164(ph).slice(1)}"><span class="si">🟢</span>WhatsApp (tap 📞 in the chat)</a><a class="sbtn" href="sms:${esc(ph)}"><span class="si">💬</span>Text</a>`:''}
     <button class="sbtn ${sl==='morning'?'on':''}" data-s="morning"><span class="si">🌅</span>${sl==='morning'?'Remove from morning call':'Add to morning call'}</button>
     <button class="sbtn ${sl==='afternoon'?'on':''}" data-s="afternoon"><span class="si">☀️</span>${sl==='afternoon'?'Remove from afternoon call':'Add to afternoon call'}</button>
     ${hasCategory(t)?'<button class="sbtn" data-unfile><span class="si">⊘</span>Remove from category</button>':''}

@@ -246,3 +246,4 @@
 - 2026-10-27 08:35  Invite to the call: WhatsApp (per person WA, pick chat/group, one-by-one queue) on iPhone + desktop
 - 2026-10-27 09:35  Board (project/lead/sub): 💬 Text this list → Messages, grouped, recipient remembered
 - 2026-10-27 09:55  Project/Lead/Sub: tap opens a pick sheet with every option — no keyboard, no jumping; ✕ clears
+- 2026-10-27 11:50  Call options: ⋯ next to every Call/Text → Phone, FaceTime, FaceTime Audio, WhatsApp, Text
