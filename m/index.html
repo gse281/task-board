@@ -2067,7 +2067,7 @@ function homeSecs(s,R){ const ed=!!s.editing; return homeOrder().map(k=>{ const 
     return `<div class="hsec ed${hid?' hid':''}" data-hsec="${k}"><div class="hsbar"><span class="hsh" data-hsh>≡</span><span class="hsn">${HOME_LABEL[k]}</span><button class="hseye" data-hseye="${k}">${hid?'Show':'Hide'}</button></div><div class="hsin">${html.trim()||'<div class="ap" style="padding:8px">(empty right now)</div>'}</div></div>`; }).join(''); }
 function homeEdit(s,on){ s.editing=on; buzz(10); paintHome(s); if(!on){ homeLaySave(); toast('🏠 Home layout saved'); } }
 function wireHomeEdit(s){ const el=s.el; if(!s.editing) return;
-  el.querySelectorAll('[data-hseye]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const k=b.dataset.hseye; const h=new Set(homeLay.hidden); h.has(k)?h.delete(k):h.add(k); homeLay.hidden=[...h]; save('m.homeLayout',homeLay); paintHome(s); });
+  el.querySelectorAll('[data-hseye]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const k=b.dataset.hseye; const h=new Set(homeLay.hidden); h.has(k)?h.delete(k):h.add(k); homeLay.hidden=[...h]; homeLaySave(); paintHome(s); });
   const done=el.querySelector('[data-hdone]'); if(done) done.onclick=()=>homeEdit(s,false);
   const rs=el.querySelector('[data-hreset]'); if(rs) rs.onclick=()=>{ homeLay={order:HOME_DEFAULT.slice(),hidden:[],at:0}; save('m.homeLayout',homeLay); paintHome(s); toast('Reset to default'); };
   el.querySelectorAll('[data-hsh]').forEach(h=>{ const w=h.closest('.hsec'); let on=false, off=0;
@@ -2075,11 +2075,11 @@ function wireHomeEdit(s){ const el=s.el; if(!s.editing) return;
     h.addEventListener('touchmove',e=>{ if(!on) return; e.preventDefault(); const y=e.touches[0].clientY; const sib=[...w.parentElement.querySelectorAll(':scope > .hsec')].filter(x=>x!==w);
       const below=sib.find(x=>{ const r=x.getBoundingClientRect(); return y<r.top+r.height/2; }); if(below){ if(below!==w.nextElementSibling) w.parentElement.insertBefore(w,below); } else { const last=sib[sib.length-1]; if(last&&last.nextElementSibling!==w) last.after(w); }
       w.style.transform=''; const nat=w.getBoundingClientRect().top; w.style.transform=`translateY(${(y-off)-nat}px)`; },{passive:false});
-    const end=()=>{ if(!on) return; on=false; w.classList.remove('dragging'); w.style.transform=''; homeLay.order=[...el.querySelectorAll('.hsec')].map(x=>x.dataset.hsec); save('m.homeLayout',homeLay); buzz(6); };
+    const end=()=>{ if(!on) return; on=false; w.classList.remove('dragging'); w.style.transform=''; homeLay.order=[...el.querySelectorAll('.hsec')].map(x=>x.dataset.hsec); homeLaySave(); buzz(6); };
     h.addEventListener('touchend',end); h.addEventListener('touchcancel',end);
     // mouse (desktop browsers testing the phone app)
     h.addEventListener('mousedown',e=>{ e.preventDefault(); const mv=ev=>{ const y=ev.clientY; const sib=[...w.parentElement.querySelectorAll(':scope > .hsec')].filter(x=>x!==w); const below=sib.find(x=>{ const r=x.getBoundingClientRect(); return y<r.top+r.height/2; }); if(below){ if(below!==w.nextElementSibling) w.parentElement.insertBefore(w,below); } else { const last=sib[sib.length-1]; if(last&&last.nextElementSibling!==w) last.after(w); } };
-      const up=()=>{ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); homeLay.order=[...el.querySelectorAll('.hsec')].map(x=>x.dataset.hsec); save('m.homeLayout',homeLay); }; document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up); }); }); }
+      const up=()=>{ document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); homeLay.order=[...el.querySelectorAll('.hsec')].map(x=>x.dataset.hsec); homeLaySave(); }; document.addEventListener('mousemove',mv); document.addEventListener('mouseup',up); }); }); }
 function paintHome(s){
   if(s.el&&s.el.contains(document.activeElement)&&document.activeElement.classList&&(document.activeElement.classList.contains('cxsearch')||document.activeElement.classList.contains('qinp'))) return;   // don't wipe the search while typing
   const el=s.el, am=slotTasks('morning').length, pm=slotTasks('afternoon').length, now=currentSlot();
