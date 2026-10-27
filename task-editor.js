@@ -239,8 +239,8 @@ function wire(root,t){ const E=window.TE;
 
 /* ── ✨ Send to Claude: per-task instructions → Airtable ClaudeQueue; the "Claude task queue" scheduled task works them.
    Anything that messages / emails / spends comes back as a DRAFT with status "Needs approval" → Approve & send / Edit / Cancel here. ── */
-const CQ='tbliwVVKs3wdNRehV';
-const cqApi=(path,opt)=>{ const E=window.TE; return fetch('https://api.airtable.com/v0/'+E.base()+'/'+CQ+(path||''),Object.assign({headers:{Authorization:'Bearer '+E.key(),'Content-Type':'application/json'}},opt||{})).then(r=>r.ok?r.json():Promise.reject(r.status)); };
+const CQ_TBL='tbliwVVKs3wdNRehV';
+const cqApi=(path,opt)=>{ const E=window.TE; return fetch('https://api.airtable.com/v0/'+E.base()+'/'+CQ_TBL+(path||''),Object.assign({headers:{Authorization:'Bearer '+E.key(),'Content-Type':'application/json'}},opt||{})).then(r=>r.ok?r.json():Promise.reject(r.status)); };
 const CQC={Queued:'#8aa6af',Working:'#39c7df','Needs approval':'#39c7df',Approved:'#6fd0e0',Done:'#62e08a',Failed:'#e5533a',Cancelled:'#64838d'};
 async function cqLoad(t){ const u='?pageSize=6&filterByFormula='+encodeURIComponent("{ItemId}='"+t.id+"'")+'&sort%5B0%5D%5Bfield%5D=QueuedAt&sort%5B0%5D%5Bdirection%5D=desc'; const d=await cqApi(u); return (d.records||[]).map(r=>Object.assign({id:r.id},r.fields)); }
 /* One-tap "Chase it": queue a standing instruction to drive this task to done. Worked by the "claude-task-queue" scheduled task. */
