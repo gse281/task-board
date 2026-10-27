@@ -94,6 +94,7 @@ input.te-i{text-overflow:ellipsis}
 .te-pk{margin-top:6px;padding:8px;border:1px solid rgba(57,199,223,.25);border-radius:12px;background:#0d1a20;max-height:240px;overflow:auto}
 .te-pkh{font:700 10px ui-monospace,Menlo,monospace;letter-spacing:1.3px;text-transform:uppercase;color:#64838d;margin:6px 2px 5px}.te-pkh:first-child{margin-top:0}
 .te-gl{background:none;border:0;color:#39c7df;font:700 10px ui-monospace,Menlo,monospace;letter-spacing:.8px;text-transform:lowercase;margin-left:6px;cursor:pointer;padding:4px 2px}
+.te-pw{position:relative}.te-pw .te-i{padding-right:40px}.te-x{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;border-radius:8px;background:transparent;color:#64838d;font-size:16px;cursor:pointer}.te-x:active{background:rgba(57,199,223,.15);color:#eaf6fb}.te-pw:has(.te-i:placeholder-shown) .te-x{display:none}.te-ch.cur{outline:2px solid #39c7df}
 .te-gs{display:flex;align-items:center;gap:6px;margin-top:5px}.te-gs:empty{display:none}
 .te-gv{flex:1;min-width:0;color:#39c7df;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.te-gn{color:#64838d;font-size:12px}
 .te-gok,.te-gx{flex:none;width:40px;height:34px;border-radius:9px;border:1px solid rgba(57,199,223,.5);background:transparent;color:#62e08a;font-weight:800;cursor:pointer}.te-gx{color:#e5533a;border-color:rgba(229,83,58,.4)}
@@ -109,7 +110,7 @@ function formHTML(t){ const E=window.TE; const e=s=>E.esc(s==null?'':String(s));
   const tog=(f,l)=>`<button type="button" class="te-t${g(f)?' on':''}" data-tog="${f}"><i></i>${l}</button>`;
   const pri=[...new Set(values('Priority','priorityRaw').map(x=>String(x).trim()).filter(Boolean))].sort((a,b)=>(+a)-(+b)).slice(0,6);
   const gl=f=>`<button type="button" class="te-gl" data-guess1="${f}">guess</button>`;
-  const pick=(label,f,key,ph)=>row(`${label} ${gl(f)}`,`<input class="te-i" data-f="${f}" data-pick="${f}" value="${e(g(f))}" placeholder="${ph||'tap to pick'}" autocomplete="off"><div class="te-gs" data-gsf="${f}"></div>`);
+  const pick=(label,f,key,ph)=>row(`${label} ${gl(f)}`,`<div class="te-pw"><input class="te-i" data-f="${f}" data-pick="${f}" value="${e(g(f))}" placeholder="${ph||'tap to pick'}" autocomplete="off"><button type="button" class="te-x" data-clr="${f}" aria-label="Clear">✕</button></div><div class="te-gs" data-gsf="${f}"></div>`);
   const days=[['Today',0],['Tomorrow',1],['Mon','mon'],['+3d',3],['+1w',7],['+1m',30]];
   return `${row('Task',`<textarea class="te-i te-name" data-f="Task" rows="2">${e(g('Task'))}</textarea>`)}
     <div class="te-cl" data-cl></div>
@@ -136,12 +137,12 @@ async function loadLeads(){ const E=window.TE; if(leadsCache||!E.key()) return; 
 function allValues(f){ const base=values(f,KEYOF[f]); if(f==='SBLead'&&leadsCache) leadsCache.forEach(v=>{ if(!base.includes(v)) base.push(v); }); return base.sort((a,b)=>a.localeCompare(b)); }
 function recentValues(f){ const E=window.TE, now=Date.now(), m=new Map(); E.all().forEach(x=>{ const v=x[KEYOF[f]]; if(!v) return; const w=now-new Date(x.createdTime||0).getTime()<30*864e5?3:1; String(v).split(', ').forEach(y=>{ if(y) m.set(y,(m.get(y)||0)+w); }); });
   return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,8).map(x=>x[0]); }
-function showPicker(input,t,guesses){ const f=input.dataset.pick, E=window.TE; let pan=input.parentElement.querySelector('.te-pk'); if(!pan){ pan=document.createElement('div'); pan.className='te-pk'; input.after(pan); }
-  const q=input.value.trim().toLowerCase(); const g=(guesses&&guesses[f])?[guesses[f]]:[]; const rec=recentValues(f), all=allValues(f);
-  const m=v=>!q||v.toLowerCase().includes(q); const chip=(v,cls)=>`<button type="button" class="te-ch${cls?' '+cls:''}" data-pv="${E.esc(v)}">${E.esc(v)}</button>`;
+function showPicker(input,t,guesses){ const f=input.dataset.pick, E=window.TE; const host=input.closest('.te-pw')||input; let pan=host.parentElement.querySelector('.te-pk'); if(!pan){ pan=document.createElement('div'); pan.className='te-pk'; host.after(pan); }
+  const q=input.dataset.typed?input.value.trim().toLowerCase():''; const cur=input.value.trim().toLowerCase(); const g=(guesses&&guesses[f])?[guesses[f]]:[]; const rec=recentValues(f), all=allValues(f);
+  const m=v=>!q||v.toLowerCase().includes(q); const chip=(v,cls)=>`<button type="button" class="te-ch${cls?' '+cls:''}${v.toLowerCase()===cur&&cls!=='new'?' cur':''}" data-pv="${E.esc(v)}">${E.esc(v)}</button>`;
   const sec=(lab,L,cls)=>{ const x=L.filter(m); return x.length?`<div class="te-pkh">${lab}</div><div class="te-seg">${x.map(v=>chip(v,cls)).join('')}</div>`:''; };
   pan.innerHTML=sec('Suggested',g,'sug')+(q?'':sec('Recent',rec.filter(v=>!g.includes(v))))+sec(q?'Matches':'All A–Z',all.filter(v=>q||!rec.includes(v)))+(q&&!all.some(v=>v.toLowerCase()===q)?`<div class="te-seg">${chip(input.value.trim(),'new')}</div>`:'');
-  pan.querySelectorAll('[data-pv]').forEach(b=>b.addEventListener('pointerdown',e=>{ e.preventDefault(); input.value=b.dataset.pv; input.dispatchEvent(new Event('change')); pan.remove(); input.blur(); })); }
+  pan.querySelectorAll('[data-pv]').forEach(b=>b.addEventListener('pointerdown',e=>{ e.preventDefault(); input.value=b.dataset.pv; delete input.dataset.typed; input.dispatchEvent(new Event('change')); pan.remove(); input.blur(); })); }
 
 /* ── ✨ Guess: from the title + notes, similar past tasks (shared words, same contact), sub→project and contact→lead patterns ── */
 const STOP=new Set('the and for with from that this call about re to of in on at a an be is are was it its we our you your they their them need needs follow up fu check get send text email ask tell new not no yes done open please'.split(' '));
@@ -186,8 +187,9 @@ function wire(root,t){ const E=window.TE;
     E.set(t,f,v); if(extra.NextUpOrder!=null) E.set(t,'NextUpOrder',extra.NextUpOrder); E.patch(t.id,Object.assign({[f]:v},extra)); b.classList.toggle('on',on); E.refresh();
     E.undo(f+' saved',()=>{ E.set(t,f,prev); E.patch(t.id,{[f]:prev||(f==='NextUp'?null:false)}); b.classList.toggle('on',!!prev); E.refresh(); }); });
   let G={};
-  root.querySelectorAll('[data-pick]').forEach(inp=>{ inp.addEventListener('focus',()=>showPicker(inp,t,G)); inp.addEventListener('input',()=>showPicker(inp,t,G));
-    inp.addEventListener('blur',()=>setTimeout(()=>{ const p=inp.parentElement.querySelector('.te-pk'); if(p&&!p.contains(document.activeElement)) p.remove(); },150)); });
+  root.querySelectorAll('[data-pick]').forEach(inp=>{ inp.addEventListener('focus',()=>{ delete inp.dataset.typed; showPicker(inp,t,G); setTimeout(()=>{ try{ inp.select(); }catch(_){} },0); }); inp.addEventListener('input',()=>{ inp.dataset.typed='1'; showPicker(inp,t,G); });
+    const cb=inp.parentElement.querySelector('[data-clr]'); if(cb){ cb.addEventListener('pointerdown',ev=>ev.preventDefault()); cb.addEventListener('click',()=>{ inp.value=''; delete inp.dataset.typed; inp.dispatchEvent(new Event('change')); inp.focus(); showPicker(inp,t,G); }); }
+    inp.addEventListener('blur',()=>setTimeout(()=>{ delete inp.dataset.typed; const p=inp.closest('.te-pw').parentElement.querySelector('.te-pk'); if(p&&!p.contains(document.activeElement)) p.remove(); },150)); });
   if(!leadsCache) loadLeads();
   root.querySelectorAll('[data-segfor]').forEach(seg=>{ const f=seg.dataset.segfor, el=root.querySelector(`[data-f="${f}"]`); seg.querySelectorAll('[data-segv]').forEach(b=>b.onclick=()=>{ el.value=b.dataset.segv; el.dispatchEvent(new Event('change')); seg.querySelectorAll('[data-segv]').forEach(x=>x.classList.toggle('on',x===b)); }); });
   root.querySelectorAll('[data-catv]').forEach(b=>b.onclick=()=>{ const cs=root.querySelector('[data-cat]'); cs.value=b.dataset.catv; cs.dispatchEvent(new Event('change')); if(b.dataset.catv!=='__new') root.querySelectorAll('[data-catv]').forEach(x=>x.classList.toggle('on',x===b)); });

@@ -239,3 +239,4 @@
 - 2026-10-15 22:58  build deployed
 - 2026-10-15 23:00  build deployed
 - 2026-10-16 14:33  📂 Files in Use panel (files.js + Airtable 'Files in Use'); click → Finder via rmbopen://
+- 2026-10-27 05:25  Project/Lead/Sub pickers: full list on tap (no filtering by current value), text auto-selected, ✕ clear button
