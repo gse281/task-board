@@ -244,3 +244,4 @@
 - 2026-10-27 07:15  iPhone home: 📥 Incoming pane (today's adds, grows per item) after Call someone
 - 2026-10-27 07:35  Incoming ‹ › skips blank days (iPhone, desktop, dashboard, grid, radial)
 - 2026-10-27 08:35  Invite to the call: WhatsApp (per person WA, pick chat/group, one-by-one queue) on iPhone + desktop
+- 2026-10-27 09:35  Board (project/lead/sub): 💬 Text this list → Messages, grouped, recipient remembered

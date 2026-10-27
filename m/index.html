@@ -2543,6 +2543,25 @@ function paintNotes(s){
    Project → grouped by Sub · Lead → grouped by Project · Sub → grouped by Project.
    Tap ○ = done · 😴 = snooze · swipe row → done / ← snooze · tap row = details · ‹ › = prev/next project. */
 const BY={project:'sub',lead:'project',sub:'project'};
+/* 💬 Text this list: the board's open items, grouped the same way, into Messages. Recipient = last one used for this list,
+   else roster / Contacts matches for the name, else pick in Messages. Remembered per list (m.listTo). */
+function textListSheet(dim,val,title,secs,B){
+  const body=title+' — open items ('+secs.reduce((n,x)=>n+x[1].length,0)+')\n'+secs.map(([k,L])=>(k||('No '+B.label.toLowerCase()))+'\n'+L.map(t=>'• '+cleanName(t)).join('\n')).join('\n\n');
+  const memK=dim+':'+val, mem=load('m.listTo',{}), last=mem[memK];
+  const cand=[]; const seen=new Set(); const addC=(n,ph,why)=>{ const k=onlyDigits(ph).slice(-10); if(!k||seen.has(k)) return; seen.add(k); cand.push({n,ph,why}); };
+  if(last) addC(last.n,last.ph,'last used');
+  const q=String(val||'').toLowerCase(); if(q){ rosterAll().filter(c=>(c.name||'').toLowerCase().includes(q)).forEach(c=>addC(c.name,c.phone,'call roster'));
+    searchContacts(q).filter(c=>(c.p||[]).length).slice(0,6).forEach(c=>addC(c.n+(c.o&&!String(c.n).toLowerCase().includes(String(c.o).toLowerCase())?' · '+c.o:''),c.p[0],'contacts')); }
+  const href=ph=>'sms:'+(ph?onlyDigits(ph):'')+'&body='+encodeURIComponent(body);
+  sheet(`<h3>💬 Text ${esc(title)} list</h3>
+    <div style="max-height:22vh;overflow:auto;white-space:pre-wrap;font-size:13px;color:var(--dim);background:var(--panel2);border-radius:12px;padding:10px 12px;margin-bottom:10px">${esc(body)}</div>
+    <div style="max-height:34vh;overflow:auto">${cand.slice(0,8).map((c,i)=>`<a class="sbtn" href="${href(c.ph)}" data-txc="${i}"${cuA(c.n)}><span class="si">💬</span><span style="flex:1;min-width:0"><b style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.n)}</b><small style="color:var(--dim);font-weight:500">${esc(c.ph)} · ${c.why}</small></span></a>`).join('')}
+    <a class="sbtn" href="${href('')}" data-txc="-1"><span class="si">👤</span>${cand.length?'Someone else — pick in Messages':'Pick who in Messages'}</a></div>
+    <button class="sbtn" data-txcopy><span class="si">📋</span>Copy text</button><button class="sbtn cancel" data-close>Cancel</button>`,(sh,close)=>{
+    sh.querySelectorAll('[data-txc]').forEach(a=>a.addEventListener('click',()=>{ const i=+a.dataset.txc; if(i>=0){ const m=load('m.listTo',{}); m[memK]={n:cand[i].n,ph:cand[i].ph}; save('m.listTo',m); } buzz(8); setTimeout(close,300); }));
+    sh.querySelector('[data-txcopy]').onclick=()=>{ try{ navigator.clipboard.writeText(body); toast('📋 Copied'); }catch(e){ toast('Copy failed'); } close(); }; });
+  if(!contacts.length) loadContacts();
+}
 function paintBoard(s,dir){
   const r=s.route, el=s.el, dim=r.dim, by=BY[dim], D=DIMS[dim], B=DIMS[by];
   const val=r.list[r.idx]; const items=groupTasks(dim,val);
@@ -2556,7 +2575,7 @@ function paintBoard(s,dir){
   const chipScroll=el.querySelector('.chips2')?el.querySelector('.chips2').scrollLeft:null;
   const title=val||('No '+D.label.toLowerCase());
   el.innerHTML=`<div class="nav">${backBtn(stack.length>2?D.plural:'Tasks')}<div class="ttl">${r.idx+1} of ${r.list.length}</div>
-      <button class="icon" data-tog aria-label="Collapse all">${shut.size>=secs.length&&secs.length?'⊞':'⊟'}</button><button class="icon" data-add aria-label="Add">＋</button></div>
+      <button class="icon" data-txl aria-label="Text this list"${items.length?'':' disabled style="opacity:.35"'}>💬</button><button class="icon" data-tog aria-label="Collapse all">${shut.size>=secs.length&&secs.length?'⊞':'⊟'}</button><button class="icon" data-add aria-label="Add">＋</button></div>
     <div class="chips2">${r.list.map((k,i)=>`<button class="pchip ${i===r.idx?'on':''} ${counts.get(k)?'':'clear'}" data-i="${i}">${dim==='project'?`<span class="dot" style="background:${projColor(k)}"></span>`:''}${esc(k||'None')} <i>${counts.get(k)}</i></button>`).join('')}</div>
     <div class="bhead bpage ${dir>0?'inL':dir<0?'inR':''}" style="border-left:4px solid ${dim==='project'?projColor(val):'transparent'};margin-left:16px;padding-left:14px"><div class="bt">${esc(title)}</div>
       <div class="bs">${streakHTML()}<span><b>${items.length}</b> open</span><span><b>${secs.length}</b> ${esc(B.plural.toLowerCase())}</span>${onCalls?`<span>📞 <b>${onCalls}</b> on calls</span>`:''}${oldest?`<span>oldest <b>${oldest}d</b></span>`:''}</div></div>
@@ -2578,6 +2597,7 @@ function paintBoard(s,dir){
   el.querySelector('[data-next]').onclick=()=>go(r.idx+1);
   el.querySelector('[data-focus]').onclick=()=>push({type:'deck',kind:'group',dim,val,title});
   el.querySelector('[data-add]').onclick=()=>addSheet({[dim]:val},()=>paintBoard(s));
+  el.querySelector('[data-txl]').onclick=()=>{ if(items.length) textListSheet(dim,val,title,secs,B); };
   el.querySelector('[data-tog]').onclick=()=>{ const all=shut.size>=secs.length; shutAll[dim+':'+val]=all?[]:secs.map(x=>x[0]); save('m.shut',shutAll); paintBoard(s); };
   el.querySelectorAll('.sec').forEach(sec=>{ sec.querySelector('.sech').onclick=()=>{ const k=sec.dataset.k; sec.classList.toggle('shut');
     const cur=new Set(shutAll[dim+':'+val]||[]); sec.classList.contains('shut')?cur.add(k):cur.delete(k); shutAll[dim+':'+val]=[...cur]; save('m.shut',shutAll); buzz(5);
