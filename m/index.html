@@ -293,6 +293,7 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .sgh .d{width:10px;height:10px;border-radius:5px}
 .sgh b{flex:1;font-size:15px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sgh span{font:700 12px ui-monospace,Menlo,monospace;color:var(--gold)}
+.incp .sl{padding-left:10px;padding-right:10px}.incp .sl:last-child{border-bottom:0}
 .sl{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:8px;width:100%;text-align:left;min-height:42px;padding:6px 8px;border-bottom:1px solid #221d1a;font-size:14.5px}
 .sl.isdone .tk{text-decoration:line-through;opacity:.55}
 .clrow{display:flex;align-items:stretch;gap:0;border-bottom:1px solid var(--line)}
@@ -2016,12 +2017,12 @@ setInterval(()=>{ if(document.hidden||!stack[0]||stack.length!==1) return; const
   const h=stack[0]; const sec=h.el.querySelector('.hsec[data-hsec="nextup"]'); if(sec&&!h.editing&&nextUpList().length>1){ sec.innerHTML=nuHomeCard(); wireNU(sec,h); const r=sec.querySelector('.nurow'); if(r){ r.classList.add('rotin'); } } },30000);
 /* ---------- 🏠 Home layout: Roni's order + hidden sections, editable (⚙︎ → Edit home, or long-press empty space).
    Saved locally + in Airtable AppNotes (Key "home-layout") so it follows him across devices. ---------- */
-const HOME_DEFAULT=['wx','letters','learn','meet','bills','inotes','invite','ampm','search','calls','freq','nextup','sug','claude','leadrev','comp','parked','autos','drill','review','views','daynote','notesarc','quick'], HOME_LABEL={letters:'C P S L N I letters',learn:'📖 Learning',claude:'✨ Claude requests',bills:'💵 Bills & Taxes',invite:'👥 Invite to the call',wx:'🌤 Weather',meet:'📅 Meetings',inotes:'📥 Incoming + Notes',ampm:'🌅 Morning / Afternoon',search:'🔍 Call someone',calls:'📞 Calls',freq:'⭐ Frequent',nextup:'⏫ Next Up',sug:'✨ Suggested',leadrev:'📲 Lead texts',comp:'🖥 @Computer',parked:'🅿️ Parked',autos:'⚙️ Automations',drill:'🎯 Drill',review:'▶ Review projects',views:'👁 View tasks by',daynote:'🗒 Today’s notes',notesarc:'📝 Notes archive',quick:'📆 Due today / Snapshot'};
+const HOME_DEFAULT=['wx','letters','learn','meet','bills','inotes','invite','ampm','search','incpane','calls','freq','nextup','sug','claude','leadrev','comp','parked','autos','drill','review','views','daynote','notesarc','quick'], HOME_LABEL={incpane:'📥 Incoming (today)',letters:'C P S L N I letters',learn:'📖 Learning',claude:'✨ Claude requests',bills:'💵 Bills & Taxes',invite:'👥 Invite to the call',wx:'🌤 Weather',meet:'📅 Meetings',inotes:'📥 Incoming + Notes',ampm:'🌅 Morning / Afternoon',search:'🔍 Call someone',calls:'📞 Calls',freq:'⭐ Frequent',nextup:'⏫ Next Up',sug:'✨ Suggested',leadrev:'📲 Lead texts',comp:'🖥 @Computer',parked:'🅿️ Parked',autos:'⚙️ Automations',drill:'🎯 Drill',review:'▶ Review projects',views:'👁 View tasks by',daynote:'🗒 Today’s notes',notesarc:'📝 Notes archive',quick:'📆 Due today / Snapshot'};
 let homeLay=load('m.homeLayout',{order:HOME_DEFAULT,hidden:[],at:0});
 let claudeQ=[]; const claudePoll=()=>{ if(!window.TaskEditor||document.hidden) return; TaskEditor.claudePending().then(L=>{ const ch=L.length!==claudeQ.length; claudeQ=L; if(ch&&stack[0]&&stack.length===1) paintHome(stack[0]); }); }; setInterval(claudePoll,120000); setTimeout(claudePoll,4000);
 function homeOrder(){ if(!homeLay.v4){ homeLay.v4=1; ['views','daynote'].forEach(k=>{ if(!homeLay.hidden.includes(k)) homeLay.hidden.push(k); }); save('m.homeLayout',homeLay); }   // C P S L N I replaces them (restorable in Edit home)
   if(!homeLay.v2){ homeLay.v2=1; if(!homeLay.hidden.includes('inotes')) homeLay.hidden.push('inotes'); save('m.homeLayout',homeLay); }
-  const o=(homeLay.order||[]).filter(k=>HOME_DEFAULT.includes(k)); if(!o.includes('letters')&&o.includes('wx')) o.splice(o.indexOf('wx')+1,0,'letters'); if(!o.includes('bills')) o.splice(o.includes('meet')?o.indexOf('meet')+1:0,0,'bills'); if(!o.includes('claude')&&o.includes('leadrev')) o.splice(o.indexOf('leadrev'),0,'claude'); if(!homeLay.v3){ homeLay.v3=1; const i=o.indexOf('learn'); if(i>=0) o.splice(i,1); const j=o.indexOf('letters'); o.splice(j>=0?j+1:1,0,'learn'); homeLay.order=o.slice(); save('m.homeLayout',homeLay); } if(!o.includes('invite')&&o.includes('ampm')) o.splice(o.indexOf('ampm'),0,'invite'); HOME_DEFAULT.forEach(k=>{ if(!o.includes(k)){ const i=HOME_DEFAULT.indexOf(k); o.splice(Math.min(i,o.length),0,k); } }); return o; }
+  const o=(homeLay.order||[]).filter(k=>HOME_DEFAULT.includes(k)); if(!o.includes('incpane')){ const i=o.indexOf('search'); o.splice(i>=0?i+1:o.length,0,'incpane'); } if(!o.includes('letters')&&o.includes('wx')) o.splice(o.indexOf('wx')+1,0,'letters'); if(!o.includes('bills')) o.splice(o.includes('meet')?o.indexOf('meet')+1:0,0,'bills'); if(!o.includes('claude')&&o.includes('leadrev')) o.splice(o.indexOf('leadrev'),0,'claude'); if(!homeLay.v3){ homeLay.v3=1; const i=o.indexOf('learn'); if(i>=0) o.splice(i,1); const j=o.indexOf('letters'); o.splice(j>=0?j+1:1,0,'learn'); homeLay.order=o.slice(); save('m.homeLayout',homeLay); } if(!o.includes('invite')&&o.includes('ampm')) o.splice(o.indexOf('ampm'),0,'invite'); HOME_DEFAULT.forEach(k=>{ if(!o.includes(k)){ const i=HOME_DEFAULT.indexOf(k); o.splice(Math.min(i,o.length),0,k); } }); return o; }
 async function homeLaySave(){ homeLay.at=Date.now(); save('m.homeLayout',homeLay); if(demo||!cfg.apiKey) return;
   try{ await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
     body:JSON.stringify({performUpsert:{fieldsToMergeOn:['Key']},typecast:true,records:[{fields:{Key:'home-layout',Text:JSON.stringify(homeLay),Updated:new Date().toISOString()}}]})}); }catch(e){} }
@@ -2074,6 +2075,7 @@ function paintHome(s){
         <div class="qrow"><button class="qlbl" data-notesbtn><i class="qd" style="background:#e0a458"></i>Notes <b>${((dnLocal()[todayISO()]||'').split('\n').filter(x=>x.trim()).length)||''}</b></button><input class="qinp" data-qnote enterkeyhint="done" placeholder="Add a note…" autocomplete="off"><button class="qplus" data-qnoteb aria-label="Add note">＋</button></div>
       </div>
 `,
+        incpane:()=>{ const L=incomingToday(); return `<div class="incp"><div class="qrow"><button class="qlbl" data-incoming><i class="qd"></i>Incoming <b>${L.length}</b></button><input class="qinp" data-qincp enterkeyhint="done" placeholder="Add to Incoming…" autocomplete="off"><button class="qplus" data-qincpb aria-label="Add">＋</button></div>${L.map(t=>{ const done=(t.status||'Open')!=='Open'; const tm=new Date(t.createdTime||0).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); return `<button class="sl${done?' isdone':''}" data-incid="${t.id}"><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="tk">${done?'✓ ':''}${esc(cleanName(t))}</span><span class="ld">${esc(t.lead||'')}</span><span class="ag">${esc(tm)}</span></button>`; }).join('')}</div>`; },
         learn:()=>window.Learning?Learning.rowsHTML():'',
         claude:()=>cqCard(),
         bills:()=>billsCard(),
@@ -2169,6 +2171,8 @@ function paintHome(s){
     const addInc=async()=>{ const v=qi.value.trim(); if(!v) return; qi.value=''; buzz(8); const t=await create({Task:v}); toast('✓ Added to Incoming'); paintHome(s); };
     const addNote=()=>{ const v=qn.value.trim(); if(!v) return; qn.value=''; buzz(8); const td=todayISO(); const cur=dnLocal()[td]||''; const txt=(cur&&!cur.endsWith('\n')?cur+'\n':cur)+v; dnPut(td,txt); dnSave(td,txt); toast('✓ Added to today’s notes'); paintHome(s); };
     if(qi){ quickSave(qi,addInc); el.querySelector('[data-qincb]').onclick=addInc; }
+    const qp=el.querySelector('[data-qincp]'); if(qp){ const addP=async()=>{ const v=qp.value.trim(); if(!v) return; qp.value=''; buzz(8); toast('✓ Added to Incoming'); await create({Task:v}); paintHome(s); }; quickSave(qp,addP); el.querySelector('[data-qincpb]').onclick=addP; }
+    el.querySelectorAll('[data-incid]').forEach(b=>b.onclick=()=>{ const t=tasks.find(x=>x.id===b.dataset.incid); if(t){ buzz(5); editTask(t); } });
     if(qn){ quickSave(qn,addNote); el.querySelector('[data-qnoteb]').onclick=addNote; } }
   { const hi=el.querySelector('[data-hinvite]'); if(hi) hi.onclick=()=>push({type:'invite',slot:hi.dataset.hinvite}); }
   { const fc=el.querySelector('.frqcard'); if(fc){ wireFreq(fc,()=>paintHome(s)); fc.onclick=e=>{ if(e.target.closest('[data-join],[data-frk],[data-pgd]')) return; push({type:'freq'}); }; } }
@@ -2187,7 +2191,7 @@ function paintHome(s){
   if(el.querySelector('[data-meet]')) el.querySelector('[data-meet]').onclick=e=>{ if(e.target.closest('[data-join]')) return; push({type:'meetings'}); };
   if(el.querySelector('[data-calls]')) el.querySelector('[data-calls]').onclick=e=>{ if(e.target.closest('[data-join]')) return; push({type:'slotlist',slot:'calls'}); };
   if(!contacts.length&&contactsTry()) loadContacts().then(()=>{ if(contacts.length&&stack[0]&&stack.length===1) paintHome(stack[0]); });
-  if(el.querySelector('[data-incoming]')) el.querySelector('[data-incoming]').onclick=()=>push({type:'incoming',day:null});
+  el.querySelectorAll('[data-incoming]').forEach(b=>b.onclick=()=>push({type:'incoming',day:null}));
   if(el.querySelector('[data-notesbtn]')) el.querySelector('[data-notesbtn]').onclick=()=>push({type:'day',day:null});
   wireTopStrip(el,()=>paintHome(s));
   { const pb=el.querySelector('[data-parked]'); if(pb) pb.onclick=()=>push({type:'parked'}); }
