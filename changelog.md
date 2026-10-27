@@ -259,3 +259,4 @@
 - 2026-10-27 17:55  Home Incoming zone: red
 - 2026-10-27 17:56  Home Incoming zone: stronger red
 - 2026-10-27 17:58  Home zones: borders kept, centers near-transparent
+- 2026-10-27 17:59  Home zones: clear centers
