@@ -94,6 +94,12 @@ input.te-i{text-overflow:ellipsis}
 .te-pk{margin-top:6px;padding:8px;border:1px solid rgba(57,199,223,.25);border-radius:12px;background:#0d1a20;max-height:240px;overflow:auto}
 .te-pkh{font:700 10px ui-monospace,Menlo,monospace;letter-spacing:1.3px;text-transform:uppercase;color:#64838d;margin:6px 2px 5px}.te-pkh:first-child{margin-top:0}
 .te-gl{background:none;border:0;color:#39c7df;font:700 10px ui-monospace,Menlo,monospace;letter-spacing:.8px;text-transform:lowercase;margin-left:6px;cursor:pointer;padding:4px 2px}
+.te-pb{display:block;text-align:left;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:44px}.te-pb.ph{color:#64838d}.te-x.hid{display:none}
+.te-psc{position:fixed;inset:0;z-index:9600;background:rgba(2,8,11,.55);opacity:0;transition:opacity .16s}.te-psc.on{opacity:1}
+.te-ps{position:absolute;left:0;right:0;top:max(12px,env(safe-area-inset-top,0px));margin:0 auto;width:min(620px,calc(100vw - 16px));max-height:calc(100vh - 24px - env(safe-area-inset-top,0px));display:flex;flex-direction:column;background:#0b161b;border:1px solid rgba(57,199,223,.3);border-radius:16px;padding:12px;box-sizing:border-box;color:#eaf6fb}
+@media(min-width:760px){ .te-ps{top:10vh;max-height:76vh} }
+.te-psh{display:flex;align-items:center;gap:8px;margin-bottom:10px}.te-psh b{flex:1;font-size:16px}.te-psclr,.te-psx{height:38px;padding:0 14px;border-radius:10px;border:1px solid rgba(57,199,223,.35);background:transparent;color:#39c7df;font-weight:800;font-size:14px;cursor:pointer}.te-psx{background:#39c7df;color:#04161c;border-color:#39c7df}
+.te-pss{margin-bottom:8px;flex:none}.te-psl{overflow:auto;-webkit-overflow-scrolling:touch;flex:1;min-height:0}.te-psl .te-ch{font-size:15px;padding:9px 13px}
 .te-pw{position:relative}.te-pw .te-i{padding-right:40px}.te-x{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:34px;height:34px;border:0;border-radius:8px;background:transparent;color:#64838d;font-size:16px;cursor:pointer}.te-x:active{background:rgba(57,199,223,.15);color:#eaf6fb}.te-pw:has(.te-i:placeholder-shown) .te-x{display:none}.te-ch.cur{outline:2px solid #39c7df}
 .te-gs{display:flex;align-items:center;gap:6px;margin-top:5px}.te-gs:empty{display:none}
 .te-gv{flex:1;min-width:0;color:#39c7df;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.te-gn{color:#64838d;font-size:12px}
@@ -110,7 +116,7 @@ function formHTML(t){ const E=window.TE; const e=s=>E.esc(s==null?'':String(s));
   const tog=(f,l)=>`<button type="button" class="te-t${g(f)?' on':''}" data-tog="${f}"><i></i>${l}</button>`;
   const pri=[...new Set(values('Priority','priorityRaw').map(x=>String(x).trim()).filter(Boolean))].sort((a,b)=>(+a)-(+b)).slice(0,6);
   const gl=f=>`<button type="button" class="te-gl" data-guess1="${f}">guess</button>`;
-  const pick=(label,f,key,ph)=>row(`${label} ${gl(f)}`,`<div class="te-pw"><input class="te-i" data-f="${f}" data-pick="${f}" value="${e(g(f))}" placeholder="${ph||'tap to pick'}" autocomplete="off"><button type="button" class="te-x" data-clr="${f}" aria-label="Clear">✕</button></div><div class="te-gs" data-gsf="${f}"></div>`);
+  const pick=(label,f,key,ph)=>row(`${label} ${gl(f)}`,`<div class="te-pw"><input type="hidden" data-f="${f}" value="${e(g(f))}"><button type="button" class="te-i te-pb${g(f)?'':' ph'}" data-pick="${f}" data-ph="${e(ph||'tap to pick')}" data-lab="${e(label)}">${e(g(f)||ph||'tap to pick')}</button><button type="button" class="te-x${g(f)?'':' hid'}" data-clr="${f}" aria-label="Clear">✕</button></div><div class="te-gs" data-gsf="${f}"></div>`);
   const days=[['Today',0],['Tomorrow',1],['Mon','mon'],['+3d',3],['+1w',7],['+1m',30]];
   return `${row('Task',`<textarea class="te-i te-name" data-f="Task" rows="2">${e(g('Task'))}</textarea>`)}
     <div class="te-cl" data-cl></div>
@@ -143,6 +149,27 @@ function showPicker(input,t,guesses){ const f=input.dataset.pick, E=window.TE; c
   const sec=(lab,L,cls)=>{ const x=L.filter(m); return x.length?`<div class="te-pkh">${lab}</div><div class="te-seg">${x.map(v=>chip(v,cls)).join('')}</div>`:''; };
   pan.innerHTML=sec('Suggested',g,'sug')+(q?'':sec('Recent',rec.filter(v=>!g.includes(v))))+sec(q?'Matches':'All A–Z',all.filter(v=>q||!rec.includes(v)))+(q&&!all.some(v=>v.toLowerCase()===q)?`<div class="te-seg">${chip(input.value.trim(),'new')}</div>`:'');
   pan.querySelectorAll('[data-pv]').forEach(b=>b.addEventListener('pointerdown',e=>{ e.preventDefault(); input.value=b.dataset.pv; delete input.dataset.typed; input.dispatchEvent(new Event('change')); pan.remove(); input.blur(); })); }
+
+/* ── 📋 Pick sheet: every option visible at once (Suggested · Recent · All A–Z). Search box is optional — never auto-opens the keyboard on a phone. ── */
+function pickSheet(f,label,cur,guesses,onPick){ const E=window.TE; document.querySelectorAll('.te-psc').forEach(x=>x.remove());
+  const sc=document.createElement('div'); sc.className='te-psc'; const box=document.createElement('div'); box.className='te-ps'; sc.appendChild(box); document.body.appendChild(sc);
+  const g=(guesses&&guesses[f]&&guesses[f]!==cur)?[guesses[f]]:[], rec=recentValues(f), all=allValues(f), cl=cur.toLowerCase();
+  box.innerHTML=`<div class="te-psh"><b>${E.esc(label)}</b>${cur?'<button type="button" class="te-psclr" data-psv="">✕ Clear</button>':''}<button type="button" class="te-psx" data-psclose aria-label="Close">Done</button></div>
+    <input class="te-i te-pss" type="search" placeholder="🔍 Search or type a new one" autocomplete="off" enterkeyhint="done"><div class="te-psl"></div>`;
+  const list=box.querySelector('.te-psl'), q=box.querySelector('.te-pss');
+  const chip=(v,cls)=>`<button type="button" class="te-ch${cls?' '+cls:''}${v.toLowerCase()===cl?' cur':''}" data-psv="${E.esc(v)}">${E.esc(v)}</button>`;
+  const draw=()=>{ const s=q.value.trim().toLowerCase(), m=v=>!s||v.toLowerCase().includes(s);
+    const sec=(h,L,cls)=>{ const x=L.filter(m); return x.length?`<div class="te-pkh">${h}</div><div class="te-seg">${x.map(v=>chip(v,cls)).join('')}</div>`:''; };
+    list.innerHTML=(s&&!all.some(v=>v.toLowerCase()===s)?`<div class="te-seg">${chip(q.value.trim(),'new')}</div>`:'')+sec('Suggested',g,'sug')+(s?'':sec('Recent',rec.filter(v=>!g.includes(v))))+sec(s?'Matches':'All A–Z',all)||'<div class="te-gn" style="padding:10px">No options yet — type to add one</div>'; };
+  draw(); q.addEventListener('input',draw);
+  const done=()=>{ sc.classList.remove('on'); setTimeout(()=>sc.remove(),180); window.visualViewport&&visualViewport.removeEventListener('resize',fit); };
+  const fit=()=>{ const vv=window.visualViewport; if(vv&&matchMedia('(max-width:759px)').matches) box.style.maxHeight=Math.max(220,vv.height-24)+'px'; };
+  window.visualViewport&&visualViewport.addEventListener('resize',fit); fit();
+  box.addEventListener('click',e=>{ const b=e.target.closest('[data-psv]'); if(b){ onPick(b.dataset.psv); done(); return; } if(e.target.closest('[data-psclose]')) done(); });
+  q.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); const v=q.value.trim(); if(v){ const hit=all.find(x=>x.toLowerCase()===v.toLowerCase()); onPick(hit||v); } done(); } else if(e.key==='Escape'){ e.stopPropagation(); done(); } });
+  sc.addEventListener('click',e=>{ if(e.target===sc) done(); });
+  requestAnimationFrame(()=>sc.classList.add('on'));
+  if(matchMedia('(pointer:fine)').matches) setTimeout(()=>q.focus(),50); }
 
 /* ── ✨ Guess: from the title + notes, similar past tasks (shared words, same contact), sub→project and contact→lead patterns ── */
 const STOP=new Set('the and for with from that this call about re to of in on at a an be is are was it its we our you your they their them need needs follow up fu check get send text email ask tell new not no yes done open please'.split(' '));
@@ -187,9 +214,13 @@ function wire(root,t){ const E=window.TE;
     E.set(t,f,v); if(extra.NextUpOrder!=null) E.set(t,'NextUpOrder',extra.NextUpOrder); E.patch(t.id,Object.assign({[f]:v},extra)); b.classList.toggle('on',on); E.refresh();
     E.undo(f+' saved',()=>{ E.set(t,f,prev); E.patch(t.id,{[f]:prev||(f==='NextUp'?null:false)}); b.classList.toggle('on',!!prev); E.refresh(); }); });
   let G={};
-  root.querySelectorAll('[data-pick]').forEach(inp=>{ inp.addEventListener('focus',()=>{ delete inp.dataset.typed; showPicker(inp,t,G); setTimeout(()=>{ try{ inp.select(); }catch(_){} },0); }); inp.addEventListener('input',()=>{ inp.dataset.typed='1'; showPicker(inp,t,G); });
-    const cb=inp.parentElement.querySelector('[data-clr]'); if(cb){ cb.addEventListener('pointerdown',ev=>ev.preventDefault()); cb.addEventListener('click',()=>{ inp.value=''; delete inp.dataset.typed; inp.dispatchEvent(new Event('change')); inp.focus(); showPicker(inp,t,G); }); }
-    inp.addEventListener('blur',()=>setTimeout(()=>{ delete inp.dataset.typed; const p=inp.closest('.te-pw').parentElement.querySelector('.te-pk'); if(p&&!p.contains(document.activeElement)) p.remove(); },150)); });
+  // Project / Lead / Sub: a button (no keyboard, no jumping) → full list sheet. Hidden input keeps the save/undo/guess plumbing.
+  root.querySelectorAll('button[data-pick]').forEach(btn=>{ const f=btn.dataset.pick, w=btn.closest('.te-pw'), inp=w.querySelector('input[data-f]'), cb=w.querySelector('[data-clr]');
+    const lab=()=>{ const v=inp.value.trim(); btn.textContent=v||btn.dataset.ph; btn.classList.toggle('ph',!v); cb.classList.toggle('hid',!v); };
+    const set=v=>{ inp.value=v; inp.dispatchEvent(new Event('change')); lab(); };
+    inp.addEventListener('change',lab); const iv=setInterval(()=>{ if(!document.body.contains(btn)) return clearInterval(iv); lab(); },800);   // catches undo
+    btn.addEventListener('click',()=>pickSheet(f,btn.dataset.lab,inp.value.trim(),G,set));
+    cb.addEventListener('click',()=>set('')); });
   if(!leadsCache) loadLeads();
   root.querySelectorAll('[data-segfor]').forEach(seg=>{ const f=seg.dataset.segfor, el=root.querySelector(`[data-f="${f}"]`); seg.querySelectorAll('[data-segv]').forEach(b=>b.onclick=()=>{ el.value=b.dataset.segv; el.dispatchEvent(new Event('change')); seg.querySelectorAll('[data-segv]').forEach(x=>x.classList.toggle('on',x===b)); }); });
   root.querySelectorAll('[data-catv]').forEach(b=>b.onclick=()=>{ const cs=root.querySelector('[data-cat]'); cs.value=b.dataset.catv; cs.dispatchEvent(new Event('change')); if(b.dataset.catv!=='__new') root.querySelectorAll('[data-catv]').forEach(x=>x.classList.toggle('on',x===b)); });
