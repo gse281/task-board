@@ -417,6 +417,9 @@ html,body{overscroll-behavior-x:none;touch-action:pan-y pinch-zoom}
 .invbar{position:absolute;left:0;right:0;bottom:0;z-index:5;padding:10px 12px calc(10px + var(--sab));background:linear-gradient(180deg,rgba(7,20,26,0),rgba(7,20,26,.96) 30%);display:flex;gap:8px;transform:translateY(110%);transition:transform .2s}
 .invbar.show{transform:none}.invbar .invall{flex:1}.invbar .pill{min-height:52px;padding:0 14px}
 .ccrow.addpick{cursor:pointer} .ccrow.addpick:active{background:var(--panel2)}
+.ccwa{height:44px;min-width:44px;display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;flex:none;background:#25D366;color:#04161c;font-weight:900;font-size:13px;border-radius:12px;text-decoration:none;margin-right:6px}
+.warow{display:flex;gap:8px;margin-top:8px}.wabtn{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;min-height:44px;border-radius:12px;background:#25D366;color:#04161c;font-weight:800;font-size:13.5px;text-decoration:none;border:0;padding:0 10px}.wabtn.alt{background:transparent;color:#25D366;border:1px solid rgba(37,211,102,.55)}
+.waq{display:flex;align-items:center;gap:8px;margin:0 12px 10px;padding:8px 10px;border:1px solid rgba(37,211,102,.55);border-radius:14px;background:rgba(37,211,102,.08);flex:none}.waqt{flex:1;min-width:0;display:flex;flex-direction:column}.waqt span{font-size:11.5px;color:var(--dim)}.waqt b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.waq .wabtn{flex:none;padding:0 14px}.waq .pill{min-height:44px;padding:0 12px}
 .ccinv{height:44px;display:inline-flex;align-items:center;box-sizing:border-box;flex:none;background:var(--green);color:#fff;font-weight:800;font-size:14px;border-radius:12px;padding:9px 14px;text-decoration:none}
 .ccrm{width:34px;height:34px;border-radius:17px;color:var(--dim);font-size:15px}
 .ccok{color:#6fdc9c;font-size:11.5px;font-weight:700}
@@ -1046,6 +1049,10 @@ const DIALPAD_ROOM='https://meetings.dialpad.com/room/rbenjamini';
 const inviteText=slot=>'Please join the call: '+DIALPAD_ROOM+' or dial '+DIAL_IN+' (no PIN)';
 const smsOne=(ph,body)=>'sms:'+ph.replace(/[^\d+]/g,'')+'&body='+encodeURIComponent(body);
 const smsMany=(phs,body)=>'sms://open?addresses='+phs.map(p=>p.replace(/[^\d+]/g,'')).join(',')+'&body='+encodeURIComponent(body);
+// 🟢 WhatsApp: one person = their chat with the text filled in. Groups: WhatsApp can't be opened to a specific group by link, so "pick chat/group" opens its picker with the text filled in.
+const waDigits=ph=>{ let d=String(ph||'').replace(/\D/g,''); if(d.length===10) d='1'+d; return d; };
+const waOne=(ph,body)=>'whatsapp://send?phone='+waDigits(ph)+'&text='+encodeURIComponent(body);
+const waPick=body=>'whatsapp://send?text='+encodeURIComponent(body);
 /* 👥 ONE shared invite roster (Airtable CallContacts): Morning / Afternoon are just flags on it (Slots). Same list on home, both calls and desktop.
    Grouped by trade: 1oak first, then MEP (21 · 22 · 23 · 26 · 27 · 28), then CSI MasterFormat order, then Other. ≈ = trade guessed (tap to fix). */
 const TRADES=['1oak','21 Fire Suppression','22 Plumbing','23 HVAC','26 Electrical','27 Communications','28 Fire Alarm','03 Concrete','04 Masonry','05 Metals / Steel','06 Wood / Millwork','07 Thermal & Moisture','08 Openings','09 Finishes','10 Specialties','11 Equipment','12 Furnishings','14 Conveying','31-33 Sitework','Other'];
@@ -1063,20 +1070,22 @@ function paintInvite(s){
   const G=rosterGroups(list); let mepShown=false;
   el.innerHTML=`<div class="nav">${backBtn('Tasks')}<div class="ttl">👥 Invite to the call</div><button class="icon" data-ccadd aria-label="Add people">＋</button></div>
     <div class="amseg" data-iseg><button class="${slot==='morning'?'on':''}" data-is="morning">AM <b>${callContacts('morning').length}</b></button><button class="${slot==='afternoon'?'on':''}" data-is="afternoon">PM <b>${callContacts('afternoon').length}</b></button><button class="${slot==='all'?'on':''}" data-is="all">All <b>${rosterAll().length}</b></button></div>
+    ${(()=>{ const q=s._waq; if(!q) return ''; const c=callCts.find(x=>x.id===q.ids[q.i]); if(!c) return ''; return `<div class="waq"><div class="waqt"><span>WhatsApp ${q.i+1} of ${q.ids.length}</span><b>${esc(c.name)}</b></div><a class="wabtn" href="${waOne(c.phone,msg)}"${cuA(c.name)} data-waqnext>Open →</a><button class="pill" data-waqskip>Skip</button><button class="pill" data-waqstop>✕</button></div>`; })()}
     <div class="scroll" style="padding:0 12px calc(20px + var(--sab))">
       <div class="dialin"><div><div class="ap">Dial-in · no PIN</div><a href="${dialTel()}" style="color:inherit;text-decoration:none"><b>${esc(DIAL_IN)}</b></a></div><button class="pill" data-dial style="min-height:40px;padding:0 12px">Edit</button></div>
       <div class="ap" style="margin:4px 4px 10px">Message: “${esc(msg)}”</div>
       ${list.length?`<a class="invall" href="${smsMany((selN?selected:list).map(c=>c.phone),msg)}" data-invgo data-invtop>📣 ${selN?('Invite '+selN+' selected'):('Invite all '+list.length)}</a>
+      <div class="warow"><a class="wabtn" href="${waPick(msg)}" data-wapick>🟢 WhatsApp → pick chat / group</a><button class="wabtn alt" data-waq>🟢 ${selN?selN+' selected':'All '+list.length} one-by-one</button></div>
       <div class="selbar"><span class="seln${selN?'':' z'}">${selN?selN+' of '+list.length+' selected':'Tap ☐ to pick people'}</span><button data-selall>Select all</button><button data-selclear${selN?'':' disabled style="opacity:.4"'}>Clear</button></div>`:''}
       ${G.map(([t,L])=>{ const hdr=(MEP.has(t)&&!mepShown)?(mepShown=true,'<div class="trsup">MEP</div>'):''; return hdr+`<div class="trh"><span>${esc(t)}</span><b>${L.length}</b>${(()=>{ const allOn=L.every(c=>sel[c.phone]); return `<button class="trsel${allOn?' on':''}" data-gsel="${esc(t)}" style="margin-left:auto">${allOn?'✓ Group':'Select group'}</button>`; })()}<a class="trinv" style="margin-left:6px" href="${smsMany(L.map(c=>c.phone),msg)}" data-ginv="${esc(t)}">Invite group</a></div>
         <div class="glist">${L.map(c=>`<div class="ccrow" data-id="${c.id}">
           <button class="ccsel cb${sel[c.phone]?' on':''}" data-sel="${esc(c.phone)}" role="checkbox" aria-checked="${sel[c.phone]?'true':'false'}" aria-label="Select ${esc(c.name)}">✓</button>
           <div style="flex:1;min-width:0"><div class="cn">${esc(c.name)}${sent[c.id]?` <span class="ccok">✓ invited ${sent[c.id]>1?new Date(sent[c.id]).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):''}</span>`:''}</div><div class="cx">${esc(c.phone)} · <button class="trtag${c.guess?' g':''}" data-trade="${c.id}">${c.guess?'≈ ':''}${esc(c.trade||'Other')}</button></div></div>
           <button class="slt${c.slots.includes('morning')?' on':''}" data-flag="morning" data-fid="${c.id}">AM</button><button class="slt${c.slots.includes('afternoon')?' on':''}" data-flag="afternoon" data-fid="${c.id}">PM</button>
-          <a class="ccinv" href="${smsOne(c.phone,msg)}"${cuA(c.name)} data-inv="${c.id}">Invite</a></div>`).join('')}</div>`; }).join('')
+          <a class="ccwa" href="${waOne(c.phone,msg)}"${cuA(c.name)} data-wa="${c.id}" aria-label="WhatsApp ${esc(c.name)}">WA</a><a class="ccinv" href="${smsOne(c.phone,msg)}"${cuA(c.name)} data-inv="${c.id}">Invite</a></div>`).join('')}</div>`; }).join('')
         ||'<div class="ap" style="padding:18px">No one here yet — tap ＋ to add from your contacts.</div>'}
       ${list.length?`<a class="invall" style="margin-top:16px" href="${smsMany((selN?selected:list).map(c=>c.phone),msg)}" data-invgo>📣 ${selN?('Invite '+selN+' selected'):('Invite all '+list.length)}</a>`:''}
-      <div class="foot" style="padding-bottom:70px">One list for both calls — AM / PM mark who's on which call. Tap the trade to fix it. Long-press a name to remove from the roster.</div></div>
+      <div class="foot" style="padding-bottom:70px">WA = WhatsApp (you press Send). For a WhatsApp group: “pick chat / group”. One list for both calls — AM / PM mark who's on which call. Tap the trade to fix it. Long-press a name to remove from the roster.</div></div>
     ${list.length?`<div class="invbar" data-invbar><a class="invall" href="${smsMany((selN?selected:list).map(c=>c.phone),msg)}" data-invgo>📣 ${selN?('Invite '+selN+' selected'):('Invite all '+list.length)}</a>${selN?'<button class="pill" data-selclear>Clear</button>':''}</div>`:''}`;
   wire(el); el.querySelectorAll('[data-is]').forEach(x=>x.onclick=()=>{ if(x.dataset.is===r.slot) return; r.slot=x.dataset.is; invSlot=r.slot; const sc=el.querySelector('.scroll'); if(sc) sc.scrollTop=0; s._st=0; buzz(6); paintInvite(s); });
   const mark=ids=>{ const m=load('m.invited.'+todayISO(),{}); const now=Date.now(); ids.forEach(i=>m[i]=now); save('m.invited.'+todayISO(),m); setTimeout(()=>paintInvite(s),600); };
@@ -1087,6 +1096,12 @@ function paintInvite(s){
   el.querySelectorAll('[data-gsel]').forEach(b=>b.onclick=()=>{ const g=G.find(x=>x[0]===b.dataset.gsel); if(!g) return; const allOn=g[1].every(c=>sel[c.phone]); g[1].forEach(c=>{ if(allOn) delete sel[c.phone]; else sel[c.phone]=1; }); saveSel(); buzz(6); paintInvite(s); });
   { const sc=el.querySelector('.scroll'), top=el.querySelector('[data-invtop]'), bar=el.querySelector('[data-invbar]'); if(sc&&top&&bar){ const chk=()=>bar.classList.toggle('show',top.offsetTop+top.offsetHeight<sc.scrollTop+4); sc.addEventListener('scroll',chk,{passive:true}); requestAnimationFrame(chk); } }
   el.querySelectorAll('[data-inv]').forEach(a=>a.addEventListener('click',()=>{ buzz(8); mark([a.dataset.inv]); }));
+  el.querySelectorAll('[data-wa]').forEach(a=>a.addEventListener('click',()=>{ buzz(8); mark([a.dataset.wa]); }));
+  { const b=el.querySelector('[data-waq]'); if(b) b.onclick=()=>{ const L=selN?selected:list; if(!L.length) return; s._waq={ids:L.map(c=>c.id),i:0}; buzz(8); paintInvite(s); toast('Tap Open → for each person, Send in WhatsApp, come back'); }; }
+  const waAdv=()=>{ const q=s._waq; if(!q) return; q.i++; if(q.i>=q.ids.length){ s._waq=null; toast('✓ WhatsApp queue done'); } };
+  { const a=el.querySelector('[data-waqnext]'); if(a) a.addEventListener('click',()=>{ buzz(8); const id=s._waq.ids[s._waq.i]; waAdv(); mark([id]); }); }
+  { const b=el.querySelector('[data-waqskip]'); if(b) b.onclick=()=>{ waAdv(); paintInvite(s); }; }
+  { const b=el.querySelector('[data-waqstop]'); if(b) b.onclick=()=>{ s._waq=null; paintInvite(s); }; }
   el.querySelectorAll('[data-ginv]').forEach(a=>a.addEventListener('click',()=>{ buzz(10); const g=G.find(x=>x[0]===a.dataset.ginv); if(g){ g[1].forEach(c=>useContact(c.name,c.phone)); mark(g[1].map(c=>c.id)); } }));
   el.querySelectorAll('[data-invgo]').forEach(a=>a.addEventListener('click',()=>{ buzz(12); (selN?selected:list).forEach(c=>useContact(c.name,c.phone)); mark((selN?selected:list).map(c=>c.id)); }));
   // AM / PM flags on the one roster

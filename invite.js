@@ -15,6 +15,11 @@ const dialIn=()=>localStorage.getItem('m.dialin2')||DIAL_DEF;
 const msg=()=>'Please join the call: '+ROOM+' or dial '+dialIn()+' (no PIN)';
 const digits=p=>String(p||'').replace(/[^\d+]/g,'');
 const smsOne=ph=>'sms:'+digits(ph)+'&body='+encodeURIComponent(msg());
+// 🟢 WhatsApp (desktop → WhatsApp app/Web). Groups can't be targeted by link: 'pick chat / group' opens WhatsApp with the text, you choose the group.
+const waDigits=ph=>{ let d=String(ph||'').replace(/\D/g,''); if(d.length===10) d='1'+d; return d; };
+const waOne=ph=>'https://wa.me/'+waDigits(ph)+'?text='+encodeURIComponent(msg());
+const waPick=()=>'https://wa.me/?text='+encodeURIComponent(msg());
+let waq=null;
 const smsMany=L=>'sms://open?addresses='+L.map(c=>digits(c.phone)).join(',')+'&body='+encodeURIComponent(msg());
 function inferTrade(n){ n=String(n||'').toLowerCase(); const T=[[/1\s*oak|gustavo|sam mari|\brke\b/,'1oak'],[/sprinkler|fire supp/,'21 Fire Suppression'],[/plumb/,'22 Plumbing'],[/hvac|mechanical|\bcms\b|coil/,'23 HVAC'],[/elec/,'26 Electrical'],[/tele|low volt|cabling|\bav\b/,'27 Communications'],[/fire alarm/,'28 Fire Alarm'],[/concrete|foundation/,'03 Concrete'],[/mason|brick|stone/,'04 Masonry'],[/steel|metal|iron/,'05 Metals / Steel'],[/millwork|cabinet|carpent|wood/,'06 Wood / Millwork'],[/roof|waterproof|decoflex|insulation/,'07 Thermal & Moisture'],[/window|glass|storefront|alumtec|door/,'08 Openings'],[/drywall|tile|floor|paint|panel|finish|green global/,'09 Finishes'],[/elevator|conveying/,'14 Conveying'],[/landscap|site|excavat|paving/,'31-33 Sitework']];
   for(const [re,t] of T) if(re.test(n)) return t; return 'Other'; }
@@ -34,14 +39,16 @@ function html(){ const L=listFor(slot), sel=LS(selKey(),{}), sent=LS('m.invited.
   return `<div class="iv"><div class="iv-seg">${[['morning','AM'],['afternoon','PM'],['all','All']].map(([k,l])=>`<button class="${slot===k?'on':''}" data-ivs="${k}">${l} <b>${listFor(k).length}</b></button>`).join('')}<button class="iv-add" data-ivadd title="Add someone to the roster">＋</button></div>
     <div class="iv-dial"><div><span>Dial-in · no PIN</span><b>${esc(dialIn())}</b></div><button data-ivedit>Edit</button></div>
     <div class="iv-msg">Message: “${esc(msg())}”</div>${big}
+    ${L.length?`<div class="iv-warow"><a class="iv-wa" href="${waPick()}" target="_blank" rel="noopener">🟢 WhatsApp → pick chat / group</a><button class="iv-wa alt" data-ivwaq>🟢 ${n?n+' selected':'All '+L.length} one-by-one</button></div>`:''}
+    ${(()=>{ if(!waq) return ''; const c=rows.find(x=>x.id===waq.ids[waq.i]); if(!c) return ''; return `<div class="iv-waq"><span>WhatsApp ${waq.i+1} of ${waq.ids.length} · <b>${esc(c.name)}</b></span><a class="iv-wa" href="${waOne(c.phone)}" target="_blank" rel="noopener" data-ivwanext>Open →</a><button data-ivwaskip>Skip</button><button data-ivwastop>✕</button></div>`; })()}
     ${L.length?`<div class="iv-selbar"><span class="${n?'':'z'}">${n?n+' of '+L.length+' selected':'Tick ☐ to pick people'}</span><button data-ivall>Select all</button><button data-ivclr${n?'':' disabled'}>Clear</button></div>`:''}
     <div class="iv-cols">${groups(L).map(([t,G])=>{ const hdr=(MEP.has(t)&&!mep)?(mep=true,'<div class="iv-sup">MEP</div>'):''; const allOn=G.every(c=>sel[c.phone]);
       return hdr+`<div class="iv-grp"><div class="iv-trh"><span>${esc(t)}</span><b>${G.length}</b><button data-ivgsel="${esc(t)}" class="${allOn?'on':''}">${allOn?'✓ Group':'Select group'}</button><a href="${smsMany(G)}" data-ivginv="${esc(t)}">Invite group</a></div>
       <div class="iv-list">${G.map(c=>`<div class="iv-row" data-id="${c.id}"><button class="iv-cb${sel[c.phone]?' on':''}" data-ivsel="${esc(c.phone)}" aria-label="Select ${esc(c.name)}">✓</button>
         <div class="iv-who"><b>${esc(c.name)}${sent[c.id]?` <i>✓ invited ${sent[c.id]>1?new Date(sent[c.id]).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}):''}</i>`:''}</b><span>${esc(c.phone)} · <select data-ivtr="${c.id}" title="Trade">${TRADES.map(x=>`<option${x===(c.trade||'Other')?' selected':''}>${esc(x)}</option>`).join('')}</select>${c.guess?' ≈':''}</span></div>
         <button class="iv-sl${(c.slots||[]).includes('morning')?' on':''}" data-ivflag="morning" data-fid="${c.id}">AM</button><button class="iv-sl${(c.slots||[]).includes('afternoon')?' on':''}" data-ivflag="afternoon" data-fid="${c.id}">PM</button>
-        <a class="iv-one" href="${smsOne(c.phone)}" data-ivone="${c.id}">Invite</a><button class="iv-rm" data-ivrm="${c.id}" title="Remove from roster">⊘</button></div>`).join('')}</div></div>`; }).join('')||'<div class="iv-none">No one here yet — ＋ to add.</div>'}</div>
-    ${L.length?`<div style="margin-top:10px">${big}</div>`:''}<div class="iv-foot">Invite opens Messages with the text filled in — you press Send. Same roster as the iPhone.</div></div>`; }
+        <a class="iv-wa1" href="${waOne(c.phone)}" target="_blank" rel="noopener" data-ivwa="${c.id}" title="WhatsApp ${esc(c.name)}">WA</a><a class="iv-one" href="${smsOne(c.phone)}" data-ivone="${c.id}">Invite</a><button class="iv-rm" data-ivrm="${c.id}" title="Remove from roster">⊘</button></div>`).join('')}</div></div>`; }).join('')||'<div class="iv-none">No one here yet — ＋ to add.</div>'}</div>
+    ${L.length?`<div style="margin-top:10px">${big}</div>`:''}<div class="iv-foot">WA opens WhatsApp with the text filled in. For a WhatsApp group use “pick chat / group”. Invite opens Messages with the text filled in — you press Send. Same roster as the iPhone.</div></div>`; }
 function mark(ids){ const k='m.invited.'+iso(new Date()), m=LS(k,{}), now=Date.now(); ids.forEach(i=>m[i]=now); SV(k,m); setTimeout(redraw,500); }
 function wire(el,o){ const say=m=>o&&o.toast&&o.toast(m); const q=s=>el.querySelectorAll(s);
   q('[data-ivs]').forEach(b=>b.onclick=()=>{ slot=b.dataset.ivs; redraw(); });
@@ -53,6 +60,12 @@ function wire(el,o){ const say=m=>o&&o.toast&&o.toast(m); const q=s=>el.querySel
   q('[data-ivgo]').forEach(a=>a.addEventListener('click',()=>{ const L=listFor(slot), s=sel(), S=L.filter(c=>s[c.phone]); mark((S.length?S:L).map(c=>c.id)); }));
   q('[data-ivginv]').forEach(a=>a.addEventListener('click',()=>{ const G=(groups(listFor(slot)).find(x=>x[0]===a.dataset.ivginv)||[0,[]])[1]; mark(G.map(c=>c.id)); }));
   q('[data-ivone]').forEach(a=>a.addEventListener('click',()=>mark([a.dataset.ivone])));
+  q('[data-ivwa]').forEach(a=>a.addEventListener('click',()=>mark([a.dataset.ivwa])));
+  q('[data-ivwaq]').forEach(b=>b.onclick=()=>{ const L=listFor(slot), s=sel(), S=L.filter(c=>s[c.phone]); const T=S.length?S:L; if(!T.length) return; waq={ids:T.map(c=>c.id),i:0}; redraw(); });
+  const adv=()=>{ if(!waq) return; waq.i++; if(waq.i>=waq.ids.length){ waq=null; say('✓ WhatsApp queue done'); } };
+  q('[data-ivwanext]').forEach(a=>a.addEventListener('click',()=>{ const id=waq.ids[waq.i]; adv(); mark([id]); }));
+  q('[data-ivwaskip]').forEach(b=>b.onclick=()=>{ adv(); redraw(); });
+  q('[data-ivwastop]').forEach(b=>b.onclick=()=>{ waq=null; redraw(); });
   q('[data-ivflag]').forEach(b=>b.onclick=()=>{ const c=rows.find(x=>x.id===b.dataset.fid); if(!c) return; const f=b.dataset.ivflag; c.slots=(c.slots||[]).includes(f)?c.slots.filter(x=>x!==f):[...(c.slots||[]),f]; SV('m.callcts',rows); redraw(); patch(c.id,{Slots:c.slots}); say((c.slots.includes(f)?'Added to ':'Removed from ')+(f==='morning'?'AM':'PM')+' call'); });
   q('[data-ivtr]').forEach(s=>s.onchange=()=>{ const c=rows.find(x=>x.id===s.dataset.ivtr); if(!c) return; c.trade=s.value; c.guess=false; SV('m.callcts',rows); redraw(); patch(c.id,{Trade:c.trade,TradeGuess:false}); say('Trade: '+c.trade); });
   q('[data-ivrm]').forEach(b=>b.onclick=()=>{ const c=rows.find(x=>x.id===b.dataset.ivrm); if(!c||!confirm('Remove '+c.name+' from the invite roster? (not deleted — just inactive)')) return; c.active=false; SV('m.callcts',rows); redraw(); patch(c.id,{Active:false}); say('Removed '+c.name); });
@@ -78,6 +91,9 @@ const CSS=`.iv{font:13px/1.35 -apple-system,BlinkMacSystemFont,system-ui,sans-se
 .iv-cb{flex:none;width:24px;height:24px;border-radius:6px;border:2px solid #4f7480;background:transparent;color:transparent;font-size:13px;font-weight:900;cursor:pointer;padding:0}.iv-cb.on{background:#39c7df;border-color:#39c7df;color:#07141a}
 .iv-who{flex:1;min-width:0;display:flex;flex-direction:column}.iv-who b{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.iv-who b i{font-style:normal;font-weight:700;font-size:11px;color:#30D158}.iv-who span{font-size:11.5px;color:#8aa6af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.iv-who select{background:transparent;border:0;color:#39c7df;font-size:11.5px;max-width:130px;cursor:pointer}
 .iv-sl{flex:none;width:32px;height:26px;border-radius:7px;border:1px solid rgba(57,199,223,.3);background:transparent;color:#8aa6af;font:800 10.5px ui-monospace,Menlo,monospace;cursor:pointer}.iv-sl.on{background:rgba(57,199,223,.18);color:#e7f3f6;border-color:#39c7df}
+.iv-warow{display:flex;gap:6px;margin-top:6px}.iv-wa{flex:1;display:flex;align-items:center;justify-content:center;min-height:36px;border-radius:10px;background:#25D366;color:#04161c;font-weight:800;font-size:13px;text-decoration:none;border:0;cursor:pointer;padding:0 10px}.iv-wa.alt{background:transparent;color:#25D366;border:1px solid rgba(37,211,102,.55)}
+.iv-waq{display:flex;align-items:center;gap:6px;margin-top:6px;padding:6px 8px;border:1px solid rgba(37,211,102,.55);border-radius:10px;background:rgba(37,211,102,.08)}.iv-waq span{flex:1}.iv-waq .iv-wa{flex:none}.iv-waq button{height:32px;border-radius:8px;border:1px solid rgba(57,199,223,.3);background:transparent;color:#e7f3f6;cursor:pointer;padding:0 10px}
+.iv-wa1{flex:none;height:28px;display:inline-flex;align-items:center;padding:0 8px;border-radius:8px;background:#25D366;color:#04161c;font-weight:900;font-size:11.5px;text-decoration:none}
 .iv-one{flex:none;height:28px;display:inline-flex;align-items:center;padding:0 10px;border-radius:8px;background:#30D158;color:#07141a;font-weight:800;font-size:12px;text-decoration:none}
 .iv-rm{flex:none;width:24px;height:24px;border:0;background:transparent;color:#64838d;cursor:pointer}.iv-rm:hover{color:#e5533a}
 .iv-none{color:#8aa6af;padding:14px 4px}.iv-foot{color:#64838d;font-size:11.5px;margin-top:8px}`;
