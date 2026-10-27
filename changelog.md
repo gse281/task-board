@@ -249,3 +249,4 @@
 - 2026-10-27 11:50  Call options: ⋯ next to every Call/Text → Phone, FaceTime, FaceTime Audio, WhatsApp, Text
 - 2026-10-27 15:25  Task editor: each input field tinted its own color (label matches)
 - 2026-10-27 15:30  Task editor: Category/Status/Priority/Do date chip rows tinted
+- 2026-10-27 15:35  iPhone icon: GSE under the check
