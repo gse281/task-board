@@ -1355,8 +1355,9 @@ function paintIncoming(s){
         sb.onclick=async()=>{ const f=await Photos.pick(false); if(!f.length) return; newFromShot(f,qi.value.trim(),det,()=>{ qi.value=''; incomingCache={}; fill(incomingToday()); if(stack[0]) paintHome(stack[0]); }); }; }
       if(!s._qf){ s._qf=1; qi.focus(); setTimeout(()=>{ if(stack[stack.length-1]===s&&document.activeElement!==qi) qi.focus(); },380); } } }
   const go=d=>{ r.day=d>=todayISO()?null:d; buzz(5); paintIncoming(s); };
-  el.querySelector('[data-prev]').onclick=()=>go(dnShift(day,-1));
-  el.querySelector('[data-next]').onclick=()=>{ if(!isToday) go(dnShift(day,1)); };
+  { const pv=el.querySelector('[data-prev]'); const pd=incStep(day,-1); if(pd) pv.onclick=()=>go(pd); else pv.disabled=true;
+    if(!incDaySet) loadIncDays().then(()=>{ const ae=document.activeElement; if(ae&&s.el.contains(ae)&&ae.value) return; if(stack[stack.length-1]===s&&s.el.isConnected) paintIncoming(s); }); }
+  el.querySelector('[data-next]').onclick=()=>{ if(!isToday) go(incStep(day,1)); };
   const tb=el.querySelector('[data-today]'); if(tb) tb.onclick=()=>go(todayISO());
   el.querySelector('[data-add]').onclick=()=>addSheet({},()=>{ incomingCache={}; paintIncoming(s); });
   if(isToday) fill(incomingToday());
@@ -1803,6 +1804,14 @@ function callTasks(){ return tasks.filter(t=>live(t)&&isCallTask(t)).sort((a,b)=
 const localDayOf=t=>{ const d=new Date(t.createdTime||0); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
 function incomingToday(){ const td=todayISO(); return tasks.filter(t=>localDayOf(t)===td).sort((a,b)=>new Date(b.createdTime||0)-new Date(a.createdTime||0)); }
 let incomingCache={};
+// 📥 Days that have adds (last year), so ‹ › skip blank days. Loaded once per session from Airtable (incl. done items) + live local tasks.
+let incDaySet=null, incDaysP=null;
+function loadIncDays(){ if(incDaysP) return incDaysP; if(!cfg.apiKey) return incDaysP=Promise.resolve(incDaySet=new Set());
+  incDaysP=(async()=>{ const S=new Set(); let off=''; try{ for(let i=0;i<60;i++){ const u=new URL(atUrl()); u.searchParams.set('pageSize','100'); u.searchParams.set('filterByFormula',"IS_AFTER(CREATED_TIME(),DATEADD(TODAY(),-365,'days'))"); u.searchParams.append('fields[]','Status'); if(off) u.searchParams.set('offset',off);
+      const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) break; const d=await r.json(); (d.records||[]).forEach(x=>S.add(localDayOf(x))); if(!d.offset) break; off=d.offset; } }catch(e){} incDaySet=S; return S; })(); return incDaysP; }
+function incStep(day,dir){ const td=todayISO(); if(!incDaySet&&dir<0) return dnShift(day,-1);   // still loading → plain step
+  const L=[...new Set([...(incDaySet||[]),...tasks.map(localDayOf)])].filter(d=>d&&d<td).sort();
+  if(dir<0){ const c=L.filter(d=>d<day); return c.length?c[c.length-1]:null; } const c=L.filter(d=>d>day); return c.length?c[0]:td; }
 async function fetchIncoming(day){
   if(incomingCache[day]) return incomingCache[day];
   if(!cfg.apiKey) return incomingCache[day]=[];

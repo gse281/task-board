@@ -242,3 +242,4 @@
 - 2026-10-27 05:25  Project/Lead/Sub pickers: full list on tap (no filtering by current value), text auto-selected, ✕ clear button
 - 2026-10-27 05:50  iPhone app icon → cyan
 - 2026-10-27 07:15  iPhone home: 📥 Incoming pane (today's adds, grows per item) after Call someone
+- 2026-10-27 07:35  Incoming ‹ › skips blank days (iPhone, desktop, dashboard, grid, radial)

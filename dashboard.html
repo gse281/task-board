@@ -1349,8 +1349,10 @@ function incomingHistory(day){
   items.forEach(t=>{ const done=t.status!=='Open'; const tm=new Date(t.createdTime||0).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
     list.appendChild(histRow(done?null:t, (done?'✓ ':'')+cleanName(t), tm)); });
   const go=d=>{ const bd=box.closest('.backdrop'); if(bd)bd.remove(); incomingHistory(d>=todayISO()?todayISO():d); };
-  nav.querySelector('[data-prev]').onclick=()=>go(dayShiftISO(day,-1));
-  const nx=nav.querySelector('[data-next]'); if(nx&&!isToday) nx.onclick=()=>go(dayShiftISO(day,1));
+  // skip blank days: ‹ › jump to the nearest day you actually added something
+  const DL=[...new Set(tasks.filter(t=>t.createdTime).map(t=>localDayISO(t.createdTime)))].filter(d=>d<todayISO()).sort(); const prevD=DL.filter(d=>d<day).pop(), nextD=DL.find(d=>d>day)||todayISO();
+  const pv=nav.querySelector('[data-prev]'); if(prevD) pv.onclick=()=>go(prevD); else pv.disabled=true;
+  const nx=nav.querySelector('[data-next]'); if(nx&&!isToday) nx.onclick=()=>go(nextD);
   const tb=nav.querySelector('[data-today]'); if(tb) tb.onclick=()=>go(todayISO());
   const act=document.createElement('div'); act.className='modal-actions'; act.innerHTML='<button class="btn primary" data-x>Close</button>'; act.querySelector('[data-x]').onclick=()=>box.closest('.backdrop').remove(); box.appendChild(act);
 }
