@@ -756,6 +756,17 @@ body{ background:radial-gradient(130% 120% at 50% 16%, #0d1920 0%, #0a1216 55%, 
 .pane-dim{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:1}
 .screen.dragy{border-radius:16px 16px 0 0;box-shadow:0 -10px 40px rgba(0,0,0,.6)}
 </style>
+<style id="zones">
+/* 🎨 the two key home zones, each its own color */
+.homedial .cxsearch{background:rgba(48,209,88,.12)!important;border:2px solid rgba(48,209,88,.7)!important;color:#eaf6fb!important}
+.homedial .cxsearch::placeholder{color:#7fd99a}
+.homedial .cxsearch:focus{border-color:#30D158!important;box-shadow:0 0 0 3px rgba(48,209,88,.2)}
+.incp > .qrow{background:rgba(232,122,74,.12);border:2px solid rgba(232,122,74,.7)}
+.incp > .qrow .qlbl{color:#ffb38a}.incp > .qrow .qlbl .qd{background:#e87a4a}
+.incp > .qrow .qinp{background:rgba(232,122,74,.10);border-color:rgba(232,122,74,.45)}
+.incp > .qrow .qinp::placeholder{color:#e8a585}
+.incp > .qrow .qplus{color:#ff9a66}
+</style>
 </head>
 <body>
 <div id="stack"></div>

@@ -254,3 +254,4 @@
 - 2026-10-27 15:50  iPhone icon: faint checkmark behind the signature
 - 2026-10-27 15:55  iPhone icon: stronger background check
 - 2026-10-27 15:50  Home layout: every drag / hide saves to Airtable right away (survives reinstall)
+- 2026-10-27 15:58  Home: Call someone = green zone, Add to Incoming = orange zone
