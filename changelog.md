@@ -255,3 +255,4 @@
 - 2026-10-27 15:55  iPhone icon: stronger background check
 - 2026-10-27 15:50  Home layout: every drag / hide saves to Airtable right away (survives reinstall)
 - 2026-10-27 15:58  Home: Call someone = green zone, Add to Incoming = orange zone
+- 2026-10-27 16:05  Call-worded items (Call / C / CB / Callback / Ring / Phone / Dial / 📞) auto-file to Calls, new and existing; 📞 tag in Incoming

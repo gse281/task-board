@@ -844,7 +844,7 @@ async function fetchAll(){
         remindAt:flat(f.ReminderAt), listOrder:(f.ListOrder==null?null:+f.ListOrder), textEx:!!f.TextExclude, leadStatus:flat(f.LeadStatus), flag:!!f.RoniFlag, textCount:+f.TextCount||0 }; }));
       offset=d.offset;
       if(!offset){ tasks=out; demo=false; lastSync=Date.now(); save(LS_CACHE,tasks); localStorage.setItem(LS_TS,lastSync);
-        for(const t of tasks){ const a=aug[t.id]; if(a&&a.section&&!((Date.now()-(a.secAt||0))<180000)) a.section=null; if(a&&a.loAt){ if(Date.now()-a.loAt<180000) t.listOrder=a.lo; else { delete a.lo; delete a.loAt; } } } save(LS_CACHE,tasks); saveAug(); }
+        for(const t of tasks){ const a=aug[t.id]; if(a&&a.section&&!((Date.now()-(a.secAt||0))<180000)) a.section=null; if(a&&a.loAt){ if(Date.now()-a.loAt<180000) t.listOrder=a.lo; else { delete a.lo; delete a.loAt; } } } save(LS_CACHE,tasks); saveAug(); setTimeout(callSweep,500); }
     }while(offset && ++guard<60);
   }catch(e){ toast('Offline — showing saved list'); }
   syncing=false; render();
@@ -1363,7 +1363,7 @@ function paintDay(s){
 function paintIncoming(s){
   const r=s.route, el=s.el; const day=r.day||todayISO(), isToday=day===todayISO();
   const rowFor=t=>{ const done=(t.status||'Open')!=='Open'; const tm=new Date(t.createdTime||0).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
-    return `<button class="sl${done?' isdone':''}" data-id="${t.id}"><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="tk">${done?'✓ ':''}${esc(cleanName(t))}</span><span class="ld">${esc(t.lead||'')}</span><span class="ag">${esc(tm)}</span></button>`; };
+    return `<button class="sl${done?' isdone':''}" data-id="${t.id}"><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||(isCallTask(t)?'📞':'—'))}</span><span class="tk">${done?'✓ ':''}${esc(cleanName(t))}</span><span class="ld">${esc(t.lead||'')}</span><span class="ag">${esc(tm)}</span></button>`; };
   const fill=items=>{ const sc=el.querySelector('.scroll'); if(!sc) return;
     sc.innerHTML=items.length?items.map(rowFor).join('')
       :`<div class="empty small" style="padding-top:18px"><h2 style="font-size:15px">${isToday?'Nothing added today':'Nothing added this day'}</h2><p style="color:var(--dim);padding:0 24px">${isToday?'Tap ＋ to capture. Starts fresh every morning — swipe ‹ to see earlier days.':'Swipe ‹ › to browse other days.'}</p></div>`;
@@ -1620,6 +1620,7 @@ async function patch(id,fields){
     if(!r.ok){ toast('Save failed '+r.status); return false; } return true; }catch(e){ toast('Offline — not saved'); return false; }
 }
 async function create(fields){
+  if(fields&&!fields.Section&&!fields.MeetingSlot&&looksLikeCall(fields.Task)) fields={...fields,Section:'calls'};   // "Call Rob…" → Calls
   const t={id:'tmp'+Date.now(),createdTime:new Date().toISOString(),name:fields.Task,project:fields.Project||'',lead:fields.SBLead||'',sub:fields.Sub||'',
     status:'Open',slotRemote:fields.MeetingSlot||'',sectionRemote:fields.Section||'',doDate:'',phone:'',next:'',notes:'',priorityRemote:0};
   tasks.unshift(t); save(LS_CACHE,tasks);
@@ -1829,7 +1830,14 @@ function wireNU(el,s){ const T=id=>tasks.find(x=>x.id===id);
 function allLive(){ return tasks.filter(live).sort((a,b)=>score(b)-score(a)); }
 function currentSlot(){ const h=new Date().getHours(); return h<12?'morning':(h<18?'afternoon':''); }
 // 📞 Calls = call-type tasks (Type="call" or the name starts with "call"), newest/most-urgent first.
-function isCallTask(t){ const sec=(A(t.id).section||t.sectionRemote||'').toLowerCase(); if(sec==='backlog') return false; return sec==='calls' || t.type==='call' || /^\s*call\b/i.test(t.name||''); }
+// 📞 "needs a call" wording: Call / C / CB / Callback / Ring / Phone / Dial / FU call / 📞 at the start ("C of O" is not a call)
+const CALL_RE=/^\s*(?:📞|(?:call(?:\s*back)?|callback|cb|ring|phone|dial|tel|fu\s+call|follow[\s-]?up\s+call|c(?=\s+(?!of\b|o\b)[a-z]))\b)/i;
+const looksLikeCall=n=>CALL_RE.test(String(n||''));
+function isCallTask(t){ const sec=(A(t.id).section||t.sectionRemote||'').toLowerCase(); if(sec==='backlog') return false; return sec==='calls' || t.type==='call' || looksLikeCall(t.name); }
+// file call-worded items under Calls in Airtable too (only open items with no category yet) so every view agrees
+let callSweepAt=0; function callSweep(){ if(demo||!cfg.apiKey||Date.now()-callSweepAt<60000) return; callSweepAt=Date.now();
+  const ups=tasks.filter(t=>isOpen(t)&&/^rec/.test(t.id)&&!t.sectionRemote&&!t.slotRemote&&!(A(t.id).section)&&looksLikeCall(t.name)).map(t=>{ t.sectionRemote='calls'; return {id:t.id,fields:{Section:'calls'}}; });
+  if(ups.length){ save(LS_CACHE,tasks); patchMany(ups); } }
 // calls incl. ones dated for a future day (live() hides future DoDates) — used for the Calls pane + Tomorrow
 function callTasksAll(){ return byListOrder(tasks.filter(t=>isOpen(t)&&isCallTask(t)&&!isParked(t)&&!(A(t.id).snoozeUntil>Date.now())).sort((a,b)=>score(b)-score(a))); }
 function callTasks(){ return tasks.filter(t=>live(t)&&isCallTask(t)).sort((a,b)=>score(b)-score(a)); }
@@ -2118,7 +2126,7 @@ function paintHome(s){
         <div class="qrow"><button class="qlbl" data-notesbtn><i class="qd" style="background:#e0a458"></i>Notes <b>${((dnLocal()[todayISO()]||'').split('\n').filter(x=>x.trim()).length)||''}</b></button><input class="qinp" data-qnote enterkeyhint="done" placeholder="Add a note…" autocomplete="off"><button class="qplus" data-qnoteb aria-label="Add note">＋</button></div>
       </div>
 `,
-        incpane:()=>{ const L=incomingToday(); return `<div class="incp"><div class="qrow"><button class="qlbl" data-incoming><i class="qd"></i>Incoming <b>${L.length}</b></button><input class="qinp" data-qincp enterkeyhint="done" placeholder="Add to Incoming…" autocomplete="off"><button class="qplus" data-qincpb aria-label="Add">＋</button></div>${L.map(t=>{ const done=(t.status||'Open')!=='Open'; const tm=new Date(t.createdTime||0).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); return `<button class="sl${done?' isdone':''}" data-incid="${t.id}"><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||'—')}</span><span class="tk">${done?'✓ ':''}${esc(cleanName(t))}</span><span class="ld">${esc(t.lead||'')}</span><span class="ag">${esc(tm)}</span></button>`; }).join('')}</div>`; },
+        incpane:()=>{ const L=incomingToday(); return `<div class="incp"><div class="qrow"><button class="qlbl" data-incoming><i class="qd"></i>Incoming <b>${L.length}</b></button><input class="qinp" data-qincp enterkeyhint="done" placeholder="Add to Incoming…" autocomplete="off"><button class="qplus" data-qincpb aria-label="Add">＋</button></div>${L.map(t=>{ const done=(t.status||'Open')!=='Open'; const tm=new Date(t.createdTime||0).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'}); return `<button class="sl${done?' isdone':''}" data-incid="${t.id}"><span class="tg" style="background:${projColor(t.project)}">${esc(t.project||(isCallTask(t)?'📞':'—'))}</span><span class="tk">${done?'✓ ':''}${esc(cleanName(t))}</span><span class="ld">${esc(t.lead||'')}</span><span class="ag">${esc(tm)}</span></button>`; }).join('')}</div>`; },
         learn:()=>window.Learning?Learning.rowsHTML():'',
         claude:()=>cqCard(),
         bills:()=>billsCard(),
