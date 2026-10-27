@@ -258,3 +258,4 @@
 - 2026-10-27 16:05  Call-worded items (Call / C / CB / Callback / Ring / Phone / Dial / 📞) auto-file to Calls, new and existing; 📞 tag in Incoming
 - 2026-10-27 17:55  Home Incoming zone: red
 - 2026-10-27 17:56  Home Incoming zone: stronger red
+- 2026-10-27 17:58  Home zones: borders kept, centers near-transparent
