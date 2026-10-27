@@ -251,3 +251,4 @@
 - 2026-10-27 15:30  Task editor: Category/Status/Priority/Do date chip rows tinted
 - 2026-10-27 15:35  iPhone icon: GSE under the check
 - 2026-10-27 15:45  iPhone icon: Roni's signature mark on cyan
+- 2026-10-27 15:50  iPhone icon: faint checkmark behind the signature
