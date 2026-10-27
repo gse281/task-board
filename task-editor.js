@@ -106,6 +106,11 @@ input.te-i{text-overflow:ellipsis}
 .te-gok,.te-gx{flex:none;width:40px;height:34px;border-radius:9px;border:1px solid rgba(57,199,223,.5);background:transparent;color:#62e08a;font-weight:800;cursor:pointer}.te-gx{color:#e5533a;border-color:rgba(229,83,58,.4)}
 .te-guessbar{display:flex;gap:8px;margin:0 0 12px}.te-gbtn{color:#39c7df!important;border-color:rgba(57,199,223,.5)!important}
 .te-note{color:#64838d;font-size:12px;margin:0 2px 10px}
+/* 🎨 chip rows tinted too: Category · Status · Priority · Do date */
+.te-r:has([data-catchips]){--tc:255,150,60}.te-r:has([data-segfor="Status"]){--tc:120,220,100}.te-r:has([data-segfor="Priority"]){--tc:255,90,90}.te-r:has([data-dchips]){--tc:100,180,255}
+.te-r:has([data-catchips],[data-segfor],[data-dchips]) > .te-l{color:rgb(var(--tc))}
+.te-r:has([data-catchips],[data-segfor],[data-dchips]) .te-ch{background:rgba(var(--tc),.08);border-color:rgba(var(--tc),.35)}
+.te-r:has([data-catchips],[data-segfor],[data-dchips]) .te-ch.on{background:rgb(var(--tc));border-color:rgb(var(--tc));color:#04161c}
 /* 🎨 each field its own tint so they're easy to tell apart (label picks up the same color) */
 .te-r{--tc:57,199,223}
 .te-r:has([data-f="Task"]){--tc:57,199,223}.te-r:has([data-f="Project"]){--tc:240,170,70}.te-r:has([data-f="SBLead"]){--tc:170,130,255}.te-r:has([data-f="Sub"]){--tc:80,210,120}
