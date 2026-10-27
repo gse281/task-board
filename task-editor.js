@@ -106,6 +106,13 @@ input.te-i{text-overflow:ellipsis}
 .te-gok,.te-gx{flex:none;width:40px;height:34px;border-radius:9px;border:1px solid rgba(57,199,223,.5);background:transparent;color:#62e08a;font-weight:800;cursor:pointer}.te-gx{color:#e5533a;border-color:rgba(229,83,58,.4)}
 .te-guessbar{display:flex;gap:8px;margin:0 0 12px}.te-gbtn{color:#39c7df!important;border-color:rgba(57,199,223,.5)!important}
 .te-note{color:#64838d;font-size:12px;margin:0 2px 10px}
+/* 🎨 each field its own tint so they're easy to tell apart (label picks up the same color) */
+.te-r{--tc:57,199,223}
+.te-r:has([data-f="Task"]){--tc:57,199,223}.te-r:has([data-f="Project"]){--tc:240,170,70}.te-r:has([data-f="SBLead"]){--tc:170,130,255}.te-r:has([data-f="Sub"]){--tc:80,210,120}
+.te-r:has([data-f="NextStep"]){--tc:90,150,255}.te-r:has([data-f="ReminderAt"]){--tc:255,110,140}.te-r:has([data-f="CallContact"]){--tc:40,215,200}.te-r:has([data-f="Phone"]){--tc:40,215,200}.te-r:has([data-f="Notes"]){--tc:200,200,120}
+.te-r:has([data-f]) .te-i:not(.te-hide){background:rgba(var(--tc),.10);border-color:rgba(var(--tc),.45)}
+.te-r:has([data-f]) .te-i:not(.te-hide):focus{border-color:rgba(var(--tc),.9);box-shadow:0 0 0 2px rgba(var(--tc),.18)}
+.te-r:has([data-f="Task"],[data-f="Project"],[data-f="SBLead"],[data-f="Sub"],[data-f="NextStep"],[data-f="ReminderAt"],[data-f="CallContact"],[data-f="Phone"],[data-f="Notes"]) > .te-l{color:rgb(var(--tc))}
 `;
 function ensureCss(){ if(document.getElementById('te-css')) return; const s=document.createElement('style'); s.id='te-css'; s.textContent=CSS; document.head.appendChild(s); }
 
