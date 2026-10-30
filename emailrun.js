@@ -267,7 +267,7 @@ const CSS=`.er-trig .er-cnt{background:#e0a458;color:#07141a;border-radius:999px
 .erw-f{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .erw-w{flex:none;color:#64838d;font-size:11px}.erw-gm{flex:none;text-decoration:none;font-size:12px}
 .erw-s{margin-top:2px;color:#bfe3ec;font-size:12.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.erw-s:hover{-webkit-line-clamp:unset}
+.erw-s:hover{-webkit-line-clamp:unset}.erw-B .erw-s{-webkit-line-clamp:6}
 .erw-adv{margin-top:2px;color:#e0a458;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .erw-row .er-q{font-size:12px;margin-top:4px}
 .erw-ta{width:100%;box-sizing:border-box;margin-top:5px;background:#06161c;border:1px solid rgba(57,199,223,.25);border-radius:8px;color:#e7f3f6;font:12.5px/1.35 -apple-system,system-ui,sans-serif;padding:6px 8px;resize:vertical}

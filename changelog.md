@@ -268,3 +268,4 @@
 - 2026-10-30 23:07  Email run: group by project, ✓ Done also archives, all inbox-starred in Starred
 - 2026-10-30 23:11  Email run: ☆/★ star & unstar (syncs to Gmail)
 - 2026-10-30 23:12  Email run: ⚡ opens in Superhuman (✉️ Gmail kept)
+- 2026-10-30 23:16  Email run: Don't-miss cards show up to 6 lines (money details)
