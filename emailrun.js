@@ -76,7 +76,7 @@ async function archiveChecked(box){
 
 function card(r,n,L){
   const d=document.createElement('div'); d.className='er-it';
-  const link=r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="er-a" title="Open in Gmail">✉️</a>':'';
+  const link=(r.ThreadId?'<a href="https://mail.superhuman.com/rbenjamini@gmail.com/thread/'+esc(r.ThreadId)+'" target="_blank" rel="noopener" class="er-a" title="Open in Superhuman">⚡</a> ':'')+(r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="er-a" style="margin-left:4px" title="Open in Gmail">✉️</a>':'');
   d.innerHTML='<div class="er-h"><span class="er-n">'+L+n+'</span><b>'+esc(r.From||r.FromEmail)+'</b>'+(r.Received?'<span class="er-w">'+esc(r.Received)+'</span>':'')+link+'</div>'+
     '<div class="er-s"><b>'+esc(r.Subject)+'</b>'+(r.Summary?' — '+esc(r.Summary):'')+'</div>'+
     (r.Advice?'<div class="er-adv">→ '+esc(r.Advice)+'</div>':'');
@@ -139,9 +139,11 @@ async function toggleStar(r){
 }
 function starBtn(r){ const b=document.createElement('button'); b.type='button'; b.className='erw-star'+(r.Starred?' on':'')+(r.StarReq?' pend':''); b.textContent=r.Starred?'★':'☆'; b.title=(r.Starred?'Unstar':'Star')+(r.StarReq?' (syncing to Gmail…)':'');
   b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); toggleStar(r); }; return b; }
+const SH=r=>r.ThreadId?'https://mail.superhuman.com/rbenjamini@gmail.com/thread/'+encodeURIComponent(r.ThreadId):'';
+const links=r=>(SH(r)?'<a href="'+esc(SH(r))+'" target="_blank" rel="noopener" class="erw-gm erw-sh" title="Open in Superhuman">⚡</a>':'')+(r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="erw-gm erw-gl" title="Open in Gmail">✉️</a>':'');
 function wideRow(r,n,L){
   const d=document.createElement('div'); d.className='erw-row erw-'+L;
-  const link=r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="erw-gm" title="Open in Gmail">✉️</a>':'';
+  const link=links(r);
   if(L==='A'){
     d.innerHTML='<label class="erw-al"><input type="checkbox" data-a="'+r.id+'"'+(r.Keep?'':' checked')+'><span class="er-n">A'+n+'</span><span class="erw-f">'+esc(r.From||r.FromEmail)+'</span><span class="erw-as">'+esc(r.Subject)+'</span></label>'+link;
     return d;
@@ -272,6 +274,7 @@ const CSS=`.er-trig .er-cnt{background:#e0a458;color:#07141a;border-radius:999px
 .erw-bb{display:flex;gap:5px;margin-top:5px;justify-content:flex-end}
 .erw-btn{height:26px;border-radius:7px;border:1px solid rgba(57,199,223,.3);background:transparent;color:#cfe7ee;font:700 11px ui-monospace,Menlo,monospace;cursor:pointer;padding:0 9px}
 .erw-star{flex:none;background:none;border:0;cursor:pointer;color:#64838d;font-size:15px;line-height:1;padding:0 2px}.erw-star.on{color:#f5c518}.erw-star.pend{opacity:.55}.erw-star:hover{color:#f5c518}
+.erw-gl{opacity:.45;font-size:11px}.erw-gl:hover{opacity:1}
 .erw-ck{height:20px;padding:0 6px;font-size:11px;flex:none}
 .erw-btn.ok{background:#30D158;border-color:#30D158;color:#07141a}
 .erw-A{padding:3px 8px;display:flex;align-items:center;gap:6px}
