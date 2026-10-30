@@ -25,7 +25,7 @@ async function load(force){
     const f=encodeURIComponent("OR({Status}='New',{Status}='Answered')");
     let out=[], off='';
     do{ const d=await api(RUN,'?pageSize=100&filterByFormula='+f+(off?'&offset='+off:'')); out=out.concat(d.records||[]); off=d.offset||''; }while(off);
-    rows=out.map(r=>Object.assign({id:r.id},r.fields)).map(r=>Object.assign(r,{Bucket:flat(r.Bucket),Status:flat(r.Status)}));
+    rows=out.map(r=>Object.assign({id:r.id},r.fields)).map(r=>Object.assign(r,{Bucket:flat(r.Bucket),Status:flat(r.Status),StarReq:flat(r.StarReq)}));
     const q=await api(REQ,'?pageSize=8&sort%5B0%5D%5Bfield%5D=RequestedAt&sort%5B0%5D%5Bdirection%5D=desc');
     const rq=(q.records||[]).map(r=>Object.assign({id:r.id},r.fields)).map(r=>Object.assign(r,{Status:flat(r.Status),Kind:flat(r.Kind)}));
     req=rq[0]||null; reqs=rq; const ic=rq.find(r=>r.InboxCount!=null); inbox=ic?{n:ic.InboxCount,at:ic.FinishedAt||ic.RequestedAt}:null;
@@ -129,6 +129,16 @@ function button(o){
 // Full-screen page (email.html). open() navigates there instead of a pop-out.
 function open(){ location.href='email.html'; }
 function close(){}
+
+// ☆/★ — star or unstar in Gmail. The next Email run applies it (StarReq) and clears the request.
+async function toggleStar(r){
+  const on=!r.Starred; const f={Starred:on,StarReq:on?'Star':'Unstar'};
+  if(on){ f.Bucket='D · Starred action'; } else if(String(r.Bucket).startsWith('D')){ f.Bucket='E · FYI'; }
+  Object.assign(r,f); notify();
+  try{ await patch(r.id,f); toast(on?'★ Starred — syncs to Gmail at :07':'☆ Unstarred — syncs to Gmail at :07'); }catch(e){ toast('Save failed'); load(true); }
+}
+function starBtn(r){ const b=document.createElement('button'); b.type='button'; b.className='erw-star'+(r.Starred?' on':'')+(r.StarReq?' pend':''); b.textContent=r.Starred?'★':'☆'; b.title=(r.Starred?'Unstar':'Star')+(r.StarReq?' (syncing to Gmail…)':'');
+  b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); toggleStar(r); }; return b; }
 function wideRow(r,n,L){
   const d=document.createElement('div'); d.className='erw-row erw-'+L;
   const link=r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="erw-gm" title="Open in Gmail">✉️</a>':'';
@@ -139,6 +149,7 @@ function wideRow(r,n,L){
   d.innerHTML='<div class="erw-h"><span class="er-n">'+L+n+'</span><span class="erw-f" title="'+esc(r.FromEmail)+'">'+esc(r.From||r.FromEmail)+'</span><span class="erw-w">'+esc(r.Received||'')+'</span>'+link+'</div>'+
     '<div class="erw-s"><b>'+esc(r.Subject)+'</b>'+(r.Summary?' — '+esc(r.Summary):'')+'</div>'+
     (r.Advice?'<div class="erw-adv">→ '+esc(r.Advice)+'</div>':'');
+  { const h=d.querySelector('.erw-h'); h.insertBefore(starBtn(r),h.querySelector('.erw-w')); }
   const mk=(host,t,cls,fn)=>{ const b=document.createElement('button'); b.type='button'; b.className='erw-btn '+(cls||''); b.textContent=t; b.onclick=e=>{e.preventDefault();e.stopPropagation(); fn();}; host.appendChild(b); return b; };
   const bar=document.createElement('div'); bar.className='erw-bb';
   if(L==='C'||L==='D'){
@@ -260,6 +271,7 @@ const CSS=`.er-trig .er-cnt{background:#e0a458;color:#07141a;border-radius:999px
 .erw-ta{width:100%;box-sizing:border-box;margin-top:5px;background:#06161c;border:1px solid rgba(57,199,223,.25);border-radius:8px;color:#e7f3f6;font:12.5px/1.35 -apple-system,system-ui,sans-serif;padding:6px 8px;resize:vertical}
 .erw-bb{display:flex;gap:5px;margin-top:5px;justify-content:flex-end}
 .erw-btn{height:26px;border-radius:7px;border:1px solid rgba(57,199,223,.3);background:transparent;color:#cfe7ee;font:700 11px ui-monospace,Menlo,monospace;cursor:pointer;padding:0 9px}
+.erw-star{flex:none;background:none;border:0;cursor:pointer;color:#64838d;font-size:15px;line-height:1;padding:0 2px}.erw-star.on{color:#f5c518}.erw-star.pend{opacity:.55}.erw-star:hover{color:#f5c518}
 .erw-ck{height:20px;padding:0 6px;font-size:11px;flex:none}
 .erw-btn.ok{background:#30D158;border-color:#30D158;color:#07141a}
 .erw-A{padding:3px 8px;display:flex;align-items:center;gap:6px}

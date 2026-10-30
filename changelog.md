@@ -266,3 +266,4 @@
 - 2026-10-30 22:54  Email run: cache-bust emailrun.js
 - 2026-10-30 23:02  Email run: inbox count chip, queued archive rolls up + grays out
 - 2026-10-30 23:07  Email run: group by project, ✓ Done also archives, all inbox-starred in Starred
+- 2026-10-30 23:11  Email run: ☆/★ star & unstar (syncs to Gmail)
