@@ -121,31 +121,29 @@ function open(){ location.href='email.html'; }
 function close(){}
 function wideRow(r,n,L){
   const d=document.createElement('div'); d.className='erw-row erw-'+L;
-  const link=r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="erw-gm" title="Open in Gmail">✉️</a>':'<span></span>';
-  const lead=L==='A'?'<input type="checkbox" data-a="'+r.id+'"'+(r.Keep?'':' checked')+'>':'';
-  d.innerHTML='<label class="erw-l">'+lead+'<span class="er-n">'+L+n+'</span></label>'+
-    '<span class="erw-f" title="'+esc(r.FromEmail)+'">'+esc(r.From||r.FromEmail)+'</span>'+
-    '<span class="erw-s"><b>'+esc(r.Subject)+'</b>'+(r.Summary&&L!=='A'?' <i>— '+esc(r.Summary)+'</i>':'')+'</span>'+
-    '<span class="erw-adv">'+(r.Advice?esc(r.Advice):'')+'</span>'+
-    '<span class="erw-w">'+esc(r.Received||'')+'</span>'+link+'<span class="erw-act"></span>';
-  const act=d.querySelector('.erw-act');
-  const mk=(host,t,cls,fn)=>{ const b=document.createElement('button'); b.type='button'; b.className='er-btn '+(cls||''); b.textContent=t; b.onclick=e=>{e.preventDefault();e.stopPropagation(); fn();}; host.appendChild(b); return b; };
-  if(L!=='A') mk(act,'✓ Done','',()=>drop(r.id,'Done'));
+  const link=r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="erw-gm" title="Open in Gmail">✉️</a>':'';
+  if(L==='A'){
+    d.innerHTML='<label class="erw-al"><input type="checkbox" data-a="'+r.id+'"'+(r.Keep?'':' checked')+'><span class="er-n">A'+n+'</span><span class="erw-f">'+esc(r.From||r.FromEmail)+'</span><span class="erw-as">'+esc(r.Subject)+'</span></label>'+link;
+    return d;
+  }
+  d.innerHTML='<div class="erw-h"><span class="er-n">'+L+n+'</span><span class="erw-f" title="'+esc(r.FromEmail)+'">'+esc(r.From||r.FromEmail)+'</span><span class="erw-w">'+esc(r.Received||'')+'</span>'+link+'</div>'+
+    '<div class="erw-s"><b>'+esc(r.Subject)+'</b>'+(r.Summary?' — '+esc(r.Summary):'')+'</div>'+
+    (r.Advice?'<div class="erw-adv">→ '+esc(r.Advice)+'</div>':'');
+  const mk=(host,t,cls,fn)=>{ const b=document.createElement('button'); b.type='button'; b.className='erw-btn '+(cls||''); b.textContent=t; b.onclick=e=>{e.preventDefault();e.stopPropagation(); fn();}; host.appendChild(b); return b; };
+  const bar=document.createElement('div'); bar.className='erw-bb';
   if(L==='C'||L==='D'){
-    const ex=document.createElement('div'); ex.className='erw-ex';
     if(r.Draft||L==='C'){
-      const ta=document.createElement('textarea'); ta.className='er-ta'; ta.rows=3; ta.value=r.Draft||''; ex.appendChild(ta);
-      const b=document.createElement('div'); b.className='erw-exb'; ex.appendChild(b);
-      mk(b,'✅ Approve & send','ok',()=>{ const v=ta.value.trim(); if(!v) return toast('Draft is empty'); approve(r,v); });
+      const ta=document.createElement('textarea'); ta.className='erw-ta'; ta.rows=3; ta.value=r.Draft||''; d.appendChild(ta);
+      mk(bar,'✅ Approve & send','ok',()=>{ const v=ta.value.trim(); if(!v) return toast('Draft is empty'); approve(r,v); });
     } else {
-      if(r.Question) ex.insertAdjacentHTML('beforeend','<div class="er-q">❓ '+esc(r.Question)+'</div>');
-      const ta=document.createElement('textarea'); ta.className='er-ta'; ta.rows=2; ta.placeholder='Tell Claude what to do (draft a reply, make a task, …)'; ta.value=r.Answer||''; ex.appendChild(ta);
-      const b=document.createElement('div'); b.className='erw-exb'; ex.appendChild(b);
-      mk(b,r.Status==='Answered'?'✓ Answered — next run':'➤ Send answer','ok',()=>{ const v=ta.value.trim(); if(!v) return toast('Type an answer');
+      if(r.Question) d.insertAdjacentHTML('beforeend','<div class="er-q">❓ '+esc(r.Question)+'</div>');
+      const ta=document.createElement('textarea'); ta.className='erw-ta'; ta.rows=2; ta.placeholder='Tell Claude what to do…'; ta.value=r.Answer||''; d.appendChild(ta);
+      mk(bar,r.Status==='Answered'?'✓ Answered':'➤ Send answer','ok',()=>{ const v=ta.value.trim(); if(!v) return toast('Type an answer');
         r.Answer=v; r.Status='Answered'; notify(); patch(r.id,{Answer:v,Status:'Answered'}).then(()=>request('Scan')).catch(()=>toast('Save failed')); });
     }
-    d.appendChild(ex);
   }
+  if(L==='C'||L==='D'){ mk(bar,'✓ Done','',()=>drop(r.id,'Done')); d.appendChild(bar); }
+  else { const h=d.querySelector('.erw-h'); const b=mk(h,'✓','erw-ck',()=>drop(r.id,'Done')); b.title='Done'; }
   return d;
 }
 function pageView(){
@@ -156,11 +154,12 @@ function pageView(){
   p.innerHTML='<div class="erw-bar"><a href="dashboard.html" class="erw-back">← Board</a><h1>📬 Email run</h1><div class="erw-chips">'+counts+'</div><div class="er-st erw-st">'+st+'</div></div>';
   const go=document.createElement('button'); go.type='button'; go.className='er-btn ok erw-go'; go.textContent=busy()?'⏳ Running':'📬 Run now'; go.disabled=busy(); go.onclick=()=>request('Scan'); p.firstChild.appendChild(go);
   if(!rows.length){ const e=document.createElement('div'); e.className='er-empty'; e.textContent=busy()?'Working through your inbox…':'Inbox handled. Hit 📬 Run now for a fresh pass.'; p.appendChild(e); return p; }
+  const cols=document.createElement('div'); cols.className='erw-cols'; p.appendChild(cols);
   const order=['D','C','B','E','A'];
   order.forEach(L=>{ const [,val,title,sub]=BK.find(b=>b[0]===L);
     const its=rows.filter(r=>r.Bucket===val); if(!its.length) return;
     const s=document.createElement('section'); s.className='erw-sec er-'+L; s.id='erw-'+L;
-    s.innerHTML='<div class="erw-sh"><span class="er-sl">'+L+'</span><h2>'+title+'</h2><i>'+its.length+'</i><span class="er-sub">'+sub+'</span></div>';
+    s.innerHTML='<div class="erw-sh"><span class="er-sl">'+L+'</span><h2>'+title+'</h2><i>'+its.length+'</i></div>';
     const hb=s.firstChild;
     const list=document.createElement('div'); list.className='erw-list';
     its.forEach((r,i)=>list.appendChild(wideRow(r,i+1,L)));
@@ -169,7 +168,7 @@ function pageView(){
       const ar=document.createElement('button'); ar.type='button'; ar.className='er-btn ok'; ar.textContent='🗄 Archive checked'; ar.disabled=busy()&&req.Kind==='Archive'; ar.onclick=()=>archiveChecked(list);
       const w=document.createElement('span'); w.className='erw-shb'; w.appendChild(all); w.appendChild(ar); hb.appendChild(w);
     }
-    s.appendChild(list); p.appendChild(s);
+    s.appendChild(list); cols.appendChild(s);
   });
   return p;
 }
@@ -206,28 +205,37 @@ const CSS=`.er-trig .er-cnt{background:#e0a458;color:#07141a;border-radius:999px
 .er-af{flex:0 0 32%;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.er-as{flex:1;color:#bfe3ec;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .er-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0b1b21;color:#e7f3f6;border:1px solid #39c7df;border-radius:10px;padding:8px 14px;z-index:10000}
 
-.erw{max-width:none;padding:0 24px 40px}
-.erw-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 0;background:linear-gradient(#070d11 80%,rgba(7,13,17,0));}
-.erw-bar h1{margin:0;font-size:20px}.erw-back{color:#8aa6af;text-decoration:none;font:700 12px ui-monospace,Menlo,monospace}.erw-back:hover{color:#39c7df}
-.erw-chips{display:flex;gap:6px}.erw-chip{text-decoration:none;color:#e7f3f6;border:1px solid rgba(57,199,223,.3);border-radius:999px;padding:3px 10px;font:600 12px ui-monospace,Menlo,monospace}
+.erw{padding:0 18px 30px;font-size:13px}
+.erw-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;background:linear-gradient(#070d11 85%,rgba(7,13,17,0))}
+.erw-bar h1{margin:0;font-size:18px}.erw-back{color:#8aa6af;text-decoration:none;font:700 12px ui-monospace,Menlo,monospace}.erw-back:hover{color:#39c7df}
+.erw-chips{display:flex;gap:5px}.erw-chip{text-decoration:none;color:#e7f3f6;border:1px solid rgba(57,199,223,.3);border-radius:999px;padding:2px 9px;font:600 11.5px ui-monospace,Menlo,monospace}
 .erw-chip b{color:#39c7df}.erw-cB b{color:#e5533a}.erw-cD b{color:#e0a458}
-.erw-st{flex:1;min-width:200px}.erw-go{flex:0 0 auto;padding:0 18px}
-.erw-sec{margin-top:18px}
-.erw-sh{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(57,199,223,.2);flex-wrap:wrap}
-.erw-sh h2{margin:0;font-size:16px}.erw-sh i{font-style:normal;color:#07141a;background:#39c7df;border-radius:999px;padding:0 8px;font-size:12px;font-weight:800}
-.erw-sh .er-sub{margin:0}.erw-shb{margin-left:auto;display:flex;gap:6px}.erw-shb .er-btn{flex:0 0 auto}
-.erw-row{display:grid;grid-template-columns:70px minmax(160px,15%) minmax(0,1fr) minmax(0,22%) 120px 28px auto;gap:12px;align-items:center;padding:7px 6px;border-bottom:1px solid rgba(57,199,223,.07);font-size:13.5px}
-.erw-row:hover{background:rgba(57,199,223,.04)}
-.erw-l{display:flex;gap:8px;align-items:center;cursor:pointer}
-.erw-f{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.erw-s{color:#bfe3ec;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.erw-s i{font-style:normal;color:#8aa6af}
-.erw-C .erw-s,.erw-D .erw-s,.erw-B .erw-s{white-space:normal}
-.erw-adv{color:#e0a458;font-size:12.5px;overflow:hidden;text-overflow:ellipsis}
-.erw-w{color:#64838d;font-size:12px;white-space:nowrap}.erw-gm{text-decoration:none}
-.erw-act{display:flex;gap:6px;justify-content:flex-end}.erw-act .er-btn{flex:0 0 auto}
-.erw-ex{grid-column:2/-1;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}.erw-ex .er-ta{flex:1;min-width:280px;margin-top:0}.erw-ex .er-q{flex:0 0 100%;margin:0}
-.erw-exb{display:flex;flex-direction:column;gap:6px}.erw-exb .er-btn{flex:0 0 auto;padding:0 16px}
-@media(max-width:900px){.erw{padding:0 12px 30px}.erw-row{grid-template-columns:56px 1fr auto;}.erw-s{grid-column:1/-1}.erw-adv,.erw-w{grid-column:span 1}.erw-ex{grid-column:1/-1}}
+.erw-st{flex:1;min-width:180px}.erw-go{flex:0 0 auto;padding:0 16px}
+.erw-cols{column-width:330px;column-gap:14px}
+.erw-sec{margin-bottom:12px}
+.erw-sh{display:flex;align-items:center;gap:7px;padding:4px 2px 6px;break-after:avoid;flex-wrap:wrap}
+.erw-sh h2{margin:0;font-size:13.5px;font-weight:800}.erw-sh i{font-style:normal;color:#07141a;background:#39c7df;border-radius:999px;padding:0 7px;font-size:11px;font-weight:800}
+.erw-shb{margin-left:auto;display:flex;gap:5px}
+.erw-list{display:flex;flex-direction:column;gap:4px}
+.erw-row{break-inside:avoid;-webkit-column-break-inside:avoid;border:1px solid rgba(57,199,223,.12);border-radius:9px;padding:6px 9px}
+.erw-B{border-color:rgba(229,83,58,.35)}.erw-D{border-color:rgba(224,164,88,.35)}
+.erw-h{display:flex;align-items:baseline;gap:6px;min-width:0}
+.erw-f{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.erw-w{flex:none;color:#64838d;font-size:11px}.erw-gm{flex:none;text-decoration:none;font-size:12px}
+.erw-s{margin-top:2px;color:#bfe3ec;font-size:12.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.erw-s:hover{-webkit-line-clamp:unset}
+.erw-adv{margin-top:2px;color:#e0a458;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.erw-row .er-q{font-size:12px;margin-top:4px}
+.erw-ta{width:100%;box-sizing:border-box;margin-top:5px;background:#06161c;border:1px solid rgba(57,199,223,.25);border-radius:8px;color:#e7f3f6;font:12.5px/1.35 -apple-system,system-ui,sans-serif;padding:6px 8px;resize:vertical}
+.erw-bb{display:flex;gap:5px;margin-top:5px;justify-content:flex-end}
+.erw-btn{height:26px;border-radius:7px;border:1px solid rgba(57,199,223,.3);background:transparent;color:#cfe7ee;font:700 11px ui-monospace,Menlo,monospace;cursor:pointer;padding:0 9px}
+.erw-ck{height:20px;padding:0 6px;font-size:11px;flex:none}
+.erw-btn.ok{background:#30D158;border-color:#30D158;color:#07141a}
+.erw-A{padding:3px 8px;display:flex;align-items:center;gap:6px}
+.erw-al{flex:1;min-width:0;display:flex;align-items:center;gap:6px;cursor:pointer}
+.erw-al .erw-f{flex:0 0 38%}.erw-as{flex:1;min-width:0;color:#bfe3ec;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.erw-shb .er-btn{flex:0 0 auto;min-height:26px;font-size:11px}
+@media(max-width:700px){.erw{padding:0 10px 24px}}
 @media(max-width:600px){.er-af{flex-basis:38%}.er-ov{padding:0}.er-mod{border-radius:0;min-height:100%}}`;
 let cssDone=false; function css(){ if(cssDone) return; cssDone=true; const s=document.createElement('style'); s.textContent=CSS; document.head.appendChild(s); }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) load(); });
