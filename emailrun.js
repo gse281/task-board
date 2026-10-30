@@ -14,7 +14,7 @@ const BK=[['A','A · Archive','🗄 Archive','Just archive — uncheck anything 
           ['C','C · Reply','✍️ Reply','Addressed to you / needs your response — reply drafted'],
           ['D','D · Starred action','⭐ Starred · action','Starred & needs action — draft or a question for you'],
           ['E','E · FYI','📄 Everything else','Summary + whether to read / act']];
-let rows=[], req=null, subs=[], poll=null, lastLoad=0;
+let rows=[], req=null, reqs=[], inbox=null, subs=[], poll=null, lastLoad=0;
 const notify=()=>subs.forEach(fn=>{ try{ fn(); }catch(e){} });
 const toast=m=>{ if(typeof window.toast==='function') return window.toast(m); let e=document.querySelector('.er-toast'); if(!e){e=document.createElement('div');e.className='er-toast';document.body.appendChild(e);} e.textContent=m; clearTimeout(e._t); e._t=setTimeout(()=>e.remove(),2800); };
 function when(iso){ if(!iso) return ''; const d=new Date(iso), m=Math.round((Date.now()-d)/6e4); return d.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})+(m<1?' · just now':m<60?' · '+m+'m ago':m<1440?' · '+Math.round(m/60)+'h ago':' · '+d.toLocaleDateString([], {month:'numeric',day:'numeric'})); }
@@ -26,8 +26,9 @@ async function load(force){
     let out=[], off='';
     do{ const d=await api(RUN,'?pageSize=100&filterByFormula='+f+(off?'&offset='+off:'')); out=out.concat(d.records||[]); off=d.offset||''; }while(off);
     rows=out.map(r=>Object.assign({id:r.id},r.fields)).map(r=>Object.assign(r,{Bucket:flat(r.Bucket),Status:flat(r.Status)}));
-    const q=await api(REQ,'?pageSize=1&sort%5B0%5D%5Bfield%5D=RequestedAt&sort%5B0%5D%5Bdirection%5D=desc');
-    req=(q.records||[]).map(r=>Object.assign({id:r.id},r.fields)).map(r=>Object.assign(r,{Status:flat(r.Status),Kind:flat(r.Kind)}))[0]||null;
+    const q=await api(REQ,'?pageSize=8&sort%5B0%5D%5Bfield%5D=RequestedAt&sort%5B0%5D%5Bdirection%5D=desc');
+    const rq=(q.records||[]).map(r=>Object.assign({id:r.id},r.fields)).map(r=>Object.assign(r,{Status:flat(r.Status),Kind:flat(r.Kind)}));
+    req=rq[0]||null; reqs=rq; const ic=rq.find(r=>r.InboxCount!=null); inbox=ic?{n:ic.InboxCount,at:ic.FinishedAt||ic.RequestedAt}:null;
     if(req&&/Requested|Running/.test(req.Status)) startPoll(); else stopPoll();
     notify();
   }catch(e){}
@@ -90,8 +91,8 @@ function panel(){
   const st=req?(busy()?'<span class="er-run">'+(req.Kind==='Archive'?'Archiving':'Scanning')+' — '+(req.Status==='Running'?'working…':'queued '+when(req.RequestedAt))+'</span>':
       req.Status==='Failed'?'<span class="er-bad">Last run failed'+(req.Detail?': '+esc(req.Detail):'')+'</span>':'Last run '+when(req.FinishedAt||req.RequestedAt)+(req.Detail?' · '+esc(req.Detail):'')):'Never run';
   p.innerHTML='<div class="er-top"><div class="er-st">'+st+'</div></div>';
-  const go=document.createElement('button'); go.type='button'; go.className='er-btn ok er-go'; go.textContent=busy()?'⏳ Running':'📬 Run now'; go.disabled=busy(); go.onclick=()=>request('Scan'); p.firstChild.appendChild(go);
-  if(!rows.length){ const e=document.createElement('div'); e.className='er-empty'; e.textContent=busy()?'Working through your inbox…':'Inbox handled. Hit 📬 Run now for a fresh pass.'; p.appendChild(e); return p; }
+  const go=document.createElement('button'); go.type='button'; go.className='er-btn ok er-go'; go.textContent=live(scan)?'⏳ Scan queued':'📬 Run now'; go.disabled=live(scan); go.onclick=()=>request('Scan'); p.firstChild.appendChild(go);
+  if(!rows.length){ const e=document.createElement('div'); e.className='er-empty'; e.textContent=live(scan)?'Working through your inbox…':'Inbox handled. Hit 📬 Run now for a fresh pass.'; p.appendChild(e); return p; }
   BK.forEach(([L,val,title,sub])=>{
     const its=rows.filter(r=>r.Bucket===val); if(!its.length) return;
     const s=document.createElement('details'); s.className='er-sec er-'+L; s.open=L!=='E'||its.length<=8;
@@ -102,7 +103,7 @@ function panel(){
       s.appendChild(box);
       const b=document.createElement('div'); b.className='er-b';
       const all=document.createElement('button'); all.type='button'; all.className='er-btn'; all.textContent='Toggle all'; all.onclick=()=>{ const cbs=box.querySelectorAll('input'); const on=[].some.call(cbs,c=>!c.checked); cbs.forEach(c=>c.checked=on); };
-      const ar=document.createElement('button'); ar.type='button'; ar.className='er-btn ok'; ar.textContent='🗄 Archive checked'; ar.disabled=busy()&&req.Kind==='Archive'; ar.onclick=()=>archiveChecked(box);
+      const ar=document.createElement('button'); ar.type='button'; ar.className='er-btn ok'; ar.textContent='🗄 Archive checked'; ar.disabled=arcLive; ar.onclick=()=>archiveChecked(box);
       b.appendChild(all); b.appendChild(ar); s.appendChild(b);
     } else its.forEach((r,i)=>s.appendChild(card(r,i+1,L)));
     p.appendChild(s);
@@ -148,12 +149,15 @@ function wideRow(r,n,L){
 }
 function pageView(){
   const p=document.createElement('div'); p.className='erw';
-  const st=req?(busy()?'<span class="er-run">'+(req.Kind==='Archive'?'Archiving':'Scanning')+' — '+(req.Status==='Running'?(req.Detail?esc(req.Detail):'working…'):'queued '+when(req.RequestedAt))+'</span>':
-      req.Status==='Failed'?'<span class="er-bad">Last run failed'+(req.Detail?': '+esc(req.Detail):'')+'</span>':'Last run '+when(req.FinishedAt||req.RequestedAt)+(req.Detail?' · '+esc(req.Detail):'')):'Never run';
-  const counts=BK.map(([L,val])=>{ const n=rows.filter(r=>r.Bucket===val).length; return n?'<a href="#erw-'+L+'" class="erw-chip erw-c'+L+'"><b>'+L+'</b> '+n+'</a>':''; }).join('');
+  const scan=reqs.find(r=>r.Kind==='Scan'), arc=reqs.find(r=>r.Kind==='Archive');
+  const live=r=>r&&/Requested|Running/.test(r.Status);
+  const st=scan?(live(scan)?'<span class="er-run">Scanning — '+(scan.Status==='Running'?(scan.Detail?esc(scan.Detail):'working…'):'queued '+when(scan.RequestedAt)+' · runs at :07')+'</span>':
+      scan.Status==='Failed'?'<span class="er-bad">Last scan failed'+(scan.Detail?': '+esc(scan.Detail):'')+'</span>':'Last scan '+when(scan.FinishedAt||scan.RequestedAt)+(scan.Detail?' · '+esc(scan.Detail):'')):'Never run';
+  const arcLive=live(arc);
+  const counts=(inbox?'<span class="erw-chip erw-inbox" title="Threads in your Gmail inbox as of '+esc(when(inbox.at))+'">📥 <b>'+inbox.n+'</b> in inbox</span>':'')+BK.map(([L,val])=>{ const n=rows.filter(r=>r.Bucket===val).length; return n?'<a href="#erw-'+L+'" class="erw-chip erw-c'+L+'"><b>'+L+'</b> '+n+'</a>':''; }).join('');
   p.innerHTML='<div class="erw-bar"><a href="dashboard.html" class="erw-back">← Board</a><h1>📬 Email run</h1><div class="erw-chips">'+counts+'</div><div class="er-st erw-st">'+st+'</div></div>';
-  const go=document.createElement('button'); go.type='button'; go.className='er-btn ok erw-go'; go.textContent=busy()?'⏳ Running':'📬 Run now'; go.disabled=busy(); go.onclick=()=>request('Scan'); p.firstChild.appendChild(go);
-  if(!rows.length){ const e=document.createElement('div'); e.className='er-empty'; e.textContent=busy()?'Working through your inbox…':'Inbox handled. Hit 📬 Run now for a fresh pass.'; p.appendChild(e); return p; }
+  const go=document.createElement('button'); go.type='button'; go.className='er-btn ok erw-go'; go.textContent=live(scan)?'⏳ Scan queued':'📬 Run now'; go.disabled=live(scan); go.onclick=()=>request('Scan'); p.firstChild.appendChild(go);
+  if(!rows.length){ const e=document.createElement('div'); e.className='er-empty'; e.textContent=live(scan)?'Working through your inbox…':'Inbox handled. Hit 📬 Run now for a fresh pass.'; p.appendChild(e); return p; }
   const cols=document.createElement('div'); cols.className='erw-cols'; p.appendChild(cols);
   const order=['D','C','B','E','A'];
   order.forEach(L=>{ const [,val,title,sub]=BK.find(b=>b[0]===L);
@@ -161,11 +165,20 @@ function pageView(){
     const s=document.createElement('section'); s.className='erw-sec er-'+L; s.id='erw-'+L;
     s.innerHTML='<div class="erw-sh"><span class="er-sl">'+L+'</span><h2>'+title+'</h2><i>'+its.length+'</i></div>';
     const hb=s.firstChild;
+    if(L==='A'&&arcLive){
+      s.classList.add('erw-q');
+      hb.insertAdjacentHTML('beforeend','<span class="er-run erw-qs">🗄 '+(arc.Status==='Running'?(arc.Detail?esc(arc.Detail):'archiving…'):'queued '+when(arc.RequestedAt)+' · runs at :07')+'</span>');
+      const det=document.createElement('details'); det.className='erw-qd';
+      det.innerHTML='<summary>'+its.length+' queued to archive — tap to see</summary>';
+      const list=document.createElement('div'); list.className='erw-list';
+      its.forEach((r,i)=>{ const row=wideRow(r,i+1,L); const cb=row.querySelector('input'); if(cb) cb.disabled=true; list.appendChild(row); });
+      det.appendChild(list); s.appendChild(det); cols.appendChild(s); return;
+    }
     const list=document.createElement('div'); list.className='erw-list';
     its.forEach((r,i)=>list.appendChild(wideRow(r,i+1,L)));
     if(L==='A'){
       const all=document.createElement('button'); all.type='button'; all.className='er-btn'; all.textContent='Toggle all'; all.onclick=()=>{ const cbs=list.querySelectorAll('input'); const on=[].some.call(cbs,c=>!c.checked); cbs.forEach(c=>c.checked=on); };
-      const ar=document.createElement('button'); ar.type='button'; ar.className='er-btn ok'; ar.textContent='🗄 Archive checked'; ar.disabled=busy()&&req.Kind==='Archive'; ar.onclick=()=>archiveChecked(list);
+      const ar=document.createElement('button'); ar.type='button'; ar.className='er-btn ok'; ar.textContent='🗄 Archive checked'; ar.disabled=arcLive; ar.onclick=()=>archiveChecked(list);
       const w=document.createElement('span'); w.className='erw-shb'; w.appendChild(all); w.appendChild(ar); hb.appendChild(w);
     }
     s.appendChild(list); cols.appendChild(s);
@@ -213,6 +226,8 @@ const CSS=`.er-trig .er-cnt{background:#e0a458;color:#07141a;border-radius:999px
 .erw-st{flex:1;min-width:180px}.erw-go{flex:0 0 auto;padding:0 16px}
 .erw-cols{column-width:330px;column-gap:14px}
 .erw-sec{margin-bottom:12px}
+.erw-q{opacity:.5}.erw-q:hover{opacity:.8}.erw-qs{font-size:11.5px;margin-left:auto}.erw-qd summary{cursor:pointer;color:#8aa6af;font-size:12px;padding:4px 2px}
+.erw-inbox{border-color:rgba(48,209,88,.4)}.erw-inbox b{color:#30D158}
 .erw-sh{display:flex;align-items:center;gap:7px;padding:4px 2px 6px;break-after:avoid;flex-wrap:wrap}
 .erw-sh h2{margin:0;font-size:13.5px;font-weight:800}.erw-sh i{font-style:normal;color:#07141a;background:#39c7df;border-radius:999px;padding:0 7px;font-size:11px;font-weight:800}
 .erw-shb{margin-left:auto;display:flex;gap:5px}
