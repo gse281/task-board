@@ -48,6 +48,15 @@ async function request(kind){
 }
 const patch=(id,fields)=>api(RUN,'/'+id,{method:'PATCH',body:JSON.stringify({fields,typecast:true})});
 function drop(id,status){ rows=rows.filter(r=>r.id!==id); notify(); return patch(id,{Status:status}).catch(()=>toast('Save failed')); }
+// ✓ Done = archive it in Gmail too: Status "ToArchive" + make sure an Archive request is queued (silently).
+async function doneArchive(id){
+  rows=rows.filter(r=>r.id!==id); notify();
+  try{ await patch(id,{Status:'ToArchive'}); }catch(e){ return toast('Save failed'); }
+  const live=(reqs||[]).find(r=>r.Kind==='Archive'&&/Requested|Running/.test(r.Status));
+  if(live&&live.Status==='Requested'){ toast('✓ Done — archives at :07'); return; }
+  try{ const now=new Date().toISOString(); const r=await api(REQ,'',{method:'POST',body:JSON.stringify({fields:{Name:'Archive (Done) '+new Date().toLocaleString(),Kind:'Archive',Status:'Requested',RequestedAt:now},typecast:true})});
+    reqs.unshift({id:r.id,Kind:'Archive',Status:'Requested',RequestedAt:now}); startPoll(); notify(); toast('✓ Done — archives at :07'); }catch(e){ toast('Could not queue archive'); }
+}
 async function approve(r,text){   // sent in-thread by the next Email run pass (never auto-sent)
   rows=rows.filter(x=>x.id!==r.id); notify();
   try{ await patch(r.id,{Status:'Approved',Draft:text}); toast('✅ Approved — sends at :07 past the hour'); }
@@ -143,8 +152,8 @@ function wideRow(r,n,L){
         r.Answer=v; r.Status='Answered'; notify(); patch(r.id,{Answer:v,Status:'Answered'}).then(()=>request('Scan')).catch(()=>toast('Save failed')); });
     }
   }
-  if(L==='C'||L==='D'){ mk(bar,'✓ Done','',()=>drop(r.id,'Done')); d.appendChild(bar); }
-  else { const h=d.querySelector('.erw-h'); const b=mk(h,'✓','erw-ck',()=>drop(r.id,'Done')); b.title='Done'; }
+  if(L==='C'||L==='D'){ mk(bar,'✓ Done','',()=>doneArchive(r.id)); d.appendChild(bar); }
+  else { const h=d.querySelector('.erw-h'); const b=mk(h,'✓','erw-ck',()=>doneArchive(r.id)); b.title='Done — archives it'; }
   return d;
 }
 function pageView(){
@@ -175,7 +184,13 @@ function pageView(){
       det.appendChild(list); s.appendChild(det); cols.appendChild(s); return;
     }
     const list=document.createElement('div'); list.className='erw-list';
-    its.forEach((r,i)=>list.appendChild(wideRow(r,i+1,L)));
+    if(L==='A') its.forEach((r,i)=>list.appendChild(wideRow(r,i+1,L)));
+    else {
+      const g={}; its.forEach(r=>{ const k=r.Project||'Other'; (g[k]=g[k]||[]).push(r); });
+      const keys=Object.keys(g).sort((a,b)=>(a==='Other')-(b==='Other')||g[b].length-g[a].length||a.localeCompare(b));
+      let n=0; keys.forEach(k=>{ const h=document.createElement('div'); h.className='erw-pj'; h.innerHTML=esc(k)+' <i>'+g[k].length+'</i>'; list.appendChild(h);
+        g[k].forEach(r=>list.appendChild(wideRow(r,++n,L))); });
+    }
     if(L==='A'){
       const all=document.createElement('button'); all.type='button'; all.className='er-btn'; all.textContent='Toggle all'; all.onclick=()=>{ const cbs=list.querySelectorAll('input'); const on=[].some.call(cbs,c=>!c.checked); cbs.forEach(c=>c.checked=on); };
       const ar=document.createElement('button'); ar.type='button'; ar.className='er-btn ok'; ar.textContent='🗄 Archive checked'; ar.disabled=arcLive; ar.onclick=()=>archiveChecked(list);
@@ -226,6 +241,7 @@ const CSS=`.er-trig .er-cnt{background:#e0a458;color:#07141a;border-radius:999px
 .erw-st{flex:1;min-width:180px}.erw-go{flex:0 0 auto;padding:0 16px}
 .erw-cols{column-width:330px;column-gap:14px}
 .erw-sec{margin-bottom:12px}
+.erw-pj{break-after:avoid;font:800 10.5px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:#64838d;margin:6px 2px 0}.erw-pj i{font-style:normal;color:#39c7df;margin-left:3px}
 .erw-q{opacity:.5}.erw-q:hover{opacity:.8}.erw-qs{font-size:11.5px;margin-left:auto}.erw-qd summary{cursor:pointer;color:#8aa6af;font-size:12px;padding:4px 2px}
 .erw-inbox{border-color:rgba(48,209,88,.4)}.erw-inbox b{color:#30D158}
 .erw-sh{display:flex;align-items:center;gap:7px;padding:4px 2px 6px;break-after:avoid;flex-wrap:wrap}
