@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070d11">
+<title>📬 Email run</title>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%}
+body{background:#070d11;color:#e7f3f6;font:14px/1.4 -apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+#app{width:100%}
+.nokey{padding:40px 24px;color:#8aa6af}.nokey a{color:#39c7df}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+// Same Airtable key the board uses (tb.cfg in localStorage).
+var cfg={}; try{ cfg=JSON.parse(localStorage.getItem('tb.cfg')||'{}')||{}; }catch(e){}
+window.TE={ key:function(){ return cfg.apiKey||''; }, base:function(){ return cfg.baseId||'appdDTNBbVrp6hVOv'; } };
+</script>
+<script src="emailrun.js"></script>
+<script>
+(function(){
+  var app=document.getElementById('app');
+  if(!cfg.apiKey){ app.innerHTML='<div class="nokey">Connect Airtable in ⚙︎ on the <a href="dashboard.html">board</a> first.</div>'; return; }
+  ER.mountPage(app);
+})();
+</script>
+</body>
+</html>

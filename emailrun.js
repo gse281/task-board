@@ -2,7 +2,7 @@
    Button → EmailRunRequests row (Kind Scan). The "Email run" scheduled task picks it up, sorts the inbox into
    A Archive · B Don't miss · C Reply (drafted) · D Starred action · E FYI, and writes rows to EmailRun.
    A: uncheck what to keep, then "Archive checked" → Archive request. C/D drafts: Approve → Status Approved → the task sends it in-thread.
-   window.ER = { init(), button(opts), panel(), open(), close(), request(kind), rows(), onChange(fn) } */
+   window.ER = { init(), button(opts), panel(), open() → email.html, mountPage(el), request(kind), rows(), onChange(fn) } */
 (function(){
 const RUN='tblIl26oggXP4WtvE', REQ='tblpkdXhqbqN1XFDd';
 const key=()=>window.TE&&window.TE.key&&window.TE.key(), base=()=>(window.TE&&window.TE.base&&window.TE.base())||'appdDTNBbVrp6hVOv';
@@ -116,18 +116,67 @@ function button(o){
   b.onclick=()=>{ if(o.onClick) return o.onClick(); open(); };
   return b;
 }
-let ov=null;
-function open(){
-  close(); ov=document.createElement('div'); ov.className='er-ov';
-  ov.innerHTML='<div class="er-mod"><div class="er-mh"><h3>📬 Email run</h3><button type="button" class="er-btn er-x" title="Close">✕</button></div><div class="er-body"></div></div>';
-  ov.onclick=e=>{ if(e.target===ov) close(); }; ov.querySelector('.er-x').onclick=close;
-  const body=ov.querySelector('.er-body'), fill=()=>{ if(!ov) return; const keepOpen={}; body.querySelectorAll('details').forEach(d=>keepOpen[d.className]=d.open); body.innerHTML=''; const p=panel(); p.querySelectorAll('details').forEach(d=>{ if(d.className in keepOpen) d.open=keepOpen[d.className]; }); body.appendChild(p); };
-  ov._fill=fill; subs.push(fill); fill(); document.body.appendChild(ov);
-  if(!rows.length&&!busy()) request('Scan'); else load(true);
-  document.addEventListener('keydown',esc_);
+// Full-screen page (email.html). open() navigates there instead of a pop-out.
+function open(){ location.href='email.html'; }
+function close(){}
+function wideRow(r,n,L){
+  const d=document.createElement('div'); d.className='erw-row erw-'+L;
+  const link=r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="erw-gm" title="Open in Gmail">✉️</a>':'<span></span>';
+  const lead=L==='A'?'<input type="checkbox" data-a="'+r.id+'"'+(r.Keep?'':' checked')+'>':'';
+  d.innerHTML='<label class="erw-l">'+lead+'<span class="er-n">'+L+n+'</span></label>'+
+    '<span class="erw-f" title="'+esc(r.FromEmail)+'">'+esc(r.From||r.FromEmail)+'</span>'+
+    '<span class="erw-s"><b>'+esc(r.Subject)+'</b>'+(r.Summary&&L!=='A'?' <i>— '+esc(r.Summary)+'</i>':'')+'</span>'+
+    '<span class="erw-adv">'+(r.Advice?esc(r.Advice):'')+'</span>'+
+    '<span class="erw-w">'+esc(r.Received||'')+'</span>'+link+'<span class="erw-act"></span>';
+  const act=d.querySelector('.erw-act');
+  const mk=(host,t,cls,fn)=>{ const b=document.createElement('button'); b.type='button'; b.className='er-btn '+(cls||''); b.textContent=t; b.onclick=e=>{e.preventDefault();e.stopPropagation(); fn();}; host.appendChild(b); return b; };
+  if(L!=='A') mk(act,'✓ Done','',()=>drop(r.id,'Done'));
+  if(L==='C'||L==='D'){
+    const ex=document.createElement('div'); ex.className='erw-ex';
+    if(r.Draft||L==='C'){
+      const ta=document.createElement('textarea'); ta.className='er-ta'; ta.rows=3; ta.value=r.Draft||''; ex.appendChild(ta);
+      const b=document.createElement('div'); b.className='erw-exb'; ex.appendChild(b);
+      mk(b,'✅ Approve & send','ok',()=>{ const v=ta.value.trim(); if(!v) return toast('Draft is empty'); approve(r,v); });
+    } else {
+      if(r.Question) ex.insertAdjacentHTML('beforeend','<div class="er-q">❓ '+esc(r.Question)+'</div>');
+      const ta=document.createElement('textarea'); ta.className='er-ta'; ta.rows=2; ta.placeholder='Tell Claude what to do (draft a reply, make a task, …)'; ta.value=r.Answer||''; ex.appendChild(ta);
+      const b=document.createElement('div'); b.className='erw-exb'; ex.appendChild(b);
+      mk(b,r.Status==='Answered'?'✓ Answered — next run':'➤ Send answer','ok',()=>{ const v=ta.value.trim(); if(!v) return toast('Type an answer');
+        r.Answer=v; r.Status='Answered'; notify(); patch(r.id,{Answer:v,Status:'Answered'}).then(()=>request('Scan')).catch(()=>toast('Save failed')); });
+    }
+    d.appendChild(ex);
+  }
+  return d;
 }
-function esc_(e){ if(e.key==='Escape') close(); }
-function close(){ if(!ov) return; subs=subs.filter(f=>f!==ov._fill); ov.remove(); ov=null; document.removeEventListener('keydown',esc_); }
+function pageView(){
+  const p=document.createElement('div'); p.className='erw';
+  const st=req?(busy()?'<span class="er-run">'+(req.Kind==='Archive'?'Archiving':'Scanning')+' — '+(req.Status==='Running'?(req.Detail?esc(req.Detail):'working…'):'queued '+when(req.RequestedAt))+'</span>':
+      req.Status==='Failed'?'<span class="er-bad">Last run failed'+(req.Detail?': '+esc(req.Detail):'')+'</span>':'Last run '+when(req.FinishedAt||req.RequestedAt)+(req.Detail?' · '+esc(req.Detail):'')):'Never run';
+  const counts=BK.map(([L,val])=>{ const n=rows.filter(r=>r.Bucket===val).length; return n?'<a href="#erw-'+L+'" class="erw-chip erw-c'+L+'"><b>'+L+'</b> '+n+'</a>':''; }).join('');
+  p.innerHTML='<div class="erw-bar"><a href="dashboard.html" class="erw-back">← Board</a><h1>📬 Email run</h1><div class="erw-chips">'+counts+'</div><div class="er-st erw-st">'+st+'</div></div>';
+  const go=document.createElement('button'); go.type='button'; go.className='er-btn ok erw-go'; go.textContent=busy()?'⏳ Running':'📬 Run now'; go.disabled=busy(); go.onclick=()=>request('Scan'); p.firstChild.appendChild(go);
+  if(!rows.length){ const e=document.createElement('div'); e.className='er-empty'; e.textContent=busy()?'Working through your inbox…':'Inbox handled. Hit 📬 Run now for a fresh pass.'; p.appendChild(e); return p; }
+  const order=['D','C','B','E','A'];
+  order.forEach(L=>{ const [,val,title,sub]=BK.find(b=>b[0]===L);
+    const its=rows.filter(r=>r.Bucket===val); if(!its.length) return;
+    const s=document.createElement('section'); s.className='erw-sec er-'+L; s.id='erw-'+L;
+    s.innerHTML='<div class="erw-sh"><span class="er-sl">'+L+'</span><h2>'+title+'</h2><i>'+its.length+'</i><span class="er-sub">'+sub+'</span></div>';
+    const hb=s.firstChild;
+    const list=document.createElement('div'); list.className='erw-list';
+    its.forEach((r,i)=>list.appendChild(wideRow(r,i+1,L)));
+    if(L==='A'){
+      const all=document.createElement('button'); all.type='button'; all.className='er-btn'; all.textContent='Toggle all'; all.onclick=()=>{ const cbs=list.querySelectorAll('input'); const on=[].some.call(cbs,c=>!c.checked); cbs.forEach(c=>c.checked=on); };
+      const ar=document.createElement('button'); ar.type='button'; ar.className='er-btn ok'; ar.textContent='🗄 Archive checked'; ar.disabled=busy()&&req.Kind==='Archive'; ar.onclick=()=>archiveChecked(list);
+      const w=document.createElement('span'); w.className='erw-shb'; w.appendChild(all); w.appendChild(ar); hb.appendChild(w);
+    }
+    s.appendChild(list); p.appendChild(s);
+  });
+  return p;
+}
+function mountPage(host){
+  css(); const fill=()=>{ const a=document.activeElement; if(a&&host.contains(a)&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT')) return; const y=window.scrollY; host.innerHTML=''; host.appendChild(pageView()); window.scrollTo(0,y); };
+  subs.push(fill); fill(); load(true);
+}
 const CSS=`.er-trig .er-cnt{background:#e0a458;color:#07141a;border-radius:999px;padding:0 6px;font-size:11px;font-weight:800;margin-left:3px}
 .er-ov{position:fixed;inset:0;z-index:9999;background:rgba(2,8,11,.62);display:flex;justify-content:center;align-items:flex-start;padding:4vh 12px;overflow:auto}
 .er-mod{width:min(760px,100%);background:#0b1b21;border:1px solid rgba(57,199,223,.3);border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.5);color:#e7f3f6;font:14px/1.4 -apple-system,system-ui,sans-serif}
@@ -156,8 +205,31 @@ const CSS=`.er-trig .er-cnt{background:#e0a458;color:#07141a;border-radius:999px
 .er-arow{display:flex;gap:8px;align-items:center;padding:5px 2px;border-bottom:1px solid rgba(57,199,223,.07);cursor:pointer;font-size:13px}
 .er-af{flex:0 0 32%;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.er-as{flex:1;color:#bfe3ec;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .er-toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#0b1b21;color:#e7f3f6;border:1px solid #39c7df;border-radius:10px;padding:8px 14px;z-index:10000}
+
+.erw{max-width:none;padding:0 24px 40px}
+.erw-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 0;background:linear-gradient(#070d11 80%,rgba(7,13,17,0));}
+.erw-bar h1{margin:0;font-size:20px}.erw-back{color:#8aa6af;text-decoration:none;font:700 12px ui-monospace,Menlo,monospace}.erw-back:hover{color:#39c7df}
+.erw-chips{display:flex;gap:6px}.erw-chip{text-decoration:none;color:#e7f3f6;border:1px solid rgba(57,199,223,.3);border-radius:999px;padding:3px 10px;font:600 12px ui-monospace,Menlo,monospace}
+.erw-chip b{color:#39c7df}.erw-cB b{color:#e5533a}.erw-cD b{color:#e0a458}
+.erw-st{flex:1;min-width:200px}.erw-go{flex:0 0 auto;padding:0 18px}
+.erw-sec{margin-top:18px}
+.erw-sh{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(57,199,223,.2);flex-wrap:wrap}
+.erw-sh h2{margin:0;font-size:16px}.erw-sh i{font-style:normal;color:#07141a;background:#39c7df;border-radius:999px;padding:0 8px;font-size:12px;font-weight:800}
+.erw-sh .er-sub{margin:0}.erw-shb{margin-left:auto;display:flex;gap:6px}.erw-shb .er-btn{flex:0 0 auto}
+.erw-row{display:grid;grid-template-columns:70px minmax(160px,15%) minmax(0,1fr) minmax(0,22%) 120px 28px auto;gap:12px;align-items:center;padding:7px 6px;border-bottom:1px solid rgba(57,199,223,.07);font-size:13.5px}
+.erw-row:hover{background:rgba(57,199,223,.04)}
+.erw-l{display:flex;gap:8px;align-items:center;cursor:pointer}
+.erw-f{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.erw-s{color:#bfe3ec;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.erw-s i{font-style:normal;color:#8aa6af}
+.erw-C .erw-s,.erw-D .erw-s,.erw-B .erw-s{white-space:normal}
+.erw-adv{color:#e0a458;font-size:12.5px;overflow:hidden;text-overflow:ellipsis}
+.erw-w{color:#64838d;font-size:12px;white-space:nowrap}.erw-gm{text-decoration:none}
+.erw-act{display:flex;gap:6px;justify-content:flex-end}.erw-act .er-btn{flex:0 0 auto}
+.erw-ex{grid-column:2/-1;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap}.erw-ex .er-ta{flex:1;min-width:280px;margin-top:0}.erw-ex .er-q{flex:0 0 100%;margin:0}
+.erw-exb{display:flex;flex-direction:column;gap:6px}.erw-exb .er-btn{flex:0 0 auto;padding:0 16px}
+@media(max-width:900px){.erw{padding:0 12px 30px}.erw-row{grid-template-columns:56px 1fr auto;}.erw-s{grid-column:1/-1}.erw-adv,.erw-w{grid-column:span 1}.erw-ex{grid-column:1/-1}}
 @media(max-width:600px){.er-af{flex-basis:38%}.er-ov{padding:0}.er-mod{border-radius:0;min-height:100%}}`;
 let cssDone=false; function css(){ if(cssDone) return; cssDone=true; const s=document.createElement('style'); s.textContent=CSS; document.head.appendChild(s); }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) load(); });
-window.ER={ init(){ css(); return load(true); }, load, button, panel, open, close, request, rows:()=>rows, onChange(fn){ subs.push(fn); } };
+window.ER={ init(){ css(); return load(true); }, load, button, panel, open, close, mountPage, request, rows:()=>rows, onChange(fn){ subs.push(fn); } };
 })();

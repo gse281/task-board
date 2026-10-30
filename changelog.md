@@ -261,3 +261,4 @@
 - 2026-10-27 17:58  Home zones: borders kept, centers near-transparent
 - 2026-10-27 17:59  Home zones: clear centers
 - 2026-10-29 22:25  📬 Email run button (Focus 2 + Dashboard) + panel
+- 2026-10-30 22:47  📬 Email run is now its own full-screen page (email.html), wide rows, archive-style layout
