@@ -550,6 +550,7 @@ body::before{ opacity:.7 }
     <button class="tb-btn" id="scBtn" title="⌨️ Shortcuts cheat-sheet (press ?)">⌨️</button>
     <a class="tb-btn" id="focusCoreBtn" href="radial.html?focus=1" title="◎ Focus — the home screen" style="text-decoration:none;color:var(--ink);display:inline-flex;align-items:center">◎ Focus</a>
     <a class="tb-btn" id="focus2Btn" href="focus2.html" title="Focus 2 — AM/PM calls" style="text-decoration:none;color:var(--ink);display:inline-flex;align-items:center">◉ Focus 2</a>
+    <span id="erSlot" style="display:contents"></span>
     <button class="tb-btn accent" id="refreshBtn">↻ Refresh</button>
     <input class="search" id="search" placeholder="Search tasks…">
     <input class="search" id="nsearch" type="search" placeholder="🗒 Search notes…" autocomplete="off" title="Search every note + daily notes page">
@@ -573,6 +574,7 @@ body::before{ opacity:.7 }
 <script src="task-editor.js"></script>
 <script src="learning.js"></script>
 <script src="claudeq.js"></script>
+<script src="emailrun.js"></script>
 <script src="photos.js"></script>
 <script src="bills.js"></script>
 <script src="invite.js"></script>
@@ -699,7 +701,7 @@ const paneClosed=id=>(meta.closedPanes||[]).includes(id)&&!(meta.pinnedPanes||[]
 const panePinned=id=>(meta.pinnedPanes||[]).includes(id);
 function paneName(id){ const n=meta.paneNames&&meta.paneNames[id]; if(n) return n;
   const b=(typeof BUCKETS!=='undefined'&&BUCKETS.find(x=>x.id===id))||(typeof STUBS!=='undefined'&&STUBS.find(x=>x.id===id))||(meta.customCats||[]).find(c=>c.id===id);
-  const FB={computer:'🖥 @Computer – Claude',leadrev:'📨 Lead texts review',callinvite:'👥 Invite to the call',frequent:'⭐ Frequent',nupicks:'⏫ Next Up',suggested:'✨ Suggested next up',claudeq:'✨ Claude requests',bills:'💵 Bills & Taxes',files:'📁 Files in Use',learning:'📚 Learning',priority:'▲ Priority',spotlight:'🔦 Spotlight',stillopen:'❓ Still open',parked:'🅿️ Parked',scratch:'🗒 Notes',automations:'⚙️ Automations'};
+  const FB={computer:'🖥 @Computer – Claude',leadrev:'📨 Lead texts review',callinvite:'👥 Invite to the call',frequent:'⭐ Frequent',nupicks:'⏫ Next Up',suggested:'✨ Suggested next up',claudeq:'✨ Claude requests',emailrun:'📬 Email run',bills:'💵 Bills & Taxes',files:'📁 Files in Use',learning:'📚 Learning',priority:'▲ Priority',spotlight:'🔦 Spotlight',stillopen:'❓ Still open',parked:'🅿️ Parked',scratch:'🗒 Notes',automations:'⚙️ Automations'};
   return (b&&(b.name||b.title))||FB[id]||id; }
 function setPaneClosed(id,closed){ const c=new Set(meta.closedPanes||[]); closed?c.add(id):c.delete(id); meta.closedPanes=[...c]; saveMeta(); }
 function setPanePinned(id,on){ const c=new Set(meta.pinnedPanes||[]); on?c.add(id):c.delete(id); meta.pinnedPanes=[...c]; if(on) setPaneClosed(id,false); saveMeta(); }
@@ -1369,11 +1371,11 @@ const expanded = new Set();   // ephemeral: which capped sections are showing al
 function orderedPanels(){
   const custom=((meta.customCats||[]).map(c=>c.id));
   // to-send / from-outside / improvements are now folded INTO the Triage pane.
-  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer','leadrev','callinvite','frequent','nupicks','suggested','claudeq','bills','files','learning',...STUBS.map(s=>s.id)];
+  const def=[...BUCKETS.map(b=>b.id).filter(id=>id!=='backlog'),...custom,'priority','spotlight','stillopen','parked','scratch','automations','computer','leadrev','callinvite','frequent','nupicks','suggested','emailrun','claudeq','bills','files','learning',...STUBS.map(s=>s.id)];
   let ord=(meta.order&&meta.order.length)?meta.order.slice():def.slice();
   if(!ord.includes('automations')) ord.unshift('automations');   // always-on status panel: first time it appears at the top
   ['leadrev','callinvite'].forEach(id=>{ if(!ord.includes(id)){ const i=ord.indexOf('computer'); ord.splice(i<0?0:i+1,0,id); } });   // right after @Computer
-  ['suggested','nupicks','claudeq'].forEach(id=>{ if(!ord.includes(id)) ord.unshift(id); }); if(!ord.includes('bills')) ord.unshift('bills'); if(!ord.includes('files')) ord.unshift('files');   // ⏫ Next Up then ✨ Suggested at the top the first time
+  ['suggested','nupicks','claudeq','emailrun'].forEach(id=>{ if(!ord.includes(id)) ord.unshift(id); }); if(!ord.includes('bills')) ord.unshift('bills'); if(!ord.includes('files')) ord.unshift('files');   // ⏫ Next Up then ✨ Suggested at the top the first time
   if(!ord.includes('frequent')){ const i=ord.indexOf('calls'); ord.splice(i<0?0:i+1,0,'frequent'); }   // ⭐ right under Calls
   if(!ord.includes('computer')){ const i=Math.max(ord.indexOf('morning'),ord.indexOf('afternoon'),ord.indexOf('calls')); ord.splice(i<0?0:i+1,0,'computer'); }   // 🖥 right after the call panels
   def.forEach(id=>{ if(!ord.includes(id)) ord.push(id); });
@@ -1487,6 +1489,7 @@ function render(){
     else if(id==='nupicks') board.appendChild(nextUpPanel());
     else if(id==='learning'){ const lp=learningPanel(); if(lp) board.appendChild(lp); }
     else if(id==='claudeq'){ const cp=claudeQPanel(); if(cp) board.appendChild(cp); }
+    else if(id==='emailrun'){ const ep=emailRunPanel(); if(ep) board.appendChild(ep); }
     else if(id==='bills'){ const bp=billsPanel(); if(bp) board.appendChild(bp); }
     else if(id==='files') board.appendChild(filesPanel());
     else if(id==='suggested'){ const sp=suggestedPanel(); if(sp) board.appendChild(sp); }
@@ -3100,6 +3103,12 @@ function claudeQPanel(){ if(!window.CQ) return null; const L=CQ.list(); if(!L.le
   const {p,body}=nuPanelShell('claudeq','✨ Claude requests',(n.approve?n.approve+' to approve · ':'')+(n.stale?n.stale+' not picked up · ':'')+L.length+' this week');
   body.innerHTML='<div style="max-height:420px;overflow:auto;padding:0 4px">'+L.map(q=>CQ.rowHTML(q)).join('')+'</div>';
   CQ.wire(body,{toast,onOpen:id=>{ const t=tasks.find(x=>x.id===id); if(t) TaskEditor.open(t); else toast('Task not loaded'); }}); return p; }
+// 📬 Email run — inbox sorted A–E by the "Email run" scheduled task (emailrun.js). Topbar button opens the full view.
+function emailRunPanel(){ if(!window.ER) return null; const L=ER.rows(), n=L.filter(r=>!String(r.Bucket).startsWith('A')).length;
+  const {p,body}=nuPanelShell('emailrun','📬 Email run',L.length?n+' to look at · '+(L.length-n)+' to archive':'press 📬 to run');
+  body.appendChild(ER.panel()); return p; }
+if(window.ER){ ER.init(); const sl=document.getElementById('erSlot'); if(sl) sl.appendChild(ER.button({cls:'tb-btn'}));
+  ER.onChange(()=>{ const a=document.activeElement; if(a&&(a.tagName==='TEXTAREA'||a.tagName==='INPUT'||a.closest&&a.closest('.te,.er-ov'))) return; render(); }); }
 if(window.CQ){ CQ.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); CQ.onChange(()=>{ const a=document.activeElement; if(a&&(a.classList.contains('cqx-ta')||a.closest&&a.closest('.te'))) return; render(); }); }
 const sugXL=()=>{ try{ return JSON.parse(localStorage.getItem('m.sugx')||'{}'); }catch(e){ return {}; } }; const sugCut=()=>{ const d=new Date(); d.setDate(d.getDate()-14); return d.toISOString().slice(0,10); };
 const sugDismissedD=t=>{ const d=t.sugX||sugXL()[t.id]||''; return !!d&&d>=sugCut(); };

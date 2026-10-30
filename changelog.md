@@ -260,3 +260,4 @@
 - 2026-10-27 17:56  Home Incoming zone: stronger red
 - 2026-10-27 17:58  Home zones: borders kept, centers near-transparent
 - 2026-10-27 17:59  Home zones: clear centers
+- 2026-10-29 22:25  📬 Email run button (Focus 2 + Dashboard) + panel

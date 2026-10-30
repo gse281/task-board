@@ -144,6 +144,7 @@ a.pill{text-decoration:none}
   <div class="brand">◉ Focus 2</div>
   <nav class="nav"><a class="pill" id="navFocus" href="radial.html?focus=1">◎ Focus</a><a class="pill" id="navDash" href="dashboard.html">⌂ Dashboard</a></nav>
   <div class="stat" id="stat"></div>
+  <span id="erSlot" style="display:contents"></span>
   <button class="pill" id="revertBtn" type="button" title="Undo everything since the last save">↺ Revert</button>
   <button class="pill save" id="saveBtn" type="button" title="Save (⌘S)">Save</button>
   <button class="pill" id="resetBtn" type="button">Clear</button>
@@ -174,6 +175,7 @@ a.pill{text-decoration:none}
 <script src="task-editor.js"></script>
 <script src="photos.js"></script>
 <script src="claudeq.js"></script>
+<script src="emailrun.js"></script>
 
 <script>
 (function(){
@@ -730,5 +732,6 @@ function loadLive(){
 render(); loadLive();
 })();
 </script>
+<script>if(window.ER){ ER.init(); var _s=document.getElementById('erSlot'); if(_s) _s.appendChild(ER.button({cls:'pill'})); }</script>
 </body>
 </html>
