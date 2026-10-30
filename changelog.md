@@ -263,3 +263,4 @@
 - 2026-10-29 22:25  📬 Email run button (Focus 2 + Dashboard) + panel
 - 2026-10-30 22:47  📬 Email run is now its own full-screen page (email.html), wide rows, archive-style layout
 - 2026-10-30 22:51  📬 Email run page: compact flowing columns (Invite-style), see everything at once
+- 2026-10-30 22:54  Email run: cache-bust emailrun.js
