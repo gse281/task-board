@@ -157,8 +157,22 @@ async function gfetch(path, opts) {
     if (backendUrl() && !opts._retried) return gfetch(path, Object.assign({}, opts, { _retried: true }));
     throw Object.assign(new Error('auth'), { code: 'auth' });
   }
+  // Rate limit (403/429): back off and retry, up to 4 times.
+  if ((r.status === 403 || r.status === 429) && (opts._tries || 0) < 4) {
+    var n = (opts._tries || 0) + 1;
+    await new Promise(function(res){ setTimeout(res, 800 * Math.pow(2, n - 1) + Math.random() * 400); });
+    return gfetch(path, Object.assign({}, opts, { _tries: n }));
+  }
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
+}
+
+// Run fn over items, at most `limit` at a time (Gmail rate-limits bursts).
+async function pool(items, limit, fn) {
+  var out = new Array(items.length), i = 0;
+  async function worker() { while (i < items.length) { var k = i++; out[k] = await fn(items[k]); } }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return out;
 }
 
 async function apiListThreads(pageToken) {
@@ -232,8 +246,10 @@ async function loadPage(reset) {
   try {
     var list = await apiListThreads(_nextPage);
     _nextPage = list.nextPageToken || null;
-    _total = list.resultSizeEstimate || 0;
-    var fetched = await Promise.all((list.threads || []).map(function(t){ return apiGetThread(t.id); }));
+    if (reset || _total == null) {
+      try { _total = (await gfetch('labels/INBOX')).threadsTotal; } catch(e) { _total = list.resultSizeEstimate || 0; }
+    }
+    var fetched = await pool(list.threads || [], 8, function(t){ return apiGetThread(t.id); });
     _threads = _threads.concat(fetched.map(parseThread));
   } catch(e) {
     _error = (e.code === 'auth') ? 'auth' : (e.message || 'Error');
