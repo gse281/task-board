@@ -387,15 +387,32 @@ function buildSetupScreen(host) {
   var setup = document.createElement('div'); setup.className = 'gl-setup';
   setup.innerHTML = [
     '<h3>📥 Live Gmail</h3>',
-    '<p>Needs a Google OAuth 2.0 Client ID (Web application type).</p>',
-    '<p>1. Go to <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud → Credentials</a><br>',
-    '2. Create OAuth client → <strong>Web application</strong><br>',
-    '3. Add JS origin: <code>https://gse281.github.io</code><br>',
-    '4. Copy the Client ID → paste into ⚙︎ on the board as <strong>Gmail Client ID</strong></p>',
-    '<p style="color:#4a6a7a;font-size:11px">Gmail scope required: <code>gmail.modify</code></p>'
+    '<p>Paste your Google OAuth Client ID below to connect.</p>',
+    '<p>Need one? <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud → Credentials</a> →',
+    ' Create OAuth client → <strong>Web application</strong>',
+    ' → JS origin: <code>https://gse281.github.io</code></p>',
+    '<label style="display:block;font-size:11px;color:#8aa6af;margin-bottom:4px">OAuth Client ID</label>',
+    '<input id="gl-cid" type="text" placeholder="….apps.googleusercontent.com" style="width:100%;background:#0b1c26;border:1px solid #1e3a4a;color:#e7f3f6;padding:6px 8px;border-radius:4px;font-size:12px;font-family:inherit">',
+    '<br><br>',
+    '<button id="gl-cid-save" class="gl-btn p" style="font-size:13px">Save & Connect</button>',
+    '<p style="color:#4a6a7a;font-size:11px;margin-top:10px">Also add yourself as a test user on the OAuth consent screen.</p>'
   ].join('');
   wrap.appendChild(setup);
   host.appendChild(wrap);
+
+  wrap.querySelector('#gl-cid-save').addEventListener('click', function() {
+    var cid = wrap.querySelector('#gl-cid').value.trim();
+    if (!cid) return;
+    _cfg.gmailClientId = cid;
+    try {
+      var stored = JSON.parse(localStorage.getItem('tb.cfg') || '{}');
+      stored.gmailClientId = cid;
+      localStorage.setItem('tb.cfg', JSON.stringify(stored));
+    } catch(e) {}
+    // Re-mount with the new clientId
+    _gisClient = null; _authed = false;
+    mount(host, _cfg);
+  });
 }
 
 function buildConnectScreen(host) {
