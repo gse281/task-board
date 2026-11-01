@@ -9,23 +9,19 @@
 var SCOPE   = 'https://www.googleapis.com/auth/gmail.modify';
 var BASE    = 'https://www.googleapis.com/gmail/v1/users/me/';
 var TOK_KEY = 'gl.v4.tok';
-var SESS_KEY = 'gl.v5.sess';   // session secret for the token Worker (cfg.gmailWorker)
 
 // ── Auth state ─────────────────────────────────────────────────────────────────
 var _cfg       = null;
 var _gisClient = null;
-var _codeClient = null;
 var _token     = null;
 var _exp       = 0;
 var _pendingCB = null;
 var _authed    = false;
-var _session   = null;
 
 (function restoreToken() {
   try {
     var s = localStorage.getItem(TOK_KEY);
     if (s) { var p = JSON.parse(s); if (p.exp > Date.now() + 60000) { _token = p.tok; _exp = p.exp; _authed = true; } }
-    _session = localStorage.getItem(SESS_KEY) || null;
   } catch(e) {}
 })();
 
@@ -65,70 +61,65 @@ function ensureGISClient() {
   });
 }
 
-// ── Worker mode: one sign-in, then the Worker trades its refresh token for access tokens ──
+// ── Backend mode: a Google Apps Script web app (cfg.gmailBackend) hands out access
+//    tokens, so the page never signs in. Key lives only in this browser (BK_KEY).
 
-function workerUrl() { return (_cfg && _cfg.gmailWorker || '').replace(/\/+$/, ''); }
+var BK_KEY = 'gl.v5.bkey';
 
-function setSession(s) {
-  _session = s;
-  try { s ? localStorage.setItem(SESS_KEY, s) : localStorage.removeItem(SESS_KEY); } catch(e) {}
+function backendUrl() {
+  var u = (_cfg && _cfg.gmailBackend || '').trim();
+  return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u) ? u : '';
 }
+function backendKey() { try { return localStorage.getItem(BK_KEY) || ''; } catch(e) { return ''; } }
+function newKey() {
+  var b = new Uint8Array(24); crypto.getRandomValues(b);
+  var k = Array.from(b, function(x){ return x.toString(16).padStart(2, '0'); }).join('');
+  try { localStorage.setItem(BK_KEY, k); } catch(e) {}
+  return k;
+}
+
+function saveBackend(url, key) {
+  _cfg.gmailBackend = url;
+  try {
+    var c = JSON.parse(localStorage.getItem('tb.cfg')||'{}'); c.gmailBackend = url; delete c.gmailWorker;
+    localStorage.setItem('tb.cfg', JSON.stringify(c));
+    if (key) localStorage.setItem(BK_KEY, key);
+  } catch(e) {}
+}
+
+// Other devices: open email.html#gb=<url>|<key> once.
+var _linkBackend = '';
+(function readSetupLink() {
+  var m = location.hash.match(/gb=([^|&]+)\|([0-9a-f]{48})/);
+  if (!m) return;
+  try {
+    _linkBackend = decodeURIComponent(m[1]);
+    var c = JSON.parse(localStorage.getItem('tb.cfg')||'{}'); c.gmailBackend = _linkBackend;
+    localStorage.setItem('tb.cfg', JSON.stringify(c)); localStorage.setItem(BK_KEY, m[2]);
+  } catch(e) {}
+  history.replaceState(null, '', location.pathname + location.search);
+})();
 
 function takeAccess(d) {
   _token = d.access_token;
-  _exp   = Date.now() + (Number(d.expires_in || 3540) - 60) * 1000;
+  _exp   = Date.now() + (Number(d.expires_in || 900) - 60) * 1000;
   _authed = true; saveToken();
   return _token;
 }
 
-async function workerPost(path, body) {
-  var h = { 'Content-Type': 'application/json' };
-  if (_session) h.Authorization = 'Bearer ' + _session;
-  var r = await fetch(workerUrl() + path, { method: 'POST', headers: h, body: JSON.stringify(body || {}) });
-  var d = await r.json().catch(function(){ return {}; });
-  return { status: r.status, data: d };
-}
-
-function workerSignIn() {
-  return new Promise(function (resolve) {
-    _codeClient = google.accounts.oauth2.initCodeClient({
-      client_id: _cfg.gmailClientId,
-      scope: SCOPE + ' openid email',
-      ux_mode: 'popup',
-      select_account: true,
-      callback: async function (r) {
-        if (!r || !r.code) return resolve(null);
-        try {
-          var x = await workerPost('/exchange', { code: r.code });
-          if (x.status !== 200) {
-            var msg = { wrong_account: 'Wrong Google account (' + (x.data.email || '?') + ')',
-                        no_refresh_token: 'No refresh token — remove the app at myaccount.google.com/permissions, then sign in again',
-                        scope_missing: 'Gmail permission not granted — tick the Gmail box' }[x.data.error];
-            alert('Sign-in failed: ' + (msg || x.data.detail || x.data.error || x.status));
-            return resolve(null);
-          }
-          setSession(x.data.session);
-          resolve(takeAccess(x.data));
-        } catch (e) { alert('Sign-in failed: backend unreachable'); resolve(null); }
-      },
-      error_callback: function () { resolve(null); }
-    });
-    _codeClient.requestCode();
-  });
-}
-
-async function workerRefresh() {
-  if (!_session) return null;
+// text/plain body keeps it a "simple" CORS request (Apps Script can't answer preflights).
+async function backendToken() {
+  if (!backendUrl() || !backendKey()) return null;
   try {
-    var x = await workerPost('/token');
-    if (x.status === 200) return takeAccess(x.data);
-    if (x.status === 401) { setSession(null); _authed = false; }
-  } catch (e) {}
+    var r = await fetch(backendUrl(), { method: 'POST', body: JSON.stringify({ k: backendKey() }) });
+    var d = await r.json();
+    if (d.access_token) return takeAccess(d);
+    _error = d.error === 'denied' ? 'Backend key mismatch — redo setup' : (d.error || 'Backend error');
+  } catch (e) { _error = 'Backend unreachable'; }
   return null;
 }
 
 function signIn() {
-  if (workerUrl()) return workerSignIn();
   return new Promise(function (resolve) {
     ensureGISClient(); _pendingCB = resolve;
     _gisClient.requestAccessToken({ prompt: 'select_account' });
@@ -137,7 +128,7 @@ function signIn() {
 
 function silentRefresh() {
   if (_token && Date.now() < _exp) return Promise.resolve(_token);
-  if (workerUrl()) return workerRefresh();
+  if (backendUrl()) return backendToken();
   if (!_gisClient) return Promise.resolve(null);
   return new Promise(function (resolve) {
     _pendingCB = resolve;
@@ -147,7 +138,7 @@ function silentRefresh() {
 
 async function getToken() {
   if (_token && Date.now() < _exp) return _token;
-  if (!_authed && !(workerUrl() && _session)) return null;
+  if (!_authed && !backendUrl()) return null;
   return silentRefresh();
 }
 
@@ -162,8 +153,8 @@ async function gfetch(path, opts) {
   }));
   if (r.status === 401) {
     _token = null; clearToken();
-    // Worker mode: a revoked/expired access token just means fetch a fresh one once.
-    if (workerUrl() && _session && !opts._retried) return gfetch(path, Object.assign({}, opts, { _retried: true }));
+    // Backend mode: an expired access token just means fetch a fresh one once.
+    if (backendUrl() && !opts._retried) return gfetch(path, Object.assign({}, opts, { _retried: true }));
     throw Object.assign(new Error('auth'), { code: 'auth' });
   }
   if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -319,6 +310,10 @@ function addCss() {
 .glv-setup input,.glv-connect input{width:100%;background:#06141a;border:1px solid rgba(57,199,223,.3);color:#e7f3f6;padding:7px 10px;border-radius:8px;font-size:12px;font-family:inherit;margin-bottom:4px}
 .glv-setup input:focus,.glv-connect input:focus{outline:none;border-color:#39c7df}
 .glv-connect{padding:40px 20px;text-align:center}
+.glv-be{margin:22px auto 0;max-width:560px;text-align:left;font-size:12px;color:#8aa6af;border-top:1px solid #1a2a32;padding-top:16px}
+.glv-be b{color:#c8e6f0}.glv-be a{color:#39c7df}.glv-be ol{padding-left:18px;margin:8px 0 12px}.glv-be li{margin:5px 0}
+.glv-be .glv-btn{height:22px;padding:0 8px;font-size:11px}.glv-be #glv-bk-save{height:30px;margin-top:6px}
+#glv-bk-msg{margin-top:8px;color:#e5a53a}
 .glv-connect p{font-size:12px;color:#8aa6af;margin:10px 0 0}
 `;
   document.head.appendChild(s);
@@ -525,20 +520,59 @@ function buildConnectScreen(host) {
     });
   });
   var note = document.createElement('p');
-  note.textContent = workerUrl() ? 'Sign in once · stays signed in' : 'Sign-in saved for ~1 hour · no re-login on refresh';
+  note.textContent = 'Sign-in lasts ~1 hour. To stay signed in for good, set up the backend below (once).';
 
-  // Token backend URL (Cloudflare Worker) — set once to stop hourly sign-ins.
-  var be = document.createElement('div'); be.style.cssText = 'margin-top:18px;font-size:11px;color:#8aa6af';
-  be.innerHTML = '<label style="display:block;margin-bottom:5px">Token backend URL ' +
-    '<span style="color:#2a4a5a">(optional · stay signed in)</span></label>' +
-    '<input id="glv-wk" type="text" style="max-width:420px" placeholder="https://….workers.dev"> ' +
-    '<button id="glv-wk-save" class="glv-btn" style="margin-top:6px">Save</button>';
-  be.querySelector('#glv-wk').value = (_cfg && _cfg.gmailWorker) || '';
-  be.querySelector('#glv-wk-save').addEventListener('click', function() {
-    var u = be.querySelector('#glv-wk').value.trim();
-    _cfg.gmailWorker = u;
-    try { var c = JSON.parse(localStorage.getItem('tb.cfg')||'{}'); c.gmailWorker = u; localStorage.setItem('tb.cfg', JSON.stringify(c)); } catch(e) {}
-    setSession(null); _token = null; _authed = false; clearToken(); buildConnectScreen(host);
+  // Stay-signed-in setup: a tiny Apps Script web app in your own Google account.
+  var key = backendKey() || newKey();
+  var code = "var KEY = '" + key + "';\n" +
+    "function doPost(e) {\n" +
+    "  var b = {}; try { b = JSON.parse(e.postData.contents); } catch (x) {}\n" +
+    "  var out = b.k === KEY ? { access_token: ScriptApp.getOAuthToken(), expires_in: 900 } : { error: 'denied' };\n" +
+    "  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);\n" +
+    "}\n";
+  var manifest = JSON.stringify({
+    timeZone: 'America/New_York', runtimeVersion: 'V8', exceptionLogging: 'STACKDRIVER',
+    oauthScopes: [SCOPE],
+    dependencies: { enabledAdvancedServices: [{ userSymbol: 'Gmail', serviceId: 'gmail', version: 'v1' }] },
+    webapp: { executeAs: 'USER_DEPLOYING', access: 'ANYONE_ANONYMOUS' }
+  }, null, 2);
+
+  var be = document.createElement('div'); be.className = 'glv-be';
+  be.innerHTML = [
+    '<b>Stay signed in — one-time setup (~3 min)</b>',
+    '<ol>',
+    '<li>Open <a href="https://script.google.com/home/projects/create" target="_blank">script.google.com → New project</a>.</li>',
+    '<li>Select all the code there, delete it, then <button class="glv-btn" data-copy="code">Copy code</button> and paste.</li>',
+    '<li>⚙︎ Project Settings → tick <i>Show "appsscript.json"</i>. Back in Editor open <code>appsscript.json</code>, select all, ',
+    '<button class="glv-btn" data-copy="manifest">Copy settings</button> and paste. Save (⌘S).</li>',
+    '<li>Deploy → New deployment → ⚙︎ type <b>Web app</b> → Execute as <b>Me</b>, Who has access <b>Anyone</b> → Deploy.</li>',
+    '<li>Authorize access → pick your account → <i>Advanced</i> → <i>Go to … (unsafe)</i> → Allow. It\'s your own script.</li>',
+    '<li>Copy the <b>Web app URL</b> (ends in <code>/exec</code>) and paste here:</li>',
+    '</ol>',
+    '<input id="glv-bk" type="text" placeholder="https://script.google.com/macros/s/…/exec"> ',
+    '<button id="glv-bk-save" class="glv-btn ok">Save & connect</button>',
+    '<div id="glv-bk-msg"></div>'
+  ].join('');
+  be.querySelector('#glv-bk').value = (_cfg && _cfg.gmailBackend) || '';
+  if (_error && _error !== 'auth') be.querySelector('#glv-bk-msg').textContent = _error;
+  be.querySelectorAll('[data-copy]').forEach(function(b) {
+    b.addEventListener('click', function() {
+      navigator.clipboard.writeText(b.dataset.copy === 'code' ? code : manifest);
+      var t = b.textContent; b.textContent = '✓ Copied'; setTimeout(function(){ b.textContent = t; }, 1500);
+    });
+  });
+  be.querySelector('#glv-bk-save').addEventListener('click', function() {
+    var u = be.querySelector('#glv-bk').value.trim();
+    var msg = be.querySelector('#glv-bk-msg');
+    if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u)) {
+      msg.textContent = 'That is not a Web app URL. It starts with https://script.google.com/macros/s/ and ends with /exec.';
+      return;
+    }
+    saveBackend(u, key); _token = null; _authed = false; _error = null; clearToken();
+    msg.textContent = 'Connecting…';
+    backendToken().then(function(tok) {
+      if (tok) loadPage(true); else msg.textContent = _error || 'Could not connect';
+    });
   });
 
   d.append(btn, note, be); wrap.appendChild(d); host.appendChild(wrap);
@@ -555,6 +589,18 @@ function buildPanel(host) {
   refreshBtn.textContent = '⟳ Refresh';
   refreshBtn.addEventListener('click', function() { _expanded = {}; loadPage(true); });
   bar.appendChild(refreshBtn);
+
+  if (backendUrl()) {
+    var devBtn = document.createElement('button'); devBtn.className = 'glv-btn';
+    devBtn.textContent = '📱 Link for other devices';
+    devBtn.title = 'Open this link once on your phone/other computer to connect it';
+    devBtn.addEventListener('click', function() {
+      var link = location.origin + location.pathname + '#gb=' + encodeURIComponent(backendUrl()) + '|' + backendKey();
+      navigator.clipboard.writeText(link); devBtn.textContent = '✓ Copied — open it on the other device';
+      setTimeout(function(){ devBtn.textContent = '📱 Link for other devices'; }, 2500);
+    });
+    bar.appendChild(devBtn);
+  }
 
   // Chips: total + unread count
   var chips = document.createElement('div'); chips.className = 'glv-chips';
@@ -607,6 +653,7 @@ function redraw() {
 
 function mount(host, cfg) {
   addCss(); _cfg = cfg; _host = host;
+  if (_linkBackend) cfg.gmailBackend = _linkBackend;
 
   if (!cfg.gmailClientId) { buildSetupScreen(host); return; }
 
@@ -616,9 +663,9 @@ function mount(host, cfg) {
 
   host.innerHTML = '<div class="glv"><div class="glv-spin">Connecting…</div></div>';
 
-  // Worker mode: no Google popup needed while the session is valid.
-  if (workerUrl()) {
-    workerRefresh().then(function(tok) {
+  // Backend mode: no Google popup at all.
+  if (backendUrl()) {
+    backendToken().then(function(tok) {
       if (tok) loadPage(true);
       else buildConnectScreen(host);
     });

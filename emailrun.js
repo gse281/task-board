@@ -1,4 +1,4 @@
-/* emailrun.js — "📬 Email run": button + results panel, shared by Dashboard and Focus 2.
+/* emailrun.js — "✉ Email run": button + results panel, shared by Dashboard and Focus 2.
    Button → EmailRunRequests row (Kind Scan). The "Email run" scheduled task picks it up, sorts the inbox into
    A Archive · B Don't miss · C Reply (drafted) · D Starred action · E FYI, and writes rows to EmailRun.
    A: uncheck what to keep, then "Archive checked" → Archive request. C/D drafts: Approve → Status Approved → the task sends it in-thread.
@@ -43,7 +43,7 @@ async function request(kind){
   const now=new Date().toISOString();
   try{ const r=await api(REQ,'',{method:'POST',body:JSON.stringify({fields:{Name:(kind==='Scan'?'Email run ':'Archive A ')+new Date().toLocaleString(),Kind:kind,Status:'Requested',RequestedAt:now},typecast:true})});
     req={id:r.id,Kind:kind,Status:'Requested',RequestedAt:now}; startPoll(); notify();
-    toast(kind==='Scan'?'📬 Email run queued — runs at :07 past the hour':'🗄 Archive queued');
+    toast(kind==='Scan'?'✉ Email run queued — next run 8a or 12p':'🗄 Archive queued');
   }catch(e){ toast('Could not queue — check connection'); }
 }
 const patch=(id,fields)=>api(RUN,'/'+id,{method:'PATCH',body:JSON.stringify({fields,typecast:true})});
@@ -53,13 +53,13 @@ async function doneArchive(id){
   rows=rows.filter(r=>r.id!==id); notify();
   try{ await patch(id,{Status:'ToArchive'}); }catch(e){ return toast('Save failed'); }
   const live=(reqs||[]).find(r=>r.Kind==='Archive'&&/Requested|Running/.test(r.Status));
-  if(live&&live.Status==='Requested'){ toast('✓ Done — archives at :07'); return; }
+  if(live&&live.Status==='Requested'){ toast('✓ Done — archives at next run (8a/12p)'); return; }
   try{ const now=new Date().toISOString(); const r=await api(REQ,'',{method:'POST',body:JSON.stringify({fields:{Name:'Archive (Done) '+new Date().toLocaleString(),Kind:'Archive',Status:'Requested',RequestedAt:now},typecast:true})});
-    reqs.unshift({id:r.id,Kind:'Archive',Status:'Requested',RequestedAt:now}); startPoll(); notify(); toast('✓ Done — archives at :07'); }catch(e){ toast('Could not queue archive'); }
+    reqs.unshift({id:r.id,Kind:'Archive',Status:'Requested',RequestedAt:now}); startPoll(); notify(); toast('✓ Done — archives at next run (8a/12p)'); }catch(e){ toast('Could not queue archive'); }
 }
 async function approve(r,text){   // sent in-thread by the next Email run pass (never auto-sent)
   rows=rows.filter(x=>x.id!==r.id); notify();
-  try{ await patch(r.id,{Status:'Approved',Draft:text}); toast('✅ Approved — sends at :07 past the hour'); }
+  try{ await patch(r.id,{Status:'Approved',Draft:text}); toast('✅ Approved — sends at next run (8a/12p)'); }
   catch(e){ toast('Approve failed'); load(true); }
 }
 async function archiveChecked(box){
@@ -100,8 +100,8 @@ function panel(){
   const st=req?(busy()?'<span class="er-run">'+(req.Kind==='Archive'?'Archiving':'Scanning')+' — '+(req.Status==='Running'?'working…':'queued '+when(req.RequestedAt))+'</span>':
       req.Status==='Failed'?'<span class="er-bad">Last run failed'+(req.Detail?': '+esc(req.Detail):'')+'</span>':'Last run '+when(req.FinishedAt||req.RequestedAt)+(req.Detail?' · '+esc(req.Detail):'')):'Never run';
   p.innerHTML='<div class="er-top"><div class="er-st">'+st+'</div></div>';
-  const go=document.createElement('button'); go.type='button'; go.className='er-btn ok er-go'; go.textContent=live(scan)?'⏳ Scan queued':'📬 Run now'; go.disabled=live(scan); go.onclick=()=>request('Scan'); p.firstChild.appendChild(go);
-  if(!rows.length){ const e=document.createElement('div'); e.className='er-empty'; e.textContent=live(scan)?'Working through your inbox…':'Inbox handled. Hit 📬 Run now for a fresh pass.'; p.appendChild(e); return p; }
+  const go=document.createElement('button'); go.type='button'; go.className='er-btn ok er-go'; go.textContent=live(scan)?'⏳ Scan queued':'✉ Run now'; go.disabled=live(scan); go.onclick=()=>request('Scan'); p.firstChild.appendChild(go);
+  if(!rows.length){ const e=document.createElement('div'); e.className='er-empty'; e.textContent=live(scan)?'Working through your inbox…':'Inbox handled. Hit ✉ Run now for a fresh pass.'; p.appendChild(e); return p; }
   BK.forEach(([L,val,title,sub])=>{
     const its=rows.filter(r=>r.Bucket===val); if(!its.length) return;
     const s=document.createElement('details'); s.className='er-sec er-'+L; s.open=L!=='E'||its.length<=8;
@@ -121,7 +121,7 @@ function panel(){
 }
 function button(o){
   o=o||{}; const b=document.createElement('button'); b.type='button'; b.className=(o.cls||'')+' er-trig'; b.title='Email run — sort the inbox (A archive · B don\'t miss · C reply · D starred · E FYI)';
-  const paint=()=>{ const n=rows.filter(r=>!r.Bucket.startsWith('A')).length; b.innerHTML='📬 Email run'+(busy()?' <span class="er-dot">⏳</span>':n?' <span class="er-cnt">'+n+'</span>':''); };
+  const paint=()=>{ const n=rows.filter(r=>!r.Bucket.startsWith('A')).length; b.innerHTML='✉ Email run'+(busy()?' <span class="er-dot">⏳</span>':n?' <span class="er-cnt">'+n+'</span>':''); };
   paint(); subs.push(paint);
   b.onclick=()=>{ if(o.onClick) return o.onClick(); open(); };
   return b;
@@ -135,7 +135,7 @@ async function toggleStar(r){
   const on=!r.Starred; const f={Starred:on,StarReq:on?'Star':'Unstar'};
   if(on){ f.Bucket='D · Starred action'; } else if(String(r.Bucket).startsWith('D')){ f.Bucket='E · FYI'; }
   Object.assign(r,f); notify();
-  try{ await patch(r.id,f); toast(on?'★ Starred — syncs to Gmail at :07':'☆ Unstarred — syncs to Gmail at :07'); }catch(e){ toast('Save failed'); load(true); }
+  try{ await patch(r.id,f); toast(on?'★ Starred — syncs to Gmail at next run':'☆ Unstarred — syncs to Gmail at next run'); }catch(e){ toast('Save failed'); load(true); }
 }
 function starBtn(r){ const b=document.createElement('button'); b.type='button'; b.className='erw-star'+(r.Starred?' on':'')+(r.StarReq?' pend':''); b.textContent=r.Starred?'★':'☆'; b.title=(r.Starred?'Unstar':'Star')+(r.StarReq?' (syncing to Gmail…)':'');
   b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); toggleStar(r); }; return b; }
@@ -173,13 +173,13 @@ function pageView(){
   const p=document.createElement('div'); p.className='erw';
   const scan=reqs.find(r=>r.Kind==='Scan'), arc=reqs.find(r=>r.Kind==='Archive');
   const live=r=>r&&/Requested|Running/.test(r.Status);
-  const st=scan?(live(scan)?'<span class="er-run">Scanning — '+(scan.Status==='Running'?(scan.Detail?esc(scan.Detail):'working…'):'queued '+when(scan.RequestedAt)+' · runs at :07')+'</span>':
+  const st=scan?(live(scan)?'<span class="er-run">Scanning — '+(scan.Status==='Running'?(scan.Detail?esc(scan.Detail):'working…'):'queued '+when(scan.RequestedAt)+' · runs 8a/12p')+'</span>':
       scan.Status==='Failed'?'<span class="er-bad">Last scan failed'+(scan.Detail?': '+esc(scan.Detail):'')+'</span>':'Last scan '+when(scan.FinishedAt||scan.RequestedAt)+(scan.Detail?' · '+esc(scan.Detail):'')):'Never run';
   const arcLive=live(arc);
   const counts=(inbox?'<span class="erw-chip erw-inbox" title="Threads in your Gmail inbox as of '+esc(when(inbox.at))+'">📥 <b>'+inbox.n+'</b> in inbox</span>':'')+BK.map(([L,val])=>{ const n=rows.filter(r=>r.Bucket===val).length; return n?'<a href="#erw-'+L+'" class="erw-chip erw-c'+L+'"><b>'+L+'</b> '+n+'</a>':''; }).join('');
   p.innerHTML='<div class="erw-bar"><a href="dashboard.html" class="erw-back">← Board</a><div class="erw-chips">'+counts+'</div><div class="er-st erw-st">'+st+'</div></div>';
-  const go=document.createElement('button'); go.type='button'; go.className='er-btn ok erw-go'; go.textContent=live(scan)?'⏳ Scan queued':'📬 Run now'; go.disabled=live(scan); go.onclick=()=>request('Scan'); p.firstChild.appendChild(go);
-  if(!rows.length){ const e=document.createElement('div'); e.className='er-empty'; e.textContent=live(scan)?'Working through your inbox…':'Inbox handled. Hit 📬 Run now for a fresh pass.'; p.appendChild(e); return p; }
+  const go=document.createElement('button'); go.type='button'; go.className='er-btn ok erw-go'; go.textContent=live(scan)?'⏳ Scan queued':'✉ Run now'; go.disabled=live(scan); go.onclick=()=>request('Scan'); p.firstChild.appendChild(go);
+  if(!rows.length){ const e=document.createElement('div'); e.className='er-empty'; e.textContent=live(scan)?'Working through your inbox…':'Inbox handled. Hit ✉ Run now for a fresh pass.'; p.appendChild(e); return p; }
   const cols=document.createElement('div'); cols.className='erw-cols'; p.appendChild(cols);
   const order=['D','C','B','E','A'];
   order.forEach(L=>{ const [,val,title,sub]=BK.find(b=>b[0]===L);
@@ -189,7 +189,7 @@ function pageView(){
     const hb=s.firstChild;
     if(L==='A'&&arcLive){
       s.classList.add('erw-q');
-      hb.insertAdjacentHTML('beforeend','<span class="er-run erw-qs">🗄 '+(arc.Status==='Running'?(arc.Detail?esc(arc.Detail):'archiving…'):'queued '+when(arc.RequestedAt)+' · runs at :07')+'</span>');
+      hb.insertAdjacentHTML('beforeend','<span class="er-run erw-qs">🗄 '+(arc.Status==='Running'?(arc.Detail?esc(arc.Detail):'archiving…'):'queued '+when(arc.RequestedAt)+' · runs 8a/12p')+'</span>');
       const det=document.createElement('details'); det.className='erw-qd';
       det.innerHTML='<summary>'+its.length+' queued to archive — tap to see</summary>';
       const list=document.createElement('div'); list.className='erw-list';

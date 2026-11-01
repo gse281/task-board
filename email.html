@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070d11">
-<title>📬 Email run</title>
+<title>✉ Email</title>
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -29,8 +29,8 @@ var cfg = {};
 try { cfg = JSON.parse(localStorage.getItem('tb.cfg') || '{}') || {}; } catch(e) {}
 window.TE = { key: function(){ return cfg.apiKey || ''; }, base: function(){ return cfg.baseId || 'appdDTNBbVrp6hVOv'; } };
 </script>
-<script src="gmail-live.js?v=1793352000"></script>
-<script src="emailrun.js?v=1793351000"></script>
+<script src="gmail-live.js?v=1793560000"></script>
+<script src="emailrun.js?v=1793560000"></script>
 <script>
 (function(){
   var app = document.getElementById('app');
@@ -46,8 +46,8 @@ window.TE = { key: function(){ return cfg.apiKey || ''; }, base: function(){ ret
   var pnlScan = document.createElement('div'); pnlScan.className = 'pg-panel';       pnlScan.id = 'pnl-scan';
 
   var tabs = [
-    { id: 'live', label: '📥 Live Gmail' },
-    { id: 'scan', label: '📬 Scan' }
+    { id: 'live', label: '◉ Live Gmail' },
+    { id: 'scan', label: '✉ Scan' }
   ];
 
   tabs.forEach(function(t) {
