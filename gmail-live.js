@@ -116,7 +116,7 @@ async function backendToken() {
     var r = await fetch(backendUrl(), { method: 'POST', body: JSON.stringify({ k: backendKey() }) });
     var d = await r.json();
     if (d.access_token) return takeAccess(d);
-    _error = d.error === 'denied' ? 'Backend key mismatch — redo setup' : (d.error || 'Backend error');
+    _error = d.error === 'denied' ? 'Key mismatch: the live script has a different key (this browser\'s starts ' + backendKey().slice(0,6) + '). In Apps Script: check KEY matches, ⌘S, then Deploy → New deployment (not Manage) and paste the NEW /exec URL here.' : (d.error || 'Backend error');
   } catch (e) { _error = 'Backend unreachable'; }
   return null;
 }
