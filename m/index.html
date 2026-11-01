@@ -2787,7 +2787,7 @@ function settingsSheet(){
 let tt;
 function toast(msg,undo){
   const el=document.getElementById('toast'), ub=document.getElementById('undoBtn');
-  { const top=stack[stack.length-1]; el.classList.toggle('top',!!(top&&top.route&&top.route.type==='deck')); }   // card/drill view: Undo shows at the top (thumb area stays clear)
+  el.classList.add('top');   // Undo always at the top — never covers the action buttons
   el.querySelector('.tm').textContent=msg; el.classList.add('on'); undoFn=undo||null; ub.classList.toggle('hidden',!undo);
   ub.onclick=async()=>{ const f=undoFn; undoFn=null; el.classList.remove('on'); if(f){ await f(); stack.forEach(s=>{ if(s.route.type==='deck'){ s.queue=null; s.handled=Math.max(0,(s.handled||0)-1); } }); render(); } };
   clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('on'), undo?4500:2200);

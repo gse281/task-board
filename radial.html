@@ -254,7 +254,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .foot{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:9;display:flex;gap:8px}
 .foot button,.foot a{border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--dim);text-decoration:none}
 .foot button:hover,.foot a:hover{color:var(--cyan);border-color:var(--cyan)}
-#toast{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--cyan);color:var(--ink);border-radius:12px;padding:10px 16px;font-size:13px;z-index:9600;opacity:0;transition:opacity .2s;pointer-events:none}
+#toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--card2);border:1px solid var(--cyan);color:var(--ink);border-radius:12px;padding:10px 16px;font-size:13px;z-index:9600;opacity:0;transition:opacity .2s;pointer-events:none}
 #toast.show{opacity:1}
 #setup{position:fixed;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:10px;z-index:70;background:rgba(4,7,10,.92)}
 #setup input{background:var(--card2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:10px 12px;width:min(420px,86vw);font:14px ui-monospace,Menlo}

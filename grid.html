@@ -322,7 +322,7 @@ textarea.inp{min-height:70px;resize:vertical}
 .btn.ghost{background:transparent}
 .note{color:var(--muted);font-size:12px;margin-top:6px;line-height:1.5}
 /* Action feedback pops mid-screen (not the bottom), by request */
-.toast{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);background:var(--panel2);border:1px solid var(--accent);
+.toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--panel2);border:1px solid var(--accent);
   border-radius:12px;padding:12px 20px;font-size:15px;font-weight:600;z-index:9600;box-shadow:0 10px 30px rgba(0,0,0,.5)}
 .fab{position:fixed;right:16px;bottom:16px;width:54px;height:54px;border-radius:50%;background:var(--accent);
   border:none;color:#14110f;font-size:28px;z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.4)}
