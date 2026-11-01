@@ -88,13 +88,15 @@ function saveBackend(url, key) {
 }
 
 // Other devices: open email.html#gb=<url>|<key> once.
-var _linkBackend = '';
+var _linkBackend = '', _linkApiKey = '';
 (function readSetupLink() {
   var m = location.hash.match(/gb=([^|&]+)\|([0-9a-f]{48})/);
   if (!m) return;
   try {
     _linkBackend = decodeURIComponent(m[1]);
     var c = JSON.parse(localStorage.getItem('tb.cfg')||'{}'); c.gmailBackend = _linkBackend;
+    var at = location.hash.match(/[&#]at=([^&]+)/);
+    if (at && !c.apiKey) { c.apiKey = decodeURIComponent(at[1]); _linkApiKey = c.apiKey; }
     localStorage.setItem('tb.cfg', JSON.stringify(c)); localStorage.setItem(BK_KEY, m[2]);
   } catch(e) {}
   history.replaceState(null, '', location.pathname + location.search);
@@ -221,6 +223,7 @@ function parseThread(t) {
     senderName:  s.name,
     senderEmail: s.email,
     date:        dateStr ? new Date(dateStr) : new Date(),
+    labels:      msgs.reduce(function(a, m){ return a.concat(m.labelIds || []); }, []),
     starred:     (first.labelIds || []).indexOf('STARRED') >= 0,
     unread:      (first.labelIds || []).indexOf('UNREAD') >= 0,
     msgCount:    msgs.length
@@ -331,16 +334,95 @@ function addCss() {
 .glv-be .glv-btn{height:22px;padding:0 8px;font-size:11px}.glv-be #glv-bk-save{height:30px;margin-top:6px}
 #glv-bk-msg{margin-top:8px;color:#e5a53a}
 .glv-connect p{font-size:12px;color:#8aa6af;margin:10px 0 0}
+.glv-cols{column-width:340px;column-gap:16px}
+.glv-bk{break-inside:avoid-column;margin-bottom:12px}
+.glv-bh{display:flex;align-items:center;gap:7px;padding:4px 2px 6px;cursor:pointer;user-select:none;break-after:avoid}
+.glv-bh h2{margin:0;font-size:13.5px;font-weight:800;flex:1}
+.glv-B .glv-sl{background:#e5533a;color:#fff}.glv-D .glv-sl{background:#e0a458;color:#07141a}.glv-A .glv-sl,.glv-N .glv-sl{color:#8aa6af}
+.glv-B .glv-row{border-color:rgba(229,83,58,.35)}.glv-D .glv-row{border-color:rgba(224,164,88,.35)}
+.glv-aa{height:22px;padding:0 8px;font-size:10px}
+.glv-pj{break-after:avoid;font:800 10.5px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:#64838d;margin:6px 2px 0}
+.glv-pj i{font-style:normal;color:#39c7df;margin-left:3px}
+.glv-rsnip.sum{color:#9fc3cc;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.glv-adv{margin-top:2px;color:#e0a458;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glv-chip.bk{cursor:pointer}.glv-chip.cB b{color:#e5533a}.glv-chip.cD b{color:#e0a458}
+@media (hover:none){.glv-ck,.glv-arch{opacity:1}}
+@media (max-width:600px){
+  .glv{padding:0 10px calc(24px + env(safe-area-inset-bottom))}
+  .glv-cols{column-width:auto;columns:1}
+  .glv-bar{padding-top:max(8px, env(safe-area-inset-top))}
+  .glv-row{padding:9px 11px;border-radius:11px}
+  .glv-rf{font-size:15px}.glv-rs{font-size:14px}.glv-rsnip{font-size:12.5px}.glv-rw{font-size:12px}
+  .glv-star{font-size:20px;padding:0 4px}
+  .glv-ck{height:30px;padding:0 10px;font-size:11px}
+  .glv-btn{height:34px}
+  .glv-bh h2{font-size:15px}
+  .glv-st{flex-basis:100%;order:9}
+}
 `;
   document.head.appendChild(s);
 }
 
 // ── Avatar letter + color ──────────────────────────────────────────────────────
 
+var IS_PHONE = /iPhone|iPod|Android/.test(navigator.userAgent);
 var COLORS = ['#1a5a7a','#2a6a4a','#5a3a7a','#7a3a2a','#1a4a7a','#3a6a2a','#7a2a4a','#1a7a6a'];
 function avatarColor(key) {
   var n = 0; for (var i = 0; i < key.length; i++) n = (n*31 + key.charCodeAt(i)) & 0xffff;
   return COLORS[n % COLORS.length];
+}
+
+// ── Scan buckets ───────────────────────────────────────────────────────────────
+// Same A–E buckets as the Scan tab (emailrun.js). A thread the Email run already
+// sorted keeps its bucket/project/summary; others borrow the sender's last
+// project, and starred → D, Gmail promotions/social → A, the rest → "Not sorted yet".
+
+var BUCKETS = [
+  ['D', '⭐ Starred · action'], ['C', '✍️ Reply'], ['B', "⚠️ Don't miss"],
+  ['N', '🆕 Not sorted yet'],  ['E', '📄 Everything else'], ['A', '🗄 Archive']
+];
+var _scan = { byThread: {}, bySender: {}, loaded: false };
+
+async function loadScan() {
+  var key = window.TE && TE.key && TE.key(); if (!key || _scan.loaded) return;
+  var base = (TE.base && TE.base()) || 'appdDTNBbVrp6hVOv', off = '', recs = [];
+  var flds = ['ThreadId','FromEmail','Bucket','Project','Summary','Advice','RunAt'].map(function(f){ return 'fields%5B%5D=' + f; }).join('&');
+  try {
+    do {
+      var r = await fetch('https://api.airtable.com/v0/' + base + '/tblIl26oggXP4WtvE?pageSize=100&' + flds + (off ? '&offset=' + off : ''),
+                          { headers: { Authorization: 'Bearer ' + key } });
+      if (!r.ok) break;
+      var d = await r.json(); recs = recs.concat(d.records || []); off = d.offset || '';
+    } while (off);
+  } catch (e) { return; }
+  recs.map(function(r){ return r.fields; }).sort(function(a, b){ return String(a.RunAt||'').localeCompare(String(b.RunAt||'')); })
+    .forEach(function(f){
+      var b = f.Bucket && typeof f.Bucket === 'object' ? f.Bucket.name : f.Bucket;
+      var rec = { bucket: String(b || '').charAt(0), project: f.Project || '', summary: f.Summary || '', advice: f.Advice || '' };
+      if (f.ThreadId) _scan.byThread[f.ThreadId] = rec;
+      if (f.FromEmail) _scan.bySender[String(f.FromEmail).toLowerCase()] = rec;
+    });
+  _scan.loaded = true;
+}
+
+function classify(t) {
+  var r = _scan.byThread[t.id], snd = _scan.bySender[(t.senderEmail || '').toLowerCase()];
+  if (r && r.bucket) return { b: r.bucket, project: r.project, summary: r.summary, advice: r.advice, sorted: true };
+  var project = snd ? snd.project : '';
+  if (t.starred) return { b: 'D', project: project };
+  if (snd && (snd.bucket === 'A' || snd.bucket === 'E')) return { b: snd.bucket, project: project, guess: true };
+  if (t.labels.some(function(l){ return /^CATEGORY_(PROMOTIONS|SOCIAL|FORUMS)$/.test(l); })) return { b: 'A', project: project, guess: true };
+  return { b: 'N', project: project };
+}
+
+function archiveThreads(list, btn) {
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+  return pool(list, 8, function(t){ return apiModify(t.id, { removeLabelIds: ['INBOX'] }); }).then(function(){
+    var ids = list.map(function(t){ return t.id; });
+    _threads = _threads.filter(function(t){ return ids.indexOf(t.id) < 0; });
+    if (_total) _total = Math.max(0, _total - ids.length);
+    rebuildList(_listEl);
+  }).catch(function(){ if (btn) { btn.textContent = 'Error'; btn.disabled = false; } });
 }
 
 // ── Grouping ───────────────────────────────────────────────────────────────────
@@ -411,12 +493,18 @@ function makeRow(t, showSender) {
   body.textContent = showSender ? t.subject : (t.snippet || '');
   div.appendChild(body);
 
-  if (showSender && t.snippet) {
-    var snip = document.createElement('div'); snip.className = 'glv-rsnip'; snip.textContent = t.snippet;
+  var c = t._c || {};
+  var more = c.summary || (showSender ? t.snippet : '');
+  if (more) {
+    var snip = document.createElement('div'); snip.className = 'glv-rsnip' + (c.summary ? ' sum' : ''); snip.textContent = more;
     div.appendChild(snip);
   }
+  if (c.advice) {
+    var adv = document.createElement('div'); adv.className = 'glv-adv'; adv.textContent = '→ ' + c.advice;
+    div.appendChild(adv);
+  }
 
-  div.addEventListener('click', function(){ window.open('https://mail.google.com/mail/u/0/#inbox/'+t.id,'gm-pane'); });
+  div.addEventListener('click', function(){ window.open('https://mail.google.com/mail/u/0/#inbox/'+t.id, IS_PHONE ? '_blank' : 'gm-pane'); });
   return div;
 }
 
@@ -476,15 +564,52 @@ function rebuildList(listEl) {
   if (!listEl) return;
   _listEl = listEl;
   var frag = document.createDocumentFragment();
-  var groups = groupThreads(_threads);
+  var by = {};
+  _threads.forEach(function(t){ t._c = classify(t); (by[t._c.b] = by[t._c.b] || []).push(t); });
 
-  groups.forEach(function(g){ frag.appendChild(makeSection(g)); });
+  var cols = document.createElement('div'); cols.className = 'glv-cols';
+  BUCKETS.forEach(function(bk){
+    var L = bk[0], its = by[L]; if (!its || !its.length) return;
+    its.sort(function(a, b){ return b.date - a.date; });
+    var sec = document.createElement('section'); sec.className = 'glv-bk glv-' + L; sec.id = 'glv-' + L;
+    var open = _expanded['bk-' + L] !== undefined ? _expanded['bk-' + L] : L !== 'A';
+    var sh = document.createElement('div'); sh.className = 'glv-bh';
+    sh.innerHTML = '<span class="glv-sl">' + (L === 'N' ? '•' : L) + '</span><h2></h2><i class="glv-sc">' + its.length + '</i><span class="glv-xi">' + (open ? '▾' : '▸') + '</span>';
+    sh.querySelector('h2').textContent = bk[1];
+    if (L === 'A' || L === 'E') {
+      var all = document.createElement('button'); all.className = 'glv-btn glv-aa'; all.textContent = 'Archive all ' + its.length;
+      all.addEventListener('click', function(e){ e.stopPropagation();
+        if (confirm('Archive all ' + its.length + ' in "' + bk[1] + '"?')) archiveThreads(its, all); });
+      sh.insertBefore(all, sh.querySelector('.glv-xi'));
+    }
+    sh.addEventListener('click', function(){ _expanded['bk-' + L] = !open; rebuildList(_listEl); });
+    sec.appendChild(sh);
+    if (open) {
+      var list = document.createElement('div'); list.className = 'glv-list';
+      if (L === 'N') {
+        groupThreads(its).forEach(function(g){ list.appendChild(makeSection(g)); });
+      } else {
+        var g = {};
+        its.forEach(function(t){ var k = t._c.project || 'Other'; (g[k] = g[k] || []).push(t); });
+        Object.keys(g).sort(function(a, b){ return (a === 'Other') - (b === 'Other') || g[b].length - g[a].length || a.localeCompare(b); })
+          .forEach(function(k){
+            var ph = document.createElement('div'); ph.className = 'glv-pj'; ph.textContent = k + ' ';
+            var pi = document.createElement('i'); pi.textContent = g[k].length; ph.appendChild(pi);
+            list.appendChild(ph);
+            g[k].forEach(function(t){ list.appendChild(makeRow(t, true)); });
+          });
+      }
+      sec.appendChild(list);
+    }
+    cols.appendChild(sec);
+  });
+  frag.appendChild(cols);
 
   if (_loading) {
     var n = _threads.length, est = _total || 0;
     var pct = est > 0 ? Math.round(n / est * 100) : 0;
     var spin = document.createElement('div'); spin.className = 'glv-spin';
-    spin.textContent = n ? ('Loading… ' + n + (est?' of ~'+est:'') + (pct?' ('+pct+'%)':'')) : 'Loading inbox…';
+    spin.textContent = n ? ('Loading… ' + n + (est?' of '+est:'') + (pct?' ('+pct+'%)':'')) : 'Loading inbox…';
     frag.appendChild(spin);
   } else if (_threads.length === 0 && !_error) {
     var empty = document.createElement('div'); empty.className = 'glv-empty';
@@ -609,9 +734,11 @@ function buildPanel(host) {
   if (backendUrl()) {
     var devBtn = document.createElement('button'); devBtn.className = 'glv-btn';
     devBtn.textContent = '📱 Link for other devices';
-    devBtn.title = 'Open this link once on your phone/other computer to connect it';
+    devBtn.title = 'Open this link once on your phone/other computer to connect it. It holds your keys — only send it to yourself.';
     devBtn.addEventListener('click', function() {
-      var link = location.origin + location.pathname + '#gb=' + encodeURIComponent(backendUrl()) + '|' + backendKey();
+      var at = window.TE && TE.key && TE.key();
+      var link = location.origin + location.pathname + '#gb=' + encodeURIComponent(backendUrl()) + '|' + backendKey() +
+                 (at ? '&at=' + encodeURIComponent(at) : '');
       navigator.clipboard.writeText(link); devBtn.textContent = '✓ Copied — open it on the other device';
       setTimeout(function(){ devBtn.textContent = '📱 Link for other devices'; }, 2500);
     });
@@ -625,12 +752,15 @@ function buildPanel(host) {
     c1.innerHTML = '📥 <b>' + _total + '</b> in inbox';
     chips.appendChild(c1);
   }
-  var unreadCount = _threads.filter(function(t){ return t.unread; }).length;
-  if (unreadCount) {
-    var c2 = document.createElement('span'); c2.className = 'glv-chip';
-    c2.innerHTML = '<b>' + unreadCount + '</b> unread';
-    chips.appendChild(c2);
-  }
+  var counts = {};
+  _threads.forEach(function(t){ var b = (t._c || classify(t)).b; counts[b] = (counts[b] || 0) + 1; });
+  BUCKETS.forEach(function(bk){
+    if (!counts[bk[0]]) return;
+    var c = document.createElement('a'); c.className = 'glv-chip bk c' + bk[0]; c.href = '#glv-' + bk[0];
+    c.innerHTML = '<b>' + (bk[0] === 'N' ? 'New' : bk[0]) + '</b> ' + counts[bk[0]];
+    c.title = bk[1];
+    chips.appendChild(c);
+  });
   bar.appendChild(chips);
 
   var st = document.createElement('div'); st.className = 'glv-st';
@@ -642,8 +772,7 @@ function buildPanel(host) {
     rb.addEventListener('click', function(){ loadPage(true); });
     st.appendChild(rb);
   } else if (_threads.length) {
-    var groups = groupThreads(_threads);
-    st.textContent = groups.length + ' senders · ' + _threads.length + ' loaded';
+    st.textContent = _threads.length + ' loaded' + (_scan.loaded ? '' : ' · sorting by sender only (no Airtable key)');
   }
   bar.appendChild(st);
 
@@ -670,6 +799,8 @@ function redraw() {
 function mount(host, cfg) {
   addCss(); _cfg = cfg; _host = host;
   if (_linkBackend) cfg.gmailBackend = _linkBackend;
+  if (_linkApiKey && !cfg.apiKey) cfg.apiKey = _linkApiKey;
+  loadScan().then(function(){ if (_scan.loaded && _listEl) redraw(); });
 
   if (!cfg.gmailClientId) { buildSetupScreen(host); return; }
 

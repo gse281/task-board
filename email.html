@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070d11">
 <title>✉ Email</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Email">
+<link rel="apple-touch-icon" href="m/icon-180.png">
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -12,12 +16,14 @@ html,body{margin:0;height:100%}
 body{background:#070d11;color:#e7f3f6;font:14px/1.4 -apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 #app{display:flex;flex-direction:column;height:100%}
 .nokey{padding:40px 24px;color:#8aa6af}.nokey a{color:#39c7df}
-.pg-tabs{display:flex;border-bottom:1px solid #1a2a32;background:#070d11;flex-shrink:0}
+.pg-tabs{display:flex;border-bottom:1px solid #1a2a32;background:#070d11;flex-shrink:0;padding-top:env(safe-area-inset-top)}
 .pg-tab{padding:9px 18px;font-size:13px;color:#8aa6af;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;user-select:none;white-space:nowrap}
 .pg-tab:hover{color:#c8e6f0;background:#080f17}
 .pg-tab.active{color:#39c7df;border-bottom-color:#39c7df}
 .pg-panel{flex:1;overflow:auto;display:none;min-height:0}
 .pg-panel.active{display:block}
+.pg-back{margin-left:auto;padding:9px 14px;font:700 12px ui-monospace,Menlo,monospace;color:#8aa6af;text-decoration:none;white-space:nowrap}
+@media(max-width:600px){.pg-tab{flex:1;text-align:center;padding:12px 8px;font-size:14px}}
 </style>
 <!-- Google Identity Services (for live Gmail OAuth) -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -29,16 +35,13 @@ var cfg = {};
 try { cfg = JSON.parse(localStorage.getItem('tb.cfg') || '{}') || {}; } catch(e) {}
 window.TE = { key: function(){ return cfg.apiKey || ''; }, base: function(){ return cfg.baseId || 'appdDTNBbVrp6hVOv'; } };
 </script>
-<script src="gmail-live.js?v=1793561000"></script>
+<script src="gmail-live.js?v=1793562000"></script>
 <script src="emailrun.js?v=1793560000"></script>
 <script>
 (function(){
   var app = document.getElementById('app');
-
-  if (!cfg.apiKey) {
-    app.innerHTML = '<div class="nokey">Connect Airtable in ⚙︎ on the <a href="dashboard.html">board</a> first.</div>';
-    return;
-  }
+  // gmail-live.js may have just saved keys from a setup link — re-read.
+  try { Object.assign(cfg, JSON.parse(localStorage.getItem('tb.cfg') || '{}')); } catch(e) {}
 
   // Build tab layout
   var tabBar  = document.createElement('div'); tabBar.className  = 'pg-tabs';
@@ -68,9 +71,13 @@ window.TE = { key: function(){ return cfg.apiKey || ''; }, base: function(){ ret
   app.appendChild(pnlLive);
   app.appendChild(pnlScan);
 
-  // Mount both panels
+  var back = document.createElement('a'); back.className = 'pg-back'; back.textContent = '◉ Focus'; back.href = 'index.html';
+  if (!/iPhone|iPod|Android/.test(navigator.userAgent)) tabBar.appendChild(back);
+
+  // Mount both panels (Live Gmail works without Airtable; Scan needs it)
   GL.mount(pnlLive, cfg);
-  ER.mountPage(pnlScan);
+  if (cfg.apiKey) ER.mountPage(pnlScan);
+  else pnlScan.innerHTML = '<div class="nokey">Connect Airtable in ⚙︎ on the <a href="dashboard.html">board</a> first.</div>';
 })();
 </script>
 </body>
