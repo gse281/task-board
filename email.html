@@ -8,25 +8,69 @@
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%}
+html,body{margin:0;height:100%}
 body{background:#070d11;color:#e7f3f6;font:14px/1.4 -apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-#app{width:100%}
+#app{display:flex;flex-direction:column;height:100%}
 .nokey{padding:40px 24px;color:#8aa6af}.nokey a{color:#39c7df}
+.pg-tabs{display:flex;border-bottom:1px solid #1a2a32;background:#070d11;flex-shrink:0}
+.pg-tab{padding:9px 18px;font-size:13px;color:#8aa6af;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;user-select:none;white-space:nowrap}
+.pg-tab:hover{color:#c8e6f0;background:#080f17}
+.pg-tab.active{color:#39c7df;border-bottom-color:#39c7df}
+.pg-panel{flex:1;overflow:auto;display:none;min-height:0}
+.pg-panel.active{display:block}
 </style>
+<!-- Google Identity Services (for live Gmail OAuth) -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
 <div id="app"></div>
 <script>
-// Same Airtable key the board uses (tb.cfg in localStorage).
-var cfg={}; try{ cfg=JSON.parse(localStorage.getItem('tb.cfg')||'{}')||{}; }catch(e){}
-window.TE={ key:function(){ return cfg.apiKey||''; }, base:function(){ return cfg.baseId||'appdDTNBbVrp6hVOv'; } };
+var cfg = {};
+try { cfg = JSON.parse(localStorage.getItem('tb.cfg') || '{}') || {}; } catch(e) {}
+window.TE = { key: function(){ return cfg.apiKey || ''; }, base: function(){ return cfg.baseId || 'appdDTNBbVrp6hVOv'; } };
 </script>
+<script src="gmail-live.js?v=1793340000"></script>
 <script src="emailrun.js?v=1793336000"></script>
 <script>
 (function(){
-  var app=document.getElementById('app');
-  if(!cfg.apiKey){ app.innerHTML='<div class="nokey">Connect Airtable in ⚙︎ on the <a href="dashboard.html">board</a> first.</div>'; return; }
-  ER.mountPage(app);
+  var app = document.getElementById('app');
+
+  if (!cfg.apiKey) {
+    app.innerHTML = '<div class="nokey">Connect Airtable in ⚙︎ on the <a href="dashboard.html">board</a> first.</div>';
+    return;
+  }
+
+  // Build tab layout
+  var tabBar  = document.createElement('div'); tabBar.className  = 'pg-tabs';
+  var pnlLive = document.createElement('div'); pnlLive.className = 'pg-panel active'; pnlLive.id = 'pnl-live';
+  var pnlScan = document.createElement('div'); pnlScan.className = 'pg-panel';       pnlScan.id = 'pnl-scan';
+
+  var tabs = [
+    { id: 'live', label: '📥 Live Gmail' },
+    { id: 'scan', label: '📬 Scan' }
+  ];
+
+  tabs.forEach(function(t) {
+    var el = document.createElement('div');
+    el.className = 'pg-tab' + (t.id === 'live' ? ' active' : '');
+    el.textContent = t.label;
+    el.dataset.tab = t.id;
+    el.addEventListener('click', function() {
+      tabBar.querySelectorAll('.pg-tab').forEach(function(x){ x.classList.remove('active'); });
+      app.querySelectorAll('.pg-panel').forEach(function(x){ x.classList.remove('active'); });
+      el.classList.add('active');
+      document.getElementById('pnl-' + t.id).classList.add('active');
+    });
+    tabBar.appendChild(el);
+  });
+
+  app.appendChild(tabBar);
+  app.appendChild(pnlLive);
+  app.appendChild(pnlScan);
+
+  // Mount both panels
+  GL.mount(pnlLive, cfg);
+  ER.mountPage(pnlScan);
 })();
 </script>
 </body>
