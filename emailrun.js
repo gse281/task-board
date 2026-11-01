@@ -177,7 +177,7 @@ function pageView(){
       scan.Status==='Failed'?'<span class="er-bad">Last scan failed'+(scan.Detail?': '+esc(scan.Detail):'')+'</span>':'Last scan '+when(scan.FinishedAt||scan.RequestedAt)+(scan.Detail?' · '+esc(scan.Detail):'')):'Never run';
   const arcLive=live(arc);
   const counts=(inbox?'<span class="erw-chip erw-inbox" title="Threads in your Gmail inbox as of '+esc(when(inbox.at))+'">📥 <b>'+inbox.n+'</b> in inbox</span>':'')+BK.map(([L,val])=>{ const n=rows.filter(r=>r.Bucket===val).length; return n?'<a href="#erw-'+L+'" class="erw-chip erw-c'+L+'"><b>'+L+'</b> '+n+'</a>':''; }).join('');
-  p.innerHTML='<div class="erw-bar"><a href="dashboard.html" class="erw-back">← Board</a><h1>📬 Email run</h1><div class="erw-chips">'+counts+'</div><div class="er-st erw-st">'+st+'</div></div>';
+  p.innerHTML='<div class="erw-bar"><a href="dashboard.html" class="erw-back">← Board</a><div class="erw-chips">'+counts+'</div><div class="er-st erw-st">'+st+'</div></div>';
   const go=document.createElement('button'); go.type='button'; go.className='er-btn ok erw-go'; go.textContent=live(scan)?'⏳ Scan queued':'📬 Run now'; go.disabled=live(scan); go.onclick=()=>request('Scan'); p.firstChild.appendChild(go);
   if(!rows.length){ const e=document.createElement('div'); e.className='er-empty'; e.textContent=live(scan)?'Working through your inbox…':'Inbox handled. Hit 📬 Run now for a fresh pass.'; p.appendChild(e); return p; }
   const cols=document.createElement('div'); cols.className='erw-cols'; p.appendChild(cols);

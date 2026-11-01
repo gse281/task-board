@@ -1,4 +1,4 @@
-/* gmail-live.js — live Gmail inbox panel v3
+/* gmail-live.js — live Gmail inbox panel v4
    Requires Google Identity Services:
      <script src="https://accounts.google.com/gsi/client" async defer></script>
    Public API:  window.GL = { mount(host, cfg) }
@@ -8,7 +8,7 @@
 
 var SCOPE   = 'https://www.googleapis.com/auth/gmail.modify';
 var BASE    = 'https://www.googleapis.com/gmail/v1/users/me/';
-var TOK_KEY = 'gl.v3.tok'; // localStorage — persists across tab closes
+var TOK_KEY = 'gl.v4.tok';
 
 // ── Auth state ─────────────────────────────────────────────────────────────────
 var _cfg       = null;
@@ -18,14 +18,10 @@ var _exp       = 0;
 var _pendingCB = null;
 var _authed    = false;
 
-// Restore from localStorage so sign-in persists until token expires (~1 hr)
 (function restoreToken() {
   try {
     var s = localStorage.getItem(TOK_KEY);
-    if (s) {
-      var p = JSON.parse(s);
-      if (p.exp > Date.now() + 120000) { _token = p.tok; _exp = p.exp; _authed = true; }
-    }
+    if (s) { var p = JSON.parse(s); if (p.exp > Date.now() + 60000) { _token = p.tok; _exp = p.exp; _authed = true; } }
   } catch(e) {}
 })();
 
@@ -35,7 +31,7 @@ var _nextPage = null;
 var _total    = null;
 var _loading  = false;
 var _error    = null;
-var _expanded = {};   // senderKey → bool (true = open; default collapsed for groups)
+var _expanded = {};
 var _host     = null;
 var _listEl   = null;
 
@@ -44,10 +40,7 @@ var _listEl   = null;
 function saveToken() {
   try { localStorage.setItem(TOK_KEY, JSON.stringify({ tok: _token, exp: _exp })); } catch(e) {}
 }
-
-function clearToken() {
-  try { localStorage.removeItem(TOK_KEY); } catch(e) {}
-}
+function clearToken() { try { localStorage.removeItem(TOK_KEY); } catch(e) {} }
 
 function ensureGISClient() {
   if (_gisClient) return;
@@ -58,8 +51,7 @@ function ensureGISClient() {
       if (r && r.access_token) {
         _token = r.access_token;
         _exp   = Date.now() + (Number(r.expires_in || 3540) - 60) * 1000;
-        _authed = true;
-        saveToken();
+        _authed = true; saveToken();
       }
       if (_pendingCB) { var f = _pendingCB; _pendingCB = null; f(_token || null); }
     },
@@ -71,8 +63,7 @@ function ensureGISClient() {
 
 function signIn() {
   return new Promise(function (resolve) {
-    ensureGISClient();
-    _pendingCB = resolve;
+    ensureGISClient(); _pendingCB = resolve;
     _gisClient.requestAccessToken({ prompt: 'select_account' });
   });
 }
@@ -107,7 +98,7 @@ async function gfetch(path, opts) {
 }
 
 async function apiListThreads(pageToken) {
-  var qs = 'threads?maxResults=50&labelIds=INBOX';
+  var qs = 'threads?maxResults=100&labelIds=INBOX';
   if (pageToken) qs += '&pageToken=' + encodeURIComponent(pageToken);
   return gfetch(qs);
 }
@@ -137,7 +128,7 @@ function parseSender(from) {
 }
 
 function htmlDecode(s) {
-  return (s || '').replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
+  return (s||'').replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
 }
 
 function parseThread(t) {
@@ -169,7 +160,7 @@ function fmtDate(d) {
 
 // ── Data loading ───────────────────────────────────────────────────────────────
 
-async function loadMore(reset) {
+async function loadPage(reset) {
   if (_loading) return;
   _loading = true; _error = null;
   if (reset) { _threads = []; _nextPage = null; _total = null; }
@@ -185,160 +176,88 @@ async function loadMore(reset) {
   }
   _loading = false;
   redraw();
+  // Auto-load next page
+  if (_nextPage && !_error) {
+    setTimeout(function(){ loadPage(false); }, 300);
+  }
 }
 
-// ── CSS ────────────────────────────────────────────────────────────────────────
+// ── CSS — matches scan (emailrun.js) palette exactly ──────────────────────────
 
 var _cssAdded = false;
 function addCss() {
   if (_cssAdded) return; _cssAdded = true;
   var s = document.createElement('style');
   s.textContent = `
-.gl{display:flex;flex-direction:column;height:100%;font:13px/1.45 -apple-system,system-ui,sans-serif;color:#d4eaf2;background:#070d11}
-
-/* toolbar */
-.gl-bar{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid #0f2030;flex-shrink:0;background:#08121c;max-width:720px;width:100%}
-.gl-btn{background:#0e2030;border:1px solid #1a3548;color:#6a99ad;font-size:12px;padding:4px 11px;border-radius:4px;cursor:pointer;font-family:inherit;white-space:nowrap}
-.gl-btn:hover{background:#132c42;color:#a8d4e4}
-.gl-btn.p{background:#0d3d56;border-color:#1a6882;color:#39c7df}
-.gl-btn.p:hover{background:#0e4d6b}
-.gl-ct{font-size:11px;color:#2e5a70;flex:1}
-.gl-err{font-size:12px;color:#e07070}
-.gl-err-bar{display:flex;align-items:center;gap:6px;flex:1}
-
-/* list area */
-.gl-list{flex:1;overflow-y:auto;padding:6px 0 16px;max-width:720px;width:100%}
-
-/* ── SENDER GROUP CARD ── */
-.gl-card{
-  margin: 0 10px 5px;
-  background: #0c1d2c;
-  border: 1px solid #16303f;
-  border-radius: 6px;
-  overflow: hidden;
-}
-.gl-card:hover{border-color:#1e4060}
-
-/* group header row */
-.gl-card-hdr{
-  display:flex;align-items:center;gap:9px;
-  padding:9px 12px;
-  cursor:pointer;user-select:none;
-  background:#0f2030;
-}
-.gl-card-hdr:hover{background:#122534}
-
-/* avatar circle */
-.gl-av{
-  width:28px;height:28px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-size:12px;font-weight:700;color:#fff;flex-shrink:0;
-}
-
-/* sender name */
-.gl-sname{font-size:13px;font-weight:600;color:#c4e0ed;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-/* badges / actions */
-.gl-scount{
-  font-size:11px;font-weight:600;color:#39c7df;
-  background:#092030;border:1px solid #1a4a60;
-  border-radius:10px;padding:1px 8px;flex-shrink:0;
-}
-.gl-sdate{font-size:11px;color:#2e5a70;flex-shrink:0;min-width:44px;text-align:right}
-.gl-sarch{
-  font-size:11px;padding:2px 9px;
-  background:#07182a;border:1px solid #1a3a50;
-  color:#3a8aac;border-radius:3px;cursor:pointer;
-  font-family:inherit;flex-shrink:0;white-space:nowrap;
-  opacity:0;transition:opacity .12s;
-}
-.gl-card-hdr:hover .gl-sarch{opacity:1}
-.gl-sarch:hover{background:#0d3d56;border-color:#1a6882;color:#39c7df;opacity:1}
-.gl-xi{font-size:11px;color:#2e5a70;flex-shrink:0;width:12px;text-align:center}
-
-/* ── SINGLE-EMAIL ROW (no group header) ── */
-.gl-srow{
-  display:flex;align-items:center;gap:9px;
-  margin: 0 10px 5px;
-  padding:9px 12px;
-  background:#0c1d2c;
-  border:1px solid #16303f;
-  border-radius:6px;
-  cursor:pointer;
-}
-.gl-srow:hover{background:#0e2235;border-color:#1e4060}
-
-.gl-srow-mid{flex:1;min-width:0}
-.gl-srow-sender{font-size:11px;color:#3a7a9a;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gl-srow-subj{font-size:13px;color:#b0d0e0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
-.gl-srow.unr .gl-srow-subj{font-weight:600;color:#daeeff}
-.gl-srow-snip{font-size:11px;color:#254a5a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;line-height:1.3}
-.gl-srow-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
-.gl-srow-dt{font-size:11px;color:#2e5a70;white-space:nowrap}
-.gl-srow-ab{
-  font-size:11px;padding:2px 7px;
-  background:none;border:1px solid #162530;
-  color:#2e5a70;border-radius:3px;cursor:pointer;
-  font-family:inherit;opacity:0;transition:opacity .12s;
-}
-.gl-srow:hover .gl-srow-ab{opacity:1}
-.gl-srow-ab:hover{background:#0d3d56;border-color:#1a6882;color:#39c7df;opacity:1}
-
-/* ── THREAD ROWS inside expanded group ── */
-.gl-trow{
-  display:flex;align-items:flex-start;gap:8px;
-  padding:7px 12px 7px 48px;
-  border-top:1px solid #0f2030;
-  cursor:pointer;
-  background:#091824;
-}
-.gl-trow:hover{background:#0c2030}
-.gl-tb{flex:1;min-width:0}
-.gl-subj{font-size:13px;color:#98c0d4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.3}
-.gl-trow.unr .gl-subj{font-weight:600;color:#d0eaff}
-.gl-snip{font-size:11px;color:#1e3e50;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
-.gl-star{font-size:13px;cursor:pointer;color:#1e3a4a;flex-shrink:0;margin-top:1px;line-height:1;user-select:none}
-.gl-star.on{color:#f0c040}
-.gl-trow-meta{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
-.gl-dt{font-size:11px;color:#2e5a70;white-space:nowrap}
-.gl-mc{font-size:10px;color:#3a6a7a;background:#091820;border-radius:8px;padding:1px 5px}
-.gl-ab{
-  font-size:11px;padding:1px 6px;
-  background:none;border:1px solid #12263a;
-  color:#2e5a70;border-radius:3px;cursor:pointer;
-  font-family:inherit;opacity:0;transition:opacity .12s;
-}
-.gl-trow:hover .gl-ab{opacity:1}
-.gl-ab:hover{background:#0d3d56;border-color:#1a6882;color:#39c7df;opacity:1}
-
-/* more / empty / spinner */
-.gl-spin{padding:28px;text-align:center;color:#2e5a70;font-size:12px}
-.gl-more{padding:8px 10px;flex-shrink:0}
-.gl-empty{padding:28px;text-align:center;color:#2e5a70;font-size:13px}
-
+.glv{padding:0 14px 30px;font:14px/1.4 -apple-system,system-ui,sans-serif;color:#e7f3f6;background:#070d11;min-height:100%}
+/* sticky bar */
+.glv-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;background:linear-gradient(#070d11 85%,rgba(7,13,17,0))}
+.glv-chips{display:flex;gap:5px;flex-wrap:wrap}
+.glv-chip{text-decoration:none;color:#e7f3f6;border:1px solid rgba(57,199,223,.3);border-radius:999px;padding:2px 10px;font:600 11.5px ui-monospace,Menlo,monospace;cursor:default}
+.glv-chip b{color:#39c7df}
+.glv-st{flex:1;min-width:140px;color:#8aa6af;font-size:12.5px}
+.glv-run{color:#39c7df;font-weight:700}
+/* buttons */
+.glv-btn{height:28px;border-radius:8px;border:1px solid rgba(57,199,223,.3);background:rgba(57,199,223,.07);color:#e7f3f6;font:700 11px ui-monospace,Menlo,monospace;cursor:pointer;padding:0 12px;white-space:nowrap}
+.glv-btn:hover{background:rgba(57,199,223,.15)}
+.glv-btn:disabled{opacity:.45;cursor:default}
+.glv-btn.ok{background:#30D158;border-color:#30D158;color:#07141a}
+/* section header */
+.glv-sec{margin-bottom:6px}
+.glv-sh{display:flex;align-items:center;gap:7px;padding:6px 2px 5px;cursor:pointer;user-select:none}
+.glv-sh:hover .glv-sn{color:#c8e6f0}
+.glv-sl{display:inline-block;width:20px;height:20px;border-radius:6px;text-align:center;line-height:20px;font:800 12px ui-monospace,Menlo,monospace;background:rgba(57,199,223,.15);color:#39c7df;flex-shrink:0}
+.glv-sn{font-size:13.5px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glv-sc{color:#07141a;background:#39c7df;border-radius:999px;padding:0 7px;font-size:11px;font-weight:800;font-style:normal;flex-shrink:0}
+.glv-xi{color:#64838d;font-size:11px;flex-shrink:0}
+.glv-arch{height:22px;border-radius:6px;border:1px solid rgba(57,199,223,.3);background:transparent;color:#8aa6af;font:700 10px ui-monospace,Menlo,monospace;cursor:pointer;padding:0 8px;flex-shrink:0;opacity:0}
+.glv-sh:hover .glv-arch{opacity:1}
+.glv-arch:hover{background:rgba(57,199,223,.15);color:#39c7df;opacity:1}
+/* rows list */
+.glv-list{display:flex;flex-direction:column;gap:3px;margin-bottom:6px}
+/* individual row */
+.glv-row{break-inside:avoid;border:1px solid rgba(57,199,223,.12);border-radius:9px;padding:6px 9px;cursor:pointer;background:rgba(14,24,30,.5)}
+.glv-row:hover{background:rgba(20,36,42,.8);border-color:rgba(57,199,223,.22)}
+.glv-row.unr{border-color:rgba(57,199,223,.2)}
+.glv-rh{display:flex;align-items:baseline;gap:6px;min-width:0}
+.glv-rf{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
+.glv-rw{flex:none;color:#64838d;font-size:11px}
+.glv-rs{margin-top:2px;color:#bfe3ec;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glv-row.unr .glv-rs{font-weight:600;color:#daeeff}
+.glv-rsnip{margin-top:1px;color:#64838d;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* star */
+.glv-star{flex:none;background:none;border:0;cursor:pointer;color:#2a4a5a;font-size:14px;line-height:1;padding:0 2px;user-select:none}
+.glv-star.on{color:#f5c518}
+.glv-star:hover{color:#f5c518}
+/* row actions */
+.glv-ck{height:20px;padding:0 7px;font-size:11px;flex:none;height:22px;border-radius:6px;border:1px solid rgba(57,199,223,.2);background:transparent;color:#8aa6af;font:700 10px ui-monospace,Menlo,monospace;cursor:pointer;opacity:0}
+.glv-row:hover .glv-ck{opacity:1}
+.glv-ck:hover{background:rgba(57,199,223,.12);color:#39c7df;opacity:1}
+.glv-mc{flex:none;color:#64838d;font-size:10px;background:rgba(20,36,42,.9);border-radius:6px;padding:0 5px}
+/* spinner / empty */
+.glv-spin{padding:24px;text-align:center;color:#8aa6af;font-size:12.5px}
+.glv-empty{padding:24px;text-align:center;color:#8aa6af;font-size:13px}
 /* setup / connect */
-.gl-setup{padding:24px;max-width:500px}
-.gl-setup h3{margin:0 0 12px;font-size:15px;color:#c8e6f0;font-weight:600}
-.gl-setup p{font-size:12px;color:#4a7a8a;margin:0 0 10px;line-height:1.6}
-.gl-setup code{color:#6a9aaa;background:#091820;padding:1px 5px;border-radius:3px;font-size:11px}
-.gl-setup a{color:#39c7df}
-.gl-setup input{width:100%;background:#091820;border:1px solid #1e3a4a;color:#e7f3f6;padding:7px 10px;border-radius:4px;font-size:12px;font-family:inherit;margin-bottom:4px}
-.gl-setup input:focus{outline:none;border-color:#39c7df}
-.gl-connect{padding:40px 20px;text-align:center}
-.gl-connect p{font-size:12px;color:#2e5a70;margin:10px 0 0}
+.glv-setup{padding:22px;max-width:500px}
+.glv-setup h3{margin:0 0 12px;font-size:15px;color:#c8e6f0;font-weight:600}
+.glv-setup p{font-size:12px;color:#8aa6af;margin:0 0 10px;line-height:1.6}
+.glv-setup code{color:#8aa6af;background:#06141a;padding:1px 5px;border-radius:3px;font-size:11px}
+.glv-setup a{color:#39c7df}
+.glv-setup input{width:100%;background:#06141a;border:1px solid rgba(57,199,223,.3);color:#e7f3f6;padding:7px 10px;border-radius:8px;font-size:12px;font-family:inherit;margin-bottom:4px}
+.glv-setup input:focus{outline:none;border-color:#39c7df}
+.glv-connect{padding:40px 20px;text-align:center}
+.glv-connect p{font-size:12px;color:#8aa6af;margin:10px 0 0}
 `;
   document.head.appendChild(s);
 }
 
-// ── Avatar ─────────────────────────────────────────────────────────────────────
+// ── Avatar letter + color ──────────────────────────────────────────────────────
 
 var COLORS = ['#1a5a7a','#2a6a4a','#5a3a7a','#7a3a2a','#1a4a7a','#3a6a2a','#7a2a4a','#1a7a6a'];
 function avatarColor(key) {
-  var n = 0;
-  for (var i = 0; i < key.length; i++) n = (n * 31 + key.charCodeAt(i)) & 0xffff;
+  var n = 0; for (var i = 0; i < key.length; i++) n = (n*31 + key.charCodeAt(i)) & 0xffff;
   return COLORS[n % COLORS.length];
 }
-function avatarLetter(label) { return (label||'?').charAt(0).toUpperCase(); }
 
 // ── Grouping ───────────────────────────────────────────────────────────────────
 
@@ -346,148 +265,125 @@ function groupThreads(arr) {
   var map = {}, order = [];
   for (var i = 0; i < arr.length; i++) {
     var t = arr[i], k = t.senderName.toLowerCase();
-    if (!map[k]) { map[k] = { key: k, label: t.senderName, threads: [], latest: t.date }; order.push(k); }
+    if (!map[k]) { map[k] = { key: k, label: t.senderName, threads: [], latest: t.date, hasUnread: false }; order.push(k); }
     map[k].threads.push(t);
     if (t.date > map[k].latest) map[k].latest = t.date;
+    if (t.unread) map[k].hasUnread = true;
   }
   var groups = order.map(function(k){ return map[k]; });
   groups.forEach(function(g){ g.threads.sort(function(a,b){ return b.date - a.date; }); });
-  groups.sort(function(a,b){ return b.latest - a.latest; });
+  // Sort: unread groups first, then by most recent
+  groups.sort(function(a,b){
+    if (a.hasUnread !== b.hasUnread) return a.hasUnread ? -1 : 1;
+    return b.latest - a.latest;
+  });
   return groups;
 }
 
-// ── DOM builders ──────────────────────────────────────────────────────────────
+// ── DOM: single thread row ─────────────────────────────────────────────────────
 
-// Thread row inside an expanded group
-function makeThreadRow(t) {
+function makeRow(t, showSender) {
   var div = document.createElement('div');
-  div.className = 'gl-trow' + (t.unread ? ' unr' : '');
+  div.className = 'glv-row' + (t.unread ? ' unr' : '');
 
-  var star = document.createElement('span');
-  star.className = 'gl-star' + (t.starred ? ' on' : '');
+  var h = document.createElement('div'); h.className = 'glv-rh';
+
+  var star = document.createElement('button'); star.className = 'glv-star' + (t.starred ? ' on' : '');
   star.textContent = t.starred ? '★' : '☆';
   star.addEventListener('click', function(e) {
-    e.stopPropagation();
-    var was = t.starred; t.starred = !was;
-    star.className = 'gl-star' + (t.starred ? ' on' : '');
+    e.stopPropagation(); var was = t.starred; t.starred = !was;
+    star.className = 'glv-star' + (t.starred ? ' on' : '');
     star.textContent = t.starred ? '★' : '☆';
     apiModify(t.id, was ? {removeLabelIds:['STARRED']} : {addLabelIds:['STARRED']})
-      .catch(function(){ t.starred = was; star.className='gl-star'+(t.starred?' on':''); star.textContent=t.starred?'★':'☆'; });
+      .catch(function(){ t.starred = was; star.className='glv-star'+(t.starred?' on':''); star.textContent=t.starred?'★':'☆'; });
   });
 
-  var tb = document.createElement('div'); tb.className = 'gl-tb';
-  var subj = document.createElement('div'); subj.className = 'gl-subj'; subj.textContent = t.subject;
-  tb.appendChild(subj);
-  if (t.snippet) {
-    var snip = document.createElement('div'); snip.className = 'gl-snip'; snip.textContent = t.snippet;
-    tb.appendChild(snip);
-  }
+  var from = document.createElement('span'); from.className = 'glv-rf';
+  from.textContent = showSender ? t.senderName : t.subject;
+  from.title = t.senderEmail;
 
-  var meta = document.createElement('div'); meta.className = 'gl-trow-meta';
-  var dt = document.createElement('span'); dt.className = 'gl-dt'; dt.textContent = fmtDate(t.date);
-  meta.appendChild(dt);
+  var when = document.createElement('span'); when.className = 'glv-rw'; when.textContent = fmtDate(t.date);
+
   if (t.msgCount > 1) {
-    var mc = document.createElement('span'); mc.className = 'gl-mc'; mc.textContent = t.msgCount + ' msgs';
-    meta.appendChild(mc);
+    var mc = document.createElement('span'); mc.className = 'glv-mc'; mc.textContent = t.msgCount;
+    h.append(star, from, mc, when);
+  } else {
+    h.append(star, from, when);
   }
-  var ab = document.createElement('button'); ab.className = 'gl-ab'; ab.textContent = 'Archive';
-  ab.addEventListener('click', function(e) {
-    e.stopPropagation(); ab.textContent = '…'; ab.disabled = true;
+
+  var arch = document.createElement('button'); arch.className = 'glv-ck'; arch.textContent = 'Archive';
+  arch.addEventListener('click', function(e) {
+    e.stopPropagation(); arch.textContent = '…'; arch.disabled = true;
     apiModify(t.id, {removeLabelIds:['INBOX']}).then(function(){
       _threads = _threads.filter(function(x){ return x.id !== t.id; });
       rebuildList(_listEl);
-    }).catch(function(){ ab.textContent = '!'; ab.disabled = false; });
+    }).catch(function(){ arch.textContent = '!'; arch.disabled = false; });
   });
-  meta.appendChild(ab);
+  h.appendChild(arch);
 
-  div.append(star, tb, meta);
+  div.appendChild(h);
+
+  var body = document.createElement('div'); body.className = 'glv-rs';
+  body.textContent = showSender ? t.subject : (t.snippet || '');
+  div.appendChild(body);
+
+  if (showSender && t.snippet) {
+    var snip = document.createElement('div'); snip.className = 'glv-rsnip'; snip.textContent = t.snippet;
+    div.appendChild(snip);
+  }
+
   div.addEventListener('click', function(){ window.open('https://mail.google.com/mail/u/0/#inbox/'+t.id,'gm-pane'); });
   return div;
 }
 
-// Single-email row (sender only has 1 email — appears directly, no group header)
-function makeSingleRow(g) {
-  var t = g.threads[0];
-  var div = document.createElement('div');
-  div.className = 'gl-srow' + (t.unread ? ' unr' : '');
+// ── DOM: sender section ────────────────────────────────────────────────────────
 
-  var av = document.createElement('div'); av.className = 'gl-av';
-  av.style.cssText = 'width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;flex-shrink:0;background:' + avatarColor(g.key);
-  av.textContent = avatarLetter(g.label);
+function makeSection(g) {
+  var isOpen  = _expanded[g.key] === true;
+  var isMulti = g.threads.length > 1;
+  var sec = document.createElement('div'); sec.className = 'glv-sec';
 
-  var mid = document.createElement('div'); mid.className = 'gl-srow-mid';
-  var sender = document.createElement('div'); sender.className = 'gl-srow-sender'; sender.textContent = g.label;
-  var subj = document.createElement('div'); subj.className = 'gl-srow-subj'; subj.textContent = t.subject;
-  mid.append(sender, subj);
-  if (t.snippet) {
-    var snip = document.createElement('div'); snip.className = 'gl-srow-snip'; snip.textContent = t.snippet;
-    mid.appendChild(snip);
+  if (isMulti) {
+    // Collapsible header
+    var sh = document.createElement('div'); sh.className = 'glv-sh';
+
+    var sl = document.createElement('span'); sl.className = 'glv-sl';
+    sl.style.background = avatarColor(g.key);
+    sl.textContent = g.label.charAt(0).toUpperCase();
+
+    var sn = document.createElement('span'); sn.className = 'glv-sn'; sn.textContent = g.label;
+    var sc = document.createElement('i'); sc.className = 'glv-sc'; sc.textContent = g.threads.length;
+    var xi = document.createElement('span'); xi.className = 'glv-xi'; xi.textContent = isOpen ? '▾' : '▸';
+
+    var arch = document.createElement('button'); arch.className = 'glv-arch'; arch.textContent = 'Archive all';
+    arch.addEventListener('click', function(e) {
+      e.stopPropagation(); arch.textContent = '…'; arch.disabled = true;
+      Promise.all(g.threads.map(function(t){ return apiModify(t.id,{removeLabelIds:['INBOX']}); }))
+        .then(function(){
+          var ids = g.threads.map(function(t){ return t.id; });
+          _threads = _threads.filter(function(t){ return ids.indexOf(t.id) < 0; });
+          rebuildList(_listEl);
+        }).catch(function(){ arch.textContent = 'Err'; arch.disabled = false; });
+    });
+
+    sh.append(sl, sn, sc, arch, xi);
+    sh.addEventListener('click', function(e) {
+      if (e.target === arch || arch.contains(e.target)) return;
+      _expanded[g.key] = !isOpen; rebuildList(_listEl);
+    });
+    sec.appendChild(sh);
+
+    if (isOpen) {
+      var list = document.createElement('div'); list.className = 'glv-list';
+      g.threads.forEach(function(t){ list.appendChild(makeRow(t, false)); });
+      sec.appendChild(list);
+    }
+  } else {
+    // Single thread — flat row showing sender name
+    sec.appendChild(makeRow(g.threads[0], true));
   }
 
-  var meta = document.createElement('div'); meta.className = 'gl-srow-meta';
-  var dt = document.createElement('span'); dt.className = 'gl-srow-dt'; dt.textContent = fmtDate(t.date);
-  meta.appendChild(dt);
-  var ab = document.createElement('button'); ab.className = 'gl-srow-ab'; ab.textContent = 'Archive';
-  ab.addEventListener('click', function(e) {
-    e.stopPropagation(); ab.textContent = '…'; ab.disabled = true;
-    apiModify(t.id, {removeLabelIds:['INBOX']}).then(function(){
-      _threads = _threads.filter(function(x){ return x.id !== t.id; });
-      rebuildList(_listEl);
-    }).catch(function(){ ab.textContent = '!'; ab.disabled = false; });
-  });
-  meta.appendChild(ab);
-
-  div.append(av, mid, meta);
-  div.addEventListener('click', function(){ window.open('https://mail.google.com/mail/u/0/#inbox/'+t.id,'gm-pane'); });
-  return div;
-}
-
-// Multi-email group card (collapsible, defaults to CLOSED)
-function makeGroupCard(g) {
-  var isOpen = _expanded[g.key] === true; // default: collapsed
-  var wrap = document.createElement('div'); wrap.className = 'gl-card';
-
-  // Header
-  var hdrEl = document.createElement('div'); hdrEl.className = 'gl-card-hdr';
-
-  var av = document.createElement('div'); av.className = 'gl-av';
-  av.style.background = avatarColor(g.key);
-  av.textContent = avatarLetter(g.label);
-
-  var sname = document.createElement('span'); sname.className = 'gl-sname'; sname.textContent = g.label;
-
-  var scount = document.createElement('span'); scount.className = 'gl-scount';
-  scount.textContent = g.threads.length + (g.threads.length === 1 ? ' email' : ' emails');
-
-  var sdate = document.createElement('span'); sdate.className = 'gl-sdate'; sdate.textContent = fmtDate(g.latest);
-
-  var sarch = document.createElement('button'); sarch.className = 'gl-sarch'; sarch.textContent = 'Archive all';
-  sarch.addEventListener('click', function(e) {
-    e.stopPropagation(); sarch.textContent = '…'; sarch.disabled = true;
-    Promise.all(g.threads.map(function(t){ return apiModify(t.id,{removeLabelIds:['INBOX']}); }))
-      .then(function(){
-        var ids = g.threads.map(function(t){ return t.id; });
-        _threads = _threads.filter(function(t){ return ids.indexOf(t.id) < 0; });
-        rebuildList(_listEl);
-      }).catch(function(){ sarch.textContent = 'Error'; sarch.disabled = false; });
-  });
-
-  var xi = document.createElement('span'); xi.className = 'gl-xi';
-  xi.textContent = isOpen ? '▾' : '▸';
-
-  hdrEl.append(av, sname, scount, sdate, sarch, xi);
-  hdrEl.addEventListener('click', function(e) {
-    if (e.target === sarch || sarch.contains(e.target)) return;
-    _expanded[g.key] = !isOpen;
-    rebuildList(_listEl);
-  });
-  wrap.appendChild(hdrEl);
-
-  if (isOpen) {
-    g.threads.forEach(function(t){ wrap.appendChild(makeThreadRow(t)); });
-  }
-
-  return wrap;
+  return sec;
 }
 
 // ── Rebuild list ───────────────────────────────────────────────────────────────
@@ -498,16 +394,16 @@ function rebuildList(listEl) {
   var frag = document.createDocumentFragment();
   var groups = groupThreads(_threads);
 
-  groups.forEach(function(g) {
-    frag.appendChild(g.threads.length > 1 ? makeGroupCard(g) : makeSingleRow(g));
-  });
+  groups.forEach(function(g){ frag.appendChild(makeSection(g)); });
 
   if (_loading) {
-    var spin = document.createElement('div'); spin.className = 'gl-spin';
-    spin.textContent = _threads.length ? 'Loading more…' : 'Loading inbox…';
+    var n = _threads.length, est = _total || 0;
+    var pct = est > 0 ? Math.round(n / est * 100) : 0;
+    var spin = document.createElement('div'); spin.className = 'glv-spin';
+    spin.textContent = n ? ('Loading… ' + n + (est?' of ~'+est:'') + (pct?' ('+pct+'%)':'')) : 'Loading inbox…';
     frag.appendChild(spin);
   } else if (_threads.length === 0 && !_error) {
-    var empty = document.createElement('div'); empty.className = 'gl-empty';
+    var empty = document.createElement('div'); empty.className = 'glv-empty';
     empty.textContent = 'Inbox zero 🎉';
     frag.appendChild(empty);
   }
@@ -515,109 +411,95 @@ function rebuildList(listEl) {
   listEl.replaceChildren(frag);
 }
 
-// ── Screen builders ────────────────────────────────────────────────────────────
+// ── Screens ────────────────────────────────────────────────────────────────────
 
 function buildSetupScreen(host) {
   host.innerHTML = '';
-  var wrap = document.createElement('div'); wrap.className = 'gl';
-  var d = document.createElement('div'); d.className = 'gl-setup';
+  var wrap = document.createElement('div'); wrap.className = 'glv';
+  var d = document.createElement('div'); d.className = 'glv-setup';
   d.innerHTML = [
-    '<h3>📥 Live Gmail</h3>',
+    '<h3>Live Gmail</h3>',
     '<p>Paste your Google OAuth 2.0 Client ID to connect.</p>',
     '<p>Need one? <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud → Credentials</a>',
-    ' → Create OAuth client → <strong>Web application</strong>',
+    ' → Create OAuth client → Web application',
     ' → Authorized JS origin: <code>https://gse281.github.io</code></p>',
-    '<label style="display:block;font-size:11px;color:#4a7a8a;margin-bottom:5px">OAuth Client ID</label>',
-    '<input id="gl-cid" type="text" placeholder="….apps.googleusercontent.com">',
-    '<button id="gl-cid-save" class="gl-btn p" style="margin-top:10px;font-size:13px;padding:6px 16px">Save & Connect</button>',
-    '<p style="color:#1e3a4a;font-size:11px;margin-top:14px">Make sure you are listed as a test user under OAuth consent screen → Audience.</p>'
+    '<label style="display:block;font-size:11px;color:#8aa6af;margin-bottom:5px">OAuth Client ID</label>',
+    '<input id="glv-cid" type="text" placeholder="….apps.googleusercontent.com">',
+    '<button id="glv-cid-save" class="glv-btn ok" style="margin-top:10px">Save & Connect</button>',
+    '<p style="color:#2a4a5a;font-size:11px;margin-top:14px">Add yourself under OAuth consent screen → Audience as a test user.</p>'
   ].join('');
-  wrap.appendChild(d);
-  host.appendChild(wrap);
-  wrap.querySelector('#gl-cid-save').addEventListener('click', function() {
-    var cid = wrap.querySelector('#gl-cid').value.trim();
-    if (!cid) return;
+  wrap.appendChild(d); host.appendChild(wrap);
+  wrap.querySelector('#glv-cid-save').addEventListener('click', function() {
+    var cid = wrap.querySelector('#glv-cid').value.trim(); if (!cid) return;
     _cfg.gmailClientId = cid;
     try { var c = JSON.parse(localStorage.getItem('tb.cfg')||'{}'); c.gmailClientId = cid; localStorage.setItem('tb.cfg', JSON.stringify(c)); } catch(e) {}
-    _gisClient = null; _authed = false;
-    mount(host, _cfg);
+    _gisClient = null; _authed = false; mount(host, _cfg);
   });
 }
 
 function buildConnectScreen(host) {
   host.innerHTML = '';
-  var wrap = document.createElement('div'); wrap.className = 'gl';
-  var d = document.createElement('div'); d.className = 'gl-connect';
-  var btn = document.createElement('button');
-  btn.className = 'gl-btn p'; btn.textContent = '  Sign in with Google';
-  btn.style.cssText = 'font-size:14px;padding:9px 22px';
+  var wrap = document.createElement('div'); wrap.className = 'glv';
+  var d = document.createElement('div'); d.className = 'glv-connect';
+  var btn = document.createElement('button'); btn.className = 'glv-btn ok';
+  btn.style.cssText = 'font-size:14px;padding:0 24px;height:38px';
+  btn.textContent = 'Sign in with Google';
   btn.addEventListener('click', function() {
     btn.textContent = 'Opening…'; btn.disabled = true;
     signIn().then(function(tok) {
-      if (tok) loadMore(true);
-      else { btn.textContent = '  Sign in with Google'; btn.disabled = false; }
+      if (tok) loadPage(true);
+      else { btn.textContent = 'Sign in with Google'; btn.disabled = false; }
     });
   });
-  var note = document.createElement('p');
-  note.textContent = 'Stays signed in for ~1 hour · no re-login needed on refresh';
-  d.append(btn, note);
-  wrap.appendChild(d);
-  host.appendChild(wrap);
+  var note = document.createElement('p'); note.textContent = 'Sign-in saved for ~1 hour · no re-login on refresh';
+  d.append(btn, note); wrap.appendChild(d); host.appendChild(wrap);
 }
 
 function buildPanel(host) {
   host.innerHTML = '';
-  var wrap = document.createElement('div'); wrap.className = 'gl';
+  var wrap = document.createElement('div'); wrap.className = 'glv';
 
-  // Toolbar
-  var bar = document.createElement('div'); bar.className = 'gl-bar';
+  // Sticky bar
+  var bar = document.createElement('div'); bar.className = 'glv-bar';
 
-  var refreshBtn = document.createElement('button');
-  refreshBtn.className = 'gl-btn'; refreshBtn.textContent = '⟳ Refresh';
-  refreshBtn.addEventListener('click', function() { _expanded = {}; loadMore(true); });
+  var refreshBtn = document.createElement('button'); refreshBtn.className = 'glv-btn';
+  refreshBtn.textContent = '⟳ Refresh';
+  refreshBtn.addEventListener('click', function() { _expanded = {}; loadPage(true); });
   bar.appendChild(refreshBtn);
 
-  // Expand-all / Collapse-all
-  var expandBtn = document.createElement('button');
-  expandBtn.className = 'gl-btn'; expandBtn.textContent = '↕ Expand all';
-  expandBtn.addEventListener('click', function() {
-    var groups = groupThreads(_threads);
-    var anyOpen = groups.some(function(g){ return g.threads.length > 1 && _expanded[g.key] === true; });
-    groups.forEach(function(g){ if (g.threads.length > 1) _expanded[g.key] = !anyOpen; });
-    expandBtn.textContent = anyOpen ? '↕ Expand all' : '↕ Collapse all';
-    rebuildList(_listEl);
-  });
-  bar.appendChild(expandBtn);
-
+  // Chips: total + unread count
+  var chips = document.createElement('div'); chips.className = 'glv-chips';
   if (_total != null) {
-    var ct = document.createElement('span'); ct.className = 'gl-ct';
+    var c1 = document.createElement('span'); c1.className = 'glv-chip';
+    c1.innerHTML = '📥 <b>' + _total + '</b> in inbox';
+    chips.appendChild(c1);
+  }
+  var unreadCount = _threads.filter(function(t){ return t.unread; }).length;
+  if (unreadCount) {
+    var c2 = document.createElement('span'); c2.className = 'glv-chip';
+    c2.innerHTML = '<b>' + unreadCount + '</b> unread';
+    chips.appendChild(c2);
+  }
+  bar.appendChild(chips);
+
+  var st = document.createElement('div'); st.className = 'glv-st';
+  if (_loading) {
+    st.innerHTML = '<span class="glv-run">Loading ' + _threads.length + (_total?' of ~'+_total:'') + ' emails…</span>';
+  } else if (_error && _error !== 'auth') {
+    st.innerHTML = '<span style="color:#e5533a">' + _error + '</span> ';
+    var rb = document.createElement('button'); rb.className = 'glv-btn'; rb.textContent = 'Retry';
+    rb.addEventListener('click', function(){ loadPage(true); });
+    st.appendChild(rb);
+  } else if (_threads.length) {
     var groups = groupThreads(_threads);
-    ct.textContent = groups.length + ' senders · ' + _threads.length + ' of ~' + _total + ' emails';
-    bar.appendChild(ct);
+    st.textContent = groups.length + ' senders · ' + _threads.length + ' loaded';
   }
+  bar.appendChild(st);
 
-  if (_error && _error !== 'auth') {
-    var eb = document.createElement('div'); eb.className = 'gl-err-bar';
-    var espan = document.createElement('span'); espan.className = 'gl-err'; espan.textContent = _error;
-    var rb = document.createElement('button'); rb.className = 'gl-btn'; rb.textContent = 'Retry';
-    rb.addEventListener('click', function(){ loadMore(true); });
-    eb.append(espan, rb);
-    bar.appendChild(eb);
-  }
-
-  var list = document.createElement('div'); list.className = 'gl-list';
+  var list = document.createElement('div'); list.className = 'glv-list'; list.style.marginTop = '0';
   _listEl = list;
 
   wrap.append(bar, list);
-
-  if (_nextPage && !_loading) {
-    var mr = document.createElement('div'); mr.className = 'gl-more';
-    var mb = document.createElement('button'); mb.className = 'gl-btn'; mb.textContent = 'Load 50 more…';
-    mb.style.width = '100%';
-    mb.addEventListener('click', function(){ loadMore(false); });
-    mr.appendChild(mb); wrap.appendChild(mr);
-  }
-
   host.appendChild(wrap);
   rebuildList(list);
 }
@@ -626,38 +508,32 @@ function buildPanel(host) {
 
 function redraw() {
   if (!_host) return;
-  if (!_cfg.gmailClientId) { buildSetupScreen(_host); return; }
-  if (_error === 'auth')   { buildConnectScreen(_host); return; }
-  if (!_authed && _threads.length === 0 && !_loading) { buildConnectScreen(_host); return; }
+  if (!_cfg || !_cfg.gmailClientId) { buildSetupScreen(_host); return; }
+  if (_error === 'auth')            { buildConnectScreen(_host); return; }
+  if (!_authed && !_loading)        { buildConnectScreen(_host); return; }
   buildPanel(_host);
 }
 
 // ── Mount ──────────────────────────────────────────────────────────────────────
 
 function mount(host, cfg) {
-  addCss();
-  _cfg  = cfg;
-  _host = host;
+  addCss(); _cfg = cfg; _host = host;
 
   if (!cfg.gmailClientId) { buildSetupScreen(host); return; }
 
-  // Cached token → straight to loading
   if (_authed && _token && Date.now() < _exp) {
-    host.innerHTML = '<div class="gl"><div class="gl-spin">Loading inbox…</div></div>';
-    loadMore(true);
-    return;
+    loadPage(true); return;
   }
 
-  host.innerHTML = '<div class="gl"><div class="gl-spin">Connecting…</div></div>';
+  host.innerHTML = '<div class="glv"><div class="glv-spin">Connecting…</div></div>';
 
   (function waitGIS() {
     if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
       return setTimeout(waitGIS, 150);
     }
     ensureGISClient();
-    // Try silent refresh — works automatically if browser still has an active Google session
     silentRefresh().then(function(tok) {
-      if (tok) { _authed = true; loadMore(true); }
+      if (tok) { _authed = true; loadPage(true); }
       else buildConnectScreen(host);
     });
   })();
