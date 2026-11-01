@@ -197,7 +197,7 @@ function addCss() {
 .gl{display:flex;flex-direction:column;height:100%;font:13px/1.45 -apple-system,system-ui,sans-serif;color:#d4eaf2;background:#070d11}
 
 /* toolbar */
-.gl-bar{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid #0f2030;flex-shrink:0;background:#08121c}
+.gl-bar{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid #0f2030;flex-shrink:0;background:#08121c;max-width:720px;width:100%}
 .gl-btn{background:#0e2030;border:1px solid #1a3548;color:#6a99ad;font-size:12px;padding:4px 11px;border-radius:4px;cursor:pointer;font-family:inherit;white-space:nowrap}
 .gl-btn:hover{background:#132c42;color:#a8d4e4}
 .gl-btn.p{background:#0d3d56;border-color:#1a6882;color:#39c7df}
@@ -207,7 +207,7 @@ function addCss() {
 .gl-err-bar{display:flex;align-items:center;gap:6px;flex:1}
 
 /* list area */
-.gl-list{flex:1;overflow-y:auto;padding:6px 0 16px}
+.gl-list{flex:1;overflow-y:auto;padding:6px 0 16px;max-width:720px;width:100%}
 
 /* ── SENDER GROUP CARD ── */
 .gl-card{
