@@ -76,7 +76,7 @@ async function archiveChecked(box){
 
 function card(r,n,L){
   const d=document.createElement('div'); d.className='er-it';
-  const link=(r.ThreadId?'<a href="https://mail.superhuman.com/rbenjamini@gmail.com/thread/'+esc(r.ThreadId)+'" target="_blank" rel="noopener" class="er-a" title="Open in Superhuman">⚡</a> ':'')+(r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="er-a" style="margin-left:4px" title="Open in Gmail">✉️</a>':'');
+  const link=(r.ThreadId?'<a href="https://mail.superhuman.com/rbenjamini@gmail.com/thread/'+esc(r.ThreadId)+'" target="sh-pane" class="er-a" title="Open in Superhuman">⚡</a> ':'')+(r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="er-a" style="margin-left:4px" title="Open in Gmail">✉️</a>':'');
   d.innerHTML='<div class="er-h"><span class="er-n">'+L+n+'</span><b>'+esc(r.From||r.FromEmail)+'</b>'+(r.Received?'<span class="er-w">'+esc(r.Received)+'</span>':'')+link+'</div>'+
     '<div class="er-s"><b>'+esc(r.Subject)+'</b>'+(r.Summary?' — '+esc(r.Summary):'')+'</div>'+
     (r.Advice?'<div class="er-adv">→ '+esc(r.Advice)+'</div>':'');
@@ -140,7 +140,7 @@ async function toggleStar(r){
 function starBtn(r){ const b=document.createElement('button'); b.type='button'; b.className='erw-star'+(r.Starred?' on':'')+(r.StarReq?' pend':''); b.textContent=r.Starred?'★':'☆'; b.title=(r.Starred?'Unstar':'Star')+(r.StarReq?' (syncing to Gmail…)':'');
   b.onclick=e=>{ e.preventDefault(); e.stopPropagation(); toggleStar(r); }; return b; }
 const SH=r=>r.ThreadId?'https://mail.superhuman.com/rbenjamini@gmail.com/thread/'+encodeURIComponent(r.ThreadId):'';
-const links=r=>(SH(r)?'<a href="'+esc(SH(r))+'" target="_blank" rel="noopener" class="erw-gm erw-sh" title="Open in Superhuman">⚡</a>':'')+(r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="erw-gm erw-gl" title="Open in Gmail">✉️</a>':'');
+const links=r=>(SH(r)?'<a href="'+esc(SH(r))+'" target="sh-pane" class="erw-gm erw-sh" title="Open in Superhuman">⚡</a>':'')+(r.Link?'<a href="'+esc(r.Link)+'" target="_blank" rel="noopener" class="erw-gm erw-gl" title="Open in Gmail">✉️</a>':'');
 function wideRow(r,n,L){
   const d=document.createElement('div'); d.className='erw-row erw-'+L;
   const link=links(r);
