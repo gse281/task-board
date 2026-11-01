@@ -9,19 +9,23 @@
 var SCOPE   = 'https://www.googleapis.com/auth/gmail.modify';
 var BASE    = 'https://www.googleapis.com/gmail/v1/users/me/';
 var TOK_KEY = 'gl.v4.tok';
+var SESS_KEY = 'gl.v5.sess';   // session secret for the token Worker (cfg.gmailWorker)
 
 // ── Auth state ─────────────────────────────────────────────────────────────────
 var _cfg       = null;
 var _gisClient = null;
+var _codeClient = null;
 var _token     = null;
 var _exp       = 0;
 var _pendingCB = null;
 var _authed    = false;
+var _session   = null;
 
 (function restoreToken() {
   try {
     var s = localStorage.getItem(TOK_KEY);
     if (s) { var p = JSON.parse(s); if (p.exp > Date.now() + 60000) { _token = p.tok; _exp = p.exp; _authed = true; } }
+    _session = localStorage.getItem(SESS_KEY) || null;
   } catch(e) {}
 })();
 
@@ -61,7 +65,70 @@ function ensureGISClient() {
   });
 }
 
+// ── Worker mode: one sign-in, then the Worker trades its refresh token for access tokens ──
+
+function workerUrl() { return (_cfg && _cfg.gmailWorker || '').replace(/\/+$/, ''); }
+
+function setSession(s) {
+  _session = s;
+  try { s ? localStorage.setItem(SESS_KEY, s) : localStorage.removeItem(SESS_KEY); } catch(e) {}
+}
+
+function takeAccess(d) {
+  _token = d.access_token;
+  _exp   = Date.now() + (Number(d.expires_in || 3540) - 60) * 1000;
+  _authed = true; saveToken();
+  return _token;
+}
+
+async function workerPost(path, body) {
+  var h = { 'Content-Type': 'application/json' };
+  if (_session) h.Authorization = 'Bearer ' + _session;
+  var r = await fetch(workerUrl() + path, { method: 'POST', headers: h, body: JSON.stringify(body || {}) });
+  var d = await r.json().catch(function(){ return {}; });
+  return { status: r.status, data: d };
+}
+
+function workerSignIn() {
+  return new Promise(function (resolve) {
+    _codeClient = google.accounts.oauth2.initCodeClient({
+      client_id: _cfg.gmailClientId,
+      scope: SCOPE + ' openid email',
+      ux_mode: 'popup',
+      select_account: true,
+      callback: async function (r) {
+        if (!r || !r.code) return resolve(null);
+        try {
+          var x = await workerPost('/exchange', { code: r.code });
+          if (x.status !== 200) {
+            var msg = { wrong_account: 'Wrong Google account (' + (x.data.email || '?') + ')',
+                        no_refresh_token: 'No refresh token — remove the app at myaccount.google.com/permissions, then sign in again',
+                        scope_missing: 'Gmail permission not granted — tick the Gmail box' }[x.data.error];
+            alert('Sign-in failed: ' + (msg || x.data.detail || x.data.error || x.status));
+            return resolve(null);
+          }
+          setSession(x.data.session);
+          resolve(takeAccess(x.data));
+        } catch (e) { alert('Sign-in failed: backend unreachable'); resolve(null); }
+      },
+      error_callback: function () { resolve(null); }
+    });
+    _codeClient.requestCode();
+  });
+}
+
+async function workerRefresh() {
+  if (!_session) return null;
+  try {
+    var x = await workerPost('/token');
+    if (x.status === 200) return takeAccess(x.data);
+    if (x.status === 401) { setSession(null); _authed = false; }
+  } catch (e) {}
+  return null;
+}
+
 function signIn() {
+  if (workerUrl()) return workerSignIn();
   return new Promise(function (resolve) {
     ensureGISClient(); _pendingCB = resolve;
     _gisClient.requestAccessToken({ prompt: 'select_account' });
@@ -70,6 +137,7 @@ function signIn() {
 
 function silentRefresh() {
   if (_token && Date.now() < _exp) return Promise.resolve(_token);
+  if (workerUrl()) return workerRefresh();
   if (!_gisClient) return Promise.resolve(null);
   return new Promise(function (resolve) {
     _pendingCB = resolve;
@@ -79,7 +147,7 @@ function silentRefresh() {
 
 async function getToken() {
   if (_token && Date.now() < _exp) return _token;
-  if (!_authed) return null;
+  if (!_authed && !(workerUrl() && _session)) return null;
   return silentRefresh();
 }
 
@@ -92,7 +160,12 @@ async function gfetch(path, opts) {
   var r = await fetch(BASE + path, Object.assign({}, opts, {
     headers: Object.assign({ Authorization: 'Bearer ' + tok, 'Content-Type': 'application/json' }, opts.headers || {})
   }));
-  if (r.status === 401) { _token = null; clearToken(); throw Object.assign(new Error('auth'), { code: 'auth' }); }
+  if (r.status === 401) {
+    _token = null; clearToken();
+    // Worker mode: a revoked/expired access token just means fetch a fresh one once.
+    if (workerUrl() && _session && !opts._retried) return gfetch(path, Object.assign({}, opts, { _retried: true }));
+    throw Object.assign(new Error('auth'), { code: 'auth' });
+  }
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
@@ -243,8 +316,8 @@ function addCss() {
 .glv-setup p{font-size:12px;color:#8aa6af;margin:0 0 10px;line-height:1.6}
 .glv-setup code{color:#8aa6af;background:#06141a;padding:1px 5px;border-radius:3px;font-size:11px}
 .glv-setup a{color:#39c7df}
-.glv-setup input{width:100%;background:#06141a;border:1px solid rgba(57,199,223,.3);color:#e7f3f6;padding:7px 10px;border-radius:8px;font-size:12px;font-family:inherit;margin-bottom:4px}
-.glv-setup input:focus{outline:none;border-color:#39c7df}
+.glv-setup input,.glv-connect input{width:100%;background:#06141a;border:1px solid rgba(57,199,223,.3);color:#e7f3f6;padding:7px 10px;border-radius:8px;font-size:12px;font-family:inherit;margin-bottom:4px}
+.glv-setup input:focus,.glv-connect input:focus{outline:none;border-color:#39c7df}
 .glv-connect{padding:40px 20px;text-align:center}
 .glv-connect p{font-size:12px;color:#8aa6af;margin:10px 0 0}
 `;
@@ -451,8 +524,24 @@ function buildConnectScreen(host) {
       else { btn.textContent = 'Sign in with Google'; btn.disabled = false; }
     });
   });
-  var note = document.createElement('p'); note.textContent = 'Sign-in saved for ~1 hour · no re-login on refresh';
-  d.append(btn, note); wrap.appendChild(d); host.appendChild(wrap);
+  var note = document.createElement('p');
+  note.textContent = workerUrl() ? 'Sign in once · stays signed in' : 'Sign-in saved for ~1 hour · no re-login on refresh';
+
+  // Token backend URL (Cloudflare Worker) — set once to stop hourly sign-ins.
+  var be = document.createElement('div'); be.style.cssText = 'margin-top:18px;font-size:11px;color:#8aa6af';
+  be.innerHTML = '<label style="display:block;margin-bottom:5px">Token backend URL ' +
+    '<span style="color:#2a4a5a">(optional · stay signed in)</span></label>' +
+    '<input id="glv-wk" type="text" style="max-width:420px" placeholder="https://….workers.dev"> ' +
+    '<button id="glv-wk-save" class="glv-btn" style="margin-top:6px">Save</button>';
+  be.querySelector('#glv-wk').value = (_cfg && _cfg.gmailWorker) || '';
+  be.querySelector('#glv-wk-save').addEventListener('click', function() {
+    var u = be.querySelector('#glv-wk').value.trim();
+    _cfg.gmailWorker = u;
+    try { var c = JSON.parse(localStorage.getItem('tb.cfg')||'{}'); c.gmailWorker = u; localStorage.setItem('tb.cfg', JSON.stringify(c)); } catch(e) {}
+    setSession(null); _token = null; _authed = false; clearToken(); buildConnectScreen(host);
+  });
+
+  d.append(btn, note, be); wrap.appendChild(d); host.appendChild(wrap);
 }
 
 function buildPanel(host) {
@@ -526,6 +615,15 @@ function mount(host, cfg) {
   }
 
   host.innerHTML = '<div class="glv"><div class="glv-spin">Connecting…</div></div>';
+
+  // Worker mode: no Google popup needed while the session is valid.
+  if (workerUrl()) {
+    workerRefresh().then(function(tok) {
+      if (tok) loadPage(true);
+      else buildConnectScreen(host);
+    });
+    return;
+  }
 
   (function waitGIS() {
     if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
