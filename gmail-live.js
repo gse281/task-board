@@ -96,7 +96,7 @@ async function apiListThreads(pageToken) {
 }
 
 async function apiGetThread(id) {
-  return gfetch('threads/' + id + '?format=METADATA&metadataHeaders=From,Subject,Date');
+  return gfetch('threads/' + id + '?format=METADATA&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date');
 }
 
 async function apiModify(id, body) {
