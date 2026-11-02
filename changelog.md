@@ -269,3 +269,4 @@
 - 2026-10-30 23:11  Email run: ☆/★ star & unstar (syncs to Gmail)
 - 2026-10-30 23:12  Email run: ⚡ opens in Superhuman (✉️ Gmail kept)
 - 2026-10-30 23:16  Email run: Don't-miss cards show up to 6 lines (money details)
+- 2026-11-02 09:30  Calls: swipe ← ⇢ Anytime (clears day/time), Today 'All → Anytime', Anytime collapsed by default (tap header)
