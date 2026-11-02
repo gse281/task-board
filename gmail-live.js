@@ -393,7 +393,7 @@ function addCss() {
 .glv-be .glv-btn{height:22px;padding:0 8px;font-size:11px}.glv-be #glv-bk-save{height:30px;margin-top:6px}
 #glv-bk-msg{margin-top:8px;color:#e5a53a}
 .glv-connect p{font-size:12px;color:#8aa6af;margin:10px 0 0}
-.glv-cols{column-width:400px;column-gap:16px}
+.glv-cols{display:flex;gap:16px;align-items:flex-start}.glv-col{flex:1;min-width:0}
 .glv-bk{break-inside:avoid-column;margin-bottom:12px}
 .glv-bh{display:flex;align-items:center;gap:7px;padding:4px 2px 6px;cursor:pointer;user-select:none;break-after:avoid}
 .glv-bh h2{margin:0;font-size:16px;font-weight:800;flex:1}
@@ -416,7 +416,7 @@ function addCss() {
 @media (hover:none){.glv-ck,.glv-arch{opacity:1}}
 @media (max-width:600px){
   .glv{padding:0 10px calc(24px + env(safe-area-inset-bottom))}
-  .glv-cols{column-width:auto;columns:1}
+  .glv-cols{flex-direction:column;gap:0}.glv-col{width:100%}
   .glv-bar{padding-top:max(8px, env(safe-area-inset-top))}
   .glv-row{padding:9px 11px;border-radius:11px}
   .glv-rf{font-size:17px}.glv-rs{font-size:16px}.glv-rsnip{font-size:14.5px}.glv-rw{font-size:13px}.glv-adv{font-size:14.5px}
@@ -446,7 +446,7 @@ function avatarColor(key) {
 
 var BUCKETS = [
   ['D', '⭐ Starred · action'], ['C', '✍️ Reply'], ['B', "⚠️ Don't miss"],
-  ['N', '📥 Older — not scanned (Email run only reads the last day)'],  ['E', '📄 Everything else'], ['A', '🗄 Archive']
+  ['N', '📥 Older — not sorted'],  ['E', '📄 Everything else'], ['A', '🗄 Archive']
 ];
 var _scan = { byThread: {}, bySender: {}, loaded: false };
 
@@ -793,7 +793,10 @@ function rebuildList(listEl) {
   var by = {};
   _threads.forEach(function(t){ t._c = classify(t); (by[t._c.b] = by[t._c.b] || []).push(t); });
 
+  // Two fixed columns (D C B | Older E A) so archiving a row never reflows sections across columns.
   var cols = document.createElement('div'); cols.className = 'glv-cols';
+  var colL = document.createElement('div'), colR = document.createElement('div');
+  colL.className = colR.className = 'glv-col'; cols.append(colL, colR);
   BUCKETS.forEach(function(bk){
     var L = bk[0], its = by[L]; if (!its || !its.length) return;
     its.sort(function(a, b){ return b.date - a.date; });
@@ -838,7 +841,7 @@ function rebuildList(listEl) {
       }
       sec.appendChild(list);
     }
-    cols.appendChild(sec);
+    ('DCB'.indexOf(L) >= 0 ? colL : colR).appendChild(sec);
   });
   frag.appendChild(cols);
 
@@ -854,7 +857,9 @@ function rebuildList(listEl) {
     frag.appendChild(empty);
   }
 
+  var sc = listEl.closest('.pg-panel') || document.scrollingElement, y = sc.scrollTop;
   listEl.replaceChildren(frag);
+  sc.scrollTop = y;
 }
 
 // ── Screens ────────────────────────────────────────────────────────────────────
@@ -957,6 +962,7 @@ function buildConnectScreen(host) {
 }
 
 function buildPanel(host) {
+  var sc = host.closest('.pg-panel') || document.scrollingElement, y0 = sc.scrollTop;
   host.innerHTML = '';
   var wrap = document.createElement('div'); wrap.className = 'glv';
 
@@ -1026,6 +1032,7 @@ function buildPanel(host) {
   wrap.append(bar, list);
   host.appendChild(wrap);
   rebuildList(list);
+  sc.scrollTop = y0;
 }
 
 // ── Redraw ─────────────────────────────────────────────────────────────────────
