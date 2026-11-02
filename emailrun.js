@@ -8,7 +8,7 @@ const RUN='tblIl26oggXP4WtvE', REQ='tblpkdXhqbqN1XFDd';
 const key=()=>window.TE&&window.TE.key&&window.TE.key(), base=()=>(window.TE&&window.TE.base&&window.TE.base())||'appdDTNBbVrp6hVOv';
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 // Key facts (amounts, dates, due/failed/fraud…) highlighted in summaries.
-const hl=t=>{const s=esc(t);return s.replace(/(\$[\d,]+(?:\.\d+)?[KkMm]?|\b(?:due|overdue|expires?|expired|deadline|matures?|past due|declined|failed|fraud|urgent|final notice|danger|by (?:today|tomorrow|Mon|Tue|Wed|Thu|Fri|Sun)\w*)\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}\b|\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b)/gi,'<mark class="hl">$1</mark>');};
+const hl=t=>{const s=esc(t).replace(/^★([^·]*)/,'<mark class="hl star">★$1</mark>');return s.replace(/(\$[\d,]+(?:\.\d+)?[KkMm]?|\b(?:due|overdue|expires?|expired|deadline|matures?|past due|declined|failed|fraud|urgent|final notice|danger|by (?:today|tomorrow|Mon|Tue|Wed|Thu|Fri|Sun)\w*)\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}\b|\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b)/gi,'<mark class="hl">$1</mark>');};
 const flat=v=>v&&typeof v==='object'&&'name' in v?v.name:(v==null?'':v);
 const api=(t,path,opt)=>fetch('https://api.airtable.com/v0/'+base()+'/'+t+(path||''),Object.assign({headers:{Authorization:'Bearer '+key(),'Content-Type':'application/json'}},opt||{})).then(r=>r.ok?r.json():Promise.reject(r.status));
 const BK=[['A','A · Archive','🗄 Archive','Just archive — uncheck anything you want to keep in the inbox'],
@@ -238,7 +238,7 @@ const CSS=`.er-trig .er-cnt{background:#e0a458;color:#07141a;border-radius:999px
 .er-it{background:rgba(20,36,42,.7);border-radius:10px;padding:9px 11px;margin-top:8px}
 .er-h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}.er-w{color:#64838d;font-size:12px}.er-a{margin-left:auto;text-decoration:none}
 .er-n{font:700 11px ui-monospace,Menlo,monospace;color:#39c7df;min-width:22px}
-.er-s{margin-top:3px;color:#bfe3ec;overflow-wrap:anywhere}.er-s mark.hl,.erw-s mark.hl{background:rgba(224,164,88,.2);color:#ffd28a;border-radius:3px;padding:0 2px;font-weight:700}.er-adv{margin-top:4px;color:#e0a458;font-size:13px}.er-q{margin-top:6px;color:#e0a458;font-weight:700}
+.er-s{margin-top:3px;color:#bfe3ec;overflow-wrap:anywhere}.er-s mark.hl.star,.erw-s mark.hl.star{background:rgba(224,164,88,.35);color:#ffe0a8}.er-s mark.hl,.erw-s mark.hl{background:rgba(224,164,88,.2);color:#ffd28a;border-radius:3px;padding:0 2px;font-weight:700}.er-adv{margin-top:4px;color:#e0a458;font-size:13px}.er-q{margin-top:6px;color:#e0a458;font-weight:700}
 .er-ta{width:100%;box-sizing:border-box;margin-top:7px;background:#06161c;border:1px solid rgba(57,199,223,.3);border-radius:10px;color:#e7f3f6;font:14px/1.4 -apple-system,system-ui,sans-serif;padding:8px 10px;resize:vertical}
 .er-b{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 .er-btn{flex:1;min-height:34px;border-radius:10px;border:1px solid rgba(57,199,223,.3);background:rgba(57,199,223,.07);color:#e7f3f6;font:700 12px ui-monospace,Menlo,monospace;cursor:pointer;padding:0 10px}
