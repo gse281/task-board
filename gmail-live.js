@@ -410,7 +410,7 @@ function avatarColor(key) {
 
 var BUCKETS = [
   ['D', '⭐ Starred · action'], ['C', '✍️ Reply'], ['B', "⚠️ Don't miss"],
-  ['N', '🆕 New — Email run hasn\'t sorted these'],  ['E', '📄 Everything else'], ['A', '🗄 Archive']
+  ['N', '📥 Older — not scanned (Email run only reads the last day)'],  ['E', '📄 Everything else'], ['A', '🗄 Archive']
 ];
 var _scan = { byThread: {}, bySender: {}, loaded: false };
 
@@ -600,7 +600,7 @@ function makeRow(t, showSender) {
     }).catch(function(){ arch.textContent = '!'; arch.disabled = false; });
   });
   var c = t._c || {};
-  if (c.b === 'A' || c.b === 'E') {
+  if (c.b === 'A' || c.b === 'E' || c.b === 'N') {
     var kp = document.createElement('button'); kp.className = 'glv-ck' + (_keep[t.id] ? ' on' : '');
     kp.textContent = _keep[t.id] ? '📌 Kept' : 'Keep';
     kp.title = 'Keep = skip this one when you press Archive all';
@@ -753,7 +753,7 @@ function rebuildList(listEl) {
     var sh = document.createElement('div'); sh.className = 'glv-bh';
     sh.innerHTML = '<span class="glv-sl">' + (L === 'N' ? '•' : L) + '</span><h2></h2><i class="glv-sc">' + its.length + '</i><span class="glv-xi">' + (open ? '▾' : '▸') + '</span>';
     sh.querySelector('h2').textContent = bk[1];
-    if (L === 'A' || L === 'E') {
+    if (L === 'A' || L === 'E' || L === 'N') {
       var go = its.filter(function(t){ return !_keep[t.id]; }), kept = its.length - go.length;
       var all = document.createElement('button'); all.className = 'glv-btn glv-aa';
       all.textContent = 'Archive ' + (kept ? go.length + ' (' + kept + ' kept)' : 'all ' + go.length);
@@ -937,7 +937,7 @@ function buildPanel(host) {
   BUCKETS.forEach(function(bk){
     if (!counts[bk[0]]) return;
     var c = document.createElement('a'); c.className = 'glv-chip bk c' + bk[0]; c.href = '#glv-' + bk[0];
-    c.innerHTML = '<b>' + (bk[0] === 'N' ? 'New' : bk[0]) + '</b> ' + counts[bk[0]];
+    c.innerHTML = '<b>' + (bk[0] === 'N' ? 'Older' : bk[0]) + '</b> ' + counts[bk[0]];
     c.title = bk[1];
     chips.appendChild(c);
   });
