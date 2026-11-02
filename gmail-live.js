@@ -425,6 +425,7 @@ var _scan = { byThread: {}, bySender: {}, loaded: false };
 
 async function loadScan() {
   var key = window.TE && TE.key && TE.key(); if (!key || _scan.loaded) return;
+  _scan.byThread = {}; _scan.bySender = {};
   var base = (TE.base && TE.base()) || 'appdDTNBbVrp6hVOv', off = '', recs = [];
   var flds = ['ThreadId','FromEmail','Bucket','Project','Summary','Advice','RunAt'].map(function(f){ return 'fields%5B%5D=' + f; }).join('&');
   try {
@@ -535,6 +536,18 @@ function classify(t) {
   if (snd && (snd.bucket === 'A' || snd.bucket === 'E')) return { b: snd.bucket, project: project, guess: true };
   if (t.labels.some(function(l){ return /^CATEGORY_(PROMOTIONS|SOCIAL|FORUMS)$/.test(l); })) return { b: 'A', project: project, guess: true };
   return { b: 'N', project: project };
+}
+
+// Queue a Scan request (same as Scan tab's "Run now"); the Email run picks it up at 8a / 12p.
+var _sortQueued = false;
+function queueSort(btn) {
+  btn.textContent = '…'; btn.disabled = true;
+  var now = new Date().toISOString();
+  fetch('https://api.airtable.com/v0/' + ((TE.base && TE.base()) || 'appdDTNBbVrp6hVOv') + '/tblpkdXhqbqN1XFDd', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + TE.key(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fields: { Name: 'Email run ' + new Date().toLocaleString(), Kind: 'Scan', Status: 'Requested', RequestedAt: now }, typecast: true })
+  }).then(function(r){ if (!r.ok) throw 0; _sortQueued = true; rebuildList(_listEl); })
+    .catch(function(){ btn.textContent = 'Failed — tap again'; btn.disabled = false; });
 }
 
 function archiveThreads(list, btn) {
@@ -771,6 +784,14 @@ function rebuildList(listEl) {
         if (confirm('Archive ' + go.length + ' in "' + bk[1] + '"?' + (kept ? ' (' + kept + ' kept stay)' : ''))) archiveThreads(go, all); });
       sh.insertBefore(all, sh.querySelector('.glv-xi'));
     }
+    if (L === 'N' && window.TE && TE.key && TE.key()) {
+      var srt = document.createElement('button'); srt.className = 'glv-btn glv-aa ok';
+      srt.textContent = _sortQueued ? '⏳ Queued — sorts at 8a / 12p' : '✉ Sort these';
+      srt.disabled = !!_sortQueued;
+      srt.title = 'Queue an Email run. It sorts up to 100 of these per run (newest first).';
+      srt.addEventListener('click', function(e){ e.stopPropagation(); queueSort(srt); });
+      sh.insertBefore(srt, sh.querySelector('.glv-xi'));
+    }
     sh.addEventListener('click', function(){ _expanded['bk-' + L] = !open; rebuildList(_listEl); });
     sec.appendChild(sh);
     if (open) {
@@ -917,7 +938,7 @@ function buildPanel(host) {
 
   var refreshBtn = document.createElement('button'); refreshBtn.className = 'glv-btn';
   refreshBtn.textContent = '⟳ Refresh';
-  refreshBtn.addEventListener('click', function() { _expanded = {}; loadPage(true); });
+  refreshBtn.addEventListener('click', function() { _expanded = {}; _scan.loaded = false; loadScan().then(function(){ rebuildList(_listEl); }); loadPage(true); });
   bar.appendChild(refreshBtn);
 
   if (backendUrl()) {
