@@ -99,6 +99,8 @@ var _linkBackend = '', _linkApiKey = '';
   try {
     _linkBackend = decodeURIComponent(m[1]);
     var c = JSON.parse(localStorage.getItem('tb.cfg')||'{}'); c.gmailBackend = _linkBackend;
+    var cid = location.hash.match(/[&#]cid=([^&]+)/);
+    if (cid) c.gmailClientId = decodeURIComponent(cid[1]);
     var at = location.hash.match(/[&#]at=([^&]+)/);
     if (at && !c.apiKey) { c.apiKey = decodeURIComponent(at[1]); _linkApiKey = c.apiKey; }
     localStorage.setItem('tb.cfg', JSON.stringify(c)); localStorage.setItem(BK_KEY, m[2]);
@@ -967,6 +969,7 @@ function buildConnectScreen(host) {
   });
   var note = document.createElement('p');
   note.textContent = 'Sign-in lasts ~1 hour. To stay signed in for good, set up the backend below (once).';
+  if (IS_PHONE) note.innerHTML = '<b style="color:#e0a458">On your phone? Don\'t sign in here.</b> On your Mac, open Live Gmail → <b>📱 Link for other devices</b>, send the link to yourself and open it here.';
 
   // Stay-signed-in setup: a tiny Apps Script web app in your own Google account.
   var key = backendKey() || newKey();
@@ -1054,7 +1057,8 @@ function buildPanel(host) {
     devBtn.addEventListener('click', function() {
       var at = window.TE && TE.key && TE.key();
       var link = location.origin + location.pathname + '#gb=' + encodeURIComponent(backendUrl()) + '|' + backendKey() +
-                 (at ? '&at=' + encodeURIComponent(at) : '');
+                 (at ? '&at=' + encodeURIComponent(at) : '') +
+                 (_cfg.gmailClientId ? '&cid=' + encodeURIComponent(_cfg.gmailClientId) : '');
       navigator.clipboard.writeText(link); devBtn.textContent = '✓ Copied — open it on the other device';
       setTimeout(function(){ devBtn.textContent = '📱 Link for other devices'; }, 2500);
     });
@@ -1112,7 +1116,7 @@ function buildPanel(host) {
 
 function redraw() {
   if (!_host) return;
-  if (!_cfg || !_cfg.gmailClientId) { buildSetupScreen(_host); return; }
+  if (!_cfg || (!_cfg.gmailClientId && !backendUrl())) { buildSetupScreen(_host); return; }
   if (_error === 'auth')            { buildConnectScreen(_host); return; }
   if (!_authed && !_loading)        { buildConnectScreen(_host); return; }
   buildPanel(_host);
@@ -1126,7 +1130,7 @@ function mount(host, cfg) {
   if (_linkApiKey && !cfg.apiKey) cfg.apiKey = _linkApiKey;
   loadScan().then(function(){ if (_scan.loaded && _listEl) redraw(); });
 
-  if (!cfg.gmailClientId) { buildSetupScreen(host); return; }
+  if (!cfg.gmailClientId && !backendUrl()) { buildSetupScreen(host); return; }
 
   if (_authed && _token && Date.now() < _exp) {
     loadPage(true); return;
