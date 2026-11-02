@@ -163,7 +163,7 @@ async function gfetch(path, opts) {
     throw Object.assign(new Error('auth'), { code: 'auth' });
   }
   // Rate limit (403/429): back off and retry, up to 4 times.
-  if ((r.status === 403 || r.status === 429) && (opts._tries || 0) < 6) {
+  if ((r.status === 403 || r.status === 429) && (opts._tries || 0) < 2) {
     var n = (opts._tries || 0) + 1;
     await new Promise(function(res){ setTimeout(res, 800 * Math.pow(2, n - 1) + Math.random() * 400); });
     return gfetch(path, Object.assign({}, opts, { _tries: n }));
@@ -242,6 +242,15 @@ function htmlDecode(s) {
   return (s||'').replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
 }
 
+var CACHE_KEY = 'gl.cache';
+var _cache = {}; try { _cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch (e) {}
+function fromCache(d) { var t = Object.assign({}, d); t.date = new Date(d.date); return t; }
+function saveCache() {
+  var ks = Object.keys(_cache);
+  if (ks.length > 1500) ks.slice(0, ks.length - 1500).forEach(function(k){ delete _cache[k]; });
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(_cache)); } catch (e) { _cache = {}; try { localStorage.removeItem(CACHE_KEY); } catch (x) {} }
+}
+
 function parseThread(t) {
   var msgs = t.messages || [];
   var first = msgs[0] || {};
@@ -278,27 +287,40 @@ async function loadPage(reset) {
   if (reset) { _threads = []; _nextPage = null; _total = null; loadRules().then(function(){ rebuildList(_listEl); }).catch(function(){}); }
   redraw();
   try {
+    var startTok = _nextPage;
     var list = await apiListThreads(_nextPage);
     _nextPage = list.nextPageToken || null;
     if (reset || _total == null) {
       try { _total = (await gfetch('labels/INBOX')).threadsTotal; } catch(e) { _total = list.resultSizeEstimate || 0; }
     }
-    // Fetch in chunks of 20 and draw after each, so emails show up right away.
-    var ids = list.threads || [];
-    for (var c = 0; c < ids.length; c += 20) {
-      var fetched = await pool(ids.slice(c, c + 20), 6, function(t){ return apiGetThread(t.id).catch(function(e){ if (e.code === 'auth') throw e; return null; }); });
-      var have = {}; _threads.forEach(function(t){ have[t.id] = 1; });
-      _threads = _threads.concat(fetched.filter(Boolean).map(parseThread).filter(function(t){ return !have[t.id]; }));
-      redraw();
+    // Threads unchanged since last visit (same historyId) come from the cache — no Gmail call.
+    // The rest are fetched 20 at a time and drawn after each chunk.
+    var ids = list.threads || [], need = [], have = {};
+    _threads.forEach(function(t){ have[t.id] = 1; });
+    ids.forEach(function(x){
+      var c = _cache[x.id];
+      if (c && x.historyId && c.h === x.historyId) { if (!have[x.id]) { _threads.push(fromCache(c.d)); have[x.id] = 1; } }
+      else need.push(x);
+    });
+    redraw();
+    for (var c = 0; c < need.length; c += 20) {
+      var fetched = await pool(need.slice(c, c + 20), 4, function(t){ return apiGetThread(t.id).catch(function(e){ if (e.code === 'auth' || e.code === 'busy') throw e; return null; }); });
+      fetched.forEach(function(raw, k){
+        if (!raw) return; var t = parseThread(raw), id = need[c + k].id;
+        _cache[id] = { h: need[c + k].historyId, d: t };
+        if (!have[t.id]) { _threads.push(t); have[t.id] = 1; }
+      });
+      saveCache(); redraw();
     }
   } catch(e) {
     _error = (e.code === 'auth') ? 'auth' : e.code === 'busy' ? 'busy' : (e.message || 'Error');
+    if (_error === 'busy') _nextPage = typeof startTok === 'undefined' ? _nextPage : startTok;  // redo this page (cached threads are free)
   }
   _loading = false;
   redraw();
-  // Keep loading until the whole inbox is in. Gmail "busy" (rate limit) → wait 15s, continue.
-  if (_nextPage && (!_error || _error === 'busy')) {
-    setTimeout(function(){ loadPage(false); }, _error === 'busy' ? 15000 : 300);
+  // Keep loading until the whole inbox is in. Gmail "busy" (per-minute quota) → wait 60s, continue.
+  if (_error === 'busy' || (_nextPage && !_error)) {
+    setTimeout(function(){ loadPage(false); }, _error === 'busy' ? 60000 : 300);
   }
 }
 
@@ -982,7 +1004,7 @@ function buildPanel(host) {
   if (_loading) {
     st.innerHTML = '<span class="glv-run">Loading… ' + _threads.length + (_total?' of '+_total:'') + ' loaded</span>';
   } else if (_error === 'busy') {
-    st.innerHTML = '<span class="glv-run">' + _threads.length + ' of ' + (_total || '?') + ' loaded · Gmail asked to slow down, continuing in 15s…</span>';
+    st.innerHTML = '<span class="glv-run">' + _threads.length + ' of ' + (_total || '?') + ' loaded · Gmail per-minute limit hit, continuing in 1 min (next time it\'s instant — cached)</span>';
   } else if (_error && _error !== 'auth') {
     st.innerHTML = '<span style="color:#e5533a">' + _error + '</span> ';
     var rb = document.createElement('button'); rb.className = 'glv-btn'; rb.textContent = 'Retry';
