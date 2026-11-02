@@ -231,6 +231,12 @@ function parseSender(from) {
   return { name: name || em, email: em };
 }
 
+// Key facts (amounts, dates, due/failed/fraud…) highlighted in summaries.
+function hlText(t) {
+  var s = String(t || '').replace(/[&<>"]/g, function(c){ return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; });
+  return s.replace(/(\$[\d,]+(?:\.\d+)?[KkMm]?|\b(?:due|overdue|expires?|expired|deadline|matures?|past due|declined|failed|fraud|urgent|final notice|danger|by (?:today|tomorrow|Mon|Tue|Wed|Thu|Fri|Sun)\w*)\b|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}\b|\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b)/gi,'<mark class="hl">$1</mark>');
+}
+
 function htmlDecode(s) {
   return (s||'').replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
 }
@@ -376,6 +382,7 @@ function addCss() {
 .glv-note{margin-top:5px;padding:6px 9px;border-radius:8px;background:rgba(224,164,88,.12);border:1px solid rgba(224,164,88,.35);color:#f0c98e;font-size:14.5px;white-space:pre-wrap;cursor:text}
 .glv-note.add{background:none;border-style:dashed;color:#8a7a5e;font-size:13px}
 .glv-note-in{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:7px 9px;border-radius:8px;background:#06141a;border:1px solid #e0a458;color:#e7f3f6;font:15px/1.4 -apple-system,system-ui,sans-serif;resize:vertical}
+.glv-rsnip mark.hl{background:rgba(224,164,88,.2);color:#ffd28a;border-radius:3px;padding:0 2px;font-weight:700}
 .glv-chip.bk{cursor:pointer}.glv-chip.cB b{color:#e5533a}.glv-chip.cD b{color:#e0a458}
 @media (hover:none){.glv-ck,.glv-arch{opacity:1}}
 @media (max-width:600px){
@@ -623,7 +630,7 @@ function makeRow(t, showSender) {
   div.appendChild(body);
 
   if (c.summary) {
-    var sm = document.createElement('div'); sm.className = 'glv-rsnip sum'; sm.textContent = c.summary;
+    var sm = document.createElement('div'); sm.className = 'glv-rsnip sum'; sm.innerHTML = hlText(c.summary);
     div.appendChild(sm);
   }
   if (showSender && t.snippet) {
