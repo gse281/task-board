@@ -32,6 +32,7 @@ var _total    = null;
 var _loading  = false;
 var _error    = null;
 var _expanded = {};
+var _bodies   = {};
 var _host     = null;
 var _listEl   = null;
 
@@ -160,11 +161,12 @@ async function gfetch(path, opts) {
     throw Object.assign(new Error('auth'), { code: 'auth' });
   }
   // Rate limit (403/429): back off and retry, up to 4 times.
-  if ((r.status === 403 || r.status === 429) && (opts._tries || 0) < 4) {
+  if ((r.status === 403 || r.status === 429) && (opts._tries || 0) < 6) {
     var n = (opts._tries || 0) + 1;
     await new Promise(function(res){ setTimeout(res, 800 * Math.pow(2, n - 1) + Math.random() * 400); });
     return gfetch(path, Object.assign({}, opts, { _tries: n }));
   }
+  if (r.status === 403 || r.status === 429) throw Object.assign(new Error('busy'), { code: 'busy' });
   if (!r.ok) throw new Error('HTTP ' + r.status);
   return r.json();
 }
@@ -185,6 +187,26 @@ async function apiListThreads(pageToken) {
 
 async function apiGetThread(id) {
   return gfetch('threads/' + id + '?format=METADATA&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date');
+}
+
+// Plain text of the newest message (for the ▸ more preview).
+async function apiBody(id) {
+  var t = await gfetch('threads/' + id + '?format=FULL');
+  var m = (t.messages || [])[t.messages.length - 1] || {};
+  function dec(d) { try { return decodeURIComponent(escape(atob(d.replace(/-/g, '+').replace(/_/g, '/')))); } catch (e) { return ''; } }
+  function find(p, type) {
+    if (!p) return '';
+    if (p.mimeType === type && p.body && p.body.data) return dec(p.body.data);
+    for (var i = 0; p.parts && i < p.parts.length; i++) { var x = find(p.parts[i], type); if (x) return x; }
+    return '';
+  }
+  var txt = find(m.payload, 'text/plain');
+  if (!txt) {
+    var h = find(m.payload, 'text/html');
+    var el = document.createElement('div'); el.innerHTML = h.replace(/<(style|script)[\s\S]*?<\/\1>/gi, '');
+    txt = el.textContent || '';
+  }
+  return txt.replace(/\r/g, '').replace(/^>.*$/gm, '').replace(/[ \t\u00a0\u200c]+/g, ' ').replace(/\n\s*\n+/g, '\n').trim();
 }
 
 async function apiModify(id, body) {
@@ -244,7 +266,7 @@ function fmtDate(d) {
 async function loadPage(reset) {
   if (_loading) return;
   _loading = true; _error = null;
-  if (reset) { _threads = []; _nextPage = null; _total = null; }
+  if (reset) { _threads = []; _nextPage = null; _total = null; loadRules().then(function(){ rebuildList(_listEl); }).catch(function(){}); }
   redraw();
   try {
     var list = await apiListThreads(_nextPage);
@@ -252,16 +274,17 @@ async function loadPage(reset) {
     if (reset || _total == null) {
       try { _total = (await gfetch('labels/INBOX')).threadsTotal; } catch(e) { _total = list.resultSizeEstimate || 0; }
     }
-    var fetched = await pool(list.threads || [], 8, function(t){ return apiGetThread(t.id); });
-    _threads = _threads.concat(fetched.map(parseThread));
+    var fetched = await pool(list.threads || [], 5, function(t){ return apiGetThread(t.id).catch(function(e){ if (e.code === 'auth') throw e; return null; }); });
+    var have = {}; _threads.forEach(function(t){ have[t.id] = 1; });
+    _threads = _threads.concat(fetched.filter(Boolean).map(parseThread).filter(function(t){ return !have[t.id]; }));
   } catch(e) {
-    _error = (e.code === 'auth') ? 'auth' : (e.message || 'Error');
+    _error = (e.code === 'auth') ? 'auth' : e.code === 'busy' ? 'busy' : (e.message || 'Error');
   }
   _loading = false;
   redraw();
-  // Auto-load next page
-  if (_nextPage && !_error) {
-    setTimeout(function(){ loadPage(false); }, 300);
+  // Keep loading until the whole inbox is in. Gmail "busy" (rate limit) → wait 15s, continue.
+  if (_nextPage && (!_error || _error === 'busy')) {
+    setTimeout(function(){ loadPage(false); }, _error === 'busy' ? 15000 : 300);
   }
 }
 
@@ -272,16 +295,16 @@ function addCss() {
   if (_cssAdded) return; _cssAdded = true;
   var s = document.createElement('style');
   s.textContent = `
-.glv{padding:0 14px 30px;font:14px/1.4 -apple-system,system-ui,sans-serif;color:#e7f3f6;background:#070d11;min-height:100%}
+.glv{padding:0 14px 30px;font:16px/1.45 -apple-system,system-ui,sans-serif;color:#e7f3f6;background:#070d11;min-height:100%}
 /* sticky bar */
 .glv-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;background:linear-gradient(#070d11 85%,rgba(7,13,17,0))}
 .glv-chips{display:flex;gap:5px;flex-wrap:wrap}
-.glv-chip{text-decoration:none;color:#e7f3f6;border:1px solid rgba(57,199,223,.3);border-radius:999px;padding:2px 10px;font:600 11.5px ui-monospace,Menlo,monospace;cursor:default}
+.glv-chip{text-decoration:none;color:#e7f3f6;border:1px solid rgba(57,199,223,.3);border-radius:999px;padding:3px 11px;font:600 13px ui-monospace,Menlo,monospace;cursor:default}
 .glv-chip b{color:#39c7df}
-.glv-st{flex:1;min-width:140px;color:#8aa6af;font-size:12.5px}
+.glv-st{flex:1;min-width:140px;color:#8aa6af;font-size:14px}
 .glv-run{color:#39c7df;font-weight:700}
 /* buttons */
-.glv-btn{height:28px;border-radius:8px;border:1px solid rgba(57,199,223,.3);background:rgba(57,199,223,.07);color:#e7f3f6;font:700 11px ui-monospace,Menlo,monospace;cursor:pointer;padding:0 12px;white-space:nowrap}
+.glv-btn{height:28px;border-radius:8px;border:1px solid rgba(57,199,223,.3);background:rgba(57,199,223,.07);color:#e7f3f6;font:700 12.5px ui-monospace,Menlo,monospace;cursor:pointer;padding:0 12px;white-space:nowrap}
 .glv-btn:hover{background:rgba(57,199,223,.15)}
 .glv-btn:disabled{opacity:.45;cursor:default}
 .glv-btn.ok{background:#30D158;border-color:#30D158;color:#07141a}
@@ -290,7 +313,7 @@ function addCss() {
 .glv-sh{display:flex;align-items:center;gap:7px;padding:6px 2px 5px;cursor:pointer;user-select:none}
 .glv-sh:hover .glv-sn{color:#c8e6f0}
 .glv-sl{display:inline-block;width:20px;height:20px;border-radius:6px;text-align:center;line-height:20px;font:800 12px ui-monospace,Menlo,monospace;background:rgba(57,199,223,.15);color:#39c7df;flex-shrink:0}
-.glv-sn{font-size:13.5px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glv-sn{font-size:15.5px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .glv-sc{color:#07141a;background:#39c7df;border-radius:999px;padding:0 7px;font-size:11px;font-weight:800;font-style:normal;flex-shrink:0}
 .glv-xi{color:#64838d;font-size:11px;flex-shrink:0}
 .glv-arch{height:22px;border-radius:6px;border:1px solid rgba(57,199,223,.3);background:transparent;color:#8aa6af;font:700 10px ui-monospace,Menlo,monospace;cursor:pointer;padding:0 8px;flex-shrink:0;opacity:0}
@@ -303,17 +326,17 @@ function addCss() {
 .glv-row:hover{background:rgba(20,36,42,.8);border-color:rgba(57,199,223,.22)}
 .glv-row.unr{border-color:rgba(57,199,223,.2)}
 .glv-rh{display:flex;align-items:baseline;gap:6px;min-width:0}
-.glv-rf{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
-.glv-rw{flex:none;color:#64838d;font-size:11px}
-.glv-rs{margin-top:2px;color:#bfe3ec;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glv-rf{flex:1;min-width:0;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15.5px}
+.glv-rw{flex:none;color:#64838d;font-size:13px}
+.glv-rs{margin-top:2px;color:#bfe3ec;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .glv-row.unr .glv-rs{font-weight:600;color:#daeeff}
-.glv-rsnip{margin-top:1px;color:#64838d;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glv-rsnip{margin-top:2px;color:#7f9ea8;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* star */
-.glv-star{flex:none;background:none;border:0;cursor:pointer;color:#2a4a5a;font-size:14px;line-height:1;padding:0 2px;user-select:none}
+.glv-star{flex:none;background:none;border:0;cursor:pointer;color:#3a5a6a;font-size:18px;line-height:1;padding:0 2px;user-select:none}
 .glv-star.on{color:#f5c518}
 .glv-star:hover{color:#f5c518}
 /* row actions */
-.glv-ck{height:20px;padding:0 7px;font-size:11px;flex:none;height:22px;border-radius:6px;border:1px solid rgba(57,199,223,.2);background:transparent;color:#8aa6af;font:700 10px ui-monospace,Menlo,monospace;cursor:pointer;opacity:0}
+.glv-ck{height:20px;padding:0 7px;font-size:11px;flex:none;height:22px;border-radius:6px;border:1px solid rgba(57,199,223,.2);background:transparent;color:#8aa6af;font:700 11.5px ui-monospace,Menlo,monospace;cursor:pointer;opacity:0}
 .glv-row:hover .glv-ck{opacity:1}
 .glv-ck:hover{background:rgba(57,199,223,.12);color:#39c7df;opacity:1}
 .glv-mc{flex:none;color:#64838d;font-size:10px;background:rgba(20,36,42,.9);border-radius:6px;padding:0 5px}
@@ -334,17 +357,20 @@ function addCss() {
 .glv-be .glv-btn{height:22px;padding:0 8px;font-size:11px}.glv-be #glv-bk-save{height:30px;margin-top:6px}
 #glv-bk-msg{margin-top:8px;color:#e5a53a}
 .glv-connect p{font-size:12px;color:#8aa6af;margin:10px 0 0}
-.glv-cols{column-width:340px;column-gap:16px}
+.glv-cols{column-width:400px;column-gap:16px}
 .glv-bk{break-inside:avoid-column;margin-bottom:12px}
 .glv-bh{display:flex;align-items:center;gap:7px;padding:4px 2px 6px;cursor:pointer;user-select:none;break-after:avoid}
-.glv-bh h2{margin:0;font-size:13.5px;font-weight:800;flex:1}
+.glv-bh h2{margin:0;font-size:16px;font-weight:800;flex:1}
 .glv-B .glv-sl{background:#e5533a;color:#fff}.glv-D .glv-sl{background:#e0a458;color:#07141a}.glv-A .glv-sl,.glv-N .glv-sl{color:#8aa6af}
 .glv-B .glv-row{border-color:rgba(229,83,58,.35)}.glv-D .glv-row{border-color:rgba(224,164,88,.35)}
-.glv-aa{height:22px;padding:0 8px;font-size:10px}
-.glv-pj{break-after:avoid;font:800 10.5px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:#64838d;margin:6px 2px 0}
+.glv-aa{height:26px;padding:0 9px;font-size:12px}
+.glv-pj{break-after:avoid;font:800 12px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:#64838d;margin:6px 2px 0}
 .glv-pj i{font-style:normal;color:#39c7df;margin-left:3px}
 .glv-rsnip.sum{color:#9fc3cc;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.glv-adv{margin-top:2px;color:#e0a458;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glv-adv{margin-top:2px;color:#e0a458;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.glv-ck.on{opacity:1;color:#e0a458;border-color:rgba(224,164,88,.5)}
+.glv-more{background:none;border:0;padding:3px 0 0;color:#39c7df;font:600 12.5px -apple-system,system-ui,sans-serif;cursor:pointer}
+.glv-body{margin-top:4px;padding:8px 10px;border-radius:8px;background:#06141a;color:#c8dde3;font-size:14px;white-space:pre-wrap;max-height:320px;overflow:auto;cursor:text}
 .glv-chip.bk{cursor:pointer}.glv-chip.cB b{color:#e5533a}.glv-chip.cD b{color:#e0a458}
 @media (hover:none){.glv-ck,.glv-arch{opacity:1}}
 @media (max-width:600px){
@@ -352,11 +378,11 @@ function addCss() {
   .glv-cols{column-width:auto;columns:1}
   .glv-bar{padding-top:max(8px, env(safe-area-inset-top))}
   .glv-row{padding:9px 11px;border-radius:11px}
-  .glv-rf{font-size:15px}.glv-rs{font-size:14px}.glv-rsnip{font-size:12.5px}.glv-rw{font-size:12px}
+  .glv-rf{font-size:17px}.glv-rs{font-size:16px}.glv-rsnip{font-size:14.5px}.glv-rw{font-size:13px}.glv-adv{font-size:14.5px}
   .glv-star{font-size:20px;padding:0 4px}
   .glv-ck{height:30px;padding:0 10px;font-size:11px}
   .glv-btn{height:34px}
-  .glv-bh h2{font-size:15px}
+  .glv-bh h2{font-size:17px}
   .glv-st{flex-basis:100%;order:9}
 }
 `;
@@ -375,11 +401,11 @@ function avatarColor(key) {
 // ── Scan buckets ───────────────────────────────────────────────────────────────
 // Same A–E buckets as the Scan tab (emailrun.js). A thread the Email run already
 // sorted keeps its bucket/project/summary; others borrow the sender's last
-// project, and starred → D, Gmail promotions/social → A, the rest → "Not sorted yet".
+// project, and starred → D, your always-archive senders / Gmail promotions → A, the rest → New.
 
 var BUCKETS = [
   ['D', '⭐ Starred · action'], ['C', '✍️ Reply'], ['B', "⚠️ Don't miss"],
-  ['N', '🆕 Not sorted yet'],  ['E', '📄 Everything else'], ['A', '🗄 Archive']
+  ['N', '🆕 New — Email run hasn\'t sorted these'],  ['E', '📄 Everything else'], ['A', '🗄 Archive']
 ];
 var _scan = { byThread: {}, bySender: {}, loaded: false };
 
@@ -405,11 +431,63 @@ async function loadScan() {
   _scan.loaded = true;
 }
 
+// "Keep" = skip this thread in Archive all (this browser only).
+var KEEP_KEY = 'gl.keep';
+var _keep = {}; try { _keep = JSON.parse(localStorage.getItem(KEEP_KEY) || '{}'); } catch (e) {}
+function toggleKeep(t) { if (_keep[t.id]) delete _keep[t.id]; else _keep[t.id] = 1; try { localStorage.setItem(KEEP_KEY, JSON.stringify(_keep)); } catch (e) {} }
+
+// Always-archive senders live in Gmail as the label "ER/Always archive", so every
+// device (and Superhuman) sees the same rules. Cache: threadId → sender email.
+var RULE_LABEL = 'ER/Always archive', RULE_KEY = 'gl.rules';
+var _rule = { id: '', byThread: {}, senders: {} };
+try { _rule.byThread = JSON.parse(localStorage.getItem(RULE_KEY) || '{}'); } catch (e) {}
+function ruleSenders() {
+  _rule.senders = {};
+  Object.keys(_rule.byThread).forEach(function(k){ _rule.senders[_rule.byThread[k]] = 1; });
+  try { localStorage.setItem(RULE_KEY, JSON.stringify(_rule.byThread)); } catch (e) {}
+}
+ruleSenders();
+async function ruleLabelId(create) {
+  if (_rule.id) return _rule.id;
+  var ls = (await gfetch('labels')).labels || [];
+  var l = ls.filter(function(x){ return x.name === RULE_LABEL; })[0];
+  if (!l && create) l = await gfetch('labels', { method: 'POST', body: JSON.stringify({ name: RULE_LABEL, labelListVisibility: 'labelShow', messageListVisibility: 'show' }) });
+  return (_rule.id = l ? l.id : '');
+}
+async function loadRules() {
+  var id = await ruleLabelId(false); if (!id) return;
+  var ids = [], pt = '';
+  do {
+    var r = await gfetch('threads?maxResults=500&labelIds=' + id + (pt ? '&pageToken=' + pt : ''));
+    ids = ids.concat((r.threads || []).map(function(t){ return t.id; })); pt = r.nextPageToken || '';
+  } while (pt);
+  var fresh = {}, need = [];
+  ids.forEach(function(k){ if (_rule.byThread[k]) fresh[k] = _rule.byThread[k]; else need.push(k); });
+  await pool(need, 5, function(k){
+    return gfetch('threads/' + k + '?format=METADATA&metadataHeaders=From').then(function(t){
+      fresh[k] = parseSender(hdr((t.messages || [])[0] || {}, 'From')).email.toLowerCase();
+    }).catch(function(){});
+  });
+  _rule.byThread = fresh; ruleSenders();
+}
+async function setAlways(t, on) {
+  var em = (t.senderEmail || '').toLowerCase(), id = await ruleLabelId(true);
+  if (on) {
+    await apiModify(t.id, { addLabelIds: [id] }); _rule.byThread[t.id] = em;
+  } else {
+    var ks = Object.keys(_rule.byThread).filter(function(k){ return _rule.byThread[k] === em; });
+    await pool(ks, 5, function(k){ return apiModify(k, { removeLabelIds: [id] }).catch(function(){}); });
+    ks.forEach(function(k){ delete _rule.byThread[k]; });
+  }
+  ruleSenders();
+}
+
 function classify(t) {
   var r = _scan.byThread[t.id], snd = _scan.bySender[(t.senderEmail || '').toLowerCase()];
+  var project = (r && r.project) || (snd ? snd.project : '');
+  if (t.starred) return { b: 'D', project: project, summary: r && r.summary, advice: r && r.advice };
+  if (_rule.senders[(t.senderEmail || '').toLowerCase()]) return { b: 'A', project: project, summary: r && r.summary, always: true };
   if (r && r.bucket) return { b: r.bucket, project: r.project, summary: r.summary, advice: r.advice, sorted: true };
-  var project = snd ? snd.project : '';
-  if (t.starred) return { b: 'D', project: project };
   if (snd && (snd.bucket === 'A' || snd.bucket === 'E')) return { b: snd.bucket, project: project, guess: true };
   if (t.labels.some(function(l){ return /^CATEGORY_(PROMOTIONS|SOCIAL|FORUMS)$/.test(l); })) return { b: 'A', project: project, guess: true };
   return { b: 'N', project: project };
@@ -460,8 +538,9 @@ function makeRow(t, showSender) {
     e.stopPropagation(); var was = t.starred; t.starred = !was;
     star.className = 'glv-star' + (t.starred ? ' on' : '');
     star.textContent = t.starred ? '★' : '☆';
+    rebuildList(_listEl);
     apiModify(t.id, was ? {removeLabelIds:['STARRED']} : {addLabelIds:['STARRED']})
-      .catch(function(){ t.starred = was; star.className='glv-star'+(t.starred?' on':''); star.textContent=t.starred?'★':'☆'; });
+      .catch(function(){ t.starred = was; rebuildList(_listEl); });
   });
 
   var from = document.createElement('span'); from.className = 'glv-rf';
@@ -485,7 +564,22 @@ function makeRow(t, showSender) {
       rebuildList(_listEl);
     }).catch(function(){ arch.textContent = '!'; arch.disabled = false; });
   });
-  h.appendChild(arch);
+  var c = t._c || {};
+  if (c.b === 'A' || c.b === 'E') {
+    var kp = document.createElement('button'); kp.className = 'glv-ck' + (_keep[t.id] ? ' on' : '');
+    kp.textContent = _keep[t.id] ? '📌 Kept' : 'Keep';
+    kp.title = 'Keep = skip this one when you press Archive all';
+    kp.addEventListener('click', function(e){ e.stopPropagation(); toggleKeep(t); rebuildList(_listEl); });
+    h.appendChild(kp);
+  }
+  var al = document.createElement('button'); al.className = 'glv-ck' + (c.always ? ' on' : '');
+  al.textContent = c.always ? '✕ Always-archive' : 'Always archive';
+  al.title = c.always ? 'Stop putting this sender in Archive' : 'Put this sender in Archive from now on (Gmail label "' + RULE_LABEL + '")';
+  al.addEventListener('click', function(e){
+    e.stopPropagation(); al.textContent = '…'; al.disabled = true;
+    setAlways(t, !c.always).then(function(){ rebuildList(_listEl); }).catch(function(){ al.textContent = '!'; al.disabled = false; });
+  });
+  h.append(al, arch);
 
   div.appendChild(h);
 
@@ -493,16 +587,34 @@ function makeRow(t, showSender) {
   body.textContent = showSender ? t.subject : (t.snippet || '');
   div.appendChild(body);
 
-  var c = t._c || {};
-  var more = c.summary || (showSender ? t.snippet : '');
-  if (more) {
-    var snip = document.createElement('div'); snip.className = 'glv-rsnip' + (c.summary ? ' sum' : ''); snip.textContent = more;
+  if (c.summary) {
+    var sm = document.createElement('div'); sm.className = 'glv-rsnip sum'; sm.textContent = c.summary;
+    div.appendChild(sm);
+  }
+  if (showSender && t.snippet) {
+    var snip = document.createElement('div'); snip.className = 'glv-rsnip'; snip.textContent = t.snippet;
     div.appendChild(snip);
   }
   if (c.advice) {
     var adv = document.createElement('div'); adv.className = 'glv-adv'; adv.textContent = '→ ' + c.advice;
     div.appendChild(adv);
   }
+
+  // ▸ more: the email's own text, right here.
+  var mo = document.createElement('button'); mo.className = 'glv-more'; mo.textContent = _bodies[t.id] ? '▾ less' : '▸ more';
+  div.appendChild(mo);
+  if (_bodies[t.id]) {
+    var bd = document.createElement('div'); bd.className = 'glv-body'; bd.textContent = _bodies[t.id];
+    bd.addEventListener('click', function(e){ e.stopPropagation(); });
+    div.appendChild(bd);
+  }
+  mo.addEventListener('click', function(e){
+    e.stopPropagation();
+    if (_bodies[t.id]) { delete _bodies[t.id]; rebuildList(_listEl); return; }
+    mo.textContent = '…';
+    apiBody(t.id).then(function(txt){ _bodies[t.id] = (txt || '(no text)').slice(0, 1500); rebuildList(_listEl); })
+      .catch(function(){ mo.textContent = '▸ more (failed, tap again)'; });
+  });
 
   div.addEventListener('click', function(){ window.open('https://mail.google.com/mail/u/0/#inbox/'+t.id, IS_PHONE ? '_blank' : 'gm-pane'); });
   return div;
@@ -577,9 +689,12 @@ function rebuildList(listEl) {
     sh.innerHTML = '<span class="glv-sl">' + (L === 'N' ? '•' : L) + '</span><h2></h2><i class="glv-sc">' + its.length + '</i><span class="glv-xi">' + (open ? '▾' : '▸') + '</span>';
     sh.querySelector('h2').textContent = bk[1];
     if (L === 'A' || L === 'E') {
-      var all = document.createElement('button'); all.className = 'glv-btn glv-aa'; all.textContent = 'Archive all ' + its.length;
+      var go = its.filter(function(t){ return !_keep[t.id]; }), kept = its.length - go.length;
+      var all = document.createElement('button'); all.className = 'glv-btn glv-aa';
+      all.textContent = 'Archive ' + (kept ? go.length + ' (' + kept + ' kept)' : 'all ' + go.length);
+      all.disabled = !go.length;
       all.addEventListener('click', function(e){ e.stopPropagation();
-        if (confirm('Archive all ' + its.length + ' in "' + bk[1] + '"?')) archiveThreads(its, all); });
+        if (confirm('Archive ' + go.length + ' in "' + bk[1] + '"?' + (kept ? ' (' + kept + ' kept stay)' : ''))) archiveThreads(go, all); });
       sh.insertBefore(all, sh.querySelector('.glv-xi'));
     }
     sh.addEventListener('click', function(){ _expanded['bk-' + L] = !open; rebuildList(_listEl); });
@@ -765,14 +880,21 @@ function buildPanel(host) {
 
   var st = document.createElement('div'); st.className = 'glv-st';
   if (_loading) {
-    st.innerHTML = '<span class="glv-run">Loading ' + _threads.length + (_total?' of ~'+_total:'') + ' emails…</span>';
+    st.innerHTML = '<span class="glv-run">Loading… ' + _threads.length + (_total?' of '+_total:'') + ' loaded</span>';
+  } else if (_error === 'busy') {
+    st.innerHTML = '<span class="glv-run">' + _threads.length + ' of ' + (_total || '?') + ' loaded · Gmail asked to slow down, continuing in 15s…</span>';
   } else if (_error && _error !== 'auth') {
     st.innerHTML = '<span style="color:#e5533a">' + _error + '</span> ';
     var rb = document.createElement('button'); rb.className = 'glv-btn'; rb.textContent = 'Retry';
     rb.addEventListener('click', function(){ loadPage(true); });
     st.appendChild(rb);
   } else if (_threads.length) {
-    st.textContent = _threads.length + ' loaded' + (_scan.loaded ? '' : ' · sorting by sender only (no Airtable key)');
+    st.textContent = _threads.length + ' of ' + (_total || _threads.length) + ' loaded' + (_scan.loaded ? '' : ' · sorting by sender only (no Airtable key)') + ' ';
+    if (_nextPage) {
+      var lm = document.createElement('button'); lm.className = 'glv-btn'; lm.textContent = 'Load more';
+      lm.addEventListener('click', function(){ loadPage(false); });
+      st.appendChild(lm);
+    }
   }
   bar.appendChild(st);
 
