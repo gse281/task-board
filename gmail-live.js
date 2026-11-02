@@ -331,7 +331,7 @@ function addCss() {
   if (_cssAdded) return; _cssAdded = true;
   var s = document.createElement('style');
   s.textContent = `
-.glv{padding:0 14px 30px;font:16px/1.45 -apple-system,system-ui,sans-serif;color:#e7f3f6;background:#070d11;min-height:100%}
+.glv{max-width:1800px;margin:0 auto;box-sizing:border-box;padding:0 14px 30px;font:16px/1.45 -apple-system,system-ui,sans-serif;color:#e7f3f6;background:#070d11;min-height:100%}
 /* sticky bar */
 .glv-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 0;background:linear-gradient(#070d11 85%,rgba(7,13,17,0))}
 .glv-chips{display:flex;gap:5px;flex-wrap:wrap}
@@ -801,10 +801,14 @@ function rebuildList(listEl) {
   var by = {};
   _threads.forEach(function(t){ t._c = classify(t); (by[t._c.b] = by[t._c.b] || []).push(t); });
 
-  // Two fixed columns (D C B | Older E A) so archiving a row never reflows sections across columns.
+  // Fixed columns so archiving a row never reflows sections across columns.
   var cols = document.createElement('div'); cols.className = 'glv-cols';
-  var colL = document.createElement('div'), colR = document.createElement('div');
-  colL.className = colR.className = 'glv-col'; cols.append(colL, colR);
+  // Wide screens: 3 columns (D | C B Older | E A); else 2 (D C B | Older E A); phones stack.
+  var three = (listEl.clientWidth || window.innerWidth) >= 1300;
+  var colA = document.createElement('div'), colB = document.createElement('div'), colC = document.createElement('div');
+  colA.className = colB.className = colC.className = 'glv-col';
+  cols.append(colA, colB); if (three) cols.appendChild(colC);
+  function colFor(L) { return three ? (L === 'D' ? colA : 'CBN'.indexOf(L) >= 0 ? colB : colC) : ('DCB'.indexOf(L) >= 0 ? colA : colB); }
   BUCKETS.forEach(function(bk){
     var L = bk[0], its = by[L]; if (!its || !its.length) return;
     its.sort(function(a, b){ return b.date - a.date; });
@@ -849,7 +853,7 @@ function rebuildList(listEl) {
       }
       sec.appendChild(list);
     }
-    ('DCB'.indexOf(L) >= 0 ? colL : colR).appendChild(sec);
+    colFor(L).appendChild(sec);
   });
   frag.appendChild(cols);
 
@@ -1090,5 +1094,6 @@ function mount(host, cfg) {
   })();
 }
 
+var _rz; window.addEventListener('resize', function(){ clearTimeout(_rz); _rz = setTimeout(function(){ rebuildList(_listEl); }, 200); });
 window.GL = { mount: mount };
 })();
