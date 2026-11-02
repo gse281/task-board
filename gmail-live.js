@@ -429,14 +429,16 @@ function addCss() {
 @media (max-width:600px){
   .glv{padding:0 10px calc(24px + env(safe-area-inset-bottom))}
   .glv-cols{flex-direction:column;gap:0}.glv-col{width:100%}
-  .glv-bar{padding-top:max(8px, env(safe-area-inset-top))}
+  .glv-bar{padding:6px 0;gap:6px;background:#070d11}
+  .glv-chips{order:3;flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:none}.glv-chips::-webkit-scrollbar{display:none}
+  .glv-chip{flex-shrink:0;padding:2px 9px;font-size:12.5px}
   .glv-row{padding:9px 11px;border-radius:11px}
   .glv-rf{font-size:17px}.glv-rs{font-size:16px}.glv-rsnip{font-size:14.5px}.glv-rw{font-size:13px}.glv-adv{font-size:14.5px}
   .glv-star{font-size:20px;padding:0 4px}
   .glv-ck{height:30px;padding:0 10px;font-size:11px}
-  .glv-btn{height:34px}
+  .glv-bar .glv-btn{height:30px;padding:0 10px;font-size:12px}
   .glv-bh h2{font-size:17px}
-  .glv-st{flex-basis:100%;order:9}
+  .glv-st{flex:1;min-width:0;order:2;font-size:12.5px;text-align:right}
 }
 `;
   document.head.appendChild(s);
@@ -460,7 +462,7 @@ function avatarColor(key) {
 
 var BUCKETS = [
   ['D', '⭐ Starred · action'], ['C', '✍️ Reply'], ['B', "⚠️ Don't miss"],
-  ['N', '📥 Older — not sorted'],  ['E', '📄 Everything else'], ['A', '🗄 Archive']
+  ['N', IS_PHONE ? '📥 Older' : '📥 Older — not sorted'],  ['E', '📄 Everything else'], ['A', '🗄 Archive']
 ];
 var _scan = { byThread: {}, bySender: {}, loaded: false };
 
@@ -1079,7 +1081,7 @@ function buildPanel(host) {
   });
   bar.appendChild(mb);
 
-  if (backendUrl()) {
+  if (backendUrl() && !IS_PHONE) {
     var devBtn = document.createElement('button'); devBtn.className = 'glv-btn';
     devBtn.textContent = '📱 Link for other devices';
     devBtn.title = 'Open this link once on your phone/other computer to connect it. It holds your keys — only send it to yourself.';
@@ -1098,7 +1100,7 @@ function buildPanel(host) {
   var chips = document.createElement('div'); chips.className = 'glv-chips';
   if (_total != null) {
     var c1 = document.createElement('span'); c1.className = 'glv-chip';
-    c1.innerHTML = '📥 <b>' + _total + '</b> in inbox';
+    c1.innerHTML = '📥 <b>' + Math.max(_total, _threads.length) + '</b>' + (IS_PHONE ? '' : ' in inbox');
     chips.appendChild(c1);
   }
   var counts = {};
@@ -1123,7 +1125,7 @@ function buildPanel(host) {
     rb.addEventListener('click', function(){ loadPage(true); });
     st.appendChild(rb);
   } else if (_threads.length) {
-    st.textContent = _threads.length + ' of ' + (_total || _threads.length) + ' loaded' + (_scan.loaded ? '' : ' · sorting by sender only (no Airtable key)') + ' ';
+    st.textContent = (IS_PHONE ? _threads.length + ' loaded' : _threads.length + ' of ' + Math.max(_total || 0, _threads.length) + ' loaded') + (_scan.loaded ? '' : ' · sorting by sender only (no Airtable key)') + ' ';
     if (_nextPage) {
       var lm = document.createElement('button'); lm.className = 'glv-btn'; lm.textContent = 'Load more';
       lm.addEventListener('click', function(){ loadPage(false); });
