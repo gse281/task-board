@@ -93,21 +93,25 @@ function saveBackend(url, key) {
 
 // Other devices: open email.html#gb=<url>|<key> once.
 var _linkBackend = '', _linkApiKey = '';
-(function readSetupLink() {
+function applySetupLink(h) {
   // New links: #gb=<url>&k=<key>…  (old links used "|", which iMessage cuts off)
-  var m = location.hash.match(/gb=([^|&]+)(?:\||%7C|&k=)([0-9a-f]{48})/i);
-  if (!m) return;
+  var m = String(h || '').match(/gb=([^|&]+)(?:\||%7C|&k=)([0-9a-f]{48})/i);
+  if (!m) return false;
   try {
     _linkBackend = decodeURIComponent(m[1]);
     var c = JSON.parse(localStorage.getItem('tb.cfg')||'{}'); c.gmailBackend = _linkBackend;
-    var cid = location.hash.match(/[&#]cid=([^&]+)/);
+    var cid = h.match(/[&#]cid=([^&]+)/);
     if (cid) c.gmailClientId = decodeURIComponent(cid[1]);
-    var at = location.hash.match(/[&#]at=([^&]+)/);
+    var at = h.match(/[&#]at=([^&]+)/);
     if (at && !c.apiKey) { c.apiKey = decodeURIComponent(at[1]); _linkApiKey = c.apiKey; }
     localStorage.setItem('tb.cfg', JSON.stringify(c)); localStorage.setItem(BK_KEY, m[2]);
-  } catch(e) {}
+  } catch(e) { return false; }
+  return true;
+}
+// On phones the link stays in the address, so "Add to Home Screen" saves it with the icon
+// (home-screen apps have their own storage and would otherwise start unconnected).
+if (applySetupLink(location.hash) && !/iPhone|iPod|Android/.test(navigator.userAgent))
   history.replaceState(null, '', location.pathname + location.search);
-})();
 
 function takeAccess(d) {
   _token = d.access_token;
@@ -395,7 +399,8 @@ function addCss() {
 .glv-be{margin:22px auto 0;max-width:560px;text-align:left;font-size:12px;color:#8aa6af;border-top:1px solid #1a2a32;padding-top:16px}
 .glv-be b{color:#c8e6f0}.glv-be a{color:#39c7df}.glv-be ol{padding-left:18px;margin:8px 0 12px}.glv-be li{margin:5px 0}
 .glv-be .glv-btn{height:22px;padding:0 8px;font-size:11px}.glv-be #glv-bk-save{height:30px;margin-top:6px}
-#glv-bk-msg{margin-top:8px;color:#e5a53a}
+#glv-bk-msg,#glv-pl-msg{margin-top:8px;color:#e5a53a}
+#glv-pl{width:100%;box-sizing:border-box;background:#06141a;border:1px solid rgba(57,199,223,.3);color:#e7f3f6;padding:10px;border-radius:8px;font-size:16px;margin:6px 0}
 .glv-connect p{font-size:12px;color:#8aa6af;margin:10px 0 0}
 .glv-cols{display:flex;gap:16px;align-items:flex-start}.glv-col{flex:1;min-width:0}
 .glv-bk{break-inside:avoid-column;margin-bottom:12px}
@@ -930,6 +935,25 @@ function rebuildList(listEl) {
 
 // ── Screens ────────────────────────────────────────────────────────────────────
 
+// Phone, not connected yet: one box to paste the 📱 link from the Mac.
+function buildPhoneScreen(host) {
+  host.innerHTML = '';
+  var wrap = document.createElement('div'); wrap.className = 'glv glv-connect';
+  wrap.innerHTML = '<div class="glv-be" style="border:0;margin-top:0">' +
+    '<b>Connect this phone</b><ol>' +
+    '<li>On your Mac: Live Gmail → <b>📱 Link for other devices</b> → text it to yourself.</li>' +
+    '<li>Here: press and hold the link in Messages → <b>Copy</b>.</li>' +
+    '<li>Paste it below → Connect.</li></ol>' +
+    '<input id="glv-pl" type="text" placeholder="https://gse281.github.io/task-board/email.html#gb=…"> ' +
+    '<button id="glv-pl-go" class="glv-btn ok">Connect</button><div id="glv-pl-msg"></div></div>';
+  wrap.querySelector('#glv-pl-go').addEventListener('click', function(){
+    var v = wrap.querySelector('#glv-pl').value.trim();
+    if (applySetupLink(v)) location.reload();
+    else wrap.querySelector('#glv-pl-msg').textContent = 'That is not the full link. Copy the whole thing (it has #gb= in it).';
+  });
+  host.appendChild(wrap);
+}
+
 function buildSetupScreen(host) {
   host.innerHTML = '';
   var wrap = document.createElement('div'); wrap.className = 'glv';
@@ -1119,6 +1143,7 @@ function buildPanel(host) {
 
 function redraw() {
   if (!_host) return;
+  if (IS_PHONE && !backendUrl())     { buildPhoneScreen(_host); return; }
   if (!_cfg || (!_cfg.gmailClientId && !backendUrl())) { buildSetupScreen(_host); return; }
   if (_error === 'auth')            { buildConnectScreen(_host); return; }
   if (!_authed && !_loading)        { buildConnectScreen(_host); return; }
@@ -1133,6 +1158,7 @@ function mount(host, cfg) {
   if (_linkApiKey && !cfg.apiKey) cfg.apiKey = _linkApiKey;
   loadScan().then(function(){ if (_scan.loaded && _listEl) redraw(); });
 
+  if (IS_PHONE && !backendUrl()) { buildPhoneScreen(host); return; }
   if (!cfg.gmailClientId && !backendUrl()) { buildSetupScreen(host); return; }
 
   if (_authed && _token && Date.now() < _exp) {
