@@ -283,9 +283,14 @@ async function loadPage(reset) {
     if (reset || _total == null) {
       try { _total = (await gfetch('labels/INBOX')).threadsTotal; } catch(e) { _total = list.resultSizeEstimate || 0; }
     }
-    var fetched = await pool(list.threads || [], 5, function(t){ return apiGetThread(t.id).catch(function(e){ if (e.code === 'auth') throw e; return null; }); });
-    var have = {}; _threads.forEach(function(t){ have[t.id] = 1; });
-    _threads = _threads.concat(fetched.filter(Boolean).map(parseThread).filter(function(t){ return !have[t.id]; }));
+    // Fetch in chunks of 20 and draw after each, so emails show up right away.
+    var ids = list.threads || [];
+    for (var c = 0; c < ids.length; c += 20) {
+      var fetched = await pool(ids.slice(c, c + 20), 6, function(t){ return apiGetThread(t.id).catch(function(e){ if (e.code === 'auth') throw e; return null; }); });
+      var have = {}; _threads.forEach(function(t){ have[t.id] = 1; });
+      _threads = _threads.concat(fetched.filter(Boolean).map(parseThread).filter(function(t){ return !have[t.id]; }));
+      redraw();
+    }
   } catch(e) {
     _error = (e.code === 'auth') ? 'auth' : e.code === 'busy' ? 'busy' : (e.message || 'Error');
   }
