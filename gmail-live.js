@@ -33,6 +33,7 @@ var _loading  = false;
 var _error    = null;
 var _expanded = {};
 var _bodies   = {};
+var _pjAll    = {};   // bucket → false when its project subgroups are all folded
 var _notes    = {};   // threadId → { rid, note } (Airtable EmailNotes)
 var _editing  = null, _draft = '';
 var _host     = null;
@@ -413,6 +414,7 @@ function addCss() {
 .glv-rsnip mark.hl.star,.er-s mark.hl.star{background:rgba(224,164,88,.32);color:#ffe0a8}
 .glv-rsnip mark.hl{background:rgba(224,164,88,.2);color:#ffd28a;border-radius:3px;padding:0 2px;font-weight:700}
 .glv-gm{margin-left:12px;color:#64838d;font-size:12.5px;text-decoration:none}.glv-gm:hover{color:#39c7df}
+.glv-fold{min-width:26px;padding:0 6px;font-size:13px}
 .glv-chip.bk{cursor:pointer}.glv-chip.cB b{color:#e5533a}.glv-chip.cD b{color:#e0a458}
 @media (hover:none){.glv-ck,.glv-arch{opacity:1}}
 @media (max-width:600px){
@@ -566,6 +568,12 @@ function classify(t) {
   if (snd && (snd.bucket === 'A' || snd.bucket === 'E')) return { b: snd.bucket, project: project, guess: true };
   if (t.labels.some(function(l){ return /^CATEGORY_(PROMOTIONS|SOCIAL|FORUMS)$/.test(l); })) return { b: 'A', project: project, guess: true };
   return { b: 'N', project: project };
+}
+
+// Fold/unfold every project subgroup of one bucket.
+function setFold(L, openAll) {
+  _pjAll[L] = openAll;
+  Object.keys(_expanded).forEach(function(k){ if (k.indexOf('pj-' + L + '-') === 0) delete _expanded[k]; });
 }
 
 // Queue a Scan request (same as Scan tab's "Run now"); the Email run picks it up at 8a / 12p.
@@ -835,6 +843,13 @@ function rebuildList(listEl) {
       srt.addEventListener('click', function(e){ e.stopPropagation(); queueSort(srt); });
       sh.insertBefore(srt, sh.querySelector('.glv-xi'));
     }
+    if (L !== 'N' && open) {
+      var allOpen = _pjAll[L] !== false;
+      var fb = document.createElement('button'); fb.className = 'glv-btn glv-aa glv-fold';
+      fb.textContent = allOpen ? '⊟' : '⊞'; fb.title = allOpen ? 'Fold all groups here' : 'Unfold all groups here';
+      fb.addEventListener('click', function(e){ e.stopPropagation(); setFold(L, !allOpen); rebuildList(_listEl); });
+      sh.insertBefore(fb, sh.querySelector('.glv-xi'));
+    }
     sh.addEventListener('click', function(){ _expanded['bk-' + L] = !open; rebuildList(_listEl); });
     sec.appendChild(sh);
     if (open) {
@@ -847,7 +862,7 @@ function rebuildList(listEl) {
         Object.keys(g).sort(function(a, b){ return (a === 'Other') - (b === 'Other') || g[b].length - g[a].length || a.localeCompare(b); })
           .forEach(function(k){
             // Project subgroups collapse on click. Starred + Archive: by sender, then newest first.
-            var pk = 'pj-' + L + '-' + k, pOpen = _expanded[pk] !== false;
+            var pk = 'pj-' + L + '-' + k, pOpen = _expanded[pk] !== undefined ? _expanded[pk] : _pjAll[L] !== false;
             var ph = document.createElement('div'); ph.className = 'glv-pj'; ph.textContent = (pOpen ? '▾ ' : '▸ ') + k + ' ';
             var pi = document.createElement('i'); pi.textContent = g[k].length; ph.appendChild(pi);
             ph.addEventListener('click', function(e){ e.stopPropagation(); _expanded[pk] = !pOpen; rebuildList(_listEl); });
@@ -994,6 +1009,16 @@ function buildPanel(host) {
   refreshBtn.textContent = '⟳ Refresh';
   refreshBtn.addEventListener('click', function() { _expanded = {}; _scan.loaded = false; loadScan().then(function(){ rebuildList(_listEl); }); loadPage(true); });
   bar.appendChild(refreshBtn);
+
+  // Master: fold / unfold every bucket.
+  var anyOpen = BUCKETS.some(function(b){ var v = _expanded['bk-' + b[0]]; return v !== undefined ? v : b[0] !== 'A'; });
+  var mb = document.createElement('button'); mb.className = 'glv-btn';
+  mb.textContent = anyOpen ? '⊟ Collapse all' : '⊞ Expand all';
+  mb.addEventListener('click', function(){
+    BUCKETS.forEach(function(b){ _expanded['bk-' + b[0]] = !anyOpen; if (!anyOpen) setFold(b[0], true); });
+    redraw();
+  });
+  bar.appendChild(mb);
 
   if (backendUrl()) {
     var devBtn = document.createElement('button'); devBtn.className = 'glv-btn';
