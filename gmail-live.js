@@ -412,6 +412,7 @@ function addCss() {
 .glv-note-in{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:7px 9px;border-radius:8px;background:#06141a;border:1px solid #e0a458;color:#e7f3f6;font:15px/1.4 -apple-system,system-ui,sans-serif;resize:vertical}
 .glv-rsnip mark.hl.star,.er-s mark.hl.star{background:rgba(224,164,88,.32);color:#ffe0a8}
 .glv-rsnip mark.hl{background:rgba(224,164,88,.2);color:#ffd28a;border-radius:3px;padding:0 2px;font-weight:700}
+.glv-gm{margin-left:12px;color:#64838d;font-size:12.5px;text-decoration:none}.glv-gm:hover{color:#39c7df}
 .glv-chip.bk{cursor:pointer}.glv-chip.cB b{color:#e5533a}.glv-chip.cD b{color:#e0a458}
 @media (hover:none){.glv-ck,.glv-arch{opacity:1}}
 @media (max-width:600px){
@@ -432,6 +433,7 @@ function addCss() {
 
 // ── Avatar letter + color ──────────────────────────────────────────────────────
 
+var SH_URL = 'https://mail.superhuman.com/rbenjamini@gmail.com/thread/';
 var IS_PHONE = /iPhone|iPod|Android/.test(navigator.userAgent);
 var COLORS = ['#1a5a7a','#2a6a4a','#5a3a7a','#7a3a2a','#1a4a7a','#3a6a2a','#7a2a4a','#1a7a6a'];
 function avatarColor(key) {
@@ -730,7 +732,13 @@ function makeRow(t, showSender) {
       .catch(function(){ mo.textContent = '▸ more (failed, tap again)'; });
   });
 
-  div.addEventListener('click', function(){ window.open('https://mail.google.com/mail/u/0/#inbox/'+t.id, IS_PHONE ? '_blank' : 'gm-pane'); });
+  // Click → Superhuman (same thread id as Gmail). ✉️ = open in Gmail instead.
+  var gm = document.createElement('a'); gm.className = 'glv-gm'; gm.textContent = '✉️ Gmail'; gm.title = 'Open in Gmail';
+  gm.href = 'https://mail.google.com/mail/u/0/#inbox/' + t.id; gm.target = '_blank'; gm.rel = 'noopener';
+  gm.addEventListener('click', function(e){ e.stopPropagation(); });
+  mo.after(gm);
+  div.title = 'Open in Superhuman';
+  div.addEventListener('click', function(){ window.open(SH_URL + t.id, IS_PHONE ? '_blank' : 'sh-pane'); });
   return div;
 }
 
