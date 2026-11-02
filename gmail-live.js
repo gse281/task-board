@@ -417,6 +417,7 @@ function addCss() {
 .glv-more{background:none;border:0;padding:3px 0 0;color:#39c7df;font:600 12.5px -apple-system,system-ui,sans-serif;cursor:pointer}
 .glv-body{margin-top:4px;padding:8px 10px;border-radius:8px;background:#06141a;color:#c8dde3;font-size:14px;white-space:pre-wrap;max-height:320px;overflow:auto;cursor:text}
 .glv-note{margin-top:5px;padding:6px 9px;border-radius:8px;background:rgba(224,164,88,.12);border:1px solid rgba(224,164,88,.35);color:#f0c98e;font-size:14.5px;white-space:pre-wrap;cursor:text}
+.glv-note-res{margin-top:3px;font-size:12.5px;color:#8aa6af}
 .glv-note.add{background:none;border-style:dashed;color:#8a7a5e;font-size:13px}
 .glv-note-in{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:7px 9px;border-radius:8px;background:#06141a;border:1px solid #e0a458;color:#e7f3f6;font:15px/1.4 -apple-system,system-ui,sans-serif;resize:vertical}
 .glv-rsnip mark.hl.star,.er-s mark.hl.star{background:rgba(224,164,88,.32);color:#ffe0a8}
@@ -498,7 +499,7 @@ async function loadNotes() {
       var r = await fetch(atUrl('?pageSize=100' + (off ? '&offset=' + off : '')), { headers: atHdr() });
       if (!r.ok) return;
       var d = await r.json(); off = d.offset || '';
-      (d.records || []).forEach(function(x){ if (x.fields.ThreadId) _notes[x.fields.ThreadId] = { rid: x.id, note: x.fields.Note || '' }; });
+      (d.records || []).forEach(function(x){ if (x.fields.ThreadId) _notes[x.fields.ThreadId] = { rid: x.id, note: x.fields.Note || '', result: x.fields.Result || '' }; });
     } while (off);
   } catch (e) { return; }
   rebuildList(_listEl);
@@ -510,10 +511,10 @@ async function saveNote(t, text) {
     if (cur) await fetch(atUrl('/' + cur.rid), { method: 'DELETE', headers: atHdr() });
     delete _notes[t.id]; return;
   }
-  var fields = { ThreadId: t.id, Note: text, Subject: t.subject, From: t.senderName + ' <' + t.senderEmail + '>' };
+  var fields = { ThreadId: t.id, Note: text, Subject: t.subject, From: t.senderName + ' <' + t.senderEmail + '>', Result: '' };
   var r = await fetch(atUrl(cur ? '/' + cur.rid : ''), { method: cur ? 'PATCH' : 'POST', headers: atHdr(), body: JSON.stringify({ fields: fields }) });
   if (!r.ok) throw new Error('HTTP ' + r.status);
-  var d = await r.json(); _notes[t.id] = { rid: d.id, note: text };
+  var d = await r.json(); _notes[t.id] = { rid: d.id, note: text, result: '' };
 }
 
 // "Keep" = skip this thread in Archive all (this browser only).
@@ -729,6 +730,7 @@ function makeRow(t, showSender) {
     } else {
       var nb = document.createElement('div'); nb.className = 'glv-note' + (nt ? '' : ' add');
       nb.textContent = nt ? '📝 ' + nt.note : '＋ add to-do note';
+      if (nt) { var rs = document.createElement('div'); rs.className = 'glv-note-res'; rs.textContent = nt.result ? '🤖 ' + nt.result : '⏳ Claude handles this at the next Email run (8a / 12p)'; nb.appendChild(rs); }
       nb.addEventListener('click', function(e){ e.stopPropagation(); _editing = t.id; _draft = nt ? nt.note : ''; rebuildList(_listEl); });
       div.appendChild(nb);
     }
