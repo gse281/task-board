@@ -94,7 +94,8 @@ function saveBackend(url, key) {
 // Other devices: open email.html#gb=<url>|<key> once.
 var _linkBackend = '', _linkApiKey = '';
 (function readSetupLink() {
-  var m = location.hash.match(/gb=([^|&]+)\|([0-9a-f]{48})/);
+  // New links: #gb=<url>&k=<key>…  (old links used "|", which iMessage cuts off)
+  var m = location.hash.match(/gb=([^|&]+)(?:\||%7C|&k=)([0-9a-f]{48})/i);
   if (!m) return;
   try {
     _linkBackend = decodeURIComponent(m[1]);
@@ -969,6 +970,7 @@ function buildConnectScreen(host) {
   });
   var note = document.createElement('p');
   note.textContent = 'Sign-in lasts ~1 hour. To stay signed in for good, set up the backend below (once).';
+  if (IS_PHONE) btn.style.display = 'none';
   if (IS_PHONE) note.innerHTML = '<b style="color:#e0a458">On your phone? Don\'t sign in here.</b> On your Mac, open Live Gmail → <b>📱 Link for other devices</b>, send the link to yourself and open it here.';
 
   // Stay-signed-in setup: a tiny Apps Script web app in your own Google account.
@@ -1024,6 +1026,7 @@ function buildConnectScreen(host) {
     });
   });
 
+  if (IS_PHONE && !_error) be.style.display = 'none';   // phones connect via the Mac's 📱 link
   d.append(btn, note, be); wrap.appendChild(d); host.appendChild(wrap);
 }
 
@@ -1056,7 +1059,7 @@ function buildPanel(host) {
     devBtn.title = 'Open this link once on your phone/other computer to connect it. It holds your keys — only send it to yourself.';
     devBtn.addEventListener('click', function() {
       var at = window.TE && TE.key && TE.key();
-      var link = location.origin + location.pathname + '#gb=' + encodeURIComponent(backendUrl()) + '|' + backendKey() +
+      var link = location.origin + location.pathname + '#gb=' + encodeURIComponent(backendUrl()) + '&k=' + backendKey() +
                  (at ? '&at=' + encodeURIComponent(at) : '') +
                  (_cfg.gmailClientId ? '&cid=' + encodeURIComponent(_cfg.gmailClientId) : '');
       navigator.clipboard.writeText(link); devBtn.textContent = '✓ Copied — open it on the other device';
