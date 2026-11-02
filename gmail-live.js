@@ -33,6 +33,8 @@ var _loading  = false;
 var _error    = null;
 var _expanded = {};
 var _bodies   = {};
+var _notes    = {};   // threadId → { rid, note } (Airtable EmailNotes)
+var _editing  = null, _draft = '';
 var _host     = null;
 var _listEl   = null;
 
@@ -371,6 +373,9 @@ function addCss() {
 .glv-ck.on{opacity:1;color:#e0a458;border-color:rgba(224,164,88,.5)}
 .glv-more{background:none;border:0;padding:3px 0 0;color:#39c7df;font:600 12.5px -apple-system,system-ui,sans-serif;cursor:pointer}
 .glv-body{margin-top:4px;padding:8px 10px;border-radius:8px;background:#06141a;color:#c8dde3;font-size:14px;white-space:pre-wrap;max-height:320px;overflow:auto;cursor:text}
+.glv-note{margin-top:5px;padding:6px 9px;border-radius:8px;background:rgba(224,164,88,.12);border:1px solid rgba(224,164,88,.35);color:#f0c98e;font-size:14.5px;white-space:pre-wrap;cursor:text}
+.glv-note.add{background:none;border-style:dashed;color:#8a7a5e;font-size:13px}
+.glv-note-in{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:7px 9px;border-radius:8px;background:#06141a;border:1px solid #e0a458;color:#e7f3f6;font:15px/1.4 -apple-system,system-ui,sans-serif;resize:vertical}
 .glv-chip.bk{cursor:pointer}.glv-chip.cB b{color:#e5533a}.glv-chip.cD b{color:#e0a458}
 @media (hover:none){.glv-ck,.glv-arch{opacity:1}}
 @media (max-width:600px){
@@ -429,6 +434,36 @@ async function loadScan() {
       if (f.FromEmail) _scan.bySender[String(f.FromEmail).toLowerCase()] = rec;
     });
   _scan.loaded = true;
+  loadNotes();
+}
+
+// ── To-do notes on starred emails (Airtable EmailNotes, so every device sees them) ──
+var NOTES_TBL = 'tbl90HorcK1relti7';
+function atUrl(rest) { return 'https://api.airtable.com/v0/' + ((TE.base && TE.base()) || 'appdDTNBbVrp6hVOv') + '/' + NOTES_TBL + (rest || ''); }
+function atHdr() { return { Authorization: 'Bearer ' + TE.key(), 'Content-Type': 'application/json' }; }
+async function loadNotes() {
+  var off = '';
+  try {
+    do {
+      var r = await fetch(atUrl('?pageSize=100' + (off ? '&offset=' + off : '')), { headers: atHdr() });
+      if (!r.ok) return;
+      var d = await r.json(); off = d.offset || '';
+      (d.records || []).forEach(function(x){ if (x.fields.ThreadId) _notes[x.fields.ThreadId] = { rid: x.id, note: x.fields.Note || '' }; });
+    } while (off);
+  } catch (e) { return; }
+  rebuildList(_listEl);
+}
+async function saveNote(t, text) {
+  text = text.trim(); var cur = _notes[t.id];
+  if (!window.TE || !TE.key || !TE.key()) throw new Error('no Airtable key');
+  if (!text) {
+    if (cur) await fetch(atUrl('/' + cur.rid), { method: 'DELETE', headers: atHdr() });
+    delete _notes[t.id]; return;
+  }
+  var fields = { ThreadId: t.id, Note: text, Subject: t.subject, From: t.senderName + ' <' + t.senderEmail + '>' };
+  var r = await fetch(atUrl(cur ? '/' + cur.rid : ''), { method: cur ? 'PATCH' : 'POST', headers: atHdr(), body: JSON.stringify({ fields: fields }) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  var d = await r.json(); _notes[t.id] = { rid: d.id, note: text };
 }
 
 // "Keep" = skip this thread in Archive all (this browser only).
@@ -598,6 +633,36 @@ function makeRow(t, showSender) {
   if (c.advice) {
     var adv = document.createElement('div'); adv.className = 'glv-adv'; adv.textContent = '→ ' + c.advice;
     div.appendChild(adv);
+  }
+
+  // Starred → a to-do note you type (saved to Airtable).
+  if (c.b === 'D') {
+    var nt = _notes[t.id];
+    if (_editing === t.id) {
+      var ta = document.createElement('textarea'); ta.className = 'glv-note-in'; ta.rows = 2;
+      ta.placeholder = 'To-do for this email… (Enter = save, Esc = cancel)';
+      ta.value = _draft;
+      ta.addEventListener('click', function(e){ e.stopPropagation(); });
+      ta.addEventListener('input', function(){ _draft = ta.value; });
+      ta.addEventListener('keydown', function(e){
+        if (e.key === 'Escape') { _editing = null; rebuildList(_listEl); }
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(); }
+      });
+      ta.addEventListener('blur', commit);
+      function commit() {
+        if (_editing !== t.id) return;
+        var v = ta.value; _editing = null; ta.disabled = true;
+        saveNote(t, v).then(function(){ rebuildList(_listEl); })
+          .catch(function(){ _editing = t.id; _draft = v; rebuildList(_listEl); alert('Note not saved (Airtable). Try again.'); });
+      }
+      div.appendChild(ta);
+      setTimeout(function(){ if (document.activeElement !== ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 0);
+    } else {
+      var nb = document.createElement('div'); nb.className = 'glv-note' + (nt ? '' : ' add');
+      nb.textContent = nt ? '📝 ' + nt.note : '＋ add to-do note';
+      nb.addEventListener('click', function(e){ e.stopPropagation(); _editing = t.id; _draft = nt ? nt.note : ''; rebuildList(_listEl); });
+      div.appendChild(nb);
+    }
   }
 
   // ▸ more: the email's own text, right here.
