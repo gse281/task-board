@@ -400,7 +400,7 @@ function addCss() {
 .glv-B .glv-sl{background:#e5533a;color:#fff}.glv-D .glv-sl{background:#e0a458;color:#07141a}.glv-A .glv-sl,.glv-N .glv-sl{color:#8aa6af}
 .glv-B .glv-row{border-color:rgba(229,83,58,.35)}.glv-D .glv-row{border-color:rgba(224,164,88,.35)}
 .glv-aa{height:26px;padding:0 9px;font-size:12px}
-.glv-pj{break-after:avoid;font:800 12px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:#64838d;margin:6px 2px 0}
+.glv-pj{cursor:pointer;user-select:none;break-after:avoid;font:800 12px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:#64838d;margin:6px 2px 0}
 .glv-pj i{font-style:normal;color:#39c7df;margin-left:3px}
 .glv-rsnip.sum{color:#9fc3cc;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .glv-adv{margin-top:2px;color:#e0a458;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -434,6 +434,7 @@ function addCss() {
 // ── Avatar letter + color ──────────────────────────────────────────────────────
 
 var SH_URL = 'https://mail.superhuman.com/rbenjamini@gmail.com/thread/';
+var SH_APP = 'superhuman://rbenjamini@gmail.com/thread/';   // opens the Mac app directly
 var IS_PHONE = /iPhone|iPod|Android/.test(navigator.userAgent);
 var COLORS = ['#1a5a7a','#2a6a4a','#5a3a7a','#7a3a2a','#1a4a7a','#3a6a2a','#7a2a4a','#1a7a6a'];
 function avatarColor(key) {
@@ -738,7 +739,7 @@ function makeRow(t, showSender) {
   gm.addEventListener('click', function(e){ e.stopPropagation(); });
   mo.after(gm);
   div.title = 'Open in Superhuman';
-  div.addEventListener('click', function(){ window.open(SH_URL + t.id, IS_PHONE ? '_blank' : 'sh-pane'); });
+  div.addEventListener('click', function(){ if (IS_PHONE) window.open(SH_URL + t.id, '_blank'); else location.href = SH_APP + t.id; });
   return div;
 }
 
@@ -845,10 +846,18 @@ function rebuildList(listEl) {
         its.forEach(function(t){ var k = t._c.project || 'Other'; (g[k] = g[k] || []).push(t); });
         Object.keys(g).sort(function(a, b){ return (a === 'Other') - (b === 'Other') || g[b].length - g[a].length || a.localeCompare(b); })
           .forEach(function(k){
-            var ph = document.createElement('div'); ph.className = 'glv-pj'; ph.textContent = k + ' ';
+            // Project subgroups collapse on click. Starred + Archive: by sender, then newest first.
+            var pk = 'pj-' + L + '-' + k, pOpen = _expanded[pk] !== false;
+            var ph = document.createElement('div'); ph.className = 'glv-pj'; ph.textContent = (pOpen ? '▾ ' : '▸ ') + k + ' ';
             var pi = document.createElement('i'); pi.textContent = g[k].length; ph.appendChild(pi);
+            ph.addEventListener('click', function(e){ e.stopPropagation(); _expanded[pk] = !pOpen; rebuildList(_listEl); });
             list.appendChild(ph);
-            g[k].forEach(function(t){ list.appendChild(makeRow(t, true)); });
+            if (!pOpen) return;
+            var rows = g[k].slice();
+            if (L === 'A' || L === 'D') rows.sort(function(a, b){
+              return a.senderName.toLowerCase().localeCompare(b.senderName.toLowerCase()) || b.date - a.date;
+            });
+            rows.forEach(function(t){ list.appendChild(makeRow(t, true)); });
           });
       }
       sec.appendChild(list);
