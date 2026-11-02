@@ -758,7 +758,7 @@ function makeRow(t, showSender) {
   gm.addEventListener('click', function(e){ e.stopPropagation(); });
   mo.after(gm);
   div.title = 'Open in Superhuman';
-  div.addEventListener('click', function(){ if (IS_PHONE) window.open(SH_URL + t.id, '_blank'); else location.href = SH_APP + t.id; });
+  div.addEventListener('click', function(){ location.href = (IS_PHONE ? SH_URL : SH_APP) + t.id; });   // same tab: no blank tab left on phone
   return div;
 }
 
