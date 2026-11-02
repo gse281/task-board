@@ -624,6 +624,7 @@ function groupThreads(arr) {
 function makeRow(t, showSender) {
   var div = document.createElement('div');
   div.className = 'glv-row' + (t.unread ? ' unr' : '');
+  div.dataset.id = t.id;
 
   var h = document.createElement('div'); h.className = 'glv-rh';
 
@@ -803,6 +804,32 @@ function makeSection(g) {
 
 // ── Rebuild list ───────────────────────────────────────────────────────────────
 
+// Keep the email you're looking at in the same spot when the list redraws (emails still
+// loading in above it, or one archived). If the top visible row is gone, the next one takes its place.
+function scroller(el) { return el.closest('.pg-panel') || document.scrollingElement; }
+function saveAnchor(sc) {
+  var top = sc === document.scrollingElement ? 0 : sc.getBoundingClientRect().top, out = [];
+  var rows = sc.querySelectorAll('.glv-row[data-id]');
+  for (var i = 0; i < rows.length && out.length < 6; i++) {
+    var r = rows[i].getBoundingClientRect();
+    if (r.bottom > top + 40) out.push({ id: rows[i].dataset.id, off: r.top - top, col: colIdx(rows[i]) });
+  }
+  return { list: out, top: top, y: sc.scrollTop };
+}
+function colIdx(el) { var c = el.closest('.glv-col'); return c ? Array.prototype.indexOf.call(c.parentNode.children, c) : 0; }
+function restoreAnchor(sc, a) {
+  if (!a || !a.list.length) { if (a) sc.scrollTop = a.y; return; }
+  for (var i = 0; i < a.list.length; i++) {
+    if (a.list[i].col !== a.list[0].col) continue;
+    var el = sc.querySelector('.glv-row[data-id="' + a.list[i].id + '"]');
+    if (!el) continue;
+    // a vanished top row → the next one slides into its place
+    sc.scrollTop += (el.getBoundingClientRect().top - a.top) - a.list[0].off;
+    return;
+  }
+  sc.scrollTop = a.y;
+}
+
 function rebuildList(listEl) {
   if (!listEl) return;
   _listEl = listEl;
@@ -893,9 +920,9 @@ function rebuildList(listEl) {
     frag.appendChild(empty);
   }
 
-  var sc = listEl.closest('.pg-panel') || document.scrollingElement, y = sc.scrollTop;
+  var sc = scroller(listEl), anc = saveAnchor(sc);
   listEl.replaceChildren(frag);
-  sc.scrollTop = y;
+  restoreAnchor(sc, anc);
 }
 
 // ── Screens ────────────────────────────────────────────────────────────────────
@@ -998,7 +1025,7 @@ function buildConnectScreen(host) {
 }
 
 function buildPanel(host) {
-  var sc = host.closest('.pg-panel') || document.scrollingElement, y0 = sc.scrollTop;
+  var sc = scroller(host), anc = saveAnchor(sc);
   host.innerHTML = '';
   var wrap = document.createElement('div'); wrap.className = 'glv';
 
@@ -1078,7 +1105,7 @@ function buildPanel(host) {
   wrap.append(bar, list);
   host.appendChild(wrap);
   rebuildList(list);
-  sc.scrollTop = y0;
+  restoreAnchor(sc, anc);
 }
 
 // ── Redraw ─────────────────────────────────────────────────────────────────────
