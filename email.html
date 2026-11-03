@@ -4,11 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#070d11">
-<title>✉ Email</title>
+<title>Email</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Email">
-<link rel="apple-touch-icon" href="m/icon-180.png">
+<link rel="apple-touch-icon" href="m/icon-mail-180.png">
+<link rel="icon" href="m/icon-mail-192.png">
 <style>
 :root{color-scheme:dark}
 *{box-sizing:border-box}
@@ -35,7 +36,7 @@ var cfg = {};
 try { cfg = JSON.parse(localStorage.getItem('tb.cfg') || '{}') || {}; } catch(e) {}
 window.TE = { key: function(){ return cfg.apiKey || ''; }, base: function(){ return cfg.baseId || 'appdDTNBbVrp6hVOv'; } };
 </script>
-<script src="gmail-live.js?v=1793603000"></script>
+<script src="gmail-live.js?v=1793604000"></script>
 <script src="emailrun.js?v=1793582000"></script>
 <script>
 (function(){
@@ -49,8 +50,8 @@ window.TE = { key: function(){ return cfg.apiKey || ''; }, base: function(){ ret
   var pnlScan = document.createElement('div'); pnlScan.className = 'pg-panel';       pnlScan.id = 'pnl-scan';
 
   var tabs = [
-    { id: 'live', label: '◉ Live Gmail' },
-    { id: 'scan', label: '✉ Scan' }
+    { id: 'live', label: 'Live Gmail' },
+    { id: 'scan', label: 'Scan' }
   ];
 
   tabs.forEach(function(t) {

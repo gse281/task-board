@@ -361,7 +361,11 @@ function addCss() {
 .glv-sec{margin-bottom:6px}
 .glv-sh{display:flex;align-items:center;gap:7px;padding:6px 2px 5px;cursor:pointer;user-select:none}
 .glv-sh:hover .glv-sn{color:#c8e6f0}
-.glv-sl{display:inline-block;width:20px;height:20px;border-radius:6px;text-align:center;line-height:20px;font:800 12px ui-monospace,Menlo,monospace;background:rgba(57,199,223,.15);color:#39c7df;flex-shrink:0}
+.gi{width:1.1em;height:1.1em;vertical-align:-.18em;flex-shrink:0}
+.glv-btn .gi,.glv-ck .gi,.glv-gm .gi,.glv-note .gi,.glv-note-res .gi{margin-right:5px}.glv-fold .gi{margin:0}
+.glv-chip .gi{width:13px;height:13px;vertical-align:-2px}
+.glv-sl .gi{width:14px;height:14px}
+.glv-sl{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;font:800 12px ui-monospace,Menlo,monospace;background:rgba(57,199,223,.15);color:#39c7df;flex-shrink:0}
 .glv-sn{font-size:15.5px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .glv-sc{color:#07141a;background:#39c7df;border-radius:999px;padding:0 7px;font-size:11px;font-weight:800;font-style:normal;flex-shrink:0}
 .glv-xi{color:#64838d;font-size:11px;flex-shrink:0}
@@ -466,9 +470,32 @@ function avatarColor(key) {
 // sorted keeps its bucket/project/summary; others borrow the sender's last
 // project, and starred → D, your always-archive senders / Gmail promotions → A, the rest → New.
 
+// Line icons (stroke, currentColor) — replaces emoji.
+var ICONS = {
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  star: '<path d="M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2L12 17.3l-5.6 2.9 1.1-6.2L3 9.6l6.2-.9z"/>',
+  moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+  reply: '<path d="M9 16l-5-5 5-5"/><path d="M20 19v-3a5 5 0 0 0-5-5H4"/>',
+  alert: '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4M12 17h.01"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5.1L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.5-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.7 1.1z"/>',
+  file: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',
+  archive: '<rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8M10 12h4"/>',
+  refresh: '<path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/>',
+  shuffle: '<path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>',
+  phone: '<rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/>',
+  pin: '<path d="M12 17v5"/><path d="M8 3h8l-1 6 3 4v2H6v-2l3-4z"/>',
+  pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+  spark: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/>',
+  mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>'
+};
+function ic(n) { return '<svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[n] || '') + '</svg>'; }
+function icT(n, txt) { var e = document.createElement('span'); e.textContent = txt; return ic(n) + (txt ? '<span>' + e.innerHTML + '</span>' : ''); }
+
 var BUCKETS = [
-  ['H', '🕐 Last hour'], ['D', '⭐ Starred · action'], ['Z', '💤 Snoozed'], ['C', '✍️ Reply'], ['B', "⚠️ Don't miss"],
-  ['N', IS_PHONE ? '📥 Older' : '📥 Older — not sorted'],  ['E', '📄 Everything else'], ['A', '🗄 Archive']
+  ['H', 'Last hour', 'clock'], ['D', 'Starred', 'star'], ['Z', 'Snoozed', 'moon'], ['C', 'Reply', 'reply'], ['B', "Don't miss", 'alert'],
+  ['N', IS_PHONE ? 'Older' : 'Older — not sorted', 'inbox'],  ['E', 'Everything else', 'file'], ['A', 'Archive', 'archive']
 ];
 var _scan = { byThread: {}, bySender: {}, loaded: false };
 
@@ -696,7 +723,7 @@ function makeRow(t, showSender) {
   var c = t._c || {};
   if (c.b === 'A' || c.b === 'E' || c.b === 'N') {
     var kp = document.createElement('button'); kp.className = 'glv-ck' + (_keep[t.id] ? ' on' : '');
-    kp.textContent = _keep[t.id] ? '📌 Kept' : 'Keep';
+    kp.innerHTML = _keep[t.id] ? icT('pin', 'Kept') : 'Keep';
     kp.title = 'Keep = skip this one when you press Archive all';
     kp.addEventListener('click', function(e){ e.stopPropagation(); toggleKeep(t); rebuildList(_listEl); });
     h.appendChild(kp);
@@ -710,7 +737,7 @@ function makeRow(t, showSender) {
   });
   if (c.b === 'D' || c.b === 'Z' || (c.b === 'H' && t.starred)) {
     var zz = document.createElement('button'); zz.className = 'glv-ck' + (c.b === 'Z' ? ' on' : '');
-    zz.textContent = c.b === 'Z' ? '⏰ Wake' : '💤 Snooze';
+    zz.innerHTML = c.b === 'Z' ? icT('sun', 'Wake') : icT('moon', 'Snooze');
     zz.title = c.b === 'Z' ? 'Back to Starred now' : 'Hide this for a while; it comes back by itself';
     zz.addEventListener('click', function(e){ e.stopPropagation();
       if (c.b !== 'Z') { _snoozing = _snoozing === t.id ? null : t.id; rebuildList(_listEl); return; }
@@ -737,7 +764,7 @@ function makeRow(t, showSender) {
   }
   if (c.b === 'Z') {
     var zu = snoozedTill(t), zi = document.createElement('div'); zi.className = 'glv-rw glv-zi';
-    zi.textContent = '💤 back ' + zu.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' });
+    zi.textContent = 'Back ' + zu.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' });
     div.appendChild(zi);
   }
 
@@ -782,8 +809,8 @@ function makeRow(t, showSender) {
       setTimeout(function(){ if (document.activeElement !== ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); } }, 0);
     } else {
       var nb = document.createElement('div'); nb.className = 'glv-note' + (nt ? '' : ' add');
-      nb.textContent = nt ? '📝 ' + nt.note : '＋ add to-do note';
-      if (nt) { var rs = document.createElement('div'); rs.className = 'glv-note-res'; rs.textContent = nt.result ? '🤖 ' + nt.result : '⏳ Claude handles this at the next Email run (8a / 12p)'; nb.appendChild(rs); }
+      nb.innerHTML = nt ? icT('pen', nt.note) : icT('plus', 'add to-do note');
+      if (nt) { var rs = document.createElement('div'); rs.className = 'glv-note-res'; rs.innerHTML = nt.result ? icT('spark', nt.result) : icT('clock', 'Claude handles this at the next Email run (8a / 12p)'); nb.appendChild(rs); }
       nb.addEventListener('click', function(e){ e.stopPropagation(); _editing = t.id; _draft = nt ? nt.note : ''; rebuildList(_listEl); });
       div.appendChild(nb);
     }
@@ -806,7 +833,7 @@ function makeRow(t, showSender) {
   });
 
   // Click → Superhuman (same thread id as Gmail). ✉️ = open in Gmail instead.
-  var gm = document.createElement('a'); gm.className = 'glv-gm'; gm.textContent = '✉️ Gmail'; gm.title = 'Open in Gmail';
+  var gm = document.createElement('a'); gm.className = 'glv-gm'; gm.innerHTML = icT('mail', 'Gmail'); gm.title = 'Open in Gmail';
   gm.href = 'https://mail.google.com/mail/u/0/#inbox/' + t.id; gm.target = '_blank'; gm.rel = 'noopener';
   gm.addEventListener('click', function(e){ e.stopPropagation(); });
   mo.after(gm);
@@ -914,7 +941,7 @@ function rebuildList(listEl) {
     var sec = document.createElement('section'); sec.className = 'glv-bk glv-' + L; sec.id = 'glv-' + L;
     var open = _expanded['bk-' + L] !== undefined ? _expanded['bk-' + L] : L !== 'A' && L !== 'Z';
     var sh = document.createElement('div'); sh.className = 'glv-bh';
-    sh.innerHTML = '<span class="glv-sl">' + (L === 'N' ? '•' : L) + '</span><h2></h2><i class="glv-sc">' + its.length + '</i><span class="glv-xi">' + (open ? '▾' : '▸') + '</span>';
+    sh.innerHTML = '<span class="glv-sl">' + ic(bk[2]) + '</span><h2></h2><i class="glv-sc">' + its.length + '</i><span class="glv-xi">' + (open ? '▾' : '▸') + '</span>';
     sh.querySelector('h2').textContent = bk[1];
     if (L === 'A' || L === 'E' || L === 'N') {
       var go = its.filter(function(t){ return !_keep[t.id]; }), kept = its.length - go.length;
@@ -927,16 +954,16 @@ function rebuildList(listEl) {
     }
     if (L === 'N' && window.TE && TE.key && TE.key()) {
       var srt = document.createElement('button'); srt.className = 'glv-btn glv-aa ok';
-      srt.textContent = _sortQueued ? '⏳ Queued — sorts at 8a / 12p' : '✉ Sort these';
+      srt.innerHTML = _sortQueued ? icT('clock', 'Queued — sorts at 8a / 12p') : icT('mail', 'Sort these');
       srt.disabled = !!_sortQueued;
       srt.title = 'Queue an Email run. It sorts up to 100 of these per run (newest first).';
       srt.addEventListener('click', function(e){ e.stopPropagation(); queueSort(srt); });
       sh.insertBefore(srt, sh.querySelector('.glv-xi'));
     }
     if (L === 'D' && open) {
-      [['🔀', 'shuffle', 'New random order (also happens every time you open the page)'], ['A–Z', 'sender', 'Sort by sender, newest first']].forEach(function(o){
+      [[ic('shuffle'), 'shuffle', 'New random order (also happens every time you open the page)'], ['A–Z', 'sender', 'Sort by sender, newest first']].forEach(function(o){
         var b = document.createElement('button'); b.className = 'glv-btn glv-aa glv-fold' + (_dsort === o[1] ? ' on' : '');
-        b.textContent = o[0]; b.title = o[2];
+        b.innerHTML = o[0]; b.title = o[2];
         b.addEventListener('click', function(e){ e.stopPropagation(); if (o[1] === 'shuffle') _rk = {}; _dsort = o[1];
           try { localStorage.setItem('gl.dsort', _dsort); } catch (x) {} rebuildList(_listEl); });
         sh.insertBefore(b, sh.querySelector('.glv-xi'));
@@ -990,7 +1017,7 @@ function rebuildList(listEl) {
     frag.appendChild(spin);
   } else if (_threads.length === 0 && !_error) {
     var empty = document.createElement('div'); empty.className = 'glv-empty';
-    empty.textContent = 'Inbox zero 🎉';
+    empty.textContent = 'Inbox zero';
     frag.appendChild(empty);
   }
 
@@ -1129,7 +1156,7 @@ function buildPanel(host) {
   var bar = document.createElement('div'); bar.className = 'glv-bar';
 
   var refreshBtn = document.createElement('button'); refreshBtn.className = 'glv-btn';
-  refreshBtn.textContent = '⟳ Refresh';
+  refreshBtn.innerHTML = icT('refresh', 'Refresh');
   refreshBtn.addEventListener('click', function() { _expanded = {}; _scan.loaded = false; loadScan().then(function(){ rebuildList(_listEl); }); loadPage(true); });
   bar.appendChild(refreshBtn);
 
@@ -1145,7 +1172,7 @@ function buildPanel(host) {
 
   if (backendUrl() && !IS_PHONE) {
     var devBtn = document.createElement('button'); devBtn.className = 'glv-btn';
-    devBtn.textContent = '📱 Link for other devices';
+    devBtn.innerHTML = icT('phone', 'Link for other devices');
     devBtn.title = 'Open this link once on your phone/other computer to connect it. It holds your keys — only send it to yourself.';
     devBtn.addEventListener('click', function() {
       var at = window.TE && TE.key && TE.key();
@@ -1153,7 +1180,7 @@ function buildPanel(host) {
                  (at ? '&at=' + encodeURIComponent(at) : '') +
                  (_cfg.gmailClientId ? '&cid=' + encodeURIComponent(_cfg.gmailClientId) : '');
       navigator.clipboard.writeText(link); devBtn.textContent = '✓ Copied — open it on the other device';
-      setTimeout(function(){ devBtn.textContent = '📱 Link for other devices'; }, 2500);
+      setTimeout(function(){ devBtn.innerHTML = icT('phone', 'Link for other devices'); }, 2500);
     });
     bar.appendChild(devBtn);
   }
@@ -1162,7 +1189,7 @@ function buildPanel(host) {
   var chips = document.createElement('div'); chips.className = 'glv-chips';
   if (_total != null) {
     var c1 = document.createElement('span'); c1.className = 'glv-chip';
-    c1.innerHTML = '📥 <b>' + Math.max(_total, _threads.length) + '</b>' + (IS_PHONE ? '' : ' in inbox');
+    c1.innerHTML = ic('inbox') + ' <b>' + Math.max(_total, _threads.length) + '</b>' + (IS_PHONE ? '' : ' in inbox');
     chips.appendChild(c1);
   }
   var counts = {};
@@ -1170,7 +1197,7 @@ function buildPanel(host) {
   BUCKETS.forEach(function(bk){
     if (!counts[bk[0]]) return;
     var c = document.createElement('a'); c.className = 'glv-chip bk c' + bk[0]; c.href = '#glv-' + bk[0];
-    c.innerHTML = '<b>' + ({ N: 'Older', H: '🕐', Z: '💤' }[bk[0]] || bk[0]) + '</b> ' + counts[bk[0]];
+    c.innerHTML = ic(bk[2]) + ' <b>' + counts[bk[0]] + '</b>';
     c.title = bk[1];
     chips.appendChild(c);
   });
