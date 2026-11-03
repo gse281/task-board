@@ -201,7 +201,7 @@ async function apiListThreads(pageToken) {
 }
 
 async function apiGetThread(id) {
-  return gfetch('threads/' + id + '?format=METADATA&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date');
+  return gfetch('threads/' + id + '?format=METADATA&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date&metadataHeaders=Auto-Submitted');
 }
 
 // Plain text of the newest message (for the ▸ more preview).
@@ -279,7 +279,8 @@ function parseThread(t) {
     labels:      msgs.reduce(function(a, m){ return a.concat(m.labelIds || []); }, []),
     starred:     (first.labelIds || []).indexOf('STARRED') >= 0,
     unread:      (first.labelIds || []).indexOf('UNREAD') >= 0,
-    msgCount:    msgs.length
+    msgCount:    msgs.length,
+    autoReply:   msgs.some(function(m){ return /auto-replied/i.test(hdr(m, 'Auto-Submitted')); })
   };
 }
 
@@ -419,7 +420,8 @@ function addCss() {
 .glv-B .glv-row{border-color:rgba(229,83,58,.35)}.glv-D .glv-row{border-color:rgba(224,164,88,.35)}
 .glv-aa{height:26px;padding:0 9px;font-size:12px}
 .glv-pj{cursor:pointer;user-select:none;break-after:avoid;font:800 12px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:#64838d;margin:6px 2px 0}
-.glv-pj i{font-style:normal;color:#39c7df;margin-left:3px}
+.glv-pj{display:flex;align-items:center;gap:6px}.glv-pj i{font-style:normal;color:#39c7df;margin-left:3px;flex:1}
+.glv-pj:hover .glv-arch{opacity:1}
 .glv-rsnip.sum{color:#9fc3cc;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .glv-adv{margin-top:2px;color:#e0a458;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .glv-ck.on{opacity:1;color:#e0a458;border-color:rgba(224,164,88,.5)}
@@ -617,12 +619,17 @@ async function setAlways(t, on) {
   ruleSenders();
 }
 
+// Out-of-office / automatic replies → Archive.
+var AUTO_RE = /^(re:\s*)?(automatic reply|auto[- ]?reply|auto[- ]?response|automatic response|out of (the )?office|ooo\b)|\b(away from (the|my) office|on vacation until)\b/i;
+function isAutoReply(t) { return t.autoReply || AUTO_RE.test(t.subject || ''); }
+
 function classify(t) {
   var r = _scan.byThread[t.id], snd = _scan.bySender[(t.senderEmail || '').toLowerCase()];
   var project = (r && r.project) || (snd ? snd.project : '');
   if (Date.now() - t.date < HOUR) return { b: 'H', project: project, summary: r && r.summary, advice: r && r.advice, starred: t.starred };
   if (t.starred && snoozedTill(t)) return { b: 'Z', project: project, summary: r && r.summary };
   if (t.starred) return { b: 'D', project: project, summary: r && r.summary, advice: r && r.advice };
+  if (isAutoReply(t)) return { b: 'A', project: project, summary: r && r.summary, auto: true };
   if (_rule.senders[(t.senderEmail || '').toLowerCase()]) return { b: 'A', project: project, summary: r && r.summary, always: true };
   if (r && r.bucket) return { b: r.bucket, project: r.project, summary: r.summary, advice: r.advice, sorted: true };
   if (snd && (snd.bucket === 'A' || snd.bucket === 'E')) return { b: snd.bucket, project: project, guess: true };
@@ -992,6 +999,14 @@ function rebuildList(listEl) {
             var pk = 'pj-' + L + '-' + k, pOpen = _expanded[pk] !== undefined ? _expanded[pk] : _pjAll[L] !== false;
             var ph = document.createElement('div'); ph.className = 'glv-pj'; ph.textContent = (pOpen ? '▾ ' : '▸ ') + k + ' ';
             var pi = document.createElement('i'); pi.textContent = g[k].length; ph.appendChild(pi);
+            var pgo = g[k].filter(function(t){ return !_keep[t.id]; });
+            if (pgo.length) {
+              var pa = document.createElement('button'); pa.className = 'glv-arch'; pa.textContent = 'Archive all ' + pgo.length;
+              pa.title = 'Archive every email in ' + k + ' (Kept ones stay)';
+              pa.addEventListener('click', function(e){ e.stopPropagation();
+                if (confirm('Archive ' + pgo.length + ' in "' + k + '"?')) archiveThreads(pgo, pa); });
+              ph.appendChild(pa);
+            }
             ph.addEventListener('click', function(e){ e.stopPropagation(); _expanded[pk] = !pOpen; rebuildList(_listEl); });
             list.appendChild(ph);
             if (!pOpen) return;

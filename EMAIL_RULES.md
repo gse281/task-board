@@ -13,3 +13,4 @@ The "📬 Email run" routine reads this file every run. These rules add to / ove
    - a task ("task …", "remind me …", "follow up …") → create an Items row (Task "Email: {Subject} — {note}", Status Open, Source "Claude", TextExclude true);
    - anything else you can do without sending or spending → do it.
    Then write Result = "✓ {what you did, ≤ 15 words}" (or "? {one short question}" if unclear). If Roni edits the Note later he clears Result, and it's handled again.
+8. **Auto-replies → Archive.** Out-of-office / automatic replies (subject like "Automatic reply", "Auto-Reply", "Out of Office", or header Auto-Submitted: auto-replied) always get Bucket "A · Archive", Summary = "Auto-reply from {name}" + return date if given.
