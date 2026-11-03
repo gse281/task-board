@@ -329,5 +329,5 @@ function plainOne(el,iconOnly){ if(el.dataset.plain) return; el.dataset.plain='1
 function plain(selector,iconSel){ if(!document.body){ document.addEventListener('DOMContentLoaded',()=>plain(selector,iconSel)); return; } const css=document.createElement('style'); css.textContent='.te-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 7px 1px 0;vertical-align:middle;flex:none;box-shadow:0 0 6px currentColor}.te-ic{position:relative}.te-ic::after{content:"";position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#39c7df;box-shadow:0 0 10px rgba(57,199,223,.6)}'; document.head.appendChild(css);
   const run=root=>{ if(!root.querySelectorAll) return; if(root.matches&&root.matches(selector)) plainOne(root); root.querySelectorAll(selector).forEach(e=>plainOne(e)); if(iconSel){ if(root.matches&&root.matches(iconSel)) plainOne(root,true); root.querySelectorAll(iconSel).forEach(e=>plainOne(e,true)); } };
   run(document.body); new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>n.nodeType===1&&run(n)))).observe(document.body,{childList:true,subtree:true}); }
-window.TaskEditor={open,close,loadSchema,plain,dotColor,claudePending,chase};
+window.TaskEditor={open,close,loadSchema,plain,dotColor,claudePending,chase,guessFor};
 })();

@@ -194,7 +194,9 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 @keyframes inL{from{transform:translateX(40px);opacity:0}to{transform:none;opacity:1}}
 @keyframes inR{from{transform:translateX(-40px);opacity:0}to{transform:none;opacity:1}}
 .sec{background:var(--panel);border:1px solid var(--line);border-radius:18px;margin-bottom:10px;overflow:hidden}
-.sech{display:flex;align-items:center;gap:10px;width:100%;padding:0 14px;min-height:52px;text-align:left}
+.sec{position:relative}.secacts{position:absolute;top:8px;right:12px;display:flex;gap:6px;z-index:2}.secp,.secg{height:36px;min-width:36px;padding:0 10px;border-radius:10px;border:1px solid rgba(57,199,223,.4);background:transparent;color:#39c7df;font-weight:800;font-size:15px}.secg{font-size:13px}
+.bgr{display:flex;gap:10px;align-items:flex-start;padding:9px 4px;border-bottom:1px solid var(--line)}.bgr input{width:20px;height:20px;margin-top:2px;flex:none}.bgr span{display:flex;flex-direction:column;min-width:0}.bgr b{font-size:14.5px}.bgr small{color:#39c7df;font-size:12.5px;margin-top:2px}
+.sech{padding-right:62px!important}.sec.hasg .sech{padding-right:150px!important}.sech .sn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sech{display:flex;align-items:center;gap:10px;width:100%;padding:0 14px;min-height:52px;text-align:left}
 .sech:active{background:var(--panel2)}
 .sech .cv{color:var(--dim);font-size:13px;transition:transform .22s var(--ease);width:14px}
 .sec.shut .sech .cv{transform:rotate(-90deg)}
@@ -845,7 +847,7 @@ async function fetchAll(){
         remindAt:flat(f.ReminderAt), listOrder:(f.ListOrder==null?null:+f.ListOrder), textEx:!!f.TextExclude, leadStatus:flat(f.LeadStatus), flag:!!f.RoniFlag, textCount:+f.TextCount||0 }; }));
       offset=d.offset;
       if(!offset){ tasks=out; demo=false; lastSync=Date.now(); save(LS_CACHE,tasks); localStorage.setItem(LS_TS,lastSync);
-        for(const t of tasks){ const a=aug[t.id]; if(a&&a.section&&!((Date.now()-(a.secAt||0))<180000)) a.section=null; if(a&&a.loAt){ if(Date.now()-a.loAt<180000) t.listOrder=a.lo; else { delete a.lo; delete a.loAt; } } } save(LS_CACHE,tasks); saveAug(); setTimeout(callSweep,500); }
+        for(const t of tasks){ const a=aug[t.id]; if(a&&a.section&&!((Date.now()-(a.secAt||0))<180000)) a.section=null; if(a&&a.loAt){ if(Date.now()-a.loAt<180000) t.listOrder=a.lo; else { delete a.lo; delete a.loAt; } } } save(LS_CACHE,tasks); saveAug(); setTimeout(()=>{ canonSweep(); callSweep(); },500); }
     }while(offset && ++guard<60);
   }catch(e){ toast('Offline — showing saved list'); }
   syncing=false; render();
@@ -1633,7 +1635,24 @@ async function patch(id,fields){
   try{ const r=await fetch(atUrl()+'/'+id,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields,typecast:true})});
     if(!r.ok){ toast('Save failed '+r.status); return false; } return true; }catch(e){ toast('Offline — not saved'); return false; }
 }
+/* 🔤 ONE spelling per project / lead / sub: "DOMI", "domi", "Domi " → the most-used spelling (mixed case wins ties). Fixed in Airtable too. */
+const nkey=v=>String(v||'').toLowerCase().replace(/[^a-z0-9\u05d0-\u05ea]+/g,'');
+function canonMap(dim){ const c=new Map(); tasks.forEach(t=>{ const v=t[dim]; if(!v) return; const k=nkey(v); if(!k) return; const m=c.get(k)||new Map(); m.set(v,(m.get(v)||0)+1); c.set(k,m); });
+  const out=new Map(); c.forEach((m,k)=>out.set(k,[...m].sort((a,b)=>b[1]-a[1]||(/[a-z]/.test(b[0])?1:0)-(/[a-z]/.test(a[0])?1:0))[0][0])); return out; }
+const CANON_F={project:'Project',lead:'SBLead',sub:'Sub'};
+let canonAt=0; function canonSweep(){ if(Date.now()-canonAt<60000) return; canonAt=Date.now(); const ups=new Map(); let n=0;
+  for(const [dim,F] of Object.entries(CANON_F)){ const cm=canonMap(dim); tasks.forEach(t=>{ const v=t[dim]; if(!v) return; const c=cm.get(nkey(v)); if(c&&c!==v){ t[dim]=c; n++; if(/^rec/.test(t.id)){ const u=ups.get(t.id)||{id:t.id,fields:{}}; u.fields[F]=c; ups.set(t.id,u); } } }); }
+  if(n){ save(LS_CACHE,tasks); if(!demo&&cfg.apiKey) patchMany([...ups.values()]); render(); } }
+// "Domi Gustavo saddles to courtyard" → Project Domi · Lead Gustavo · Task "saddles to courtyard" (project first, then a sub or lead)
+function parsePrefix(fields){ if(!fields||!fields.Task||fields.Project) return fields; const w=String(fields.Task).trim().split(/\s+/);
+  const match=(dim,st)=>{ const cm=canonMap(dim); for(let n=Math.min(4,w.length-1-st);n>=1;n--){ const k=nkey(w.slice(st,st+n).join(' ')); if(k.length>=2&&cm.has(k)) return {v:cm.get(k),n}; } return null; };
+  const p=match('project',0); if(!p) return fields; let i=p.n; const f={...fields,Project:p.v};
+  if(!f.Sub&&!f.SBLead){ const sb=match('sub',i), ld=match('lead',i); const pk=sb&&(!ld||sb.n>=ld.n)?['Sub',sb]:ld?['SBLead',ld]:null; if(pk){ f[pk[0]]=pk[1].v; i+=pk[1].n; } }
+  else { const k=f.Sub?'lead':'sub', F=f.Sub?'SBLead':'Sub', m=match(k,i); if(m&&!f[F]){ f[F]=m.v; i+=m.n; } }
+  const rest=w.slice(i).join(' ').replace(/^[-–—:,·]+\s*/,''); if(!rest) return fields; f.Task=rest; return f; }
+const canonVal=(dim,v)=>{ if(!v) return v; const c=canonMap(dim).get(nkey(v)); return c||v; };
 async function create(fields){
+  fields=parsePrefix(fields); if(fields){ for(const [dim,F] of Object.entries(CANON_F)) if(fields[F]) fields={...fields,[F]:canonVal(dim,fields[F])}; }
   if(fields&&!fields.Section&&!fields.MeetingSlot&&looksLikeCall(fields.Task)) fields={...fields,Section:'calls'};   // "Call Rob…" → Calls
   if(fields&&(fields.Section==='calls'||fields.Type==='call')&&!fields.DoDate&&!fields.ReminderAt) fields={...fields,DoDate:todayISO()};   // new calls land in Today
   const t={id:'tmp'+Date.now(),createdTime:new Date().toISOString(),name:fields.Task,project:fields.Project||'',lead:fields.SBLead||'',sub:fields.Sub||'',
@@ -1732,10 +1751,10 @@ function byLeadProjM(a,b){ const la=(a.lead||'').toLowerCase(),lb=(b.lead||'').t
 function slotTasks(slot){ return tasks.filter(t=>liveCall(t)&&slotOf(t)===slot).sort(byLeadProjM); } // sorted by lead then project (Roni's standard)
 function groups(dim){
   const m=new Map();
-  for(const t of tasks){ if(!live(t)) continue; const k=t[dim]||''; m.set(k,(m.get(k)||0)+1); }
+  const cm=canonMap(dim); for(const t of tasks){ if(!live(t)) continue; const k=t[dim]?(cm.get(nkey(t[dim]))||t[dim]):''; m.set(k,(m.get(k)||0)+1); }
   return [...m].map(([k,n])=>({k,n})).sort((a,b)=> (a.k===''?1:0)-(b.k===''?1:0) || b.n-a.n || a.k.localeCompare(b.k));
 }
-function groupTasks(dim,val){ return tasks.filter(t=>live(t)&&(t[dim]||'')===val).sort((a,b)=>score(b)-score(a)); }
+function groupTasks(dim,val){ const k=nkey(val); return tasks.filter(t=>live(t)&&(k?nkey(t[dim])===k:!t[dim])).sort((a,b)=>score(b)-score(a)); }
 function todayTasks(){ const td=todayISO(); return tasks.filter(t=>isOpen(t)&&t.doDate&&t.doDate<=td&&!(A(t.id).snoozeUntil>Date.now())).sort((a,b)=>a.doDate.localeCompare(b.doDate)); }
 /* ---------- ⏫ NEXT UP (Roni's picks; Airtable NextUp date + NextUpOrder; carry over until done/removed)
    ✨ SUGGESTED (5/day, written by the 6:30 AM "suggested-next-up" scheduled task: SuggestedDate=today + SuggestReason) ---------- */
@@ -2587,6 +2606,18 @@ function paintNotes(s){
 const BY={project:'sub',lead:'project',sub:'project'};
 /* 💬 Text this list: the board's open items, grouped the same way, into Messages. Recipient = last one used for this list,
    else roster / Contacts matches for the name, else pick in Messages. Remembered per list (m.listTo). */
+/* ✨ Guess a whole section at once: Project / Lead / Sub for items missing them — review, untick any, Apply */
+function bulkGuess(L,after){ const GF=window.TaskEditor&&TaskEditor.guessFor; if(!GF){ toast('Guess not loaded yet'); return; }
+  const KEY={Project:'project',SBLead:'lead',Sub:'sub'}, LAB={Project:'🏗',SBLead:'👤',Sub:'🏷'};
+  const rows=L.map(t=>{ let g={}; try{ g=GF(t)||{}; }catch(e){} const f={}; Object.keys(KEY).forEach(F=>{ if(g[F]&&!t[KEY[F]]) f[F]=canonVal(KEY[F],g[F]); }); return {t,f}; }).filter(r=>Object.keys(r.f).length);
+  if(!rows.length){ toast('No guesses for these'); return; }
+  sheet(`<h3>✨ Guess ${rows.length} of ${L.length}</h3><div class="ap" style="margin:-4px 0 8px">Untick any that look wrong, then Apply.</div>
+    <div style="max-height:52vh;overflow:auto">${rows.map((r,i)=>`<label class="bgr"><input type="checkbox" checked data-bg="${i}"><span><b>${esc(cleanName(r.t))}</b><small>${Object.entries(r.f).map(([F,v])=>LAB[F]+' '+esc(v)).join(' · ')}</small></span></label>`).join('')}</div>
+    <div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-bgok>Apply</button></div>`,(sh,close)=>{
+    sh.querySelector('[data-bgok]').onclick=()=>{ const pick=[...sh.querySelectorAll('[data-bg]:checked')].map(x=>rows[+x.dataset.bg]); if(!pick.length){ close(); return; }
+      const undo=pick.map(r=>({t:r.t,p:Object.fromEntries(Object.keys(r.f).map(F=>[F,r.t[KEY[F]]]))}));
+      pick.forEach(r=>Object.entries(r.f).forEach(([F,v])=>r.t[KEY[F]]=v)); save(LS_CACHE,tasks); patchMany(pick.filter(r=>/^rec/.test(r.t.id)).map(r=>({id:r.t.id,fields:r.f}))); close(); buzz(10); after&&after(); if(stack[0]) paintHome(stack[0]);
+      toast('✨ Filled '+pick.length,()=>{ undo.forEach(u=>Object.entries(u.p).forEach(([F,v])=>u.t[KEY[F]]=v||'')); save(LS_CACHE,tasks); patchMany(undo.filter(u=>/^rec/.test(u.t.id)).map(u=>({id:u.t.id,fields:Object.fromEntries(Object.entries(u.p).map(([F,v])=>[F,v||null]))}))); after&&after(); }); }; }); }
 function textListSheet(dim,val,title,secs,B){
   const body=title+' — open items ('+secs.reduce((n,x)=>n+x[1].length,0)+')\n'+secs.map(([k,L])=>(k||('No '+B.label.toLowerCase()))+'\n'+L.map(t=>'• '+cleanName(t)).join('\n')).join('\n\n');
   const memK=dim+':'+val, mem=load('m.listTo',{}), last=mem[memK];
@@ -2609,7 +2640,7 @@ function paintBoard(s,dir){
   const val=r.list[r.idx]; const items=groupTasks(dim,val);
   const counts=new Map(r.list.map(k=>[k,groupTasks(dim,k).length]));
   // group into sections
-  const secMap=new Map(); for(const t of items){ const k=t[by]||''; if(!secMap.has(k)) secMap.set(k,[]); secMap.get(k).push(t); }
+  const cmB=canonMap(by); const secMap=new Map(); for(const t of items){ const k=t[by]?(cmB.get(nkey(t[by]))||t[by]):''; if(!secMap.has(k)) secMap.set(k,[]); secMap.get(k).push(t); }
   const secs=[...secMap].sort((a,b)=>(a[0]===''?1:0)-(b[0]===''?1:0)||b[1].length-a[1].length||a[0].localeCompare(b[0]));
   const shutAll=load('m.shut',{}); const shut=new Set(shutAll[dim+':'+val]||[]);
   const onCalls=items.filter(t=>slotOf(t)).length, oldest=items.reduce((m,t)=>Math.max(m,daysOpen(t)),0);
@@ -2623,8 +2654,8 @@ function paintBoard(s,dir){
       <div class="bs">${streakHTML()}<span><b>${items.length}</b> open</span><span><b>${secs.length}</b> ${esc(B.plural.toLowerCase())}</span>${onCalls?`<span>📞 <b>${onCalls}</b> on calls</span>`:''}${oldest?`<span>oldest <b>${oldest}d</b></span>`:''}</div></div>
     <div class="bhint"><b>○ / swipe → Done</b> · <i>😴 / ← swipe Snooze 10d</i> · tap row = details</div>
     <div class="bscroll bpage ${dir>0?'inL':dir<0?'inR':''}">
-      ${items.length?secs.map(([k,list])=>`<div class="sec ${shut.has(k)?'shut':''}" data-k="${esc(k)}">
-        <button class="sech"><span class="cv">▼</span><span class="sn ${k?'':'none'}">${k?esc(k):'No '+esc(B.label.toLowerCase())}</span><span class="sc">${list.length}</span></button>
+      ${items.length?secs.map(([k,list])=>`<div class="sec ${shut.has(k)?'shut':''}${k?'':' hasg'}" data-k="${esc(k)}">
+        <button class="sech"><span class="cv">▼</span><span class="sn ${k?'':'none'}">${k?esc(k):'No '+esc(B.label.toLowerCase())}</span><span class="sc">${list.length}</span></button><div class="secacts">${k?'':`<button class="secg" data-secg="${esc(k)}">Guess</button>`}<button class="secp" data-secp="${esc(k)}" aria-label="Add here">＋</button></div>
         <div class="secb"><div>${list.map(t=>rowHTML(t,dim,s.open)).join('')}</div></div></div>`).join('')
       :`<div class="cleared"><div>🎉</div><h2 style="color:var(--ink);margin:8px 0 4px">${esc(title)} is clear</h2>Tap Next ›</div>`}
     </div>
@@ -2639,6 +2670,8 @@ function paintBoard(s,dir){
   el.querySelector('[data-next]').onclick=()=>go(r.idx+1);
   el.querySelector('[data-focus]').onclick=()=>push({type:'deck',kind:'group',dim,val,title});
   el.querySelector('[data-add]').onclick=()=>addSheet({[dim]:val},()=>paintBoard(s));
+  el.querySelectorAll('[data-secp]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const k=b.dataset.secp; const pre={[dim]:val}; if(k) pre[by]=k; addSheet(pre,()=>paintBoard(s)); });
+  el.querySelectorAll('[data-secg]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const L=(secs.find(x=>x[0]===b.dataset.secg)||[0,[]])[1]; bulkGuess(L,()=>paintBoard(s)); });
   el.querySelector('[data-txl]').onclick=()=>{ if(items.length) textListSheet(dim,val,title,secs,B); };
   el.querySelector('[data-tog]').onclick=()=>{ const all=shut.size>=secs.length; shutAll[dim+':'+val]=all?[]:secs.map(x=>x[0]); save('m.shut',shutAll); paintBoard(s); };
   el.querySelectorAll('.sec').forEach(sec=>{ sec.querySelector('.sech').onclick=()=>{ const k=sec.dataset.k; sec.classList.toggle('shut');
@@ -2766,7 +2799,7 @@ function noteSheet(s,t){
     });
 }
 function addSheet(pre,after){
-  const tag=pre.slot?(SLOTS[pre.slot].em+' '+SLOTS[pre.slot].label):pre.project!=null?('🏗 '+pre.project):pre.lead!=null?('👤 '+pre.lead):pre.sub!=null?('🏷 '+pre.sub):'';
+  const tag=pre.slot?(SLOTS[pre.slot].em+' '+SLOTS[pre.slot].label):[pre.project?'🏗 '+pre.project:'',pre.lead?'👤 '+pre.lead:'',pre.sub?'🏷 '+pre.sub:''].filter(Boolean).join(' · ');
   sheet(`<h3>New task</h3>${tag?`<div class="lbl2">Goes to ${esc(tag)}</div>`:''}
     <input class="field" id="nt" placeholder="What needs doing?" enterkeyhint="done" autocomplete="off">
     ${pre.slot?'':`<div class="row2" style="margin-bottom:10px"><button class="pill" data-sl="morning">🌅 Morning</button><button class="pill" data-sl="afternoon">☀️ Afternoon</button></div>`}
