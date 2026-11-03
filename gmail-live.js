@@ -33,7 +33,7 @@ var _loading  = false;
 var _error    = null;
 var _expanded = {};
 var _bodies   = {};
-var _pjAll    = {};   // bucket → false when its project subgroups are all folded
+var _pjAll    = {};   // bucket → true when its project subgroups are unfolded (default: folded, headers only)
 var _notes    = {};   // threadId → { rid, note } (Airtable EmailNotes)
 var _editing  = null, _draft = '';
 var _snoozing = null;   // thread id whose snooze choices are showing
@@ -964,7 +964,7 @@ function rebuildList(listEl) {
     var L = bk[0], its = by[L]; if (!its || !its.length) return;
     its.sort(function(a, b){ return b.date - a.date; });
     var sec = document.createElement('section'); sec.className = 'glv-bk glv-' + L; sec.id = 'glv-' + L;
-    var open = _expanded['bk-' + L] !== undefined ? _expanded['bk-' + L] : L !== 'A' && L !== 'Z';
+    var open = _expanded['bk-' + L] !== undefined ? _expanded['bk-' + L] : true;   // open, but subgroups folded
     var sh = document.createElement('div'); sh.className = 'glv-bh';
     sh.innerHTML = '<span class="glv-sl">' + ic(bk[2]) + '</span><h2></h2><i class="glv-sc">' + its.length + '</i><span class="glv-xi">' + (open ? '▾' : '▸') + '</span>';
     sh.querySelector('h2').textContent = bk[1];
@@ -995,7 +995,7 @@ function rebuildList(listEl) {
       });
     }
     if (L !== 'N' && open) {
-      var allOpen = _pjAll[L] !== false;
+      var allOpen = _pjAll[L] === true;
       var fb = document.createElement('button'); fb.className = 'glv-btn glv-aa glv-fold';
       fb.textContent = allOpen ? '⊟' : '⊞'; fb.title = allOpen ? 'Fold all groups here' : 'Unfold all groups here';
       fb.addEventListener('click', function(e){ e.stopPropagation(); setFold(L, !allOpen); rebuildList(_listEl); });
@@ -1014,7 +1014,7 @@ function rebuildList(listEl) {
         Object.keys(g).sort(mix ? function(a, b){ return rk('pj' + a) - rk('pj' + b); } : function(a, b){ return (a === 'Other') - (b === 'Other') || g[b].length - g[a].length || a.localeCompare(b); })
           .forEach(function(k){
             // Project subgroups collapse on click. Starred + Archive: by sender, then newest first.
-            var pk = 'pj-' + L + '-' + k, pOpen = _expanded[pk] !== undefined ? _expanded[pk] : _pjAll[L] !== false;
+            var pk = 'pj-' + L + '-' + k, pOpen = _expanded[pk] !== undefined ? _expanded[pk] : _pjAll[L] === true;
             var ph = document.createElement('div'); ph.className = 'glv-pj'; ph.textContent = (pOpen ? '▾ ' : '▸ ') + k + ' ';
             var pi = document.createElement('i'); pi.textContent = g[k].length; ph.appendChild(pi);
             var pgo = g[k].filter(function(t){ return !_keep[t.id]; });
@@ -1194,7 +1194,7 @@ function buildPanel(host) {
   bar.appendChild(refreshBtn);
 
   // Master: fold / unfold every bucket.
-  var anyOpen = BUCKETS.some(function(b){ var v = _expanded['bk-' + b[0]]; return v !== undefined ? v : b[0] !== 'A' && b[0] !== 'Z'; });
+  var anyOpen = BUCKETS.some(function(b){ var v = _expanded['bk-' + b[0]]; return v !== undefined ? v : true; });
   var mb = document.createElement('button'); mb.className = 'glv-btn';
   mb.textContent = anyOpen ? '⊟ Collapse all' : '⊞ Expand all';
   mb.addEventListener('click', function(){
