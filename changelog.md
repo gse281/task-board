@@ -270,3 +270,4 @@
 - 2026-10-30 23:12  Email run: ⚡ opens in Superhuman (✉️ Gmail kept)
 - 2026-10-30 23:16  Email run: Don't-miss cards show up to 6 lines (money details)
 - 2026-11-02 09:30  Calls: swipe ← ⇢ Anytime (clears day/time), Today 'All → Anytime', Anytime collapsed by default (tap header)
+- 2026-11-03 07:35  Calls: new calls default to Today (phone + desktop); Anytime/Tomorrow/Later rows swipe ← ⇠ Today

@@ -2280,7 +2280,7 @@ function mobileCalls(){
   items.slice(0,5).forEach(t=>body.appendChild(mobileRow(t,{showNumber:true,addNumber:true})));
   if(items.length>5){const m=document.createElement('button');m.className='more-btn';m.textContent='+'+(items.length-5)+' more — tap to see all';m.onclick=()=>{activeBulb={dim:'category',val:'calls',label:'📞 Calls'};render();};body.appendChild(m);}
   const add=document.createElement('div');add.className='add-inline';add.innerHTML='<input placeholder="Add a call…"><button>＋</button>';
-  const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){const a=A(t.id);a.type='call';a.blink=true;t.typeRemote='call';saveAug();atPatch(t.id,{Type:'call'});bumpTop(t.id);render();}};
+  const go=async()=>{const inp=add.querySelector('input');const v=inp.value.trim();if(!v)return;inp.value='';const t=await atCreate(v);if(t){const a=A(t.id);a.type='call';a.blink=true;t.typeRemote='call';t.doDate=todayISO();saveAug();atPatch(t.id,{Type:'call',DoDate:todayISO()});bumpTop(t.id);render();}};
   add.querySelector('button').onclick=go;add.querySelector('input').addEventListener('keydown',e=>{if(e.key==='Enter')go();});
   body.insertBefore(add, body.firstChild);   // add box at the TOP
   p.appendChild(body); return p;
