@@ -693,7 +693,7 @@ function groupThreads(arr) {
 function makeRow(t, showSender) {
   var div = document.createElement('div');
   div.className = 'glv-row' + (t.unread ? ' unr' : '');
-  div.dataset.id = t.id;
+  div.dataset.id = t.id; div.dataset.a = t.id;
 
   var h = document.createElement('div'); h.className = 'glv-rh';
 
@@ -847,8 +847,6 @@ function makeRow(t, showSender) {
   gm.addEventListener('click', function(e){ e.stopPropagation(); });
   mo.after(gm);
   div.title = 'Open in Superhuman';
-  // A button tap marks this row so the redraw keeps its spot (no jump).
-  div.addEventListener('click', function(e){ if (e.target.closest('button,textarea')) markAct(div); }, true);
   div.addEventListener('click', function(){
     if (Date.now() < _quietUntil) return;   // tap landed on a row that just moved in: ignore
     location.href = (IS_PHONE ? SH_URL : SH_APP) + t.id;
@@ -865,7 +863,7 @@ function makeSection(g) {
 
   if (isMulti) {
     // Collapsible header
-    var sh = document.createElement('div'); sh.className = 'glv-sh';
+    var sh = document.createElement('div'); sh.className = 'glv-sh'; sh.dataset.a = 'sh-' + g.key;
 
     var sl = document.createElement('span'); sl.className = 'glv-sl';
     sl.style.background = avatarColor(g.key);
@@ -911,39 +909,64 @@ function makeSection(g) {
 // Keep the email you're looking at in the same spot when the list redraws (emails still
 // loading in above it, or one archived). If the top visible row is gone, the next one takes its place.
 function scroller(el) { return el.closest('.pg-panel') || document.scrollingElement; }
-// Row whose button was just tapped: that row (or the one after it, if it moved away)
+// Anchors are everything with data-a: email rows and section/subgroup headers.
+// Item just tapped (row button or header): that item (or the one after it, if it moved away)
 // stays at the same spot on screen through the redraws that follow.
-var _act = null, _quietUntil = 0;
-function markAct(row) {
-  var col = row.closest('.glv-col'), rows = col ? Array.prototype.slice.call(col.querySelectorAll('.glv-row[data-id]')) : [row];
-  var i = rows.indexOf(row), ids = rows.slice(i, i + 7).map(function(r){ return r.dataset.id; });
-  _act = { ids: ids, y: row.getBoundingClientRect().top, at: Date.now() };
+var _act = null, _quietUntil = 0, _shiftUntil = 0, _down = null, _touchAt = 0;
+function markAct(item) {
+  var col = item.closest('.glv-col'), all = col ? Array.prototype.slice.call(col.querySelectorAll('[data-a]')) : [item];
+  var i = all.indexOf(item), ids = all.slice(i, i + 7).map(function(r){ return r.dataset.a; });
+  _act = { ids: ids, y: item.getBoundingClientRect().top, at: Date.now() };
 }
 function saveAnchor(sc) {
-  var top = sc === document.scrollingElement ? 0 : sc.getBoundingClientRect().top, out = [];
-  if (_act && Date.now() - _act.at < 6000)
-    return { act: 1, list: _act.ids.map(function(id){ return { id: id, off: _act.y - top, col: 0 }; }), top: top, y: sc.scrollTop };
-  var rows = sc.querySelectorAll('.glv-row[data-id]');
-  for (var i = 0; i < rows.length && out.length < 6; i++) {
-    var r = rows[i].getBoundingClientRect();
-    if (r.bottom > top + 40) out.push({ id: rows[i].dataset.id, off: r.top - top, col: colIdx(rows[i]) });
+  var top = sc === document.scrollingElement ? 0 : sc.getBoundingClientRect().top, out = [], seen = {}, vh = window.innerHeight;
+  var items = sc.querySelectorAll('[data-a]');
+  for (var i = 0; i < items.length; i++) {
+    var r = items[i].getBoundingClientRect();
+    if (r.bottom <= top + 40 || r.top >= vh) continue;
+    seen[items[i].dataset.a] = r.top;
+    if (out.length < 6) out.push({ id: items[i].dataset.a, off: r.top - top, col: colIdx(items[i]) });
   }
-  return { list: out, top: top, y: sc.scrollTop };
+  if (_act && Date.now() - _act.at < 6000)
+    return { act: 1, list: _act.ids.map(function(id){ return { id: id, off: _act.y - top, col: 0 }; }), top: top, y: sc.scrollTop, seen: seen };
+  return { list: out, top: top, y: sc.scrollTop, seen: seen };
 }
 function colIdx(el) { var c = el.closest('.glv-col'); return c ? Array.prototype.indexOf.call(c.parentNode.children, c) : 0; }
+function anchorMap(sc) {
+  var m = {}; sc.querySelectorAll('[data-a]').forEach(function(el){ m[el.dataset.a] = el; }); return m;
+}
 function restoreAnchor(sc, a) {
   if (a && a.act) _quietUntil = Date.now() + 700;
   if (!a || !a.list.length) { if (a) sc.scrollTop = a.y; return; }
-  for (var i = 0; i < a.list.length; i++) {
+  var m = anchorMap(sc), hit = false;
+  for (var i = 0; i < a.list.length && !hit; i++) {
     if (a.list[i].col !== a.list[0].col) continue;
-    var el = sc.querySelector('.glv-row[data-id="' + a.list[i].id + '"]');
+    var el = m[a.list[i].id];
     if (!el) continue;
-    // a vanished top row → the next one slides into its place
+    // a vanished top item → the next one slides into its place
     sc.scrollTop += (el.getBoundingClientRect().top - a.top) - a.list[0].off;
-    return;
+    hit = true;
   }
-  sc.scrollTop = a.y;
+  if (!hit) sc.scrollTop = a.y;
+  // Something on screen moved by itself (emails loading in): a tap right now may be aimed at the old spot.
+  if (!a.act) for (var k in a.seen) if (m[k] && Math.abs(m[k].getBoundingClientRect().top - a.seen[k]) > 3) { _shiftUntil = Date.now() + 500; break; }
 }
+
+// Finger down: remember what it landed on, and hold background redraws until the screen is calm.
+function touched() { _touchAt = Date.now(); }
+function listItem(e) { var n = e.target; return n && n.closest ? n.closest('.glv [data-a]') : null; }
+document.addEventListener('pointerdown', function(e){ var it = listItem(e); touched(); _down = { k: it ? it.dataset.a : null, at: Date.now() }; }, true);
+['touchmove', 'wheel'].forEach(function(n){ document.addEventListener(n, function(){ touched(); _act = null; }, { capture: true, passive: true }); });
+document.addEventListener('scroll', touched, { capture: true, passive: true });
+// Every tap in the list passes here first. A tap that isn't on what the finger first touched, or
+// that lands just after the list moved by itself, is dropped: it would hit the wrong email.
+document.addEventListener('click', function(e){
+  var it = listItem(e); if (!it) return;
+  if (Date.now() < _shiftUntil || (_down && Date.now() - _down.at < 1500 && _down.k !== it.dataset.a)) {
+    e.stopPropagation(); e.preventDefault(); return;
+  }
+  if (!it.dataset.id || e.target.closest('button,textarea')) markAct(it);
+}, true);
 
 function rebuildList(listEl) {
   if (!listEl) return;
@@ -965,7 +988,7 @@ function rebuildList(listEl) {
     its.sort(function(a, b){ return b.date - a.date; });
     var sec = document.createElement('section'); sec.className = 'glv-bk glv-' + L; sec.id = 'glv-' + L;
     var open = _expanded['bk-' + L] !== undefined ? _expanded['bk-' + L] : true;   // open, but subgroups folded
-    var sh = document.createElement('div'); sh.className = 'glv-bh';
+    var sh = document.createElement('div'); sh.className = 'glv-bh'; sh.dataset.a = 'bk-' + L;
     sh.innerHTML = '<span class="glv-sl">' + ic(bk[2]) + '</span><h2></h2><i class="glv-sc">' + its.length + '</i><span class="glv-xi">' + (open ? '▾' : '▸') + '</span>';
     sh.querySelector('h2').textContent = bk[1];
     if (L === 'A' || L === 'E' || L === 'N') {
@@ -1015,7 +1038,7 @@ function rebuildList(listEl) {
           .forEach(function(k){
             // Project subgroups collapse on click. Starred + Archive: by sender, then newest first.
             var pk = 'pj-' + L + '-' + k, pOpen = _expanded[pk] !== undefined ? _expanded[pk] : _pjAll[L] === true;
-            var ph = document.createElement('div'); ph.className = 'glv-pj'; ph.textContent = (pOpen ? '▾ ' : '▸ ') + k + ' ';
+            var ph = document.createElement('div'); ph.className = 'glv-pj'; ph.dataset.a = pk; ph.textContent = (pOpen ? '▾ ' : '▸ ') + k + ' ';
             var pi = document.createElement('i'); pi.textContent = g[k].length; ph.appendChild(pi);
             var pgo = g[k].filter(function(t){ return !_keep[t.id]; });
             if (pgo.length) {
@@ -1267,8 +1290,12 @@ function buildPanel(host) {
 
 // ── Redraw ─────────────────────────────────────────────────────────────────────
 
+var _held;
 function redraw() {
   if (!_host) return;
+  var wait = _listEl ? _touchAt + 1200 - Date.now() : 0;   // finger busy: redraw once it's calm
+  clearTimeout(_held);
+  if (wait > 0) { _held = setTimeout(redraw, wait); return; }
   if (IS_PHONE && !backendUrl())     { buildPhoneScreen(_host); return; }
   if (!_cfg || (!_cfg.gmailClientId && !backendUrl())) { buildSetupScreen(_host); return; }
   if (_error === 'auth')            { buildConnectScreen(_host); return; }
@@ -1314,6 +1341,7 @@ function mount(host, cfg) {
   })();
 }
 
-var _rz; window.addEventListener('resize', function(){ clearTimeout(_rz); _rz = setTimeout(function(){ rebuildList(_listEl); }, 200); });
+// Width only: iPhone Safari fires resize when its address bar slides during a scroll.
+var _rz, _rw = window.innerWidth; window.addEventListener('resize', function(){ if (window.innerWidth === _rw) return; _rw = window.innerWidth; clearTimeout(_rz); _rz = setTimeout(function(){ rebuildList(_listEl); }, 200); });
 window.GL = { mount: mount };
 })();
