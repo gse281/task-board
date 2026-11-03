@@ -36,6 +36,11 @@ var _bodies   = {};
 var _pjAll    = {};   // bucket → false when its project subgroups are all folded
 var _notes    = {};   // threadId → { rid, note } (Airtable EmailNotes)
 var _editing  = null, _draft = '';
+var _snoozing = null;   // thread id whose snooze choices are showing
+// Starred order: 'shuffle' (new random order each page open) or 'sender'.
+var _dsort = 'shuffle'; try { _dsort = localStorage.getItem('gl.dsort') || 'shuffle'; } catch (e) {}
+var _rk = {}; function rk(id) { return _rk[id] !== undefined ? _rk[id] : (_rk[id] = Math.random()); }
+var HOUR = 3600e3;
 var _host     = null;
 var _listEl   = null;
 
@@ -423,7 +428,8 @@ function addCss() {
 .glv-rsnip mark.hl.star,.er-s mark.hl.star{background:rgba(224,164,88,.32);color:#ffe0a8}
 .glv-rsnip mark.hl{background:rgba(224,164,88,.2);color:#ffd28a;border-radius:3px;padding:0 2px;font-weight:700}
 .glv-gm{margin-left:12px;color:#64838d;font-size:12.5px;text-decoration:none}.glv-gm:hover{color:#39c7df}
-.glv-fold{min-width:26px;padding:0 6px;font-size:13px}
+.glv-fold{min-width:26px;padding:0 6px;font-size:13px}.glv-fold.on{background:rgba(57,199,223,.25);border-color:#39c7df}
+.glv-zz{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}.glv-zz .glv-ck{opacity:1}.glv-zi{margin-top:4px;color:#8aa6af}
 .glv-chip.bk{cursor:pointer}.glv-chip.cB b{color:#e5533a}.glv-chip.cD b{color:#e0a458}
 @media (hover:none){.glv-ck,.glv-arch{opacity:1}}
 @media (max-width:600px){
@@ -461,7 +467,7 @@ function avatarColor(key) {
 // project, and starred → D, your always-archive senders / Gmail promotions → A, the rest → New.
 
 var BUCKETS = [
-  ['D', '⭐ Starred · action'], ['C', '✍️ Reply'], ['B', "⚠️ Don't miss"],
+  ['H', '🕐 Last hour'], ['D', '⭐ Starred · action'], ['Z', '💤 Snoozed'], ['C', '✍️ Reply'], ['B', "⚠️ Don't miss"],
   ['N', IS_PHONE ? '📥 Older' : '📥 Older — not sorted'],  ['E', '📄 Everything else'], ['A', '🗄 Archive']
 ];
 var _scan = { byThread: {}, bySender: {}, loaded: false };
@@ -501,7 +507,7 @@ async function loadNotes() {
       var r = await fetch(atUrl('?pageSize=100' + (off ? '&offset=' + off : '')), { headers: atHdr() });
       if (!r.ok) return;
       var d = await r.json(); off = d.offset || '';
-      (d.records || []).forEach(function(x){ if (x.fields.ThreadId) _notes[x.fields.ThreadId] = { rid: x.id, note: x.fields.Note || '', result: x.fields.Result || '' }; });
+      (d.records || []).forEach(function(x){ if (x.fields.ThreadId) _notes[x.fields.ThreadId] = { rid: x.id, note: x.fields.Note || '', result: x.fields.Result || '', snooze: x.fields.SnoozeUntil || '' }; });
     } while (off);
   } catch (e) { return; }
   rebuildList(_listEl);
@@ -510,14 +516,28 @@ async function saveNote(t, text) {
   text = text.trim(); var cur = _notes[t.id];
   if (!window.TE || !TE.key || !TE.key()) throw new Error('no Airtable key');
   if (!text) {
+    if (cur && cur.snooze) { await fetch(atUrl('/' + cur.rid), { method: 'PATCH', headers: atHdr(), body: JSON.stringify({ fields: { Note: '' } }) }); cur.note = ''; return; }
     if (cur) await fetch(atUrl('/' + cur.rid), { method: 'DELETE', headers: atHdr() });
     delete _notes[t.id]; return;
   }
   var fields = { ThreadId: t.id, Note: text, Subject: t.subject, From: t.senderName + ' <' + t.senderEmail + '>', Result: '' };
   var r = await fetch(atUrl(cur ? '/' + cur.rid : ''), { method: cur ? 'PATCH' : 'POST', headers: atHdr(), body: JSON.stringify({ fields: fields }) });
   if (!r.ok) throw new Error('HTTP ' + r.status);
-  var d = await r.json(); _notes[t.id] = { rid: d.id, note: text, result: '' };
+  var d = await r.json(); _notes[t.id] = { rid: d.id, note: text, result: '', snooze: cur ? cur.snooze : '' };
 }
+// Snooze a starred email: hidden until `iso` (Airtable EmailNotes.SnoozeUntil, so every device agrees). '' = wake now.
+async function setSnooze(t, iso) {
+  var cur = _notes[t.id];
+  if (!window.TE || !TE.key || !TE.key()) throw new Error('no Airtable key');
+  if (!iso && cur && !cur.note) { await fetch(atUrl('/' + cur.rid), { method: 'DELETE', headers: atHdr() }); delete _notes[t.id]; return; }
+  var fields = cur ? { SnoozeUntil: iso } : { ThreadId: t.id, Subject: t.subject, From: t.senderName + ' <' + t.senderEmail + '>', SnoozeUntil: iso };
+  var r = await fetch(atUrl(cur ? '/' + cur.rid : ''), { method: cur ? 'PATCH' : 'POST', headers: atHdr(), body: JSON.stringify({ fields: fields }) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  var d = await r.json();
+  if (cur) cur.snooze = iso; else _notes[t.id] = { rid: d.id, note: '', result: '', snooze: iso };
+}
+function snoozedTill(t) { var n = _notes[t.id], u = n && n.snooze && new Date(n.snooze); return u && u > new Date() ? u : null; }
+function wakeAt(days) { var d = new Date(); d.setDate(d.getDate() + days); d.setHours(8, 0, 0, 0); return d.toISOString(); }
 
 // "Keep" = skip this thread in Archive all (this browser only).
 var KEEP_KEY = 'gl.keep';
@@ -573,6 +593,8 @@ async function setAlways(t, on) {
 function classify(t) {
   var r = _scan.byThread[t.id], snd = _scan.bySender[(t.senderEmail || '').toLowerCase()];
   var project = (r && r.project) || (snd ? snd.project : '');
+  if (Date.now() - t.date < HOUR) return { b: 'H', project: project, summary: r && r.summary, advice: r && r.advice, starred: t.starred };
+  if (t.starred && snoozedTill(t)) return { b: 'Z', project: project, summary: r && r.summary };
   if (t.starred) return { b: 'D', project: project, summary: r && r.summary, advice: r && r.advice };
   if (_rule.senders[(t.senderEmail || '').toLowerCase()]) return { b: 'A', project: project, summary: r && r.summary, always: true };
   if (r && r.bucket) return { b: r.bucket, project: r.project, summary: r.summary, advice: r.advice, sorted: true };
@@ -686,9 +708,38 @@ function makeRow(t, showSender) {
     e.stopPropagation(); al.textContent = '…'; al.disabled = true;
     setAlways(t, !c.always).then(function(){ rebuildList(_listEl); }).catch(function(){ al.textContent = '!'; al.disabled = false; });
   });
+  if (c.b === 'D' || c.b === 'Z' || (c.b === 'H' && t.starred)) {
+    var zz = document.createElement('button'); zz.className = 'glv-ck' + (c.b === 'Z' ? ' on' : '');
+    zz.textContent = c.b === 'Z' ? '⏰ Wake' : '💤 Snooze';
+    zz.title = c.b === 'Z' ? 'Back to Starred now' : 'Hide this for a while; it comes back by itself';
+    zz.addEventListener('click', function(e){ e.stopPropagation();
+      if (c.b !== 'Z') { _snoozing = _snoozing === t.id ? null : t.id; rebuildList(_listEl); return; }
+      zz.textContent = '…'; zz.disabled = true;
+      setSnooze(t, '').then(function(){ rebuildList(_listEl); }).catch(function(){ zz.textContent = '!'; zz.disabled = false; });
+    });
+    h.append(zz);
+  }
   h.append(al, arch);
 
   div.appendChild(h);
+
+  if (_snoozing === t.id) {
+    var zr = document.createElement('div'); zr.className = 'glv-zz';
+    [['Tomorrow', 1], ['3 days', 3], ['1 week', 7], ['2 weeks', 14], ['1 month', 30]].forEach(function(o){
+      var b = document.createElement('button'); b.className = 'glv-ck'; b.textContent = o[0];
+      b.addEventListener('click', function(e){ e.stopPropagation(); b.textContent = '…';
+        setSnooze(t, wakeAt(o[1])).then(function(){ _snoozing = null; rebuildList(_listEl); })
+          .catch(function(){ b.textContent = '! retry'; alert('Snooze not saved (Airtable). Try again.'); });
+      });
+      zr.appendChild(b);
+    });
+    div.appendChild(zr);
+  }
+  if (c.b === 'Z') {
+    var zu = snoozedTill(t), zi = document.createElement('div'); zi.className = 'glv-rw glv-zi';
+    zi.textContent = '💤 back ' + zu.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' });
+    div.appendChild(zi);
+  }
 
   var body = document.createElement('div'); body.className = 'glv-rs';
   body.textContent = showSender ? t.subject : (t.snippet || '');
@@ -708,8 +759,8 @@ function makeRow(t, showSender) {
   }
 
   // Starred → a to-do note you type (saved to Airtable).
-  if (c.b === 'D') {
-    var nt = _notes[t.id];
+  if (c.b === 'D' || c.b === 'Z') {
+    var nt = _notes[t.id]; if (nt && !nt.note) nt = null;
     if (_editing === t.id) {
       var ta = document.createElement('textarea'); ta.className = 'glv-note-in'; ta.rows = 2;
       ta.placeholder = 'To-do for this email… (Enter = save, Esc = cancel)';
@@ -856,12 +907,12 @@ function rebuildList(listEl) {
   var colA = document.createElement('div'), colB = document.createElement('div'), colC = document.createElement('div');
   colA.className = colB.className = colC.className = 'glv-col';
   cols.append(colA, colB); if (three) cols.appendChild(colC);
-  function colFor(L) { return three ? (L === 'D' ? colA : 'CBN'.indexOf(L) >= 0 ? colB : colC) : ('DCB'.indexOf(L) >= 0 ? colA : colB); }
+  function colFor(L) { return three ? ('HDZ'.indexOf(L) >= 0 ? colA : 'CBN'.indexOf(L) >= 0 ? colB : colC) : ('HDZCB'.indexOf(L) >= 0 ? colA : colB); }
   BUCKETS.forEach(function(bk){
     var L = bk[0], its = by[L]; if (!its || !its.length) return;
     its.sort(function(a, b){ return b.date - a.date; });
     var sec = document.createElement('section'); sec.className = 'glv-bk glv-' + L; sec.id = 'glv-' + L;
-    var open = _expanded['bk-' + L] !== undefined ? _expanded['bk-' + L] : L !== 'A';
+    var open = _expanded['bk-' + L] !== undefined ? _expanded['bk-' + L] : L !== 'A' && L !== 'Z';
     var sh = document.createElement('div'); sh.className = 'glv-bh';
     sh.innerHTML = '<span class="glv-sl">' + (L === 'N' ? '•' : L) + '</span><h2></h2><i class="glv-sc">' + its.length + '</i><span class="glv-xi">' + (open ? '▾' : '▸') + '</span>';
     sh.querySelector('h2').textContent = bk[1];
@@ -882,6 +933,15 @@ function rebuildList(listEl) {
       srt.addEventListener('click', function(e){ e.stopPropagation(); queueSort(srt); });
       sh.insertBefore(srt, sh.querySelector('.glv-xi'));
     }
+    if (L === 'D' && open) {
+      [['🔀', 'shuffle', 'New random order (also happens every time you open the page)'], ['A–Z', 'sender', 'Sort by sender, newest first']].forEach(function(o){
+        var b = document.createElement('button'); b.className = 'glv-btn glv-aa glv-fold' + (_dsort === o[1] ? ' on' : '');
+        b.textContent = o[0]; b.title = o[2];
+        b.addEventListener('click', function(e){ e.stopPropagation(); if (o[1] === 'shuffle') _rk = {}; _dsort = o[1];
+          try { localStorage.setItem('gl.dsort', _dsort); } catch (x) {} rebuildList(_listEl); });
+        sh.insertBefore(b, sh.querySelector('.glv-xi'));
+      });
+    }
     if (L !== 'N' && open) {
       var allOpen = _pjAll[L] !== false;
       var fb = document.createElement('button'); fb.className = 'glv-btn glv-aa glv-fold';
@@ -898,7 +958,8 @@ function rebuildList(listEl) {
       } else {
         var g = {};
         its.forEach(function(t){ var k = t._c.project || 'Other'; (g[k] = g[k] || []).push(t); });
-        Object.keys(g).sort(function(a, b){ return (a === 'Other') - (b === 'Other') || g[b].length - g[a].length || a.localeCompare(b); })
+        var mix = L === 'D' && _dsort === 'shuffle';
+        Object.keys(g).sort(mix ? function(a, b){ return rk('pj' + a) - rk('pj' + b); } : function(a, b){ return (a === 'Other') - (b === 'Other') || g[b].length - g[a].length || a.localeCompare(b); })
           .forEach(function(k){
             // Project subgroups collapse on click. Starred + Archive: by sender, then newest first.
             var pk = 'pj-' + L + '-' + k, pOpen = _expanded[pk] !== undefined ? _expanded[pk] : _pjAll[L] !== false;
@@ -908,7 +969,8 @@ function rebuildList(listEl) {
             list.appendChild(ph);
             if (!pOpen) return;
             var rows = g[k].slice();
-            if (L === 'A' || L === 'D') rows.sort(function(a, b){
+            if (mix) rows.sort(function(a, b){ return rk(a.id) - rk(b.id); });
+            else if (L === 'A' || L === 'D') rows.sort(function(a, b){
               return a.senderName.toLowerCase().localeCompare(b.senderName.toLowerCase()) || b.date - a.date;
             });
             rows.forEach(function(t){ list.appendChild(makeRow(t, true)); });
@@ -1072,7 +1134,7 @@ function buildPanel(host) {
   bar.appendChild(refreshBtn);
 
   // Master: fold / unfold every bucket.
-  var anyOpen = BUCKETS.some(function(b){ var v = _expanded['bk-' + b[0]]; return v !== undefined ? v : b[0] !== 'A'; });
+  var anyOpen = BUCKETS.some(function(b){ var v = _expanded['bk-' + b[0]]; return v !== undefined ? v : b[0] !== 'A' && b[0] !== 'Z'; });
   var mb = document.createElement('button'); mb.className = 'glv-btn';
   mb.textContent = anyOpen ? '⊟ Collapse all' : '⊞ Expand all';
   mb.addEventListener('click', function(){
@@ -1108,7 +1170,7 @@ function buildPanel(host) {
   BUCKETS.forEach(function(bk){
     if (!counts[bk[0]]) return;
     var c = document.createElement('a'); c.className = 'glv-chip bk c' + bk[0]; c.href = '#glv-' + bk[0];
-    c.innerHTML = '<b>' + (bk[0] === 'N' ? 'Older' : bk[0]) + '</b> ' + counts[bk[0]];
+    c.innerHTML = '<b>' + ({ N: 'Older', H: '🕐', Z: '💤' }[bk[0]] || bk[0]) + '</b> ' + counts[bk[0]];
     c.title = bk[1];
     chips.appendChild(c);
   });
