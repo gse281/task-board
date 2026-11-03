@@ -847,7 +847,12 @@ function makeRow(t, showSender) {
   gm.addEventListener('click', function(e){ e.stopPropagation(); });
   mo.after(gm);
   div.title = 'Open in Superhuman';
-  div.addEventListener('click', function(){ location.href = (IS_PHONE ? SH_URL : SH_APP) + t.id; });   // same tab: no blank tab left on phone
+  // A button tap marks this row so the redraw keeps its spot (no jump).
+  div.addEventListener('click', function(e){ if (e.target.closest('button,textarea')) markAct(div); }, true);
+  div.addEventListener('click', function(){
+    if (Date.now() < _quietUntil) return;   // tap landed on a row that just moved in: ignore
+    location.href = (IS_PHONE ? SH_URL : SH_APP) + t.id;
+  });   // same tab: no blank tab left on phone
   return div;
 }
 
@@ -906,8 +911,18 @@ function makeSection(g) {
 // Keep the email you're looking at in the same spot when the list redraws (emails still
 // loading in above it, or one archived). If the top visible row is gone, the next one takes its place.
 function scroller(el) { return el.closest('.pg-panel') || document.scrollingElement; }
+// Row whose button was just tapped: that row (or the one after it, if it moved away)
+// stays at the same spot on screen through the redraws that follow.
+var _act = null, _quietUntil = 0;
+function markAct(row) {
+  var col = row.closest('.glv-col'), rows = col ? Array.prototype.slice.call(col.querySelectorAll('.glv-row[data-id]')) : [row];
+  var i = rows.indexOf(row), ids = rows.slice(i, i + 7).map(function(r){ return r.dataset.id; });
+  _act = { ids: ids, y: row.getBoundingClientRect().top, at: Date.now() };
+}
 function saveAnchor(sc) {
   var top = sc === document.scrollingElement ? 0 : sc.getBoundingClientRect().top, out = [];
+  if (_act && Date.now() - _act.at < 6000)
+    return { act: 1, list: _act.ids.map(function(id){ return { id: id, off: _act.y - top, col: 0 }; }), top: top, y: sc.scrollTop };
   var rows = sc.querySelectorAll('.glv-row[data-id]');
   for (var i = 0; i < rows.length && out.length < 6; i++) {
     var r = rows[i].getBoundingClientRect();
@@ -917,6 +932,7 @@ function saveAnchor(sc) {
 }
 function colIdx(el) { var c = el.closest('.glv-col'); return c ? Array.prototype.indexOf.call(c.parentNode.children, c) : 0; }
 function restoreAnchor(sc, a) {
+  if (a && a.act) _quietUntil = Date.now() + 700;
   if (!a || !a.list.length) { if (a) sc.scrollTop = a.y; return; }
   for (var i = 0; i < a.list.length; i++) {
     if (a.list[i].col !== a.list[0].col) continue;
