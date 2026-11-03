@@ -14,3 +14,4 @@ The "📬 Email run" routine reads this file every run. These rules add to / ove
    - anything else you can do without sending or spending → do it.
    Then write Result = "✓ {what you did, ≤ 15 words}" (or "? {one short question}" if unclear). If Roni edits the Note later he clears Result, and it's handled again.
 8. **Auto-replies → Archive.** Out-of-office / automatic replies (subject like "Automatic reply", "Auto-Reply", "Out of Office", or header Auto-Submitted: auto-replied) always get Bucket "A · Archive", Summary = "Auto-reply from {name}" + return date if given.
+9. **Summarize the newest message.** Summary (and Advice) describe the LATEST message in the thread (who wrote last, what it says/asks), using earlier messages only as context. If a thread already in EmailRun got new messages since its row was written, rewrite that row's Summary/Advice/Bucket for the newest message.

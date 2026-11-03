@@ -255,7 +255,8 @@ function htmlDecode(s) {
   return (s||'').replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
 }
 
-var CACHE_KEY = 'gl.cache';
+var CACHE_KEY = 'gl.cache2';   // v2: date/snippet = latest message
+try { localStorage.removeItem('gl.cache'); } catch (e) {}
 var _cache = {}; try { _cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch (e) {}
 function fromCache(d) { var t = Object.assign({}, d); t.date = new Date(d.date); return t; }
 function saveCache() {
@@ -266,19 +267,19 @@ function saveCache() {
 
 function parseThread(t) {
   var msgs = t.messages || [];
-  var first = msgs[0] || {};
+  var first = msgs[0] || {}, last = msgs[msgs.length - 1] || first;   // date + snippet: newest message
   var s = parseSender(hdr(first, 'From'));
-  var dateStr = hdr(first, 'Date');
+  var dateStr = hdr(last, 'Date');
   return {
     id:          t.id,
     subject:     hdr(first, 'Subject') || '(no subject)',
-    snippet:     htmlDecode(first.snippet || ''),
+    snippet:     htmlDecode(last.snippet || ''),
     senderName:  s.name,
     senderEmail: s.email,
-    date:        dateStr ? new Date(dateStr) : new Date(),
+    date:        last.internalDate ? new Date(+last.internalDate) : dateStr ? new Date(dateStr) : new Date(),
     labels:      msgs.reduce(function(a, m){ return a.concat(m.labelIds || []); }, []),
-    starred:     (first.labelIds || []).indexOf('STARRED') >= 0,
-    unread:      (first.labelIds || []).indexOf('UNREAD') >= 0,
+    starred:     msgs.some(function(m){ return (m.labelIds || []).indexOf('STARRED') >= 0; }),
+    unread:      msgs.some(function(m){ return (m.labelIds || []).indexOf('UNREAD') >= 0; }),
     msgCount:    msgs.length,
     autoReply:   msgs.some(function(m){ return /auto-replied/i.test(hdr(m, 'Auto-Submitted')); })
   };
@@ -445,6 +446,7 @@ function addCss() {
   .glv-chips{order:3;flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:none}.glv-chips::-webkit-scrollbar{display:none}
   .glv-chip{flex-shrink:0;padding:2px 9px;font-size:12.5px}
   .glv-row{padding:9px 11px;border-radius:11px}
+  .glv-rh{flex-wrap:wrap;row-gap:6px}.glv-rf{flex:1 0 45%}
   .glv-rf{font-size:17px}.glv-rs{font-size:16px}.glv-rsnip{font-size:14.5px}.glv-rw{font-size:13px}.glv-adv{font-size:14.5px}
   .glv-star{font-size:20px;padding:0 4px}
   .glv-ck{height:30px;padding:0 10px;font-size:11px}
