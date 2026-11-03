@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Calls</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Calls">
+<meta name="theme-color" content="#14110f">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+/* ============================================================
+   Calls — standalone iPhone app, separate from the Tasks PWA (/m/).
+   Search a contact → Call · iMessage · FaceTime · WhatsApp.
+   Same Airtable contacts (ContactsData + ContactsAdded) and the same
+   ⭐ Frequent learning table (ContactUsage) as Tasks, so both stay in sync.
+   ============================================================ */
+:root{
+  --bg:#14110f; --panel:#1d1916; --panel2:#262019; --ink:#f5f3ee; --muted:#a8a29a; --dim:#6f6861; --line:#2c2723;
+  --call:#30D158; --callink:#0b1a10; --imsg:#0A84FF; --wa:#25D366; --waink:#06210f; --accent:#e8683c;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+body{min-height:100vh;padding:calc(var(--sat) + 8px) 16px calc(var(--sab) + 90px)}
+button,input,textarea{font:inherit;color:inherit}
+button{background:none;border:0;padding:0;cursor:pointer}
+a{color:inherit;text-decoration:none}
+header{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 10px}
+header h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.5px}
+.hbtn{width:40px;height:40px;border-radius:20px;background:var(--panel);font-size:18px;display:grid;place-items:center}
+
+/* the search bubble */
+.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:2px 0 8px;margin:0 -16px;padding-left:16px;padding-right:16px}
+.sw{position:relative}
+.search{width:100%;background:#18201b;border:2px solid rgba(48,209,88,.75);border-radius:26px;padding:15px 44px 15px 18px;font-size:18px;outline:none;-webkit-appearance:none}
+.search:focus{border-color:var(--call);box-shadow:0 0 0 4px rgba(48,209,88,.18)}
+.search::placeholder{color:#7fd99a}
+.search::-webkit-search-cancel-button{display:none}
+.sx{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:16px;background:var(--panel2);color:var(--muted);font-size:14px;display:none}
+.sw.has .sx{display:block}
+
+/* optional message to prefill iMessage / WhatsApp */
+.msgt{margin-top:8px;display:flex;gap:8px;align-items:center}
+.msgbtn{font-size:13.5px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px 11px}
+.msgbtn.on{color:var(--ink);border-color:#3a6;background:#17251c}
+.msgbox{display:none;margin-top:8px}
+.msgbox.open{display:block}
+.msgbox textarea{width:100%;min-height:70px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px 12px;font-size:16px;outline:none;resize:vertical}
+.msgnote{font-size:12px;color:var(--dim);margin-top:4px}
+
+h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:18px 2px 8px;font-weight:700}
+.hint{color:var(--dim);font-size:13.5px;padding:10px 4px}
+
+/* Frequent tiles */
+.frq{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ft{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px 10px 8px;min-width:0}
+.ft .fn{font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ft .fs{color:var(--dim);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:8px}
+.ft .fb{display:flex;gap:6px}
+.ft .fb a,.ft .fb button{flex:1;height:38px;border-radius:11px;display:grid;place-items:center;font-size:16px;background:var(--panel2)}
+
+/* result rows */
+.row{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.info{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.info b{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.info .sub{color:var(--dim);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.info .ph{color:var(--muted);font-size:13.5px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.more .info b{display:none}
+.btns{flex:none;display:flex;gap:6px;align-items:center}
+.b{height:44px;min-width:44px;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-size:17px;background:var(--panel2);border:1px solid var(--line);font-weight:700}
+.b.call{background:var(--call);border-color:var(--call);color:var(--callink);width:54px}
+.b.im{background:var(--imsg);border-color:var(--imsg);color:#fff}
+.b.wa{background:var(--wa);border-color:var(--wa);color:var(--waink);font-size:13px;font-weight:800}
+.b.sel{width:34px;min-width:34px;height:34px;border-radius:17px;font-size:15px;color:var(--muted)}
+.b.sel.on{background:var(--imsg);border-color:var(--imsg);color:#fff}
+.dial{background:#17251c;border:1px solid #2f6b4c;border-radius:14px;padding:6px 10px;margin:6px 0}
+.dial .row{border:0}
+.row.picked .info b{color:var(--imsg)}
+
+/* group bar */
+.grp{position:fixed;left:12px;right:12px;bottom:calc(var(--sab) + 12px);display:none;gap:8px;z-index:20}
+.grp.on{display:flex}
+.grp a{flex:1;background:var(--imsg);color:#fff;border-radius:16px;padding:15px;text-align:center;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.grp button{width:54px;background:var(--panel2);border-radius:16px;font-size:16px}
+
+/* sheets */
+.veil{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;display:none;align-items:flex-end}
+.veil.on{display:flex}
+.sheet{width:100%;max-height:88vh;overflow:auto;background:var(--panel);border-radius:22px 22px 0 0;padding:18px 16px calc(var(--sab) + 18px)}
+.sheet h3{margin:0 0 4px;font-size:20px}
+.sheet .sp{color:var(--muted);margin:0 0 12px;font-size:14px}
+.sb{display:flex;align-items:center;gap:12px;width:100%;padding:14px 12px;background:var(--panel2);border-radius:14px;margin-bottom:8px;font-size:16.5px;font-weight:600;text-align:left}
+.sb .si{width:26px;text-align:center;font-size:19px}
+.sb small{display:block;color:var(--dim);font-weight:500;font-size:12.5px}
+.sb.cancel{justify-content:center;background:transparent;color:var(--muted)}
+.fld{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:16px;margin:4px 0 10px;outline:none}
+label.l{font-size:13px;color:var(--muted)}
+.go{background:var(--call);color:var(--callink);font-weight:800;justify-content:center}
+.steps{margin:6px 0 14px;padding-left:20px;color:var(--ink);font-size:15px}
+.steps li{margin-bottom:7px}
+.steps code{background:var(--panel2);padding:1px 5px;border-radius:5px;font-size:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0}
+.card p{margin:0 0 10px;color:var(--muted);font-size:14px}
+.toast{position:fixed;left:50%;top:45%;transform:translate(-50%,-50%);background:rgba(30,30,30,.96);padding:12px 18px;border-radius:14px;font-weight:600;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+<header><h1>Calls</h1><div style="display:flex;gap:8px"><button class="hbtn" id="widgetBtn" aria-label="Home Screen widget">▦</button><button class="hbtn" id="setBtn" aria-label="Settings">⚙︎</button></div></header>
+
+<div class="top">
+  <div class="sw" id="sw"><input class="search" id="q" type="search" enterkeyhint="search" placeholder="🔍 Search name, company, number" autocomplete="off" autocorrect="off" spellcheck="false"><button class="sx" id="qx" aria-label="Clear">✕</button></div>
+  <div class="msgt"><button class="msgbtn" id="msgToggle">✍︎ Add a message</button><span class="msgnote" id="msgState"></span></div>
+  <div class="msgbox" id="msgBox"><textarea id="msg" placeholder="Type it once — 💬 iMessage and WA buttons will open with this filled in. You still press Send."></textarea></div>
+</div>
+
+<main id="res"></main>
+
+<div class="grp" id="grp"><a id="grpGo" href="#">💬 iMessage</a><button id="grpX" aria-label="Clear selection">✕</button></div>
+<div class="veil" id="veil"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ---------- storage (same keys as the Tasks app, so in Safari they share one copy) ---------- */
+function load(k,d){ try{ const v=JSON.parse(localStorage.getItem(k)||'null'); return v==null?d:v; }catch(e){ return d; } }
+function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+const LS_CFG='tb.cfg';
+const cfg=load(LS_CFG,{}); cfg.baseId=cfg.baseId||'appdDTNBbVrp6hVOv';
+const CONTACTS_TABLE='tbla8W2IjHCJMXgY5', CONTACTS_ADD_TABLE='tblMz61uZtH5DeDl1', CU_TABLE='tblxPMZa78C8n0U4t', CU_HALF=14*86400000;
+const atTbl=id=>'https://api.airtable.com/v0/'+cfg.baseId+'/'+id;
+const H=()=>({Authorization:'Bearer '+cfg.apiKey});
+
+const $=s=>document.querySelector(s);
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const flat=v=>{ if(v==null)return''; if(Array.isArray(v))return v.map(x=>x&&typeof x==='object'?(x.name||''):x).filter(Boolean).join(', '); if(typeof v==='object')return v.name||''; return String(v); };
+const onlyDigits=s=>(''+(s||'')).replace(/\D/g,'');
+const buzz=n=>{ try{ navigator.vibrate&&navigator.vibrate(n||6); }catch(e){} };
+let toastT; function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),1800); }
+
+/* ---------- link builders ---------- */
+const clean=p=>String(p||'').replace(/[^\d+]/g,'');
+const e164=p=>{ let d=onlyDigits(p); if(d.length===10) d='1'+d; return '+'+d; };   // US 10-digit → +1
+const waDigits=p=>e164(p).slice(1);
+const draft=()=>($('#msg').value||'').trim();
+const telHref=p=>'tel:'+clean(p);
+const imHref=p=>{ const b=draft(); return 'sms:'+clean(p)+(b?'&body='+encodeURIComponent(b):''); };   // Messages uses iMessage when they have it
+const imMany=ps=>{ const b=draft(); return 'sms://open?addresses='+ps.map(clean).join(',')+(b?'&body='+encodeURIComponent(b):''); };
+const waHref=p=>{ const b=draft(); return 'whatsapp://send?phone='+waDigits(p)+(b?'&text='+encodeURIComponent(b):''); };
+const ftHref=p=>'facetime:'+e164(p), ftaHref=p=>'facetime-audio:'+e164(p);
+// every outgoing link carries data-n (name) + data-p (number) + data-how so it's counted in ⭐ Frequent and 🕘 Recent
+const L=(href,n,p,how,cls,label,aria)=>`<a class="${cls}" href="${esc(href)}" data-n="${esc(n)}" data-p="${esc(p)}" data-how="${how}"${aria?` aria-label="${esc(aria)}"`:''}>${label}</a>`;
+const actionBtns=(n,p)=>L(telHref(p),n,p,'call','b call','📞','Call '+n)+L(imHref(p),n,p,'imsg','b im','💬','iMessage '+n)+L(waHref(p),n,p,'wa','b wa','WA','WhatsApp '+n)+`<button class="b" data-more="${esc(p)}" data-mn="${esc(n)}" aria-label="More">⋯</button>`;
+
+/* ---------- contacts (Airtable ContactsData JSON chunks + ContactsAdded) ---------- */
+let contacts=load('m.contacts',[]), loading=false;
+async function loadContacts(force){
+  const fresh=(Date.now()-(+localStorage.getItem('m.contacts.ts')||0))<12*3600*1000;
+  if((contacts.length&&fresh&&!force)||!cfg.apiKey||loading) return contacts; loading=true;
+  try{
+    let rows=[],off,g=0;
+    do{ const u=new URL(atTbl(CONTACTS_TABLE)); u.searchParams.set('pageSize','100'); if(off)u.searchParams.set('offset',off);
+      const r=await fetch(u,{headers:H()}); if(!r.ok){ if(r.status===401||r.status===403) toast('Airtable token rejected — check ⚙︎'); break; } const d=await r.json();
+      rows=rows.concat(d.records||[]); off=d.offset; }while(off&&++g<20);
+    let base=[];
+    if(rows.length){ const sorted=rows.map(r=>({idx:+flat(r.fields.Idx)||0,data:flat(r.fields.Data)||''})).sort((a,b)=>a.idx-b.idx);
+      try{ const arr=JSON.parse(sorted.map(r=>r.data).join('')); if(arr&&arr.length) base=arr; }catch(e){} }
+    let add=[];
+    try{ const ua=new URL(atTbl(CONTACTS_ADD_TABLE)); ua.searchParams.set('pageSize','100');
+      const ra=await fetch(ua,{headers:H()}); if(ra.ok){ const da=await ra.json();
+        add=(da.records||[]).map(r=>({n:flat(r.fields.Name),o:flat(r.fields.Org),p:(flat(r.fields.Phones)||'').split(/[,\n]/).map(s=>s.trim()).filter(Boolean)})).filter(c=>c.n&&c.p.length); } }catch(e){}
+    if(base.length||add.length){ contacts=add.concat(base); save('m.contacts',contacts); localStorage.setItem('m.contacts.ts',String(Date.now())); }
+  }catch(e){}
+  loading=false; return contacts;
+}
+function searchContacts(q){ q=(q||'').trim().toLowerCase(); if(!q) return []; const dq=onlyDigits(q); const words=q.split(/\s+/).filter(Boolean); const out=[];
+  for(const c of contacts){ const hay=((c.n||'')+' '+(c.o||'')).toLowerCase(); let hit=words.every(w=>hay.includes(w));
+    if(!hit&&dq.length>=3){ for(const ph of (c.p||[])){ if(onlyDigits(ph).includes(dq)){hit=true;break;} } }
+    if(hit){ out.push(c); if(out.length>=40) break; } }
+  // names that START with the query first, then frequent ones
+  const starts=c=>(c.n||'').toLowerCase().startsWith(q)?0:1;
+  return out.sort((a,b)=>starts(a)-starts(b)||(cuScoreFor(b)-cuScoreFor(a))); }
+
+/* ---------- ⭐ Frequent (Airtable ContactUsage, shared with Tasks) + 🕘 Recent (this device) ---------- */
+let cu=load('m.cu',{}), cuBusy=false, recent=load('c.recent',[]);
+const cuKey=p=>onlyDigits(p).slice(-10);
+const cuNow=r=>(r.score||0)*Math.pow(0.5,(Date.now()-(r.last||0))/CU_HALF);
+const cuScoreFor=c=>{ let s=0; (c.p||[]).forEach(p=>{ const r=cu[cuKey(p)]; if(r) s=Math.max(s,cuNow(r)+(r.pinned?100:0)); }); return s; };
+async function fetchUsage(force){
+  if(!cfg.apiKey||cuBusy) return; if(!force&&Date.now()-(+localStorage.getItem('m.cuAt')||0)<30*60000) return; cuBusy=true;
+  try{ let off,out=[],g=0; do{ const u=new URL(atTbl(CU_TABLE)); u.searchParams.set('pageSize','100'); if(off) u.searchParams.set('offset',off);
+      const r=await fetch(u,{headers:H()}); if(!r.ok) break; const d=await r.json(); out=out.concat(d.records||[]); off=d.offset; }while(off&&++g<20);
+    if(out.length){ const m={}; out.forEach(x=>{ const f=x.fields, k=f.Key||cuKey(f.Phone); if(!k) return; const loc=cu[k];
+        const rec={id:x.id,name:f.Name||'',phone:f.Phone||'',count:+f.Count||0,score:+f.Score||0,last:f.LastUsed?Date.parse(f.LastUsed):0,pinned:!!f.Pinned,hidden:!!f.Hidden};
+        m[k]=(loc&&loc.dirtyAt&&Date.now()-loc.dirtyAt<180000)?Object.assign(loc,{id:x.id}):rec; });
+      Object.keys(cu).forEach(k=>{ if(!m[k]&&cu[k].dirtyAt) m[k]=cu[k]; }); cu=m; save('m.cu',cu); localStorage.setItem('m.cuAt',Date.now()); } }catch(e){}
+  cuBusy=false; }
+async function cuSave(k){ const r=cu[k]; if(!r||!cfg.apiKey) return;
+  const fields={Key:k,Name:r.name,Phone:r.phone,Count:r.count,Score:+(+r.score||0).toFixed(3),LastUsed:new Date(r.last||Date.now()).toISOString(),Pinned:!!r.pinned,Hidden:!!r.hidden};
+  try{ await fetch(atTbl(CU_TABLE),{method:'PATCH',headers:Object.assign(H(),{'Content-Type':'application/json'}),
+    body:JSON.stringify({performUpsert:{fieldsToMergeOn:['Key']},typecast:true,records:[{fields}]})}); }catch(e){} }
+function useContact(name,phone,how){ const k=cuKey(phone); if(k.length<7) return;
+  const r=cu[k]||(cu[k]={name:'',phone:'',count:0,score:0,last:0});
+  r.score=cuNow(r)+1; r.count=(r.count||0)+1; r.last=Date.now(); r.hidden=false; if(name) r.name=name; r.phone=phone; r.dirtyAt=Date.now(); save('m.cu',cu); cuSave(k);
+  recent=[{n:name||'',p:phone,how,t:Date.now()}].concat(recent.filter(x=>cuKey(x.p)!==k)).slice(0,20); save('c.recent',recent); }
+function cuSet(k,patch){ const r=cu[k]; if(!r) return; Object.assign(r,patch,{dirtyAt:Date.now()}); save('m.cu',cu); cuSave(k); }
+function frequent(n){ return Object.entries(cu).filter(([k,r])=>!r.hidden&&(r.pinned||r.count)).sort((a,b)=>((!!b[1].pinned)-(!!a[1].pinned))||(cuNow(b[1])-cuNow(a[1]))).slice(0,n||8); }
+const companyOf=ph=>{ const k=cuKey(ph); const c=contacts.find(c=>(c.p||[]).some(p=>cuKey(p)===k)); return c&&c.o||''; };
+document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[data-p]'); if(!a) return; buzz(6); useContact(a.dataset.n,a.dataset.p,a.dataset.how); if(a.closest('.sheet')) closeSheet(); setTimeout(draw,400); },true);
+
+/* ---------- group iMessage ---------- */
+let group={};   // digits -> name
+function drawGrp(){ const k=Object.keys(group); $('#grp').classList.toggle('on',k.length>0); $('#grpGo').textContent='💬 iMessage '+k.length+' selected'; $('#grpGo').href=imMany(k); }
+$('#grpX').onclick=()=>{ group={}; drawGrp(); draw(); };
+
+/* ---------- render ---------- */
+const relTime=t=>{ const s=(Date.now()-t)/1000; return s<60?'just now':s<3600?Math.round(s/60)+'m ago':s<86400?Math.round(s/3600)+'h ago':Math.round(s/86400)+'d ago'; };
+const howIcon={call:'📞',imsg:'💬',wa:'🟢',ft:'🎥',fta:'🎧'};
+function rowHTML(n,o,p,more){ const d=clean(p); const sel=!!group[d];
+  return `<div class="row${more?' more':''}${sel?' picked':''}"><div class="info"><b>${sel?'✓ ':''}${esc(n)}</b>${o&&!more?`<span class="sub">${esc(o)}</span>`:''}<span class="ph">${esc(p)}</span></div><div class="btns">${actionBtns(n,p)}</div></div>`; }
+function draw(){
+  const q=$('#q').value.trim(); $('#sw').classList.toggle('has',!!q); const R=$('#res'); let h='';
+  if(!cfg.apiKey&&!contacts.length){
+    h+=`<div class="card"><p><b style="color:var(--ink)">Connect your contacts</b><br>This app reads the same Airtable contacts as Tasks. Paste your Airtable token once (Tasks → ⚙︎ has it). It stays on this phone.</p><button class="sb go" data-open-set>Connect Airtable</button></div>`;
+  }
+  if(q){
+    const dq=onlyDigits(q);
+    if(dq.length>=7&&dq.length===q.replace(/[\s()+\-.]/g,'').length) h+=`<div class="dial">${rowHTML('Dial '+q,'',q)}</div>`;
+    const hits=searchContacts(q).slice(0,25);
+    h+=hits.map(c=>(c.p||[]).map((p,i)=>rowHTML(c.n,c.o,p,i>0)).join('')).join('')||`<div class="hint">${contacts.length?'No match in '+contacts.length+' contacts':'Loading contacts…'}</div>`;
+  } else {
+    const F=frequent(8);
+    if(F.length){ h+='<h2>⭐ Frequent</h2><div class="frq">'+F.map(([k,r])=>{ const n=r.name||r.phone;
+      return `<div class="ft"><div class="fn">${r.pinned?'📌 ':''}${esc(n)}</div><div class="fs">${esc(companyOf(r.phone)||r.phone)}</div><div class="fb">${L(telHref(r.phone),n,r.phone,'call','','📞','Call '+n)}${L(imHref(r.phone),n,r.phone,'imsg','','💬','iMessage '+n)}${L(waHref(r.phone),n,r.phone,'wa','','🟢','WhatsApp '+n)}<button data-more="${esc(r.phone)}" data-mn="${esc(n)}" aria-label="More">⋯</button></div></div>`; }).join('')+'</div>'; }
+    if(recent.length){ h+='<h2>🕘 Recent</h2>'+recent.slice(0,12).map(r=>{ const n=r.n||r.p;
+      return `<div class="row"><div class="info"><b>${esc(n)}</b><span class="sub">${howIcon[r.how]||''} ${relTime(r.t)} · ${esc(r.p)}</span></div><div class="btns">${actionBtns(n,r.p)}</div></div>`; }).join(''); }
+    h+=`<div class="hint">${contacts.length?contacts.length+' contacts':'No contacts loaded yet'} · ⋯ → group iMessage, FaceTime · ✍︎ prefills a message</div>`;
+  }
+  R.innerHTML=h;
+  R.querySelectorAll('[data-grp]').forEach(b=>b.onclick=()=>{ const d=b.dataset.grp; if(group[d]) delete group[d]; else group[d]=b.dataset.gn||d; buzz(5); drawGrp(); draw(); });
+  R.querySelectorAll('[data-open-set]').forEach(b=>b.onclick=openSettings);
+}
+$('#q').addEventListener('input',draw);
+$('#qx').onclick=()=>{ $('#q').value=''; draw(); $('#q').focus(); };
+$('#q').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#q').blur(); });
+
+/* message prefill */
+$('#msg').value=load('c.draft','');
+const msgUI=()=>{ const v=draft(); $('#msgToggle').classList.toggle('on',!!v); $('#msgState').textContent=v?'Message ready — 💬 / WA will prefill it':''; };
+$('#msgToggle').onclick=()=>{ const b=$('#msgBox'); b.classList.toggle('open'); if(b.classList.contains('open')) $('#msg').focus(); };
+$('#msg').addEventListener('input',()=>{ save('c.draft',$('#msg').value); msgUI(); draw(); drawGrp(); });
+msgUI();
+
+/* ---------- sheets ---------- */
+function sheet(html,wire){ $('#sheet').innerHTML=html; $('#veil').classList.add('on'); $('#sheet').querySelectorAll('[data-close]').forEach(b=>b.onclick=closeSheet); wire&&wire($('#sheet')); }
+function closeSheet(){ $('#veil').classList.remove('on'); }
+$('#veil').addEventListener('click',e=>{ if(e.target.id==='veil') closeSheet(); });
+
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('[data-more]'); if(!b) return; e.preventDefault(); const p=b.dataset.more, n=b.dataset.mn||p; const k=cuKey(p), r=cu[k];
+  sheet(`<h3>${esc(n)}</h3><p class="sp">${esc(p)}</p>
+    ${L(telHref(p),n,p,'call','sb','<span class="si">📞</span>Phone call')}
+    ${L(ftHref(p),n,p,'ft','sb','<span class="si">🎥</span>FaceTime video')}
+    ${L(ftaHref(p),n,p,'fta','sb','<span class="si">🎧</span>FaceTime audio')}
+    ${L(imHref(p),n,p,'imsg','sb','<span class="si">💬</span><span>iMessage<small>Messages app · blue bubble if they have iMessage, otherwise SMS</small></span>')}
+    ${L(waHref(p),n,p,'wa','sb','<span class="si">🟢</span><span>WhatsApp chat<small>For a WhatsApp voice / video call, tap 📞 or 🎥 at the top of the chat</small></span>')}
+    <button class="sb" data-grpadd><span class="si">${group[clean(p)]?'✓':'＋'}</span><span>${group[clean(p)]?'Remove from':'Add to'} group iMessage<small>Pick several people, then tap the blue bar at the bottom</small></span></button>
+    <button class="sb" data-copy><span class="si">📋</span>Copy number</button>
+    ${r?`<button class="sb" data-pin><span class="si">📌</span>${r.pinned?'Unpin from':'Pin to'} Frequent</button><button class="sb" data-hide><span class="si">🙈</span>Hide from Frequent</button>`:''}
+    <button class="sb cancel" data-close>Cancel</button>`,s=>{
+      s.querySelector('[data-grpadd]').onclick=()=>{ const d=clean(p); if(group[d]) delete group[d]; else group[d]=n; closeSheet(); drawGrp(); draw(); };
+      s.querySelector('[data-copy]').onclick=()=>{ (navigator.clipboard?navigator.clipboard.writeText(p):Promise.reject()).then(()=>toast('Copied '+p)).catch(()=>toast(p)); closeSheet(); };
+      const pin=s.querySelector('[data-pin]'); if(pin) pin.onclick=()=>{ cuSet(k,{pinned:!r.pinned}); closeSheet(); draw(); };
+      const hide=s.querySelector('[data-hide]'); if(hide) hide.onclick=()=>{ cuSet(k,{hidden:true,pinned:false}); closeSheet(); draw(); toast('Hidden'); };
+    }); },true);
+
+function openSettings(){
+  sheet(`<h3>Settings</h3><p class="sp">Uses the same Airtable base as Tasks. The token never leaves this phone except to talk to Airtable.</p>
+    <label class="l">Airtable token</label><input class="fld" id="sk" type="password" placeholder="pat…" value="${esc(cfg.apiKey||'')}" autocomplete="off">
+    <label class="l">Base ID</label><input class="fld" id="sb" value="${esc(cfg.baseId||'')}" autocomplete="off">
+    <button class="sb go" id="ss">Save & load contacts</button>
+    <button class="sb" id="sr"><span class="si">🔄</span><span>Refresh contacts<small>${contacts.length} loaded${localStorage.getItem('m.contacts.ts')?' · '+relTime(+localStorage.getItem('m.contacts.ts')):''}</small></span></button>
+    <button class="sb" id="sc"><span class="si">🧹</span>Clear Recent list</button>
+    <button class="sb cancel" data-close>Close</button>`,s=>{
+      s.querySelector('#ss').onclick=async()=>{ cfg.apiKey=s.querySelector('#sk').value.trim(); cfg.baseId=s.querySelector('#sb').value.trim()||'appdDTNBbVrp6hVOv'; save(LS_CFG,cfg); closeSheet(); toast('Loading contacts…'); await loadContacts(true); await fetchUsage(true); draw(); toast(contacts.length?contacts.length+' contacts':'No contacts — check the token'); };
+      s.querySelector('#sr').onclick=async()=>{ closeSheet(); toast('Refreshing…'); await loadContacts(true); await fetchUsage(true); draw(); toast(contacts.length+' contacts'); };
+      s.querySelector('#sc').onclick=()=>{ recent=[]; save('c.recent',recent); closeSheet(); draw(); };
+    });
+}
+$('#setBtn').onclick=openSettings;
+
+/* ▦ How to get the search onto the Home Screen as a widget */
+function openWidgetHelp(){
+  sheet(`<h3>Search as a Home Screen widget</h3>
+    <p class="sp">iPhone doesn't let web apps make widgets, so there are two routes:</p>
+    <div class="card" style="margin-top:0"><b>1 · This app's icon <span style="color:var(--call)">(already works)</span></b>
+      <p style="margin-top:6px">In Safari: Share → <b>Add to Home Screen</b>. The icon opens straight onto the search bubble with your ⭐ Frequent people below it.</p></div>
+    <div class="card"><b>2 · A real widget, made with the Shortcuts app</b>
+      <p style="margin-top:6px">This searches your iPhone's own Contacts, so it works without opening any app first. It can also start <b>WhatsApp calls</b>, which a web link can't do.</p>
+      <ol class="steps">
+        <li>Open <b>Shortcuts</b> → <b>＋</b>. Name it <code>Call someone</code>.</li>
+        <li>Add <b>Select Contact</b>. It shows a contact picker with a search bar.</li>
+        <li>Add <b>Choose from Menu</b> with options: <code>📞 Call</code> <code>💬 iMessage</code> <code>🟢 WhatsApp message</code> <code>🟢 WhatsApp call</code> <code>🎥 FaceTime</code>.</li>
+        <li>Under each option, add:
+          <br>📞 → <b>Call</b> (Contact)
+          <br>💬 → <b>Send Message</b> (recipient = Contact, app Messages)
+          <br>🟢 msg → <b>Send Message</b>, then tap the app name and pick <b>WhatsApp</b>
+          <br>🟢 call → <b>Call</b>, tap the app name and pick <b>WhatsApp</b>
+          <br>🎥 → <b>FaceTime</b> (Contact)</li>
+        <li>Long-press the Home Screen → <b>Edit</b> → <b>Add Widget</b> → <b>Shortcuts</b> → pick the 1-shortcut size → choose <code>Call someone</code>.</li>
+      </ol>
+      <p>Tip: make a second shortcut that skips the menu (Select Contact → Call) for a one-tap “call” widget. You can also put either one in Control Center or on the Lock Screen (Edit → Add a Control → Shortcut), or on the Action Button.</p>
+      <p>If WhatsApp isn't listed under Call / Send Message, open WhatsApp once and make a call so iOS learns it, then look again.</p></div>
+    <button class="sb cancel" data-close>Close</button>`);
+}
+$('#widgetBtn').onclick=openWidgetHelp;
+
+/* ---------- start ---------- */
+draw(); drawGrp();
+loadContacts().then(draw); fetchUsage().then(draw);
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ fetchUsage().then(draw); loadContacts().then(draw); } });
+if(!('ontouchstart' in window)) $('#q').focus();
+if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
+</script>
+</body>
+</html>
