@@ -301,10 +301,18 @@ function fmtDate(d) {
 
 // ── Data loading ───────────────────────────────────────────────────────────────
 
+// First open: show the list only once everything that can move an email has arrived (first page of
+// mail, Scan, notes/snoozes, Always-archive rules). Drawing earlier reshuffles it under your first tap.
+var _ready = false, _wait = { page: 1, scan: 1, notes: 1, rules: 1 };
+function arrived(k) {
+  delete _wait[k];
+  if (!_ready && (k === 'all' || !Object.keys(_wait).length)) { _ready = true; redraw(); }
+}
+
 async function loadPage(reset) {
   if (_loading) return;
   _loading = true; _error = null;
-  if (reset) { _threads = []; _nextPage = null; _total = null; loadRules().then(function(){ rebuildList(_listEl); }).catch(function(){}); }
+  if (reset) { _threads = []; _nextPage = null; _total = null; loadRules().then(function(){ rebuildList(_listEl); }).catch(function(){}).then(function(){ arrived('rules'); }); }
   redraw();
   try {
     var startTok = _nextPage;
@@ -338,6 +346,7 @@ async function loadPage(reset) {
   }
   _loading = false;
   redraw();
+  arrived('page');
   // Keep loading until the whole inbox is in. Gmail "busy" (per-minute quota) → wait 60s, continue.
   if (_error === 'busy' || (_nextPage && !_error)) {
     setTimeout(function(){ loadPage(false); }, _error === 'busy' ? 60000 : 300);
@@ -529,7 +538,7 @@ async function loadScan() {
       if (f.FromEmail) _scan.bySender[String(f.FromEmail).toLowerCase()] = rec;
     });
   _scan.loaded = true;
-  loadNotes();
+  loadNotes().then(function(){ arrived('notes'); });
 }
 
 // ── To-do notes on starred emails (Airtable EmailNotes, so every device sees them) ──
@@ -820,6 +829,7 @@ function makeRow(t, showSender) {
       function commit() {
         if (_editing !== t.id) return;
         var v = ta.value; _editing = null; ta.disabled = true;
+        if (v.trim() === (nt ? nt.note : '')) { rebuildList(_listEl); return; }   // unchanged: keep the Result
         saveNote(t, v).then(function(){ rebuildList(_listEl); })
           .catch(function(){ _editing = t.id; _draft = v; rebuildList(_listEl); alert('Note not saved (Airtable). Try again.'); });
       }
@@ -980,6 +990,11 @@ document.addEventListener('click', function(e){
 function rebuildList(listEl) {
   if (!listEl) return;
   _listEl = listEl;
+  if (!_ready && !_error) {
+    var hold = document.createElement('div'); hold.className = 'glv-spin';
+    hold.textContent = 'Loading inbox…' + (_threads.length ? ' ' + _threads.length : '');
+    listEl.replaceChildren(hold); return;
+  }
   var frag = document.createDocumentFragment();
   var by = {};
   _threads.forEach(function(t){ t._c = classify(t); (by[t._c.b] = by[t._c.b] || []).push(t); });
@@ -1324,7 +1339,8 @@ function mount(host, cfg) {
   addCss(); _cfg = cfg; _host = host;
   if (_linkBackend) cfg.gmailBackend = _linkBackend;
   if (_linkApiKey && !cfg.apiKey) cfg.apiKey = _linkApiKey;
-  loadScan().then(function(){ if (_scan.loaded && _listEl) redraw(); });
+  loadScan().then(function(){ if (!_scan.loaded) arrived('notes'); arrived('scan'); if (_scan.loaded && _listEl) redraw(); });
+  setTimeout(function(){ arrived('all'); }, 10000);   // something slow or down: show what we have
 
   if (IS_PHONE && !backendUrl()) { buildPhoneScreen(host); return; }
   if (!cfg.gmailClientId && !backendUrl()) { buildSetupScreen(host); return; }
