@@ -450,6 +450,7 @@ function addCss() {
 .glv-rsnip mark.hl{background:rgba(224,164,88,.2);color:#ffd28a;border-radius:3px;padding:0 2px;font-weight:700}
 .glv-gm{margin-left:12px;color:#64838d;font-size:12.5px;text-decoration:none}.glv-gm:hover{color:#39c7df}
 .glv-fold{min-width:26px;padding:0 6px;font-size:13px}.glv-fold.on{background:rgba(57,199,223,.25);border-color:#39c7df}
+.glv-dr{display:inline-flex;align-items:center;margin-top:6px}.glv-drb{margin-top:4px}
 .glv-zz{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}.glv-zz .glv-ck{opacity:1}.glv-zi{margin-top:4px;color:#8aa6af}
 .glv-chip.bk{cursor:pointer}.glv-chip.cB b{color:#e5533a}.glv-chip.cD b{color:#e0a458}
 @media (hover:none){.glv-ck,.glv-arch{opacity:1}}
@@ -521,7 +522,7 @@ async function loadScan() {
   var key = window.TE && TE.key && TE.key(); if (!key || _scan.loaded) return;
   _scan.byThread = {}; _scan.bySender = {};
   var base = (TE.base && TE.base()) || 'appdDTNBbVrp6hVOv', off = '', recs = [];
-  var flds = ['ThreadId','FromEmail','Bucket','Project','Summary','Advice','RunAt'].map(function(f){ return 'fields%5B%5D=' + f; }).join('&');
+  var flds = ['ThreadId','FromEmail','Bucket','Project','Summary','Advice','RunAt','Draft','ForwardTo','Status','Question'].map(function(f){ return 'fields%5B%5D=' + f; }).join('&');
   try {
     do {
       var r = await fetch('https://api.airtable.com/v0/' + base + '/tblIl26oggXP4WtvE?pageSize=100&' + flds + (off ? '&offset=' + off : ''),
@@ -530,10 +531,11 @@ async function loadScan() {
       var d = await r.json(); recs = recs.concat(d.records || []); off = d.offset || '';
     } while (off);
   } catch (e) { return; }
-  recs.map(function(r){ return r.fields; }).sort(function(a, b){ return String(a.RunAt||'').localeCompare(String(b.RunAt||'')); })
+  recs.map(function(r){ return Object.assign({ _rid: r.id }, r.fields); }).sort(function(a, b){ return String(a.RunAt||'').localeCompare(String(b.RunAt||'')); })
     .forEach(function(f){
       var b = f.Bucket && typeof f.Bucket === 'object' ? f.Bucket.name : f.Bucket;
-      var rec = { bucket: String(b || '').charAt(0), project: f.Project || '', summary: f.Summary || '', advice: f.Advice || '' };
+      var st = f.Status && typeof f.Status === 'object' ? f.Status.name : f.Status;
+      var rec = { rid: f._rid, bucket: String(b || '').charAt(0), project: f.Project || '', summary: f.Summary || '', advice: f.Advice || '', draft: f.Draft || '', forwardTo: f.ForwardTo || '', status: st || '', question: f.Question || '' };
       if (f.ThreadId) _scan.byThread[f.ThreadId] = rec;
       if (f.FromEmail) _scan.bySender[String(f.FromEmail).toLowerCase()] = rec;
     });
@@ -647,15 +649,83 @@ function hasNote(t) { var n = _notes[t.id]; return !!(n && n.note); }
 function classify(t) {
   var r = _scan.byThread[t.id], snd = _scan.bySender[(t.senderEmail || '').toLowerCase()];
   var project = (r && r.project) || (snd ? snd.project : '');
-  if (Date.now() - t.date < HOUR && !(t.starred && hasNote(t))) return { b: 'H', project: project, summary: r && r.summary, advice: r && r.advice, starred: t.starred };
+  var recent = Date.now() - t.date < HOUR;
+  var hour = { b: 'H', project: project, summary: r && r.summary, advice: r && r.advice, starred: t.starred };
+  if (recent && t.starred && !hasNote(t)) return hour;
   if (t.starred && snoozedTill(t)) return { b: 'Z', project: project, summary: r && r.summary };
   if (t.starred) return { b: 'D', project: project, summary: r && r.summary, advice: r && r.advice };
+  var c = sorted(t, r, snd, project);
+  return recent && c.b !== 'A' ? hour : c;   // Last hour = new real mail; junk goes straight to Archive
+}
+function sorted(t, r, snd, project) {
   if (isAutoReply(t)) return { b: 'A', project: project, summary: r && r.summary, auto: true };
   if (_rule.senders[(t.senderEmail || '').toLowerCase()]) return { b: 'A', project: project, summary: r && r.summary, always: true };
   if (r && r.bucket) return { b: r.bucket, project: r.project, summary: r.summary, advice: r.advice, sorted: true };
   if (snd && (snd.bucket === 'A' || snd.bucket === 'E')) return { b: snd.bucket, project: project, guess: true };
   if (t.labels.some(function(l){ return /^CATEGORY_(PROMOTIONS|SOCIAL|FORUMS)$/.test(l); })) return { b: 'A', project: project, guess: true };
   return { b: 'N', project: project };
+}
+
+// Draft from the Email run, reviewed and approved right on the email. The next run sends it, never before.
+var _drOpen = {};
+function airtable(tbl, rest, opt) {
+  return fetch('https://api.airtable.com/v0/' + ((TE.base && TE.base()) || 'appdDTNBbVrp6hVOv') + '/' + tbl + (rest || ''), Object.assign({ headers: atHdr() }, opt))
+    .then(function(r){ if (!r.ok) throw new Error(r.status); return r.json(); });
+}
+async function approveDraft(t, r, text, to) {
+  var fields = { Status: 'Approved', Draft: text }; if (to) fields.ForwardTo = to;
+  await airtable('tblIl26oggXP4WtvE', '/' + r.rid, { method: 'PATCH', body: JSON.stringify({ fields: fields, typecast: true }) });
+  r.status = 'Approved'; r.draft = text; r.forwardTo = to || ''; delete _drOpen[t.id];
+  var n = _notes[t.id]; if (!n || !n.note) return;
+  n.result = '… Approved, ' + (to ? 'forwards' : 'sends') + ' at next run (8a / 12p)';
+  await fetch(atUrl('/' + n.rid), { method: 'PATCH', headers: atHdr(), body: JSON.stringify({ fields: { Result: n.result } }) }).catch(function(){});
+}
+function draftBox(t, div) {
+  var r = _scan.byThread[t.id]; if (!r || !r.rid) return;
+  var line = document.createElement('div'); line.className = 'glv-note-res';
+  if (r.status === 'Approved') { line.innerHTML = icT('clock', 'Approved: ' + (r.forwardTo ? 'forwards to ' + r.forwardTo : 'reply sends') + ' at next run (8a / 12p)'); div.appendChild(line); return; }
+  if (r.status !== 'New') return;
+  if (!r.draft) { if (r.question) { line.textContent = '? ' + r.question + ' (answer in the note)'; div.appendChild(line); } return; }
+  var tog = document.createElement('button'); tog.className = 'glv-btn glv-dr';
+  tog.innerHTML = icT(r.forwardTo ? 'mail' : 'reply', (_drOpen[t.id] ? '▾ ' : '▸ ') + (r.forwardTo ? 'Review forward' : 'Review reply'));
+  tog.addEventListener('click', function(e){ e.stopPropagation(); _drOpen[t.id] = !_drOpen[t.id]; rebuildList(_listEl); });
+  div.appendChild(tog);
+  if (!_drOpen[t.id]) return;
+  var box = document.createElement('div'); box.className = 'glv-drb';
+  box.addEventListener('click', function(e){ e.stopPropagation(); });
+  var who = document.createElement('div'); who.className = 'glv-note-res';
+  who.textContent = r.forwardTo ? 'Forward to (not a reply):' : 'Reply in thread to ' + t.senderName;
+  box.appendChild(who);
+  var to = null;
+  if (r.forwardTo) {
+    to = document.createElement('input'); to.type = 'text'; to.className = 'glv-note-in glv-dr-in'; to.value = r.editTo !== undefined ? r.editTo : r.forwardTo;
+    to.addEventListener('input', function(){ r.editTo = to.value; }); box.appendChild(to);
+  }
+  var ta = document.createElement('textarea'); ta.className = 'glv-note-in glv-dr-in'; ta.rows = 4; ta.value = r.edit !== undefined ? r.edit : r.draft;
+  ta.addEventListener('input', function(){ r.edit = ta.value; }); box.appendChild(ta);
+  var ok = document.createElement('button'); ok.className = 'glv-btn ok glv-dr'; ok.textContent = r.forwardTo ? 'Approve & forward' : 'Approve & send';
+  ok.addEventListener('click', function(){
+    var v = ta.value.trim(); if (!v) return alert('Draft is empty');
+    var list = '';
+    if (to) {   // a forward must never fall back to a reply
+      var L = to.value.split(',').map(function(x){ return x.trim(); }).filter(Boolean);
+      if (!L.length || !L.every(function(x){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x); })) return alert('Check the forward address');
+      list = L.join(', ');
+    }
+    ok.textContent = '…'; ok.disabled = true;
+    approveDraft(t, r, v, list).then(function(){ rebuildList(_listEl); })
+      .catch(function(){ ok.textContent = '! retry'; ok.disabled = false; });
+  });
+  box.appendChild(ok); div.appendChild(box);
+}
+
+// Task button: Items row, shows up in the Todo app. Remembered per device so a second tap can't double it.
+var TASKED_KEY = 'gl.tasked', _tasked = {}; try { _tasked = JSON.parse(localStorage.getItem(TASKED_KEY) || '{}'); } catch (e) {}
+async function createTask(t, name) {
+  var project = t._c && t._c.project, fields = { Task: name, Status: 'Open', Source: 'Email', TextExclude: true, Notes: 'https://mail.google.com/mail/u/0/#inbox/' + t.id };
+  if (project) fields.Project = project;
+  await airtable('tblLpOdHqxoP3siYk', '', { method: 'POST', body: JSON.stringify({ fields: fields, typecast: true }) });
+  _tasked[t.id] = 1; try { localStorage.setItem(TASKED_KEY, JSON.stringify(_tasked)); } catch (e) {}
 }
 
 // Fold/unfold every project subgroup of one bucket.
@@ -775,6 +845,18 @@ function makeRow(t, showSender) {
     });
     h.append(zz);
   }
+  if (window.TE && TE.key && TE.key()) {
+    var tk = document.createElement('button'); tk.className = 'glv-ck' + (_tasked[t.id] ? ' on' : '');
+    tk.textContent = _tasked[t.id] ? '✓ Task' : 'Task'; tk.title = 'Create a task in the Todo app';
+    tk.addEventListener('click', function(e){ e.stopPropagation();
+      if (_tasked[t.id] && !confirm('Task already made here. Make another?')) return;
+      var name = prompt('Task', 'Email: ' + t.subject + ' (' + t.senderName + ')'); if (!name || !name.trim()) return;
+      tk.textContent = '…'; tk.disabled = true;
+      createTask(t, name.trim()).then(function(){ tk.textContent = '✓ Task'; tk.className = 'glv-ck on'; tk.disabled = false; })
+        .catch(function(){ tk.textContent = '! retry'; tk.disabled = false; });
+    });
+    h.append(tk);
+  }
   h.append(al, arch);
 
   div.appendChild(h);
@@ -845,6 +927,8 @@ function makeRow(t, showSender) {
       div.appendChild(nb);
     }
   }
+
+  draftBox(t, div);
 
   // ▸ more: the email's own text, right here.
   var mo = document.createElement('button'); mo.className = 'glv-more'; mo.textContent = _bodies[t.id] ? '▾ less' : '▸ more';
@@ -1090,9 +1174,9 @@ function rebuildList(listEl) {
             });
             rows.forEach(function(t){ list.appendChild(makeRow(t, true)); });
           });
-        // Starred with a note: own group at the bottom, open by default, each row shows Claude's status.
+        // Starred with a note: own group at the bottom, folded like the others, each row shows Claude's status.
         if (noted.length) {
-          var nk = 'pj-D-__notes', nOpen = _expanded[nk] !== false;
+          var nk = 'pj-D-__notes', nOpen = _expanded[nk] !== undefined ? _expanded[nk] : _pjAll.D === true;
           var nh = document.createElement('div'); nh.className = 'glv-pj'; nh.dataset.a = nk; nh.textContent = (nOpen ? '▾ ' : '▸ ') + 'With notes · Claude status ';
           var ni = document.createElement('i'); ni.textContent = noted.length; nh.appendChild(ni);
           nh.addEventListener('click', function(e){ e.stopPropagation(); _expanded[nk] = !nOpen; rebuildList(_listEl); });
@@ -1334,7 +1418,8 @@ function buildPanel(host) {
 var _held;
 function redraw() {
   if (!_host) return;
-  var wait = _listEl ? _touchAt + 1200 - Date.now() : 0;   // finger busy: redraw once it's calm
+  var ae = document.activeElement, typing = ae && ae.classList && ae.classList.contains('glv-dr-in');
+  var wait = _listEl ? (typing ? 1500 : _touchAt + 1200 - Date.now()) : 0;   // finger busy or typing a draft: redraw once it's calm
   clearTimeout(_held);
   if (wait > 0) { _held = setTimeout(redraw, wait); return; }
   if (IS_PHONE && !backendUrl())     { buildPhoneScreen(_host); return; }
