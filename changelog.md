@@ -273,3 +273,4 @@
 - 2026-11-03 07:35  Calls: new calls default to Today (phone + desktop); Anytime/Tomorrow/Later rows swipe ← ⇠ Today
 - 2026-11-03 11:55  Boards: ＋ per section (prefilled), Guess on No-project/No-lead sections; one spelling per project/lead/sub (merged in Airtable); new items parse 'Project Sub/Lead task…' prefix
 - 2026-11-03 19:45  Desktop lists (Morning/Afternoon/etc.): lead groups collapsible, start collapsed, remembered
+- 2026-11-03 20:45  iPhone AM/PM call lists: lead groups collapsible, start collapsed, remembered
