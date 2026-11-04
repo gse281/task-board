@@ -1,7 +1,7 @@
 /* emailrun.js — "✉ Email run": button + results panel, shared by Dashboard and Focus 2.
    Button → EmailRunRequests row (Kind Scan). The "Email run" scheduled task picks it up, sorts the inbox into
    A Archive · B Don't miss · C Reply (drafted) · D Starred action · E FYI, and writes rows to EmailRun.
-   A: uncheck what to keep, then "Archive checked" → Archive request. C/D drafts: Approve → Status Approved → the task sends it in-thread.
+   A: uncheck what to keep, then "Archive checked" → Archive request. C/D drafts: Approve → Status Approved → the task sends it in-thread (or forwards it to ForwardTo when set).
    window.ER = { init(), button(opts), panel(), open() → email.html, mountPage(el), request(kind), rows(), onChange(fn) } */
 (function(){
 const RUN='tblIl26oggXP4WtvE', REQ='tblpkdXhqbqN1XFDd';
@@ -61,10 +61,22 @@ async function doneArchive(id){
   try{ const now=new Date().toISOString(); const r=await api(REQ,'',{method:'POST',body:JSON.stringify({fields:{Name:'Archive (Done) '+new Date().toLocaleString(),Kind:'Archive',Status:'Requested',RequestedAt:now},typecast:true})});
     reqs.unshift({id:r.id,Kind:'Archive',Status:'Requested',RequestedAt:now}); startPoll(); notify(); toast('✓ Done — archives at next run (8a/12p)'); }catch(e){ toast('Could not queue archive'); }
 }
-async function approve(r,text){   // sent in-thread by the next Email run pass (never auto-sent)
+async function approve(r,text,to){   // sent by the next Email run pass (never auto-sent): in-thread, or forwarded when ForwardTo is set
   rows=rows.filter(x=>x.id!==r.id); notify();
-  try{ await patch(r.id,{Status:'Approved',Draft:text}); toast('✅ Approved — sends at next run (8a/12p)'); }
+  try{ await patch(r.id,Object.assign({Status:'Approved',Draft:text},to?{ForwardTo:to}:{})); toast('✅ Approved — '+(to?'forwards':'sends')+' at next run (8a/12p)'); }
   catch(e){ toast('Approve failed'); load(true); }
+}
+// ForwardTo rows: who it goes to, editable, shown above the note. A forward must never fall back to a reply, so empty or bad addresses block Approve.
+function fwdBox(r,d,cls){
+  if(!r.ForwardTo) return null;
+  d.insertAdjacentHTML('beforeend','<div class="er-adv">↪ Forward to (not a reply):</div>');
+  const i=document.createElement('input'); i.className=cls; i.type='text'; i.value=r.ForwardTo; i.onclick=e=>e.stopPropagation(); d.appendChild(i); return i;
+}
+function send(r,ta,to){ const v=ta.value.trim(); if(!v) return toast('Draft is empty');
+  if(!to) return approve(r,v);
+  const L=to.value.split(',').map(x=>x.trim()).filter(Boolean);
+  if(!L.length||!L.every(x=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x))) return toast('Check the forward address');
+  approve(r,v,L.join(', '));
 }
 async function archiveChecked(box){
   const A=rows.filter(r=>r.Bucket.startsWith('A')); const keep=[], go=[];
@@ -87,8 +99,9 @@ function card(r,n,L){
   const row=document.createElement('div'); row.className='er-b';
   const mk=(t,cls,fn)=>{ const b=document.createElement('button'); b.type='button'; b.className='er-btn '+(cls||''); b.textContent=t; b.onclick=e=>{e.stopPropagation(); fn();}; row.appendChild(b); return b; };
   if(L==='C'||(L==='D'&&r.Draft)){
+    const to=fwdBox(r,d,'er-ta');
     const ta=document.createElement('textarea'); ta.className='er-ta'; ta.rows=4; ta.value=r.Draft||''; d.appendChild(ta);
-    mk('✅ Approve & send','ok',()=>{ const v=ta.value.trim(); if(!v) return toast('Draft is empty'); approve(r,v); });
+    mk(to?'✅ Approve & forward':'✅ Approve & send','ok',()=>send(r,ta,to));
   }
   if(L==='D'&&!r.Draft){
     if(r.Question) d.insertAdjacentHTML('beforeend','<div class="er-q">❓ '+esc(r.Question)+'</div>');
@@ -160,8 +173,9 @@ function wideRow(r,n,L){
   const bar=document.createElement('div'); bar.className='erw-bb';
   if(L==='C'||L==='D'){
     if(r.Draft||L==='C'){
+      const to=fwdBox(r,d,'erw-ta');
       const ta=document.createElement('textarea'); ta.className='erw-ta'; ta.rows=3; ta.value=r.Draft||''; d.appendChild(ta);
-      mk(bar,'✅ Approve & send','ok',()=>{ const v=ta.value.trim(); if(!v) return toast('Draft is empty'); approve(r,v); });
+      mk(bar,to?'✅ Approve & forward':'✅ Approve & send','ok',()=>send(r,ta,to));
     } else {
       if(r.Question) d.insertAdjacentHTML('beforeend','<div class="er-q">❓ '+esc(r.Question)+'</div>');
       const ta=document.createElement('textarea'); ta.className='erw-ta'; ta.rows=2; ta.placeholder='Tell Claude what to do…'; ta.value=r.Answer||''; d.appendChild(ta);
