@@ -255,8 +255,8 @@ function htmlDecode(s) {
   return (s||'').replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
 }
 
-var CACHE_KEY = 'gl.cache2';   // v2: date/snippet = latest message
-try { localStorage.removeItem('gl.cache'); } catch (e) {}
+var CACHE_KEY = 'gl.cache3';   // v3: sender = latest message too
+try { localStorage.removeItem('gl.cache'); localStorage.removeItem('gl.cache2'); } catch (e) {}
 var _cache = {}; try { _cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch (e) {}
 function fromCache(d) { var t = Object.assign({}, d); t.date = new Date(d.date); return t; }
 function saveCache() {
@@ -268,7 +268,10 @@ function saveCache() {
 function parseThread(t) {
   var msgs = t.messages || [];
   var first = msgs[0] || {}, last = msgs[msgs.length - 1] || first;   // date + snippet: newest message
-  var s = parseSender(hdr(first, 'From'));
+  // Sender: newest message not sent by you, so rules never land on your own address.
+  var sent = function(m){ return (m.labelIds || []).indexOf('SENT') >= 0; };
+  var other = msgs.slice().reverse().filter(function(m){ return !sent(m); })[0] || first;
+  var s = parseSender(hdr(other, 'From'));
   var dateStr = hdr(last, 'Date');
   return {
     id:          t.id,
@@ -276,6 +279,8 @@ function parseThread(t) {
     snippet:     htmlDecode(last.snippet || ''),
     senderName:  s.name,
     senderEmail: s.email,
+    senderMsg:   other.id,
+    youLast:     msgs.length > 1 && sent(last),
     date:        last.internalDate ? new Date(+last.internalDate) : dateStr ? new Date(dateStr) : new Date(),
     labels:      msgs.reduce(function(a, m){ return a.concat(m.labelIds || []); }, []),
     starred:     msgs.some(function(m){ return (m.labelIds || []).indexOf('STARRED') >= 0; }),
@@ -604,7 +609,9 @@ async function loadRules() {
   ids.forEach(function(k){ if (_rule.byThread[k]) fresh[k] = _rule.byThread[k]; else need.push(k); });
   await pool(need, 5, function(k){
     return gfetch('threads/' + k + '?format=METADATA&metadataHeaders=From').then(function(t){
-      fresh[k] = parseSender(hdr((t.messages || [])[0] || {}, 'From')).email.toLowerCase();
+      // Rule sender = first message carrying the label (older rules labelled the whole thread).
+      var ms = t.messages || [], m = ms.filter(function(x){ return (x.labelIds || []).indexOf(id) >= 0; })[0] || ms[0] || {};
+      fresh[k] = parseSender(hdr(m, 'From')).email.toLowerCase();
     }).catch(function(){});
   });
   _rule.byThread = fresh; ruleSenders();
@@ -612,7 +619,8 @@ async function loadRules() {
 async function setAlways(t, on) {
   var em = (t.senderEmail || '').toLowerCase(), id = await ruleLabelId(true);
   if (on) {
-    await apiModify(t.id, { addLabelIds: [id] }); _rule.byThread[t.id] = em;
+    // Label only the sender's message, so the rule stays on this sender as the thread grows.
+    await gfetch('messages/' + t.senderMsg + '/modify', { method: 'POST', body: JSON.stringify({ addLabelIds: [id] }) }); _rule.byThread[t.id] = em;
   } else {
     var ks = Object.keys(_rule.byThread).filter(function(k){ return _rule.byThread[k] === em; });
     await pool(ks, 5, function(k){ return apiModify(k, { removeLabelIds: [id] }).catch(function(){}); });
@@ -643,6 +651,7 @@ function classify(t) {
 function setFold(L, openAll) {
   _pjAll[L] = openAll;
   Object.keys(_expanded).forEach(function(k){ if (k.indexOf('pj-' + L + '-') === 0) delete _expanded[k]; });
+  if (L === 'N') _threads.forEach(function(t){ if (t._c && t._c.b === 'N') _expanded[t.senderName.toLowerCase()] = openAll; });   // Older groups by sender
 }
 
 // Queue a Scan request (same as Scan tab's "Run now"); the Email run picks it up at 8a / 12p.
@@ -709,7 +718,7 @@ function makeRow(t, showSender) {
   });
 
   var from = document.createElement('span'); from.className = 'glv-rf';
-  from.textContent = showSender ? t.senderName : t.subject;
+  from.textContent = showSender ? (t.youLast ? 'You · ' : '') + t.senderName : t.subject;
   from.title = t.senderEmail;
 
   var when = document.createElement('span'); when.className = 'glv-rw'; when.textContent = fmtDate(t.date);
@@ -1024,7 +1033,13 @@ function rebuildList(listEl) {
       fb.addEventListener('click', function(e){ e.stopPropagation(); setFold(L, !allOpen); rebuildList(_listEl); });
       sh.insertBefore(fb, sh.querySelector('.glv-xi'));
     }
-    sh.addEventListener('click', function(){ _expanded['bk-' + L] = !open; rebuildList(_listEl); });
+    // Header tap cycles: subgroups folded, all open, section closed.
+    sh.addEventListener('click', function(){
+      if (!open) { _expanded['bk-' + L] = true; setFold(L, false); }
+      else if (_pjAll[L] === true) _expanded['bk-' + L] = false;
+      else setFold(L, true);
+      rebuildList(_listEl);
+    });
     sec.appendChild(sh);
     if (open) {
       var list = document.createElement('div'); list.className = 'glv-list';
