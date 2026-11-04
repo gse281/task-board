@@ -642,10 +642,12 @@ async function setAlways(t, on) {
 var AUTO_RE = /^(re:\s*)?(automatic reply|auto[- ]?reply|auto[- ]?response|automatic response|out of (the )?office|ooo\b)|\b(away from (the|my) office|on vacation until)\b/i;
 function isAutoReply(t) { return t.autoReply || AUTO_RE.test(t.subject || ''); }
 
+function hasNote(t) { var n = _notes[t.id]; return !!(n && n.note); }
+
 function classify(t) {
   var r = _scan.byThread[t.id], snd = _scan.bySender[(t.senderEmail || '').toLowerCase()];
   var project = (r && r.project) || (snd ? snd.project : '');
-  if (Date.now() - t.date < HOUR) return { b: 'H', project: project, summary: r && r.summary, advice: r && r.advice, starred: t.starred };
+  if (Date.now() - t.date < HOUR && !(t.starred && hasNote(t))) return { b: 'H', project: project, summary: r && r.summary, advice: r && r.advice, starred: t.starred };
   if (t.starred && snoozedTill(t)) return { b: 'Z', project: project, summary: r && r.summary };
   if (t.starred) return { b: 'D', project: project, summary: r && r.summary, advice: r && r.advice };
   if (isAutoReply(t)) return { b: 'A', project: project, summary: r && r.summary, auto: true };
@@ -1061,8 +1063,8 @@ function rebuildList(listEl) {
       if (L === 'N') {
         groupThreads(its).forEach(function(g){ list.appendChild(makeSection(g)); });
       } else {
-        var g = {};
-        its.forEach(function(t){ var k = t._c.project || 'Other'; (g[k] = g[k] || []).push(t); });
+        var g = {}, noted = L === 'D' ? its.filter(hasNote) : [];
+        its.forEach(function(t){ if (noted.indexOf(t) >= 0) return; var k = t._c.project || 'Other'; (g[k] = g[k] || []).push(t); });
         var mix = L === 'D' && _dsort === 'shuffle';
         Object.keys(g).sort(mix ? function(a, b){ return rk('pj' + a) - rk('pj' + b); } : function(a, b){ return (a === 'Other') - (b === 'Other') || g[b].length - g[a].length || a.localeCompare(b); })
           .forEach(function(k){
@@ -1088,6 +1090,15 @@ function rebuildList(listEl) {
             });
             rows.forEach(function(t){ list.appendChild(makeRow(t, true)); });
           });
+        // Starred with a note: own group at the bottom, open by default, each row shows Claude's status.
+        if (noted.length) {
+          var nk = 'pj-D-__notes', nOpen = _expanded[nk] !== false;
+          var nh = document.createElement('div'); nh.className = 'glv-pj'; nh.dataset.a = nk; nh.textContent = (nOpen ? '▾ ' : '▸ ') + 'With notes · Claude status ';
+          var ni = document.createElement('i'); ni.textContent = noted.length; nh.appendChild(ni);
+          nh.addEventListener('click', function(e){ e.stopPropagation(); _expanded[nk] = !nOpen; rebuildList(_listEl); });
+          list.appendChild(nh);
+          if (nOpen) noted.forEach(function(t){ list.appendChild(makeRow(t, true)); });
+        }
       }
       sec.appendChild(list);
     }
