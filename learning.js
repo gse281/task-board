@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════════════
    learning.js — Roni's Learning tracks, shared by the iPhone app and the desktop.
-   1) Mishnah Gittin — one mishnah at a time (Hebrew, English toggle), % of the tractate, streak, learned today.
+   1) Mishnah (tractate = TR, now Nedarim) — one mishnah at a time (Hebrew, English toggle), % of the tractate, streak, learned today.
    2) Shnayim Mikra v'Echad Targum — this week's parsha, one pasuk at a time: Mikra (Hebrew) then Targum Onkelos.
       Resets when the new parsha starts; shows how many pesukim are left before Shabbat.
    Texts: Sefaria API (cached in localStorage). Progress: Airtable AppNotes row Key "learning" (syncs phone ↔ desktop).
@@ -8,7 +8,8 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 (function(){
 const AN='tblfAeWMfvocVGxZk', SEF='https://www.sefaria.org/api';
-const GITTIN=[6,7,8,9,9,7,9,10,10];                       // mishnayot per chapter (Sefaria shape)
+const TR='Nedarim';                                            // current tractate (was Gittin)
+const GITTIN=[4,5,11,8,6,10,9,7,10,8,12];                    // mishnayot per chapter of TR (Sefaria shape)
 const G_TOTAL=GITTIN.reduce((a,b)=>a+b,0);
 const LS=k=>{ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } }, SS=(k,v)=>{ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
 const today=()=>{ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
@@ -57,7 +58,8 @@ const flushPush=()=>{ if(pushT&&pushFn){ clearTimeout(pushT); pushFn(); } };   /
 document.addEventListener('visibilitychange',()=>{ if(document.hidden) flushPush(); });
 const touch=t=>{ st[t].at=Date.now(); };
 const rng=n=>Array.from({length:Math.max(0,n|0)},(_,i)=>i);
-function migrate(x){ if(!x) return x; x.g=x.g||{ch:1,m:1}; x.p=x.p||{name:'',idx:0}; if(!Array.isArray(x.g.learned)) x.g.learned=rng(Math.max(x.g.done||0,gOrd(x.g))); if(!Array.isArray(x.p.learned)) x.p.learned=rng(x.p.idx||0); return x; }
+function migrate(x){ if(!x) return x; x.g=x.g||{ch:1,m:1}; if(x.g.tr!==TR) x.g={tr:TR,ch:1,m:1,done:0,learned:[]}; x.p=x.p||{name:'',idx:0}; if(!Array.isArray(x.g.learned)) x.g.learned=rng(Math.max(x.g.done||0,gOrd(x.g))); if(!Array.isArray(x.p.learned)) x.p.learned=rng(x.p.idx||0); return x; }
+migrate(st); try{ SS('learn.state',st); }catch(e){}   // switch tractate → start fresh at 1:1
 const gLearned=()=>{ migrate(st); return new Set(st.g.learned); }, pLearned=()=>{ migrate(st); return new Set(st.p.learned); };
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pull(); });
 const subs=[]; const fire=()=>subs.forEach(f=>{ try{ f(); }catch(e){} });
@@ -65,14 +67,14 @@ function logToday(n){ const d=today(); st.log[d]=Math.max(0,(st.log[d]||0)+n); f
 function isoBack(n){ const d=new Date(Date.now()-n*864e5); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function streak(){ let n=0; for(let i=(st.log[today()]?0:1);;i++){ if(st.log[isoBack(i)]>0) n++; else break; } return n; }
 
-/* ── Mishnah Gittin ── */
+/* ── Mishnah (TR) ── */
 const gIdx=()=>GITTIN.slice(0,st.g.ch-1).reduce((a,b)=>a+b,0)+(st.g.m-1);           // 0-based position
 const gPct=()=>Math.round(Math.min(G_TOTAL,gLearned().size)/G_TOTAL*100);
-const gRef=()=>'Gittin '+st.g.ch+':'+st.g.m;
-async function gChapter(ch,lang){ const key='learn.gt2.'+ch+'.'+lang; const c=LS(key); if(c) return c;
-  const v=lang==='en'?'english':'hebrew'; const d=await fetch(SEF+'/v3/texts/Mishnah_Gittin.'+ch+'?version='+v).then(r=>r.json());
+const gRef=()=>TR+' '+st.g.ch+':'+st.g.m;
+async function gChapter(ch,lang){ const key='learn.gt2.'+TR+'.'+ch+'.'+lang; const c=LS(key); if(c) return c;
+  const v=lang==='en'?'english':'hebrew'; const d=await fetch(SEF+'/v3/texts/Mishnah_'+TR+'.'+ch+'?version='+v).then(r=>r.json());
   const t=((d.versions||[])[0]||{}).text||[]; const arr=(Array.isArray(t)?t:[t]).map(clean); SS(key,arr); return arr; }
-function gMove(dir){ let {ch,m}=st.g; if(dir>0){ if(m<GITTIN[ch-1]) m++; else if(ch<9){ ch++; m=1; } else return false; } else { if(m>1) m--; else if(ch>1){ ch--; m=GITTIN[ch-1]; } else return false; } st.g.ch=ch; st.g.m=m; return true; }
+function gMove(dir){ let {ch,m}=st.g; if(dir>0){ if(m<GITTIN[ch-1]) m++; else if(ch<GITTIN.length){ ch++; m=1; } else return false; } else { if(m>1) m--; else if(ch>1){ ch--; m=GITTIN[ch-1]; } else return false; } st.g.ch=ch; st.g.m=m; return true; }
 
 /* ── Parsha: Mikra + Targum Onkelos, one pasuk at a time ── */
 async function parsha(){ const c=LS('learn.cal'); const d0=today(); if(c&&c.day===d0&&c.aliyot8) return c;
@@ -172,7 +174,7 @@ function rowsHTML(){ css(); const S=summary(), P=previews(); const bar=p=>`<span
   const arrows=k=>`<div class="lcar"><button class="lca" data-lstep="${k}:-1" aria-label="Back">‹</button><button class="lca" data-lstep="${k}:1" aria-label="Learned — next">›</button></div>`;
   const F=dayFlags(); const add=[F.shabbat&&'Retzei',(F.rc||F.yt||F.cholHamoed)&&"Ya'aleh v'Yavo",(F.chanukah||F.purim)&&'Al HaNissim'].filter(Boolean);
   return `<div class="lrn"><div class="lcgrid">
-      <div class="lcw"><button class="lcard" data-learn="g"><span class="lct">Gittin ${st.g.ch}:${st.g.m}</span>${bar(S.g.pct)}<span class="lche">${esc(P.g)||'…'}</span><span class="lcm">${S.g.pct}% of Gittin</span></button>${arrows('g')}</div>
+      <div class="lcw"><button class="lcard" data-learn="g"><span class="lct">${TR} ${st.g.ch}:${st.g.m}</span>${bar(S.g.pct)}<span class="lche">${esc(P.g)||'…'}</span><span class="lcm">${S.g.pct}% of ${TR}</span></button>${arrows('g')}</div>
       <div class="lcw"><button class="lcard" data-learn="p"><span class="lct">${esc(S.p.name)} ${S.p.n?(Math.min(S.p.i+1,S.p.n))+'/'+S.p.n:''}</span>${bar(S.p.pct)}<span class="lche">${esc(P.p)||'…'}</span><span class="lcm">${S.p.pct}%${S.p.n?' · '+(S.p.shabbat?S.p.shabbat+'d to Shabbat':'Shabbat'):''}</span></button>${arrows('p')}</div>
     </div>
     <button class="lrrow bhrow" data-learn="b"><span class="lrt">Birkat Hamazon</span><span class="lrp">${add.length?'today: '+add.join(' · '):"Edot HaMizrach · Me'ein Shalosh"}</span></button>
@@ -259,7 +261,7 @@ let rd=null;
 function close(){ if(rd){ rd.remove(); rd=null; } flushPush(); fire(); }
 /* ── Reader with navigation. VIEW (what's on screen) is separate from saved PROGRESS (st.g / st.p).
    Browsing (pickers, ‹ ›, swipe, week ‹ ›) never changes progress; only ✓, "Set as my place" and "Mark done up to here" do. ── */
-const AL_HE=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שביעי','מפטיר'], GCH_HE=['א','ב','ג','ד','ה','ו','ז','ח','ט'];
+const AL_HE=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שביעי','מפטיר'], GCH_HE=['א','ב','ג','ד','ה','ו','ז','ח','ט','י','יא','יב'];
 const gOrdCM=(ch,m)=>GITTIN.slice(0,ch-1).reduce((a,b)=>a+b,0)+m-1;
 const gDoneN=()=>Math.max(st.g.done||0,gIdx());
 const calMem={}, ptMem={};
@@ -285,9 +287,9 @@ async function open(track){ css(); close(); rd=document.createElement('div'); rd
     if(track==='g'){ const {ch,m}=vg, ord=gOrdCM(ch,m), L=gLearned();
       const map=mapOpen?'<div class="lrmap">'+GITTIN.map((n,ci)=>'<div class="lrmr"><b data-gch="'+(ci+1)+'">פרק '+GCH_HE[ci]+'</b><div class="lrcells">'+Array.from({length:n},(_,mi)=>{ const o=gOrdCM(ci+1,mi+1);
           return '<button class="lrc'+(L.has(o)?' d':'')+(ci+1===ch&&mi+1===m?' v':'')+'" data-gm="'+(ci+1)+':'+(mi+1)+'">'+heNum(mi+1)+'</button>'; }).join('')+'</div></div>').join('')+'<div class="lrkey"><i class="d"></i>learned <i class="v"></i>you are here</div></div>':'';
-      rd.innerHTML=`<div class="lrh"><b>Mishnah Gittin</b><button class="lrtog${en?' on':''}" data-en>English</button><button class="lrx" data-x>✕</button></div>
+      rd.innerHTML=`<div class="lrh"><b>Mishnah ${TR}</b><button class="lrtog${en?' on':''}" data-en>English</button><button class="lrx" data-x>✕</button></div>
         <div class="lrnv"><button data-chp aria-label="Previous chapter">‹ פרק</button><button class="lrpick" data-map>פרק ${GCH_HE[ch-1]} · משנה ${heNum(m)} ▾</button><button data-chn aria-label="Next chapter">פרק ›</button><button class="lrmore${menuOpen?' on':''}" data-menu aria-label="More">•••</button></div>${menu}
-        <div class="lrpos">Gittin ${ch}:${m} · ${gPct()}% learned (${L.size}/${G_TOTAL}) · today ${st.log[today()]||0}${streak()?' · 🔥 '+streak():''}</div><div class="lrpb"><i style="width:${gPct()}%"></i></div>${map}
+        <div class="lrpos">${TR} ${ch}:${m} · ${gPct()}% learned (${L.size}/${G_TOTAL}) · today ${st.log[today()]||0}${streak()?' · 🔥 '+streak():''}</div><div class="lrpb"><i style="width:${gPct()}%"></i></div>${map}
         <div class="lrbody"><div class="lrlab">פרק ${heNum(ch)} משנה ${heNum(m)}${L.has(ord)?' · ✓ learned':''}</div><div class="lrhe">Loading…</div></div>
         <div class="lrnav"><button class="bk" data-bk aria-label="Previous">‹</button><button class="nx" data-nx>✓ Learned this → next</button><button class="bk" data-fw aria-label="Next">›</button></div>`;
       const m2=rd.querySelector('.lrmap'); if(m2){ m2.scrollTop=mapSc; if(!mapSc){ const v=m2.querySelector('.lrc.v'); if(v) v.scrollIntoView({block:'center'}); } }
@@ -311,7 +313,7 @@ async function open(track){ css(); close(); rd=document.createElement('div'); rd
       const m2=rd.querySelector('.lrmap'); if(m2){ m2.scrollTop=mapSc; if(!mapSc){ const vv=m2.querySelector('.lrc.v'); if(vv) vv.scrollIntoView({block:'center'}); } } }
     wire(); };
   const go=()=>{ savePos(); draw(); };
-  const view=d=>{ if(track==='g'){ let {ch,m}=vg; if(d>0){ if(m<GITTIN[ch-1]) m++; else if(ch<9){ ch++; m=1; } else return; } else { if(m>1) m--; else if(ch>1){ ch--; m=GITTIN[ch-1]; } else return; } vg={ch,m}; }
+  const view=d=>{ if(track==='g'){ let {ch,m}=vg; if(d>0){ if(m<GITTIN[ch-1]) m++; else if(ch<GITTIN.length){ ch++; m=1; } else return; } else { if(m>1) m--; else if(ch>1){ ch--; m=GITTIN[ch-1]; } else return; } vg={ch,m}; }
     else { const n=pt?pt.verses.length:0; const j=vp.i+d; if(j<0||j>=n) return; vp.i=j; } selAl=0; go(); };
   const learnedNext=()=>{ if(track==='g'){ const o=gOrdCM(vg.ch,vg.m), L=gLearned(); if(!L.has(o)){ st.g.learned.push(o); logToday(1); } st.g.done=st.g.learned.length; touch('g'); push(); if(o<G_TOTAL-1) view(1); else draw(); }
     else { if(vp.off!==0) return view(1); const L=pLearned(); if(!L.has(vp.i)){ st.p.learned.push(vp.i); logToday(1); } touch('p'); push(); const n=pt?pt.verses.length:0; if(vp.i<n-1) view(1); else draw(); }
@@ -322,9 +324,9 @@ async function open(track){ css(); close(); rd=document.createElement('div'); rd
   function wire(){ if(!rd) return; const q=s=>rd.querySelector(s), on=(s,f)=>{ const b=q(s); if(b) b.onclick=f; };
     on('[data-x]',close); on('[data-en]',()=>{ en=!en; SS('learn.en',en); draw(); });
     on('[data-nx]',learnedNext); on('[data-bk]',()=>view(-1)); on('[data-fw]',()=>view(1)); on('[data-map]',()=>{ mapOpen=!mapOpen; draw(); });
-    on('[data-menu]',()=>{ menuOpen=!menuOpen; draw(); }); on('[data-markdone]',()=>{ if(confirm(track==='g'?'Mark everything up to Gittin '+vg.ch+':'+vg.m+' as learned?':'Mark this week’s parsha learned up to this pasuk?')) markUpTo(); });
+    on('[data-menu]',()=>{ menuOpen=!menuOpen; draw(); }); on('[data-markdone]',()=>{ if(confirm(track==='g'?'Mark everything up to '+TR+' '+vg.ch+':'+vg.m+' as learned?':'Mark this week’s parsha learned up to this pasuk?')) markUpTo(); });
     on('[data-thisweek]',()=>{ vp={off:0,i:st.p.idx||0}; selAl=0; draw(); });
-    on('[data-chp]',()=>{ if(vg.ch>1){ vg={ch:vg.ch-1,m:1}; go(); } }); on('[data-chn]',()=>{ if(vg.ch<9){ vg={ch:vg.ch+1,m:1}; go(); } });
+    on('[data-chp]',()=>{ if(vg.ch>1){ vg={ch:vg.ch-1,m:1}; go(); } }); on('[data-chn]',()=>{ if(vg.ch<GITTIN.length){ vg={ch:vg.ch+1,m:1}; go(); } });
     on('[data-wkp]',()=>{ vp={off:vp.off-1,i:0}; selAl=0; draw(); }); on('[data-wkn]',()=>{ vp={off:vp.off+1,i:0}; selAl=0; draw(); });
     rd.querySelectorAll('[data-gm]').forEach(b=>b.onclick=()=>{ const [c,mm]=b.dataset.gm.split(':').map(Number); vg={ch:c,m:mm}; go(); });
     rd.querySelectorAll('[data-gch]').forEach(b=>b.onclick=()=>{ vg={ch:+b.dataset.gch,m:1}; go(); });

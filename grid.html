@@ -3066,7 +3066,7 @@ function nextUpPanel(){ const L=nextUpListD(); const {p,body}=nuPanelShell('nupi
 // ✨ Claude drafts waiting for Roni's approval (ClaudeQueue Status = Needs approval); click → the task's editor (Approve & send / Edit / Cancel)
 let claudeQD=[]; setInterval(()=>{ if(window.TaskEditor&&!document.hidden) TaskEditor.claudePending().then(L=>{ const ch=L.length!==claudeQD.length; claudeQD=L; if(ch) render(); }); },120000);
 setTimeout(()=>{ if(window.TaskEditor) TaskEditor.claudePending().then(L=>{ claudeQD=L; if(L.length) render(); }); },4000);
-// 📖 Learning — Mishnah Gittin + Shnayim Mikra v'Echad Targum (learning.js; progress synced via Airtable AppNotes "learning")
+// 📖 Learning — Mishnah Nedarim + Shnayim Mikra v'Echad Targum (learning.js; progress synced via Airtable AppNotes "learning")
 function learningPanel(){ if(!window.Learning) return null; const S=Learning.summary(); const {p,body}=nuPanelShell('learning','Learning',S.today?('today '+S.today+(S.streak?' · '+S.streak+'-day streak':'')):'');
   body.innerHTML=Learning.rowsHTML(); Learning.wireRows(body); if(!window._lrSubD){ window._lrSubD=1; Learning.onChange(()=>{ if(!document.querySelector('.lrd')) render(); }); } return p; }
 /* 📷 Desktop: drop an image on a task → attached to it; drop it on the Incoming panel / anywhere else, or ⌘V outside a text field → new Incoming item "Screenshot 9:14 AM" (+ ✨ Extract tasks). */
