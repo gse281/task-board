@@ -167,7 +167,7 @@ async function openBH(){ css(); close(); rd=document.createElement('div'); rd.cl
 function summary(){ const cal=LS('learn.cal'), pt=cal&&LS('learn.pt2.'+cal.url); const n=pt?pt.verses.length:0, i=Math.min(st.p.idx||0,n);
   return { g:{pos:gRef(),pct:gPct(),done:gLearned().size,total:G_TOTAL}, p:{name:cal?cal.name:'Parsha',he:cal?cal.he:'',pct:n?Math.round(Math.min(n,pLearned().size)/n*100):0,i,n,left:Math.max(0,n-pLearned().size),pos:pt&&pt.verses[i]?('Aliyah '+pt.verses[i].a+' · pasuk '+(i+1)+' of '+n):'',shabbat:daysToShabbat()}, today:st.log[today()]||0, streak:streak() }; }
 function previews(){ const out={g:'',p:'',o:''};
-  const gc=LS('learn.gt2.'+st.g.ch+'.he'); if(gc) out.g=gc[st.g.m-1]||''; else if(!previews._g){ previews._g=1; gChapter(st.g.ch,'he').then(()=>{ previews._g=0; fire(); }).catch(()=>{ previews._g=0; }); }
+  const gc=LS('learn.gt2.'+TR+'.'+st.g.ch+'.he'); if(gc) out.g=gc[st.g.m-1]||''; else if(!previews._g){ previews._g=1; gChapter(st.g.ch,'he').then(()=>{ previews._g=0; fire(); }).catch(()=>{ previews._g=0; }); }
   const cal=LS('learn.cal'), pt=cal&&LS('learn.pt2.'+cal.url); if(pt){ const v=pt.verses[Math.min(st.p.idx||0,pt.verses.length-1)]; if(v){ out.p=v.m; out.o=v.o; } }
   return out; }
 function rowsHTML(){ css(); const S=summary(), P=previews(); const bar=p=>`<span class="lcbar"><i style="width:${p}%"></i></span>`;
