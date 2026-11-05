@@ -374,19 +374,14 @@ function addCss() {
 .glv-btn:disabled{opacity:.45;cursor:default}
 .glv-btn.ok{background:#30D158;border-color:#30D158;color:#07141a}
 /* section header */
-.glv-sec{margin-bottom:6px}
-.glv-sh{display:flex;align-items:center;gap:7px;padding:6px 2px 5px;cursor:pointer;user-select:none}
-.glv-sh:hover .glv-sn{color:#c8e6f0}
 .gi{width:1.1em;height:1.1em;vertical-align:-.18em;flex-shrink:0}
 .glv-btn .gi,.glv-ck .gi,.glv-gm .gi,.glv-note .gi,.glv-note-res .gi{margin-right:5px}.glv-fold .gi{margin:0}
 .glv-chip .gi{width:13px;height:13px;vertical-align:-2px}
 .glv-sl .gi{width:14px;height:14px}
 .glv-sl{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;font:800 12px ui-monospace,Menlo,monospace;background:rgba(57,199,223,.15);color:#39c7df;flex-shrink:0}
-.glv-sn{font-size:15.5px;font-weight:800;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .glv-sc{color:#07141a;background:#39c7df;border-radius:999px;padding:0 7px;font-size:11px;font-weight:800;font-style:normal;flex-shrink:0}
 .glv-xi{color:#64838d;font-size:11px;flex-shrink:0}
 .glv-arch{height:22px;border-radius:6px;border:1px solid rgba(57,199,223,.3);background:transparent;color:#8aa6af;font:700 10px ui-monospace,Menlo,monospace;cursor:pointer;padding:0 8px;flex-shrink:0;opacity:0}
-.glv-sh:hover .glv-arch{opacity:1}
 .glv-arch:hover{background:rgba(57,199,223,.15);color:#39c7df;opacity:1}
 /* rows list */
 .glv-list{display:flex;flex-direction:column;gap:3px;margin-bottom:6px}
@@ -434,6 +429,7 @@ function addCss() {
 .glv-B .glv-sl{background:#e5533a;color:#fff}.glv-D .glv-sl{background:#e0a458;color:#07141a}.glv-A .glv-sl,.glv-N .glv-sl{color:#8aa6af}
 .glv-B .glv-row{border-color:rgba(229,83,58,.35)}.glv-D .glv-row{border-color:rgba(224,164,88,.35)}
 .glv-aa{height:26px;padding:0 9px;font-size:12px}
+.glv-ab{display:block;width:100%;height:44px;margin:6px 0 12px;font-size:14px}
 .glv-pj{cursor:pointer;user-select:none;break-after:avoid;font:800 12px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:#64838d;margin:6px 2px 0}
 .glv-pj{display:flex;align-items:center;gap:6px}.glv-pj i{font-style:normal;color:#39c7df;margin-left:3px;flex:1}
 .glv-pj:hover .glv-arch{opacity:1}
@@ -466,23 +462,16 @@ function addCss() {
   .glv-star{font-size:20px;padding:0 4px}
   .glv-ck{height:30px;padding:0 10px;font-size:11px}
   .glv-bar .glv-btn{height:30px;padding:0 10px;font-size:12px}
-  .glv-bh h2{font-size:17px}
+  .glv-bh{flex-wrap:wrap}.glv-bh h2{font-size:17px}
   .glv-st{flex:1;min-width:0;order:2;font-size:12.5px;text-align:right}
 }
 `;
   document.head.appendChild(s);
 }
 
-// ── Avatar letter + color ──────────────────────────────────────────────────────
-
 var SH_URL = 'https://mail.superhuman.com/rbenjamini@gmail.com/thread/';
 var SH_APP = 'superhuman://rbenjamini@gmail.com/thread/';   // opens the Mac app directly
 var IS_PHONE = /iPhone|iPod|Android/.test(navigator.userAgent);
-var COLORS = ['#1a5a7a','#2a6a4a','#5a3a7a','#7a3a2a','#1a4a7a','#3a6a2a','#7a2a4a','#1a7a6a'];
-function avatarColor(key) {
-  var n = 0; for (var i = 0; i < key.length; i++) n = (n*31 + key.charCodeAt(i)) & 0xffff;
-  return COLORS[n % COLORS.length];
-}
 
 // ── Scan buckets ───────────────────────────────────────────────────────────────
 // Same A–E buckets as the Scan tab (emailrun.js). A thread the Email run already
@@ -732,7 +721,6 @@ async function createTask(t, name) {
 function setFold(L, openAll) {
   _pjAll[L] = openAll;
   Object.keys(_expanded).forEach(function(k){ if (k.indexOf('pj-' + L + '-') === 0) delete _expanded[k]; });
-  if (L === 'N') _threads.forEach(function(t){ if (t._c && t._c.b === 'N') _expanded[t.senderName.toLowerCase()] = openAll; });   // Older groups by sender
 }
 
 // Queue a Scan request (same as Scan tab's "Run now"); the Email run picks it up at 8a / 12p.
@@ -747,6 +735,13 @@ function queueSort(btn) {
     .catch(function(){ btn.textContent = 'Failed — tap again'; btn.disabled = false; });
 }
 
+// Big Archive all at the end of a long list, so no scrolling back up to the header.
+function bottomArchive(key, label, ask, go) {
+  var b = document.createElement('button'); b.className = 'glv-btn glv-ab'; b.dataset.a = 'ab-' + key; b.textContent = label;
+  b.addEventListener('click', function(e){ e.stopPropagation(); if (confirm(ask)) archiveThreads(go, b); });
+  return b;
+}
+
 function archiveThreads(list, btn) {
   if (btn) { btn.textContent = '…'; btn.disabled = true; }
   return pool(list, 8, function(t){ return apiModify(t.id, { removeLabelIds: ['INBOX'] }); }).then(function(){
@@ -755,27 +750,6 @@ function archiveThreads(list, btn) {
     if (_total) _total = Math.max(0, _total - ids.length);
     rebuildList(_listEl);
   }).catch(function(){ if (btn) { btn.textContent = 'Error'; btn.disabled = false; } });
-}
-
-// ── Grouping ───────────────────────────────────────────────────────────────────
-
-function groupThreads(arr) {
-  var map = {}, order = [];
-  for (var i = 0; i < arr.length; i++) {
-    var t = arr[i], k = t.senderName.toLowerCase();
-    if (!map[k]) { map[k] = { key: k, label: t.senderName, threads: [], latest: t.date, hasUnread: false }; order.push(k); }
-    map[k].threads.push(t);
-    if (t.date > map[k].latest) map[k].latest = t.date;
-    if (t.unread) map[k].hasUnread = true;
-  }
-  var groups = order.map(function(k){ return map[k]; });
-  groups.forEach(function(g){ g.threads.sort(function(a,b){ return b.date - a.date; }); });
-  // Sort: unread groups first, then by most recent
-  groups.sort(function(a,b){
-    if (a.hasUnread !== b.hasUnread) return a.hasUnread ? -1 : 1;
-    return b.latest - a.latest;
-  });
-  return groups;
 }
 
 // ── DOM: single thread row ─────────────────────────────────────────────────────
@@ -959,56 +933,6 @@ function makeRow(t, showSender) {
   return div;
 }
 
-// ── DOM: sender section ────────────────────────────────────────────────────────
-
-function makeSection(g) {
-  var isOpen  = _expanded[g.key] === true;
-  var isMulti = g.threads.length > 1;
-  var sec = document.createElement('div'); sec.className = 'glv-sec';
-
-  if (isMulti) {
-    // Collapsible header
-    var sh = document.createElement('div'); sh.className = 'glv-sh'; sh.dataset.a = 'sh-' + g.key;
-
-    var sl = document.createElement('span'); sl.className = 'glv-sl';
-    sl.style.background = avatarColor(g.key);
-    sl.textContent = g.label.charAt(0).toUpperCase();
-
-    var sn = document.createElement('span'); sn.className = 'glv-sn'; sn.textContent = g.label;
-    var sc = document.createElement('i'); sc.className = 'glv-sc'; sc.textContent = g.threads.length;
-    var xi = document.createElement('span'); xi.className = 'glv-xi'; xi.textContent = isOpen ? '▾' : '▸';
-
-    var arch = document.createElement('button'); arch.className = 'glv-arch'; arch.textContent = 'Archive all';
-    arch.addEventListener('click', function(e) {
-      e.stopPropagation(); arch.textContent = '…'; arch.disabled = true;
-      Promise.all(g.threads.map(function(t){ return apiModify(t.id,{removeLabelIds:['INBOX']}); }))
-        .then(function(){
-          var ids = g.threads.map(function(t){ return t.id; });
-          _threads = _threads.filter(function(t){ return ids.indexOf(t.id) < 0; });
-          rebuildList(_listEl);
-        }).catch(function(){ arch.textContent = 'Err'; arch.disabled = false; });
-    });
-
-    sh.append(sl, sn, sc, arch, xi);
-    sh.addEventListener('click', function(e) {
-      if (e.target === arch || arch.contains(e.target)) return;
-      _expanded[g.key] = !isOpen; rebuildList(_listEl);
-    });
-    sec.appendChild(sh);
-
-    if (isOpen) {
-      var list = document.createElement('div'); list.className = 'glv-list';
-      g.threads.forEach(function(t){ list.appendChild(makeRow(t, false)); });
-      sec.appendChild(list);
-    }
-  } else {
-    // Single thread — flat row showing sender name
-    sec.appendChild(makeRow(g.threads[0], true));
-  }
-
-  return sec;
-}
-
 // ── Rebuild list ───────────────────────────────────────────────────────────────
 
 // Keep the email you're looking at in the same spot when the list redraws (emails still
@@ -1018,9 +942,11 @@ function scroller(el) { return el.closest('.pg-panel') || document.scrollingElem
 // Item just tapped (row button or header): that item (or the one after it, if it moved away)
 // stays at the same spot on screen through the redraws that follow.
 var _act = null, _quietUntil = 0, _shiftUntil = 0, _down = null, _touchAt = 0;
+// An email that changes section (unstarred, always-archive) must not drag the screen along with it.
+function secId(el) { var b = el.closest('.glv-bk'); return b ? b.id : ''; }
 function markAct(item) {
   var col = item.closest('.glv-col'), all = col ? Array.prototype.slice.call(col.querySelectorAll('[data-a]')) : [item];
-  var i = all.indexOf(item), ids = all.slice(i, i + 7).map(function(r){ return r.dataset.a; });
+  var i = all.indexOf(item), ids = all.slice(i, i + 7).map(function(r){ return { id: r.dataset.a, sec: secId(r) }; });
   _act = { ids: ids, y: item.getBoundingClientRect().top, at: Date.now() };
 }
 function saveAnchor(sc) {
@@ -1030,10 +956,10 @@ function saveAnchor(sc) {
     var r = items[i].getBoundingClientRect();
     if (r.bottom <= top + 40 || r.top >= vh) continue;
     seen[items[i].dataset.a] = r.top;
-    if (out.length < 6) out.push({ id: items[i].dataset.a, off: r.top - top, col: colIdx(items[i]) });
+    if (out.length < 6) out.push({ id: items[i].dataset.a, sec: secId(items[i]), off: r.top - top, col: colIdx(items[i]) });
   }
   if (_act && Date.now() - _act.at < 6000)
-    return { act: 1, list: _act.ids.map(function(id){ return { id: id, off: _act.y - top, col: 0 }; }), top: top, y: sc.scrollTop, seen: seen };
+    return { act: 1, list: _act.ids.map(function(o){ return { id: o.id, sec: o.sec, off: _act.y - top, col: 0 }; }), top: top, y: sc.scrollTop, seen: seen };
   return { list: out, top: top, y: sc.scrollTop, seen: seen };
 }
 function colIdx(el) { var c = el.closest('.glv-col'); return c ? Array.prototype.indexOf.call(c.parentNode.children, c) : 0; }
@@ -1047,8 +973,8 @@ function restoreAnchor(sc, a) {
   for (var i = 0; i < a.list.length && !hit; i++) {
     if (a.list[i].col !== a.list[0].col) continue;
     var el = m[a.list[i].id];
-    if (!el) continue;
-    // a vanished top item → the next one slides into its place
+    if (!el || secId(el) !== a.list[i].sec) continue;
+    // a vanished or moved top item → the next one slides into its place
     sc.scrollTop += (el.getBoundingClientRect().top - a.top) - a.list[0].off;
     hit = true;
   }
@@ -1101,8 +1027,9 @@ function rebuildList(listEl) {
     var sh = document.createElement('div'); sh.className = 'glv-bh'; sh.dataset.a = 'bk-' + L;
     sh.innerHTML = '<span class="glv-sl">' + ic(bk[2]) + '</span><h2></h2><i class="glv-sc">' + its.length + '</i><span class="glv-xi">' + (open ? '▾' : '▸') + '</span>';
     sh.querySelector('h2').textContent = bk[1];
+    var go = null, kept = 0;
     if (L === 'A' || L === 'E' || L === 'N') {
-      var go = its.filter(function(t){ return !_keep[t.id]; }), kept = its.length - go.length;
+      go = its.filter(function(t){ return !_keep[t.id]; }); kept = its.length - go.length;
       var all = document.createElement('button'); all.className = 'glv-btn glv-aa';
       all.textContent = 'Archive ' + (kept ? go.length + ' (' + kept + ' kept)' : 'all ' + go.length);
       all.disabled = !go.length;
@@ -1137,7 +1064,7 @@ function rebuildList(listEl) {
     // Header tap cycles: subgroups folded, all open, section closed.
     sh.addEventListener('click', function(){
       if (!open) { _expanded['bk-' + L] = true; setFold(L, false); }
-      else if (_pjAll[L] === true) _expanded['bk-' + L] = false;
+      else if (L === 'N' || _pjAll[L] === true) _expanded['bk-' + L] = false;
       else setFold(L, true);
       rebuildList(_listEl);
     });
@@ -1145,7 +1072,7 @@ function rebuildList(listEl) {
     if (open) {
       var list = document.createElement('div'); list.className = 'glv-list';
       if (L === 'N') {
-        groupThreads(its).forEach(function(g){ list.appendChild(makeSection(g)); });
+        its.forEach(function(t){ list.appendChild(makeRow(t, true)); });
       } else {
         var g = {}, noted = L === 'D' ? its.filter(hasNote) : [];
         its.forEach(function(t){ if (noted.indexOf(t) >= 0) return; var k = t._c.project || 'Other'; (g[k] = g[k] || []).push(t); });
@@ -1173,6 +1100,7 @@ function rebuildList(listEl) {
               return a.senderName.toLowerCase().localeCompare(b.senderName.toLowerCase()) || b.date - a.date;
             });
             rows.forEach(function(t){ list.appendChild(makeRow(t, true)); });
+            if (pgo.length > 3) list.appendChild(bottomArchive(pk, 'Archive all ' + pgo.length + ' · ' + k, 'Archive ' + pgo.length + ' in "' + k + '"?', pgo));
           });
         // Starred with a note: own group at the bottom, folded like the others, each row shows Claude's status.
         if (noted.length) {
@@ -1185,6 +1113,7 @@ function rebuildList(listEl) {
         }
       }
       sec.appendChild(list);
+      if (go && go.length) sec.appendChild(bottomArchive('bk-' + L, 'Archive ' + (kept ? go.length + ' (' + kept + ' kept)' : 'all ' + go.length), 'Archive ' + go.length + ' in "' + bk[1] + '"?' + (kept ? ' (' + kept + ' kept stay)' : ''), go));
     }
     colFor(L).appendChild(sec);
   });
