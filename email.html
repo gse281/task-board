@@ -16,6 +16,8 @@
 html,body{margin:0;height:100%}
 body{background:#070d11;color:#e7f3f6;font:14px/1.4 -apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 #app{display:flex;flex-direction:column;position:fixed;top:0;left:0;right:0;height:100vh;height:100dvh}
+/* iOS home-screen app: viewport comes up short by the status bar, leaving a black band at the bottom */
+@media (display-mode:standalone){#app{height:calc(100dvh + env(safe-area-inset-top))}}
 .nokey{padding:40px 24px;color:#8aa6af}.nokey a{color:#39c7df}
 .pg-tabs{display:flex;border-bottom:1px solid #1a2a32;background:#070d11;flex-shrink:0;padding-top:env(safe-area-inset-top)}
 .pg-tab{padding:9px 18px;font-size:13px;color:#8aa6af;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;user-select:none;white-space:nowrap}
@@ -37,7 +39,7 @@ var cfg = {};
 try { cfg = JSON.parse(localStorage.getItem('tb.cfg') || '{}') || {}; } catch(e) {}
 window.TE = { key: function(){ return cfg.apiKey || ''; }, base: function(){ return cfg.baseId || 'appdDTNBbVrp6hVOv'; } };
 </script>
-<script src="gmail-live.js?v=1793629200"></script>
+<script src="gmail-live.js?v=1793629300"></script>
 <script src="emailrun.js?v=1793620000"></script>
 <script>
 (function(){
