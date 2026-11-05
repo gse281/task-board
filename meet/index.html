@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Meetings</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Meetings">
+<meta name="theme-color" content="#14110f">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<style>
+/* Meetings — standalone iPhone app, separate from Tasks (/m/).
+   Same Airtable Calendar table + the weekday 8:30 / 3:00 Dialpad calls as the Tasks home card. */
+:root{--bg:#14110f;--panel:#1d1916;--panel2:#262019;--ink:#f5f3ee;--muted:#a8a29a;--dim:#6f6861;--line:#2c2723;
+  --join:#0A84FF;--call:#30D158;--callink:#0b1a10;--now:#e5533a;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.35 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-text-size-adjust:100%}
+body{min-height:100vh;padding:calc(var(--sat) + 8px) 16px calc(var(--sab) + 40px)}
+button,input{font:inherit;color:inherit}button{background:none;border:0;padding:0;cursor:pointer}a{color:inherit;text-decoration:none}
+header{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 12px}
+header h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.5px}
+.hb{width:40px;height:40px;border-radius:20px;background:var(--panel);font-size:18px;display:grid;place-items:center}
+.big{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:16px}
+.tag{display:inline-block;font:800 11px ui-monospace,Menlo,monospace;letter-spacing:1px;border-radius:7px;padding:4px 8px;background:var(--panel2);color:var(--muted)}
+.tag.now{background:var(--now);color:#fff}
+.big h2{margin:10px 0 2px;font-size:22px;line-height:1.2}
+.big .w{color:var(--muted);font-size:15px}
+.big .loc{color:var(--dim);font-size:13.5px;margin-top:4px;overflow-wrap:anywhere}
+.big .acts{display:flex;gap:8px;margin-top:14px}
+.jb{flex:1;height:56px;border-radius:16px;background:var(--join);color:#fff;font-weight:800;font-size:18px;display:flex;align-items:center;justify-content:center}
+.jb.tel{background:var(--call);color:var(--callink)}
+.db{flex:none;height:56px;padding:0 16px;border-radius:16px;background:var(--panel2);font-weight:700;display:flex;align-items:center}
+.cd{color:var(--muted);font-size:13px;margin-top:8px}
+h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:20px 2px 6px}
+.row{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line)}
+.row.past{opacity:.4}
+.row .t{flex:none;width:64px;color:var(--muted);font-size:13.5px;font-variant-numeric:tabular-nums}
+.row .i{flex:1;min-width:0}.row .i b{display:block;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .i span{display:block;color:var(--dim);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rj{flex:none;height:42px;padding:0 14px;border-radius:12px;background:var(--join);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center}
+.rj.tel{background:var(--call);color:var(--callink)}
+.hint{color:var(--dim);font-size:14px;padding:10px 2px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0}
+.card p{margin:0 0 10px;color:var(--muted);font-size:14px}
+.dial{display:flex;justify-content:space-between;align-items:center;margin-top:22px;background:var(--panel);border-radius:14px;padding:12px 14px}
+.dial span{color:var(--dim);font-size:12.5px;display:block}
+.veil{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;display:none;align-items:flex-end}.veil.on{display:flex}
+.sheet{width:100%;background:var(--panel);border-radius:22px 22px 0 0;padding:18px 16px calc(var(--sab) + 18px)}
+.fld{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;font-size:16px;margin:4px 0 10px;outline:none}
+.sb{display:block;width:100%;padding:14px;border-radius:14px;background:var(--panel2);margin-bottom:8px;font-weight:700;text-align:center}
+.sb.go{background:var(--call);color:var(--callink)}
+label{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header><h1>Meetings</h1><div style="display:flex;gap:8px"><button class="hb" id="ref" aria-label="Refresh">↻</button><button class="hb" id="set" aria-label="Settings">⚙︎</button></div></header>
+<main id="out"></main>
+<div class="veil" id="veil"><div class="sheet" id="sheet"></div></div>
+<script>
+function load(k,d){ try{ const v=JSON.parse(localStorage.getItem(k)||'null'); return v==null?d:v; }catch(e){ return d; } }
+function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+const $=s=>document.querySelector(s);
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const flat=v=>{ if(v==null)return''; if(Array.isArray(v))return v.map(x=>x&&typeof x==='object'?(x.name||''):x).filter(Boolean).join(', '); if(typeof v==='object')return v.name||''; return String(v); };
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const todayISO=()=>iso(new Date()), tomorrowISO=()=>{ const d=new Date(); d.setDate(d.getDate()+1); return iso(d); };
+
+const LS_CFG='tb.cfg'; const cfg=load(LS_CFG,{}); cfg.baseId=cfg.baseId||'appdDTNBbVrp6hVOv';
+const CAL_TABLE='tblTL2OeN8b1k2J8W';
+let calendar=load('m.calendar',[]);
+async function fetchCalendar(){
+  if(!cfg.apiKey) return calendar;
+  try{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+CAL_TABLE); u.searchParams.set('pageSize','100');
+    u.searchParams.set('filterByFormula','OR({Date}="'+todayISO()+'",{Date}="'+tomorrowISO()+'")');
+    const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) return calendar; const d=await r.json();
+    calendar=(d.records||[]).map(rec=>({title:flat(rec.fields.Title),when:flat(rec.fields.When),date:flat(rec.fields.Date),sort:+flat(rec.fields.Sort)||0,location:flat(rec.fields.Location),link:flat(rec.fields.Link)}));
+    save('m.calendar',calendar); localStorage.setItem('mt.at',Date.now());
+  }catch(e){}
+  return calendar;
+}
+
+/* same rules as the Tasks home card: weekday 8:30 + 3:00 Dialpad calls, deduped against the calendar */
+const DIAL_IN=localStorage.getItem('m.dialin2')||'917-268-3365';
+const CONF_TEL='tel:+19172683365', CONF_ROOM='https://meetings.dialpad.com/room/rbenjamini';
+const CONF_CALLS=[[510,540,'🌅 8:30 conference call','8:30–9:00 AM'],[900,930,'☀️ Afternoon call','3:00–3:30 PM']];
+function mtgEnd(e){ const m=String(e.when||'').split(/[–—-]/)[1]; if(m){ const r=m.match(/(\d{1,2})(?::(\d\d))?\s*(AM|PM)?/i); if(r){ let h=+r[1]%12, mm=+(r[2]||0); const ap=(r[3]||'').toUpperCase(); if(ap==='PM'||(!ap&&h<7)) h+=12; const v=h*60+mm; if(v>(e.sort||0)) return v; } } return (e.sort||0)+30; }
+function meetingsFor(day){
+  const list=calendar.filter(e=>e.date===day).map(e=>Object.assign({},e,{start:+e.sort||0,end:mtgEnd(e)}));
+  const dw=new Date(day+'T12:00:00').getDay();
+  if(dw>=1&&dw<=5){ CONF_CALLS.forEach(([s,e,t,when])=>{
+    const isDp=x=>/dialpad/i.test((x.link||'')+' '+(x.location||''));
+    const hit=list.find(x=>x.start<e&&x.end>s)||list.find(x=>isDp(x)&&Math.abs(x.start-s)<=90);
+    if(hit){ if(!hit.link||isDp(hit)||/^tel:/i.test(hit.link)){ hit.link=CONF_ROOM; hit.dial=CONF_TEL; hit.conf=1; } return; }
+    list.push({title:t,when,date:day,start:s,end:e,location:'Dialpad · dial-in '+DIAL_IN+' (no PIN)',link:CONF_ROOM,dial:CONF_TEL,conf:1}); }); }
+  return list.sort((a,b)=>a.start-b.start);
+}
+const isConf=e=>!!(e&&(e.conf||/dialpad/i.test((e.link||'')+' '+(e.location||''))));
+function joinHref(e){ if(isConf(e)) return CONF_ROOM; if(e.link&&/^(https?:|tel:)/i.test(e.link)) return e.link;
+  const m=(e.location||'').match(/https?:\/\/\S+/); if(m) return m[0];
+  const digits=(e.location||'').replace(/[^\d]/g,''); return digits.length>=10?'tel:'+digits:''; }
+const hhmm=m=>{ let h=Math.floor(m/60), mm=m%60; const ap=h>=12?'PM':'AM'; h=h%12||12; return h+(mm?':'+String(mm).padStart(2,'0'):'')+' '+ap; };
+const nowMin=()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); };
+const inMin=n=>n<60?n+' min':Math.floor(n/60)+'h'+(n%60?' '+(n%60)+'m':'');
+
+function joinBtn(e,cls){ const h=joinHref(e); if(!h) return ''; const tel=h.startsWith('tel:');
+  return `<a class="${cls}${tel?' tel':''}" href="${esc(h)}"${tel?'':' target="_blank" rel="noopener"'}>${tel?'📞 Call in':'▶ Join'}</a>`; }
+
+function draw(){
+  const O=$('#out'), cur=nowMin(), T=meetingsFor(todayISO()), M=meetingsFor(tomorrowISO()); let h='';
+  if(!cfg.apiKey) h+=`<div class="card"><p><b style="color:var(--ink)">Connect your calendar</b><br>Same Airtable as Tasks. Paste your token once (Tasks → ⚙︎ has it).</p><button class="sb go" data-set>Connect Airtable</button></div>`;
+  const now=T.filter(e=>e.start-5<=cur&&cur<e.end), next=T.find(e=>e.start>cur&&!now.includes(e));
+  const hero=now[0]||next;
+  if(hero){ const isNow=now.includes(hero);
+    h+=`<div class="big"><span class="tag${isNow?' now':''}">${isNow?'NOW':'NEXT · in '+inMin(hero.start-cur)}</span>
+      <h2>${esc(hero.title||'(untitled)')}</h2><div class="w">${esc(hero.when||hhmm(hero.start))}</div>${hero.location?`<div class="loc">📍 ${esc(hero.location)}</div>`:''}
+      <div class="acts">${joinBtn(hero,'jb')}${isConf(hero)?`<a class="db" href="${hero.dial||CONF_TEL}">📞 Dial-in</a>`:''}</div>
+      ${now.length>1?`<div class="cd">+ ${now.length-1} more happening now</div>`:''}${isNow&&next?`<div class="cd">Then ${esc(next.title)} at ${hhmm(next.start)}</div>`:''}</div>`;
+  } else h+=`<div class="big"><span class="tag">DONE</span><h2>No more meetings today</h2>${M.length?`<div class="w">Tomorrow starts ${hhmm(M[0].start)} · ${esc(M[0].title)}</div>`:''}</div>`;
+  const row=e=>`<div class="row${e.end<=cur&&e.date===todayISO()?' past':''}"><div class="t">${hhmm(e.start)}</div><div class="i"><b>${esc(e.title||'(untitled)')}</b>${e.location?`<span>${esc(e.location)}</span>`:''}</div>${joinBtn(e,'rj')}</div>`;
+  h+='<h3>Today</h3>'+(T.length?T.map(row).join(''):'<div class="hint">No meetings today.</div>');
+  if(M.length) h+='<h3>Tomorrow</h3>'+M.map(row).join('');
+  const at=+localStorage.getItem('mt.at')||0;
+  h+=`<div class="dial"><div><span>Dial-in · no PIN</span><a href="${CONF_TEL}"><b>${esc(DIAL_IN)}</b></a></div><span>${at?'Updated '+new Date(at).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):''}</span></div>`;
+  O.innerHTML=h; O.querySelectorAll('[data-set]').forEach(b=>b.onclick=openSet);
+}
+function openSet(){ $('#sheet').innerHTML=`<h3 style="margin-top:0">Settings</h3>
+  <label>Airtable token</label><input class="fld" id="k" type="password" placeholder="pat…" value="${esc(cfg.apiKey||'')}" autocomplete="off">
+  <label>Base ID</label><input class="fld" id="b" value="${esc(cfg.baseId)}" autocomplete="off">
+  <button class="sb go" id="ok">Save</button><button class="sb" id="cx">Cancel</button>`; $('#veil').classList.add('on');
+  $('#cx').onclick=()=>$('#veil').classList.remove('on');
+  $('#ok').onclick=async()=>{ cfg.apiKey=$('#k').value.trim(); cfg.baseId=$('#b').value.trim()||'appdDTNBbVrp6hVOv'; save(LS_CFG,cfg); $('#veil').classList.remove('on'); await fetchCalendar(); draw(); }; }
+$('#set').onclick=openSet;
+$('#veil').onclick=e=>{ if(e.target.id==='veil') $('#veil').classList.remove('on'); };
+$('#ref').onclick=()=>fetchCalendar().then(draw);
+
+draw(); fetchCalendar().then(draw);
+setInterval(draw,30000);   // NOW / NEXT flips on its own
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ draw(); fetchCalendar().then(draw); } });
+if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
+</script>
+</body>
+</html>
