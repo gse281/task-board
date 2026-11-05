@@ -503,7 +503,7 @@ function icT(n, txt) { var e = document.createElement('span'); e.textContent = t
 
 var BUCKETS = [
   ['H', 'Last hour', 'clock'], ['D', 'Starred', 'star'], ['Z', 'Snoozed', 'moon'], ['C', 'Reply', 'reply'], ['B', "Don't miss", 'alert'],
-  ['N', IS_PHONE ? 'Older' : 'Older — not sorted', 'inbox'],  ['E', 'Everything else', 'file'], ['A', 'Archive', 'archive']
+  ['N', 'Not sorted yet', 'inbox'],  ['E', 'Everything else', 'file'], ['A', 'Archive', 'archive']
 ];
 var _scan = { byThread: {}, bySender: {}, loaded: false };
 
@@ -666,13 +666,13 @@ async function approveDraft(t, r, text, to) {
   await airtable('tblIl26oggXP4WtvE', '/' + r.rid, { method: 'PATCH', body: JSON.stringify({ fields: fields, typecast: true }) });
   r.status = 'Approved'; r.draft = text; r.forwardTo = to || ''; delete _drOpen[t.id];
   var n = _notes[t.id]; if (!n || !n.note) return;
-  n.result = '… Approved, ' + (to ? 'forwards' : 'sends') + ' at next run (8a / 12p)';
+  n.result = '… Approved, ' + (to ? 'forwards' : 'sends') + ' at next run (11a / 2:47p)';
   await fetch(atUrl('/' + n.rid), { method: 'PATCH', headers: atHdr(), body: JSON.stringify({ fields: { Result: n.result } }) }).catch(function(){});
 }
 function draftBox(t, div) {
   var r = _scan.byThread[t.id]; if (!r || !r.rid) return;
   var line = document.createElement('div'); line.className = 'glv-note-res';
-  if (r.status === 'Approved') { line.innerHTML = icT('clock', 'Approved: ' + (r.forwardTo ? 'forwards to ' + r.forwardTo : 'reply sends') + ' at next run (8a / 12p)'); div.appendChild(line); return; }
+  if (r.status === 'Approved') { line.innerHTML = icT('clock', 'Approved: ' + (r.forwardTo ? 'forwards to ' + r.forwardTo : 'reply sends') + ' at next run (11a / 2:47p)'); div.appendChild(line); return; }
   if (r.status !== 'New') return;
   if (!r.draft) { if (r.question) { line.textContent = '? ' + r.question + ' (answer in the note)'; div.appendChild(line); } return; }
   var tog = document.createElement('button'); tog.className = 'glv-btn glv-dr';
@@ -723,7 +723,7 @@ function setFold(L, openAll) {
   Object.keys(_expanded).forEach(function(k){ if (k.indexOf('pj-' + L + '-') === 0) delete _expanded[k]; });
 }
 
-// Queue a Scan request (same as Scan tab's "Run now"); the Email run picks it up at 8a / 12p.
+// Queue a Scan request (same as Scan tab's "Run now"); the Email run picks it up at 11a / 2:47p.
 var _sortQueued = false;
 function queueSort(btn) {
   btn.textContent = '…'; btn.disabled = true;
@@ -896,7 +896,7 @@ function makeRow(t, showSender) {
     } else {
       var nb = document.createElement('div'); nb.className = 'glv-note' + (nt ? '' : ' add');
       nb.innerHTML = nt ? icT('pen', nt.note) : icT('plus', 'add to-do note');
-      if (nt) { var rs = document.createElement('div'); rs.className = 'glv-note-res'; rs.innerHTML = nt.result ? icT('spark', nt.result) : icT('clock', 'Claude handles this at the next Email run (8a / 12p)'); nb.appendChild(rs); }
+      if (nt) { var rs = document.createElement('div'); rs.className = 'glv-note-res'; rs.innerHTML = nt.result ? icT('spark', nt.result) : icT('clock', 'Claude handles this at the next Email run (11a / 2:47p)'); nb.appendChild(rs); }
       nb.addEventListener('click', function(e){ e.stopPropagation(); _editing = t.id; _draft = nt ? nt.note : ''; rebuildList(_listEl); });
       div.appendChild(nb);
     }
@@ -1013,7 +1013,7 @@ function rebuildList(listEl) {
 
   // Fixed columns so archiving a row never reflows sections across columns.
   var cols = document.createElement('div'); cols.className = 'glv-cols';
-  // Wide screens: 3 columns (D | C B Older | E A); else 2 (D C B | Older E A); phones stack.
+  // Wide screens: 3 columns (D | C B Not-sorted | E A); else 2 (D C B | Not-sorted E A); phones stack.
   var three = (listEl.clientWidth || window.innerWidth) >= 1300;
   var colA = document.createElement('div'), colB = document.createElement('div'), colC = document.createElement('div');
   colA.className = colB.className = colC.className = 'glv-col';
@@ -1039,7 +1039,7 @@ function rebuildList(listEl) {
     }
     if (L === 'N' && window.TE && TE.key && TE.key()) {
       var srt = document.createElement('button'); srt.className = 'glv-btn glv-aa ok';
-      srt.innerHTML = _sortQueued ? icT('clock', 'Queued — sorts at 8a / 12p') : icT('mail', 'Sort these');
+      srt.innerHTML = _sortQueued ? icT('clock', 'Queued — sorts at 11a / 2:47p') : icT('mail', 'Sort these');
       srt.disabled = !!_sortQueued;
       srt.title = 'Queue an Email run. It sorts up to 100 of these per run (newest first).';
       srt.addEventListener('click', function(e){ e.stopPropagation(); queueSort(srt); });

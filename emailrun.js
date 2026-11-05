@@ -47,7 +47,7 @@ async function request(kind){
   const now=new Date().toISOString();
   try{ const r=await api(REQ,'',{method:'POST',body:JSON.stringify({fields:{Name:(kind==='Scan'?'Email run ':'Archive A ')+new Date().toLocaleString(),Kind:kind,Status:'Requested',RequestedAt:now},typecast:true})});
     req={id:r.id,Kind:kind,Status:'Requested',RequestedAt:now}; startPoll(); notify();
-    toast(kind==='Scan'?'✉ Email run queued — next run 8a or 12p':'🗄 Archive queued');
+    toast(kind==='Scan'?'✉ Email run queued — next run 11a or 2:47p':'🗄 Archive queued');
   }catch(e){ toast('Could not queue — check connection'); }
 }
 const patch=(id,fields)=>api(RUN,'/'+id,{method:'PATCH',body:JSON.stringify({fields,typecast:true})});
@@ -57,13 +57,13 @@ async function doneArchive(id){
   rows=rows.filter(r=>r.id!==id); notify();
   try{ await patch(id,{Status:'ToArchive'}); }catch(e){ return toast('Save failed'); }
   const live=(reqs||[]).find(r=>r.Kind==='Archive'&&/Requested|Running/.test(r.Status));
-  if(live&&live.Status==='Requested'){ toast('✓ Done — archives at next run (8a/12p)'); return; }
+  if(live&&live.Status==='Requested'){ toast('✓ Done — archives at next run (11a/2:47p)'); return; }
   try{ const now=new Date().toISOString(); const r=await api(REQ,'',{method:'POST',body:JSON.stringify({fields:{Name:'Archive (Done) '+new Date().toLocaleString(),Kind:'Archive',Status:'Requested',RequestedAt:now},typecast:true})});
-    reqs.unshift({id:r.id,Kind:'Archive',Status:'Requested',RequestedAt:now}); startPoll(); notify(); toast('✓ Done — archives at next run (8a/12p)'); }catch(e){ toast('Could not queue archive'); }
+    reqs.unshift({id:r.id,Kind:'Archive',Status:'Requested',RequestedAt:now}); startPoll(); notify(); toast('✓ Done — archives at next run (11a/2:47p)'); }catch(e){ toast('Could not queue archive'); }
 }
 async function approve(r,text,to){   // sent by the next Email run pass (never auto-sent): in-thread, or forwarded when ForwardTo is set
   rows=rows.filter(x=>x.id!==r.id); notify();
-  try{ await patch(r.id,Object.assign({Status:'Approved',Draft:text},to?{ForwardTo:to}:{})); toast('✅ Approved — '+(to?'forwards':'sends')+' at next run (8a/12p)'); }
+  try{ await patch(r.id,Object.assign({Status:'Approved',Draft:text},to?{ForwardTo:to}:{})); toast('✅ Approved — '+(to?'forwards':'sends')+' at next run (11a/2:47p)'); }
   catch(e){ toast('Approve failed'); load(true); }
 }
 // ForwardTo rows: who it goes to, editable, shown above the note. A forward must never fall back to a reply, so empty or bad addresses block Approve.
@@ -191,7 +191,7 @@ function pageView(){
   const p=document.createElement('div'); p.className='erw';
   const scan=reqs.find(r=>r.Kind==='Scan'), arc=reqs.find(r=>r.Kind==='Archive');
   const live=r=>r&&/Requested|Running/.test(r.Status);
-  const st=scan?(live(scan)?'<span class="er-run">Scanning — '+(scan.Status==='Running'?(scan.Detail?esc(scan.Detail):'working…'):'queued '+when(scan.RequestedAt)+' · runs 8a/12p')+'</span>':
+  const st=scan?(live(scan)?'<span class="er-run">Scanning — '+(scan.Status==='Running'?(scan.Detail?esc(scan.Detail):'working…'):'queued '+when(scan.RequestedAt)+' · runs 11a/2:47p')+'</span>':
       scan.Status==='Failed'?'<span class="er-bad">Last scan failed'+(scan.Detail?': '+esc(scan.Detail):'')+'</span>':'Last scan '+when(scan.FinishedAt||scan.RequestedAt)+(scan.Detail?' · '+esc(scan.Detail):'')):'Never run';
   const arcLive=live(arc);
   const counts=(inbox?'<span class="erw-chip erw-inbox" title="Threads in your Gmail inbox as of '+esc(when(inbox.at))+'">📥 <b>'+inbox.n+'</b> in inbox</span>':'')+BK.map(([L,val])=>{ const n=rows.filter(r=>r.Bucket===val).length; return n?'<a href="#erw-'+L+'" class="erw-chip erw-c'+L+'"><b>'+L+'</b> '+n+'</a>':''; }).join('');
@@ -207,7 +207,7 @@ function pageView(){
     const hb=s.firstChild;
     if(L==='A'&&arcLive){
       s.classList.add('erw-q');
-      hb.insertAdjacentHTML('beforeend','<span class="er-run erw-qs">🗄 '+(arc.Status==='Running'?(arc.Detail?esc(arc.Detail):'archiving…'):'queued '+when(arc.RequestedAt)+' · runs 8a/12p')+'</span>');
+      hb.insertAdjacentHTML('beforeend','<span class="er-run erw-qs">🗄 '+(arc.Status==='Running'?(arc.Detail?esc(arc.Detail):'archiving…'):'queued '+when(arc.RequestedAt)+' · runs 11a/2:47p')+'</span>');
       const det=document.createElement('details'); det.className='erw-qd';
       det.innerHTML='<summary>'+its.length+' queued to archive — tap to see</summary>';
       const list=document.createElement('div'); list.className='erw-list';
