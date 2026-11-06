@@ -47,7 +47,7 @@ header h1{margin:0;font-size:28px;font-weight:800;letter-spacing:-.5px}
 
 /* optional message to prefill iMessage / WhatsApp */
 .msgt{margin-top:8px;display:flex;gap:8px;align-items:center}
-.msgbtn{font-size:13.5px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px 11px}
+.msgbtn{white-space:nowrap;font-size:13.5px;color:var(--muted);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:6px 11px}
 .msgbtn.on{color:var(--ink);border-color:#3a6;background:#17251c}
 .msgbox{display:none;margin-top:8px}
 .msgbox.open{display:block}
@@ -86,8 +86,27 @@ h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)
 /* group bar */
 .grp{position:fixed;left:12px;right:12px;bottom:calc(var(--sab) + 12px);display:none;gap:8px;z-index:20}
 .grp.on{display:flex}
-.grp a{flex:1;background:var(--imsg);color:#fff;border-radius:16px;padding:15px;text-align:center;font-weight:800;box-shadow:0 8px 24px rgba(0,0,0,.5)}
-.grp button{width:54px;background:var(--panel2);border-radius:16px;font-size:16px}
+.grp a,.grp button{box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.grp #grpGo{flex:1;background:var(--imsg);color:#fff;border-radius:16px;padding:15px 8px;text-align:center;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grp #grpWa{width:54px;background:var(--wa);color:var(--waink);border-radius:16px;display:grid;place-items:center;font-weight:800;font-size:13px}
+.grp button{width:50px;background:var(--panel2);border-radius:16px;font-size:16px}
+.hbtn.on{background:var(--imsg);color:#fff}
+.gmode .row{cursor:pointer}
+.ck{flex:none;width:30px;height:30px;border-radius:15px;border:2px solid var(--dim);display:grid;place-items:center;font-size:15px;font-weight:800;color:#fff}
+.ft.picked{border-color:var(--imsg);background:#12243a}
+.picked .ck{background:var(--imsg);border-color:var(--imsg)}
+.gmode .btns{display:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+.chip{background:#12243a;border:1px solid #1f4f86;color:#cfe4ff;border-radius:14px;padding:5px 10px;font-size:13.5px}
+.inv{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px}
+.inv p{margin:0 0 10px;color:var(--muted);font-size:13.5px}
+.inv .ib{display:flex;gap:8px}
+.inv .ib button{flex:1;height:46px;border-radius:12px;background:var(--call);color:var(--callink);font-weight:800}
+.inv .ib button b{opacity:.7;font-weight:700;margin-left:4px}
+.gr{display:flex;align-items:center;gap:8px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.gr .info{flex:1}
+.gbar{display:flex;align-items:center;justify-content:space-between;background:#12243a;border:1px solid #1f4f86;border-radius:14px;padding:10px 12px;margin-top:8px;font-size:14px}
+.gbar button{color:#9cc8ff;font-weight:700}
 
 /* sheets */
 .veil{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:40;display:none;align-items:flex-end}
@@ -112,17 +131,18 @@ label.l{font-size:13px;color:var(--muted)}
 </style>
 </head>
 <body>
-<header><h1>Calls</h1><div style="display:flex;gap:8px"><button class="hbtn" id="widgetBtn" aria-label="Home Screen widget">▦</button><button class="hbtn" id="setBtn" aria-label="Settings">⚙︎</button></div></header>
+<header><h1>Calls</h1><div style="display:flex;gap:8px"><button class="hbtn" id="gBtn" aria-label="Group text">👥</button><button class="hbtn" id="widgetBtn" aria-label="Home Screen widget">▦</button><button class="hbtn" id="setBtn" aria-label="Settings">⚙︎</button></div></header>
 
 <div class="top">
   <div class="sw" id="sw"><input class="search" id="q" type="search" enterkeyhint="search" placeholder="🔍 Search name, company, number" autocomplete="off" autocorrect="off" spellcheck="false"><button class="sx" id="qx" aria-label="Clear">✕</button></div>
   <div class="msgt"><button class="msgbtn" id="msgToggle">✍︎ Add a message</button><span class="msgnote" id="msgState"></span></div>
+  <div id="gTop"></div>
   <div class="msgbox" id="msgBox"><textarea id="msg" placeholder="Type it once — 💬 iMessage and WA buttons will open with this filled in. You still press Send."></textarea></div>
 </div>
 
 <main id="res"></main>
 
-<div class="grp" id="grp"><a id="grpGo" href="#">💬 iMessage</a><button id="grpX" aria-label="Clear selection">✕</button></div>
+<div class="grp" id="grp"><a id="grpGo" href="#">💬 Text</a><a id="grpWa" href="#" aria-label="WhatsApp: pick a group chat">WA</a><button id="grpSave" aria-label="Save group">💾</button><button id="grpX" aria-label="Clear selection">✕</button></div>
 <div class="veil" id="veil"><div class="sheet" id="sheet"></div></div>
 <div class="toast" id="toast"></div>
 
@@ -213,16 +233,40 @@ function frequent(n){ return Object.entries(cu).filter(([k,r])=>!r.hidden&&(r.pi
 const companyOf=ph=>{ const k=cuKey(ph); const c=contacts.find(c=>(c.p||[]).some(p=>cuKey(p)===k)); return c&&c.o||''; };
 document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('a[data-p]'); if(!a) return; buzz(6); useContact(a.dataset.n,a.dataset.p,a.dataset.how); if(a.closest('.sheet')) closeSheet(); setTimeout(draw,400); },true);
 
-/* ---------- group iMessage ---------- */
-let group={};   // digits -> name
-function drawGrp(){ const k=Object.keys(group); $('#grp').classList.toggle('on',k.length>0); $('#grpGo').textContent='💬 iMessage '+k.length+' selected'; $('#grpGo').href=imMany(k); }
-$('#grpX').onclick=()=>{ group={}; drawGrp(); draw(); };
+/* ---------- 👥 Group texts: pick people (👥 mode), text them all in one iMessage, save groups, invite the call roster ---------- */
+let group={}, gmode=false, groups=load('c.groups',[]);   // group: digits -> name · groups: [{name, m:{digits:name}}]
+const waPick=()=>{ const b=draft(); return 'whatsapp://send'+(b?'?text='+encodeURIComponent(b):''); };   // WhatsApp can't open a group by link → opens its chat picker with the text filled in
+function setMode(on){ gmode=on; document.body.classList.toggle('gmode',on); $('#gBtn').classList.toggle('on',on); drawGrp(); draw(); if(on&&!Object.keys(group).length) toast('Tap people to add them'); }
+function drawGrp(){ const k=Object.keys(group), n=k.length; $('#grp').classList.toggle('on',n>0);
+  $('#grpGo').textContent='💬 Text '+n+(n===1?' person':' people'); $('#grpGo').href=imMany(k); $('#grpWa').href=waPick();
+  $('#gTop').innerHTML=(gmode||n)?`<div class="gbar"><span>👥 ${n?n+' picked':'Group text — tap people to add'}</span>${gmode?'<button id="gDone">Done</button>':'<button id="gEdit">Edit</button>'}</div>`+(n?`<div class="chips">${k.map(d=>`<button class="chip" data-unpick="${esc(d)}">${esc(group[d])} ✕</button>`).join('')}</div>`:''):'';
+  const gd=$('#gDone'); if(gd) gd.onclick=()=>setMode(false); const ge=$('#gEdit'); if(ge) ge.onclick=()=>setMode(true);
+  $('#gTop').querySelectorAll('[data-unpick]').forEach(b=>b.onclick=()=>{ delete group[b.dataset.unpick]; drawGrp(); draw(); }); }
+function togglePick(d,n){ if(group[d]) delete group[d]; else group[d]=n||d; buzz(5); drawGrp(); draw(); }
+$('#gBtn').onclick=()=>setMode(!gmode);
+$('#grpX').onclick=()=>{ group={}; setMode(false); };
+$('#grpSave').onclick=()=>{ const k=Object.keys(group); if(!k.length) return; const name=(prompt('Name this group',''))||''; if(!name.trim()) return;
+  groups=groups.filter(g=>g.name!==name.trim()).concat([{name:name.trim(),m:Object.assign({},group)}]); save('c.groups',groups); toast('Saved “'+name.trim()+'”'); draw(); };
+function loadGroup(m,msg){ group=Object.assign({},m); if(msg!=null){ $('#msg').value=msg; save('c.draft',msg); $('#msgBox').classList.add('open'); msgUI(); } setMode(true); window.scrollTo(0,0); }
+document.addEventListener('click',e=>{ const a=e.target.closest&&e.target.closest('#grpGo,#grpWa'); if(!a) return; Object.entries(group).forEach(([d,n])=>useContact(n,d,a.id==='grpGo'?'imsg':'wa')); },true);
+
+/* 📞 Invite to the call — the same roster as Tasks (Airtable CallContacts, AM / PM flags) */
+const CC_TABLE='tblLl5Wb4vJK8xGBs', CONF_ROOM='https://meetings.dialpad.com/room/rbenjamini';
+const DIAL_IN=localStorage.getItem('m.dialin2')||'917-268-3365';
+const inviteText=()=>'Please join the call: '+CONF_ROOM+' or dial '+DIAL_IN+' (no PIN)';
+let callCts=load('m.callcts',[]);
+async function fetchRoster(force){ if(!cfg.apiKey) return; if(!force&&Date.now()-(+localStorage.getItem('m.callctsAt')||0)<30*60000) return;
+  try{ const u=new URL(atTbl(CC_TABLE)); u.searchParams.set('pageSize','100'); const r=await fetch(u,{headers:H()});
+    if(r.ok){ const d=await r.json(); callCts=(d.records||[]).map(x=>({id:x.id,name:x.fields.Name||'',phone:x.fields.Phone||'',slots:x.fields.Slots||[],active:!!x.fields.Active}));
+      save('m.callcts',callCts); localStorage.setItem('m.callctsAt',Date.now()); } }catch(e){} }
+const roster=slot=>callCts.filter(c=>c.active&&c.phone&&(slot==='all'||(c.slots||[]).includes(slot)));
+function invite(slot){ const L=roster(slot); if(!L.length){ toast('No one on that call list'); return; } const m={}; L.forEach(c=>m[clean(c.phone)]=c.name||c.phone); loadGroup(m,inviteText()); toast(L.length+' loaded — untick anyone, then 💬 Text'); }
 
 /* ---------- render ---------- */
 const relTime=t=>{ const s=(Date.now()-t)/1000; return s<60?'just now':s<3600?Math.round(s/60)+'m ago':s<86400?Math.round(s/3600)+'h ago':Math.round(s/86400)+'d ago'; };
 const howIcon={call:'📞',imsg:'💬',wa:'🟢',ft:'🎥',fta:'🎧'};
 function rowHTML(n,o,p,more){ const d=clean(p); const sel=!!group[d];
-  return `<div class="row${more?' more':''}${sel?' picked':''}"><div class="info"><b>${sel?'✓ ':''}${esc(n)}</b>${o&&!more?`<span class="sub">${esc(o)}</span>`:''}<span class="ph">${esc(p)}</span></div><div class="btns">${actionBtns(n,p)}</div></div>`; }
+  return `<div class="row${more?' more':''}${sel?' picked':''}" data-pick="${esc(d)}" data-pn="${esc(n)}">${gmode?`<span class="ck">${sel?'✓':''}</span>`:''}<div class="info"><b>${esc(n)}</b>${o&&!more?`<span class="sub">${esc(o)}</span>`:''}<span class="ph">${esc(p)}</span></div><div class="btns">${actionBtns(n,p)}</div></div>`; }
 function draw(){
   const q=$('#q').value.trim(); $('#sw').classList.toggle('has',!!q); const R=$('#res'); let h='';
   if(!cfg.apiKey&&!contacts.length){
@@ -234,16 +278,25 @@ function draw(){
     const hits=searchContacts(q).slice(0,25);
     h+=hits.map(c=>(c.p||[]).map((p,i)=>rowHTML(c.n,c.o,p,i>0)).join('')).join('')||`<div class="hint">${contacts.length?'No match in '+contacts.length+' contacts':'Loading contacts…'}</div>`;
   } else {
+    const inv=`<div class="inv"><p>📞 <b style="color:var(--ink)">Invite to the call</b> — texts your call list the Dialpad link + ${esc(DIAL_IN)}</p><div class="ib"><button data-inv="morning">AM<b>${roster('morning').length}</b></button><button data-inv="afternoon">PM<b>${roster('afternoon').length}</b></button><button data-inv="all">All<b>${roster('all').length}</b></button></div></div>`;
+    h+='<h2>👥 Groups</h2>'+inv+groups.map((g,i)=>{ const k=Object.keys(g.m);
+      return `<div class="gr"><div class="info"><b>${esc(g.name)}</b><span class="sub">${esc(Object.values(g.m).join(', '))}</span></div><div class="btns"><a class="b im" href="${esc(imMany(k))}" data-gsend="${i}" aria-label="Text ${esc(g.name)}">💬</a><button class="b" data-gopen="${i}">Edit</button><button class="b" data-gdel="${i}" aria-label="Delete">🗑</button></div></div>`; }).join('')
+      +(groups.length?'':'<div class="hint">Tap 👥 up top, pick people, then 💾 to save a group.</div>');
     const F=frequent(8);
     if(F.length){ h+='<h2>⭐ Frequent</h2><div class="frq">'+F.map(([k,r])=>{ const n=r.name||r.phone;
-      return `<div class="ft"><div class="fn">${r.pinned?'📌 ':''}${esc(n)}</div><div class="fs">${esc(companyOf(r.phone)||r.phone)}</div><div class="fb">${L(telHref(r.phone),n,r.phone,'call','','📞','Call '+n)}${L(imHref(r.phone),n,r.phone,'imsg','','💬','iMessage '+n)}${L(waHref(r.phone),n,r.phone,'wa','','🟢','WhatsApp '+n)}<button data-more="${esc(r.phone)}" data-mn="${esc(n)}" aria-label="More">⋯</button></div></div>`; }).join('')+'</div>'; }
+      return `<div class="ft${group[clean(r.phone)]?' picked':''}" data-pick="${esc(clean(r.phone))}" data-pn="${esc(n)}"><div class="fn">${gmode?(group[clean(r.phone)]?'✅ ':'⬜️ '):''}${r.pinned?'📌 ':''}${esc(n)}</div><div class="fs">${esc(companyOf(r.phone)||r.phone)}</div><div class="fb">${L(telHref(r.phone),n,r.phone,'call','','📞','Call '+n)}${L(imHref(r.phone),n,r.phone,'imsg','','💬','iMessage '+n)}${L(waHref(r.phone),n,r.phone,'wa','','🟢','WhatsApp '+n)}<button data-more="${esc(r.phone)}" data-mn="${esc(n)}" aria-label="More">⋯</button></div></div>`; }).join('')+'</div>'; }
     if(recent.length){ h+='<h2>🕘 Recent</h2>'+recent.slice(0,12).map(r=>{ const n=r.n||r.p;
-      return `<div class="row"><div class="info"><b>${esc(n)}</b><span class="sub">${howIcon[r.how]||''} ${relTime(r.t)} · ${esc(r.p)}</span></div><div class="btns">${actionBtns(n,r.p)}</div></div>`; }).join(''); }
-    h+=`<div class="hint">${contacts.length?contacts.length+' contacts':'No contacts loaded yet'} · ⋯ → group iMessage, FaceTime · ✍︎ prefills a message</div>`;
+      return `<div class="row${group[clean(r.p)]?' picked':''}" data-pick="${esc(clean(r.p))}" data-pn="${esc(n)}">${gmode?`<span class="ck">${group[clean(r.p)]?'✓':''}</span>`:''}<div class="info"><b>${esc(n)}</b><span class="sub">${howIcon[r.how]||''} ${relTime(r.t)} · ${esc(r.p)}</span></div><div class="btns">${actionBtns(n,r.p)}</div></div>`; }).join(''); }
+    h+=`<div class="hint">${contacts.length?contacts.length+' contacts':'No contacts loaded yet'} · 👥 group text · ✍︎ prefills a message</div>`;
   }
   R.innerHTML=h;
   R.querySelectorAll('[data-grp]').forEach(b=>b.onclick=()=>{ const d=b.dataset.grp; if(group[d]) delete group[d]; else group[d]=b.dataset.gn||d; buzz(5); drawGrp(); draw(); });
   R.querySelectorAll('[data-open-set]').forEach(b=>b.onclick=openSettings);
+  R.querySelectorAll('[data-pick]').forEach(r=>r.onclick=e=>{ if(!gmode||e.target.closest('a,button')) return; togglePick(r.dataset.pick,r.dataset.pn); });
+  R.querySelectorAll('[data-inv]').forEach(b=>b.onclick=()=>invite(b.dataset.inv));
+  R.querySelectorAll('[data-gopen]').forEach(b=>b.onclick=()=>loadGroup(groups[+b.dataset.gopen].m));
+  R.querySelectorAll('[data-gsend]').forEach(a=>a.addEventListener('click',()=>{ const g=groups[+a.dataset.gsend]; Object.entries(g.m).forEach(([d,n])=>useContact(n,d,'imsg')); }));
+  R.querySelectorAll('[data-gdel]').forEach(b=>b.onclick=()=>{ const g=groups[+b.dataset.gdel]; if(!confirm('Delete group “'+g.name+'”?')) return; groups.splice(+b.dataset.gdel,1); save('c.groups',groups); draw(); });
 }
 $('#q').addEventListener('input',draw);
 $('#qx').onclick=()=>{ $('#q').value=''; draw(); $('#q').focus(); };
@@ -251,7 +304,7 @@ $('#q').addEventListener('keydown',e=>{ if(e.key==='Enter') $('#q').blur(); });
 
 /* message prefill */
 $('#msg').value=load('c.draft','');
-const msgUI=()=>{ const v=draft(); $('#msgToggle').classList.toggle('on',!!v); $('#msgState').textContent=v?'Message ready — 💬 / WA will prefill it':''; };
+const msgUI=()=>{ const v=draft(); $('#msgToggle').classList.toggle('on',!!v); $('#msgState').textContent=v?'✓ will prefill 💬 / WA':''; };
 $('#msgToggle').onclick=()=>{ const b=$('#msgBox'); b.classList.toggle('open'); if(b.classList.contains('open')) $('#msg').focus(); };
 $('#msg').addEventListener('input',()=>{ save('c.draft',$('#msg').value); msgUI(); draw(); drawGrp(); });
 msgUI();
@@ -268,11 +321,11 @@ document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closes
     ${L(ftaHref(p),n,p,'fta','sb','<span class="si">🎧</span>FaceTime audio')}
     ${L(imHref(p),n,p,'imsg','sb','<span class="si">💬</span><span>iMessage<small>Messages app · blue bubble if they have iMessage, otherwise SMS</small></span>')}
     ${L(waHref(p),n,p,'wa','sb','<span class="si">🟢</span><span>WhatsApp chat<small>For a WhatsApp voice / video call, tap 📞 or 🎥 at the top of the chat</small></span>')}
-    <button class="sb" data-grpadd><span class="si">${group[clean(p)]?'✓':'＋'}</span><span>${group[clean(p)]?'Remove from':'Add to'} group iMessage<small>Pick several people, then tap the blue bar at the bottom</small></span></button>
+    <button class="sb" data-grpadd><span class="si">${group[clean(p)]?'✓':'＋'}</span><span>${group[clean(p)]?'Remove from':'Add to'} group text<small>Or tap 👥 up top to pick several at once</small></span></button>
     <button class="sb" data-copy><span class="si">📋</span>Copy number</button>
     ${r?`<button class="sb" data-pin><span class="si">📌</span>${r.pinned?'Unpin from':'Pin to'} Frequent</button><button class="sb" data-hide><span class="si">🙈</span>Hide from Frequent</button>`:''}
     <button class="sb cancel" data-close>Cancel</button>`,s=>{
-      s.querySelector('[data-grpadd]').onclick=()=>{ const d=clean(p); if(group[d]) delete group[d]; else group[d]=n; closeSheet(); drawGrp(); draw(); };
+      s.querySelector('[data-grpadd]').onclick=()=>{ closeSheet(); togglePick(clean(p),n); };
       s.querySelector('[data-copy]').onclick=()=>{ (navigator.clipboard?navigator.clipboard.writeText(p):Promise.reject()).then(()=>toast('Copied '+p)).catch(()=>toast(p)); closeSheet(); };
       const pin=s.querySelector('[data-pin]'); if(pin) pin.onclick=()=>{ cuSet(k,{pinned:!r.pinned}); closeSheet(); draw(); };
       const hide=s.querySelector('[data-hide]'); if(hide) hide.onclick=()=>{ cuSet(k,{hidden:true,pinned:false}); closeSheet(); draw(); toast('Hidden'); };
@@ -287,7 +340,7 @@ function openSettings(){
     <button class="sb" id="sc"><span class="si">🧹</span>Clear Recent list</button>
     <button class="sb cancel" data-close>Close</button>`,s=>{
       s.querySelector('#ss').onclick=async()=>{ cfg.apiKey=s.querySelector('#sk').value.trim(); cfg.baseId=s.querySelector('#sb').value.trim()||'appdDTNBbVrp6hVOv'; save(LS_CFG,cfg); closeSheet(); toast('Loading contacts…'); await loadContacts(true); await fetchUsage(true); draw(); toast(contacts.length?contacts.length+' contacts':'No contacts — check the token'); };
-      s.querySelector('#sr').onclick=async()=>{ closeSheet(); toast('Refreshing…'); await loadContacts(true); await fetchUsage(true); draw(); toast(contacts.length+' contacts'); };
+      s.querySelector('#sr').onclick=async()=>{ closeSheet(); toast('Refreshing…'); await loadContacts(true); await fetchUsage(true); await fetchRoster(true); draw(); toast(contacts.length+' contacts'); };
       s.querySelector('#sc').onclick=()=>{ recent=[]; save('c.recent',recent); closeSheet(); draw(); };
     });
 }
@@ -321,7 +374,7 @@ $('#widgetBtn').onclick=openWidgetHelp;
 
 /* ---------- start ---------- */
 draw(); drawGrp();
-loadContacts().then(draw); fetchUsage().then(draw);
+loadContacts().then(draw); fetchUsage().then(draw); fetchRoster().then(draw);
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible'){ fetchUsage().then(draw); loadContacts().then(draw); } });
 if(!('ontouchstart' in window)) $('#q').focus();
 if('serviceWorker' in navigator && location.protocol==='https:') navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).catch(()=>{});
