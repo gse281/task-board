@@ -2806,13 +2806,14 @@ function addSheet(pre,after){
   const tag=pre.slot?(SLOTS[pre.slot].em+' '+SLOTS[pre.slot].label):[pre.project?'🏗 '+pre.project:'',pre.lead?'👤 '+pre.lead:'',pre.sub?'🏷 '+pre.sub:''].filter(Boolean).join(' · ');
   sheet(`<h3>New task</h3>${tag?`<div class="lbl2">Goes to ${esc(tag)}</div>`:''}
     <input class="field" id="nt" placeholder="What needs doing?" enterkeyhint="done" autocomplete="off">
-    ${pre.slot?'':`<div class="row2" style="margin-bottom:10px"><button class="pill" data-sl="morning">🌅 Morning</button><button class="pill" data-sl="afternoon">☀️ Afternoon</button></div>`}
+    ${pre.slot?'':`<div class="row2" style="margin-bottom:10px"><button class="pill" data-sl="morning">🌅 Morning</button><button class="pill" data-sl="afternoon">☀️ Afternoon</button><button class="pill" data-sl="now">⚡ Do it&nbsp;now</button></div>`}
     <div class="row2"><button class="pill" data-close>Cancel</button><button class="pill acc" data-ok>Add</button></div>`,(sh,close)=>{
       const inp=sh.querySelector('#nt'); setTimeout(()=>inp.focus(),350); let slot=pre.slot||'';
       sh.querySelectorAll('[data-sl]').forEach(b=>b.onclick=()=>{ slot=slot===b.dataset.sl?'':b.dataset.sl; sh.querySelectorAll('[data-sl]').forEach(x=>x.classList.toggle('acc',x.dataset.sl===slot)); });
       const go=async()=>{ const v=inp.value.trim(); if(!v) return; const f={Task:v};
-        if(pre.project) f.Project=pre.project; if(pre.lead) f.SBLead=pre.lead; if(pre.sub) f.Sub=pre.sub; if(slot){ f.MeetingSlot=slot; }   // slot = single source (no Section)
-        close(); await create(f); toast('➕ Added'); render(); if(after) after(); };
+        if(pre.project) f.Project=pre.project; if(pre.lead) f.SBLead=pre.lead; if(pre.sub) f.Sub=pre.sub; if(slot==='now'){ const L=nextUpList(); f.NextUp=todayISO(); f.NextUpOrder=(L.reduce((m,x)=>Math.min(m,x.nuOrder??0),0))-10; f.DoDate=todayISO(); }   // ⚡ Do it now → #1 in Next Up, due today
+        else if(slot){ f.MeetingSlot=slot; }   // slot = single source (no Section)
+        close(); const nt=await create(f); if(slot==='now'&&nt){ nt.nextUp=f.NextUp; nt.nuOrder=f.NextUpOrder; save(LS_CACHE,tasks); } toast(slot==='now'?'⚡ Added — #1 in Next Up':'➕ Added'); render(); if(after) after(); };
       sh.querySelector('[data-ok]').onclick=go; inp.onkeydown=e=>{ if(e.key==='Enter') go(); };
     });
 }
