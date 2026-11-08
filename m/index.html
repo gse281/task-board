@@ -1763,6 +1763,10 @@ function todayTasks(){ const td=todayISO(); return tasks.filter(t=>isOpen(t)&&t.
 /* ---------- ⏫ NEXT UP (Roni's picks; Airtable NextUp date + NextUpOrder; carry over until done/removed)
    ✨ SUGGESTED (5/day, written by the 6:30 AM "suggested-next-up" scheduled task: SuggestedDate=today + SuggestReason) ---------- */
 function nextUpList(){ return tasks.filter(t=>isOpen(t)&&(t.nextUp||(t.sectionRemote||'')==='nextup')).sort((a,b)=>((a.nuOrder??1e9)-(b.nuOrder??1e9))||String(a.nextUp).localeCompare(String(b.nextUp))); }
+function doNow(t){ const prev={d:t.nextUp,o:t.nuOrder,dd:t.doDate}; const L=nextUpList().filter(x=>x!==t);
+  t.nextUp=todayISO(); t.nuOrder=(L.reduce((m,x)=>Math.min(m,x.nuOrder??0),0))-10; t.doDate=todayISO(); A(t.id).doDate=t.doDate; A(t.id).snoozeUntil=0; saveAug(); save(LS_CACHE,tasks);
+  patch(t.id,{NextUp:t.nextUp,NextUpOrder:t.nuOrder,DoDate:t.doDate}); buzz(8);
+  toast('⚡ #1 in Next Up', async()=>{ t.nextUp=prev.d||''; t.nuOrder=prev.o; t.doDate=prev.dd||''; A(t.id).doDate=t.doDate; saveAug(); save(LS_CACHE,tasks); await patch(t.id,{NextUp:prev.d||null,NextUpOrder:prev.o,DoDate:prev.dd||null}); render(); }); }
 function setNextUp(t,on,quiet){ const prev={d:t.nextUp,o:t.nuOrder};
   if(on){ const L=nextUpList(); t.nextUp=todayISO(); t.nuOrder=(L.reduce((m,x)=>Math.max(m,x.nuOrder||0),0))+10; patch(t.id,{NextUp:t.nextUp,NextUpOrder:t.nuOrder}); }
   else { t.nextUp=''; t.nuOrder=null; patch(t.id,{NextUp:null,NextUpOrder:null}); if((t.sectionRemote||'')==='nextup'){ t.sectionRemote=''; patch(t.id,{Section:''}); } }
@@ -2420,6 +2424,7 @@ function paintDeck(s){
   top.querySelectorAll('[data-note]').forEach(b=>b.onclick=e=>{e.stopPropagation(); noteSheet(s,t);});
   top.querySelectorAll('[data-more]').forEach(b=>b.onclick=e=>{e.stopPropagation(); moreSheet(s,t);});
   top.querySelectorAll('[data-nu]').forEach(b=>b.onclick=e=>{e.stopPropagation(); setNextUp(t,!t.nextUp); paintDeck(s);});
+  top.querySelectorAll('[data-donow]').forEach(b=>b.onclick=e=>{e.stopPropagation(); doNow(t); paintDeck(s);});
   top.querySelectorAll('[data-edit],.tname').forEach(b=>b.onclick=e=>{e.stopPropagation(); editTask(t);});
   top.querySelectorAll('[data-claude]').forEach(b=>b.onclick=e=>{e.stopPropagation(); TaskEditor.open(t,{claude:true});});
   top.querySelectorAll('[data-slotbtn]').forEach(b=>b.onclick=e=>{e.stopPropagation(); setSlot(t,b.dataset.slotbtn); paintDeck(s);});
@@ -2446,7 +2451,7 @@ function cardInner(t,r){
     <div class="bodyx">${t.next?`<div class="ns"><b>Next step</b>${esc(t.next)}</div>`:''}${t.notes?`<div class="ns"><b>Notes</b>${esc(t.notes)}</div>`:''}</div>
     <div class="quick">
       ${ph?`<a class="qbtn qcall" href="tel:${esc(ph)}" onclick="event.stopPropagation()">📞 Call</a><a class="qbtn" href="sms:${esc(ph)}" onclick="event.stopPropagation()">💬</a>${copt(ph,t.lead||'','qbtn')}`:''}
-      ${isSlotDeck?'':`<button class="qbtn" data-slotbtn="morning" style="${sl==='morning'?'outline:2px solid #39c7df':''}">🌅</button><button class="qbtn" data-slotbtn="afternoon" style="${sl==='afternoon'?'outline:2px solid #6fd0e0':''}">☀️</button>`}
+      ${isSlotDeck?'':`<button class="qbtn" data-slotbtn="morning" style="${sl==='morning'?'outline:2px solid #39c7df':''}">🌅</button><button class="qbtn" data-slotbtn="afternoon" style="${sl==='afternoon'?'outline:2px solid #6fd0e0':''}">☀️</button>`}<button class="qbtn" data-donow>⚡ Now</button>
       <button class="qbtn" data-edit>✎ Edit</button>
       <button class="qbtn" data-claude>✨ Claude</button>
       <button class="qbtn${t.nextUp?' on':''}" data-nu>${t.nextUp?'⏫ In Next Up':'⏫ Next up'}</button>
@@ -2695,7 +2700,7 @@ function rowHTML(t,dim,open){
     <div class="row3"><button class="tick" aria-label="Done">✓</button><div class="tt"><div class="tn">${esc(cleanName(t))}</div><div class="tm">${bits.join(' · ')}</div></div><button class="tsnz" aria-label="Snooze">😴</button></div>
     <div class="tx"><div><div class="txi">${t.next?`<div class="nx"><b>Next step</b>${esc(t.next)}</div>`:''}${t.notes?`<div class="nx"><b>Notes</b>${esc(t.notes)}</div>`:''}
       <div class="txb">${t.phone?`<a href="tel:${esc(t.phone)}">📞 Call</a><a href="sms:${esc(t.phone)}">💬</a>${copt(t.phone,t.lead||'','')}`:''}
-      <button data-sl="morning" class="${sl==='morning'?'on':''}">🌅 AM</button><button data-sl="afternoon" class="${sl==='afternoon'?'on':''}">☀️ PM</button>
+      <button data-sl="morning" class="${sl==='morning'?'on':''}">🌅 AM</button><button data-sl="afternoon" class="${sl==='afternoon'?'on':''}">☀️ PM</button><button data-donow>⚡ Now</button>
       <button data-edit>✎ Edit</button><button data-nu class="${t.nextUp?'on':''}">⏫ Next up</button><button data-z="1">🌙 Tmrw</button><button data-z="30">🗓 Month</button><button data-note>📝</button>${hasCategory(t)?'<button data-unfile>⊘ Uncategorize</button>':''}</div></div></div></div></div>`;
 }
 function wireRow(rw,s){
@@ -2711,6 +2716,7 @@ function wireRow(rw,s){
   rw.querySelectorAll('[data-sl]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); setSlot(t,b.dataset.sl); paintBoard(s); if(stack[0]) paintHome(stack[0]); });
   rw.querySelectorAll('[data-z]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); finish('snz',+b.dataset.z); });
   rw.querySelectorAll('[data-nu]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); setNextUp(t,!t.nextUp); paintBoard(s); });
+  rw.querySelectorAll('[data-donow]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); doNow(t); paintBoard(s); if(stack[0]) paintHome(stack[0]); });
   rw.querySelectorAll('[data-edit]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); editTask(t); });
   rw.querySelector('[data-note]').onclick=e=>{ e.stopPropagation(); noteSheet(s,t); };
   { const u=rw.querySelector('[data-unfile]'); if(u) u.onclick=e=>{ e.stopPropagation(); unfile(t,()=>paintBoard(s)); }; }
@@ -2769,6 +2775,7 @@ function moreSheet(s,t){
     ${ph?`<a class="sbtn" href="tel:${esc(ph)}"><span class="si">📞</span>Call ${esc(t.lead||ph)}</a><a class="sbtn" href="facetime:${e164(ph)}"><span class="si">🎥</span>FaceTime</a><a class="sbtn" href="whatsapp://send?phone=${e164(ph).slice(1)}"><span class="si">🟢</span>WhatsApp (tap 📞 in the chat)</a><a class="sbtn" href="sms:${esc(ph)}"><span class="si">💬</span>Text</a>`:''}
     <button class="sbtn ${sl==='morning'?'on':''}" data-s="morning"><span class="si">🌅</span>${sl==='morning'?'Remove from morning call':'Add to morning call'}</button>
     <button class="sbtn ${sl==='afternoon'?'on':''}" data-s="afternoon"><span class="si">☀️</span>${sl==='afternoon'?'Remove from afternoon call':'Add to afternoon call'}</button>
+    <button class="sbtn" data-donow><span class="si">⚡</span>Do it now (#1 in Next Up)</button>
     ${hasCategory(t)?'<button class="sbtn" data-unfile><span class="si">⊘</span>Remove from category</button>':''}
     <button class="sbtn" data-edit><span class="si">✎</span>Edit all fields</button>
     <button class="sbtn ${t.nextUp?'on':''}" data-nu><span class="si">⏫</span>${t.nextUp?'Remove from Next Up':'Add to Next Up (today)'}</button>
@@ -2782,6 +2789,7 @@ function moreSheet(s,t){
       sh.querySelector('[data-note]').onclick=()=>{ close(); noteSheet(s,t); };
       sh.querySelector('[data-edit]').onclick=()=>{ close(); setTimeout(()=>editTask(t),330); };
       sh.querySelector('[data-nu]').onclick=()=>{ close(); setNextUp(t,!t.nextUp); if(s.route&&s.route.type==='deck') paintDeck(s); };
+      sh.querySelector('[data-donow]').onclick=()=>{ close(); doNow(t); if(s.route&&s.route.type==='deck') paintDeck(s); if(stack[0]) paintHome(stack[0]); };
       { const u=sh.querySelector('[data-unfile]'); if(u) u.onclick=()=>{ close(); unfile(t,()=>{ if(s.route&&s.route.type==='deck'){ if(s.route.kind==='slot'||s.route.kind==='calls') s.queue=(s.queue||[]).filter(x=>x!==t.id); paintDeck(s); } if(stack[0]) paintHome(stack[0]); }); }; }
     });
 }
