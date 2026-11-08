@@ -68,6 +68,9 @@ input,textarea{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 
 /* ---------- home ---------- */
 .calls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-bottom:14px}
+.calls.w3{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 72px;gap:8px}
+.calls .donow{border:0;border-radius:16px;min-height:54px;padding:6px 4px;background:linear-gradient(150deg,#ffd36b 0%,#f5a524 60%,#c97a0a 100%);color:#1a1205;font:inherit;font-weight:800;font-size:13px;line-height:1.15;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.calls .donow b{font-size:11px;font-weight:700;opacity:.75}
 .call{position:relative;border-radius:16px;padding:8px 10px;min-height:54px;display:flex;flex-direction:row;align-items:center;gap:7px;
   text-align:left;overflow:hidden;transition:transform .12s}
 .call:active{transform:scale(.97)}
@@ -2174,9 +2177,10 @@ function paintHome(s){
         bills:()=>billsCard(),
         invite:()=>{ const sl=invSlot; return `<button class="invbtn homeinv" data-hinvite="${sl}">👥 Invite to the call<span>${callContacts(sl).length} people · ${esc(DIAL_IN)}${sl==='all'?'':' · '+(sl==='morning'?'AM':'PM')}</span><span class="chev">›</span></button>`; },
         ampm:()=>`
-      <div class="calls">
+      <div class="calls w3">
         <div class="call am slim pgbox" role="button" tabindex="0" data-slot="morning" data-pg="morning" aria-label="Morning call"><span class="rot" data-rot="${(rotTask('morning')||{}).id||''}">${esc(rotTask('morning')?cleanName(rotTask('morning')):'Nothing queued')}</span>${slotTasks('morning').length>1?`<div class="pgbar sm"><button class="pga2" data-pgd="-1" aria-label="Previous">‹</button><span class="pgpos">${(slotTasks('morning').indexOf(rotTask('morning'))+1)||1} of ${slotTasks('morning').length}</span><button class="pga2" data-pgd="1" aria-label="Next">›</button></div>`:''}</div>
         <div class="call pm slim pgbox" role="button" tabindex="0" data-slot="afternoon" data-pg="afternoon" aria-label="Afternoon call"><span class="rot" data-rot="${(rotTask('afternoon')||{}).id||''}">${esc(rotTask('afternoon')?cleanName(rotTask('afternoon')):'Nothing queued')}</span>${slotTasks('afternoon').length>1?`<div class="pgbar sm"><button class="pga2" data-pgd="-1" aria-label="Previous">‹</button><span class="pgpos">${(slotTasks('afternoon').indexOf(rotTask('afternoon'))+1)||1} of ${slotTasks('afternoon').length}</span><button class="pga2" data-pgd="1" aria-label="Next">›</button></div>`:''}</div>
+        <button class="donow" data-donowtile aria-label="Do it now">⚡<span>Do it now</span>${nextUpList().length?`<b>${nextUpList().length}</b>`:''}</button>
       </div>
 `,
         search:()=>`
@@ -2253,6 +2257,7 @@ function paintHome(s){
       <div class="foot">${esc(dateStr)} · <span style="color:var(--gold);font:600 11px ui-monospace,Menlo,monospace">build ${esc(BUILD)}</span> · <a href="../">Desktop dashboard</a></div>
     </div>`;
   el.querySelector('.scroll').scrollTop=st;
+  el.querySelectorAll('[data-donowtile]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); buzz(5); push({type:'nextup'}); });
   el.querySelectorAll('[data-slot]').forEach(b=>b.onclick=e=>{ const sl=b.dataset.slot; const r=e.target.closest('[data-rot]');
     push({type:'slotlist',slot:sl}); });   // tap = open that call list
   wireCars(el); wireNU(el,s); wirePagers(el);
