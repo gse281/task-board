@@ -26,8 +26,10 @@ body{background:#070d11;color:#e7f3f6;font:14px/1.4 -apple-system,system-ui,sans
 .pg-panel{flex:1;overflow:auto;display:none;min-height:0}
 .pg-panel.active{display:block}
 #pnl-live{overflow-x:hidden}
-.pg-back{margin-left:auto;padding:9px 14px;font:700 12px ui-monospace,Menlo,monospace;color:#8aa6af;text-decoration:none;white-space:nowrap}
-@media(max-width:600px){.pg-tab{flex:1;text-align:center;padding:12px 8px;font-size:14px}}
+.pg-nav{margin-left:auto;display:flex;flex-shrink:0}
+.pg-back{padding:9px 12px;font:700 12px ui-monospace,Menlo,monospace;color:#8aa6af;text-decoration:none;white-space:nowrap;display:flex;align-items:center}
+.pg-back:hover{color:#c8e6f0;background:#080f17}
+@media(max-width:600px){.pg-tab{flex:1;text-align:center;padding:12px 8px;font-size:14px}.pg-back{padding:12px 11px;font-size:18px}.pg-bl{display:none}}
 </style>
 <!-- Google Identity Services (for live Gmail OAuth) -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -75,8 +77,14 @@ window.TE = { key: function(){ return cfg.apiKey || ''; }, base: function(){ ret
   app.appendChild(pnlLive);
   app.appendChild(pnlScan);
 
-  var back = document.createElement('a'); back.className = 'pg-back'; back.textContent = '◉ Focus'; back.href = 'index.html';
-  if (!/iPhone|iPod|Android/.test(navigator.userAgent)) tabBar.appendChild(back);
+  // Links back to the other pages (icons only on phones).
+  var nav = document.createElement('div'); nav.className = 'pg-nav';
+  [['⌂', 'Dashboard', 'dashboard.html'], ['◎', 'Focus', 'radial.html?focus=1'], ['◉', 'Focus 2', 'focus2.html']].forEach(function(l){
+    var a = document.createElement('a'); a.className = 'pg-back'; a.href = l[2]; a.title = l[1];
+    a.innerHTML = l[0] + '<span class="pg-bl"> ' + l[1] + '</span>';
+    nav.appendChild(a);
+  });
+  tabBar.appendChild(nav);
 
   // Mount both panels (Live Gmail works without Airtable; Scan needs it)
   GL.mount(pnlLive, cfg);
