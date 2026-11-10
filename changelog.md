@@ -275,3 +275,4 @@
 - 2026-11-03 19:45  Desktop lists (Morning/Afternoon/etc.): lead groups collapsible, start collapsed, remembered
 - 2026-11-03 20:45  iPhone AM/PM call lists: lead groups collapsible, start collapsed, remembered
 - 2026-11-10 10:05  iPhone: Meetings Home Screen icon — open /m/#meetings, Share → Add to Home Screen → lands straight on Meetings
+- 2026-11-10 10:40  iPhone Meetings icon: GSE signature over a calendar
