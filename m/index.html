@@ -19,9 +19,9 @@
 <script src="../photos.js"></script>
 <script src="../bills.js"></script>
 <script>
-/* Deep links: /m/#morning, /m/#afternoon, /m/#review, /m/#notes.
-   For the two calls, swap manifest + icon + title so "Add to Home Screen" makes a dedicated one-tap icon. */
-(function(){ var h=(location.hash||'').slice(1).toLowerCase(); var M={morning:['AM Call','am'],afternoon:['PM Call','pm']}[h]; if(!M) return;
+/* Deep links: /m/#morning, /m/#afternoon, /m/#meetings, /m/#review, /m/#notes.
+   For the two calls and Meetings, swap manifest + icon + title so "Add to Home Screen" makes a dedicated one-tap icon. */
+(function(){ var h=(location.hash||'').slice(1).toLowerCase(); var M={morning:['AM Call','am'],afternoon:['PM Call','pm'],meetings:['Meetings','meet'],meet:['Meetings','meet']}[h]; if(!M) return;
   document.querySelector('link[rel=manifest]').href='manifest-'+M[1]+'.webmanifest';
   document.querySelector('link[rel=apple-touch-icon]').href='icon-'+M[1]+'-180.png';
   document.querySelector('meta[name=apple-mobile-web-app-title]').content=M[0]; document.title=M[0]; })();
@@ -2892,6 +2892,7 @@ function routeFromHash(){ const gm=(location.hash||'').match(/guide=(rec[A-Za-z0
   const h=(location.hash||'').slice(1).toLowerCase(); if(!h) return;
   goHome();
   if(h==='morning'||h==='afternoon'||h==='am'||h==='pm'){ const sl=(h==='am'||h==='morning')?'morning':'afternoon'; push({type:'deck',kind:'slot',slot:sl,title:SLOTS[sl].label,list:true}); }
+  else if(h==='meetings'||h==='meet'){ push({type:'meetings'}); }
   else if(h==='review'){ push({type:'board',dim:'project',list:groups('project').map(g=>g.k),idx:0}); }
   else if(h==='notes'){ push({type:'notes',q:'',range:'all'}); }
   else if(h==='automations'||h==='autos'){ push({type:'autos'}); }
