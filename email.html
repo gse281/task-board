@@ -79,7 +79,7 @@ window.TE = { key: function(){ return cfg.apiKey || ''; }, base: function(){ ret
 
   // Links back to the other pages (icons only on phones).
   var nav = document.createElement('div'); nav.className = 'pg-nav';
-  [['⌂', 'Dashboard', 'dashboard.html'], ['◎', 'Focus', 'radial.html?focus=1'], ['◉', 'Focus 2', 'focus2.html']].forEach(function(l){
+  [['⌂', 'Dashboard', 'dashboard.html'], ['◎', 'Focus', 'radial.html?focus=1'], ['◉', 'Focus 2', 'focus2.html'], ['◈', 'AIOS', 'aios.html']].forEach(function(l){
     var a = document.createElement('a'); a.className = 'pg-back'; a.href = l[2]; a.title = l[1];
     a.innerHTML = l[0] + '<span class="pg-bl"> ' + l[1] + '</span>';
     nav.appendChild(a);

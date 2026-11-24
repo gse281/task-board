@@ -276,3 +276,4 @@
 - 2026-11-03 20:45  iPhone AM/PM call lists: lead groups collapsible, start collapsed, remembered
 - 2026-11-10 10:05  iPhone: Meetings Home Screen icon — open /m/#meetings, Share → Add to Home Screen → lands straight on Meetings
 - 2026-11-10 10:40  iPhone Meetings icon: GSE signature over a calendar
+- 2026-11-24 07:08  AIOS map page (aios.html) + ◈ AIOS links on Focus, Focus 2, Dashboard, Email

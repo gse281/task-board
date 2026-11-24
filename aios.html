@@ -1,0 +1,213 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#070d11">
+<title>AIOS Map</title>
+<link rel="icon" href="m/icon-192.png"><link rel="apple-touch-icon" href="m/icon-180.png">
+<style>
+:root{--bg:#070d11;--ink:#eaf6fb;--cyan:#39c7df;--dim:#7f9aa3;--green:#3a8f5f;--orange:#e8683c;--line:rgba(57,199,223,.18);--card:#0d1a21;--card2:#102029}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;min-width:0}
+::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:rgba(57,199,223,.18);border-radius:6px}
+html{background:#070d11}
+html,body{margin:0;height:100%;background:radial-gradient(130% 120% at 42% 46%,#0b141a 0%,#070d11 62%,#04070a 100%);color:var(--ink);font:15px/1.4 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+a{color:var(--cyan)}
+.mono{font-family:ui-monospace,Menlo,monospace}
+/* top bar — same as Focus */
+.top{position:fixed;top:0;left:0;right:0;z-index:15;display:flex;align-items:center;gap:10px;padding:12px 18px;padding-top:max(12px,env(safe-area-inset-top));background:linear-gradient(#070d11,rgba(7,13,17,0))}
+.greet{font:700 12px ui-monospace,Menlo,monospace;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);white-space:nowrap}
+.sum{flex:1;text-align:center;font:600 12px ui-monospace,Menlo,monospace;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sum b{color:var(--cyan)}
+.cmdbtn{flex:none;border:1px solid var(--line);border-radius:999px;padding:6px 13px;font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--dim);text-decoration:none;white-space:nowrap}
+.cmdbtn:hover,.cmdbtn:focus-visible{color:var(--cyan);border-color:var(--cyan);outline:none}
+.clk{flex:none;font-size:15px;min-width:66px;text-align:right}
+/* map */
+#stage{position:fixed;top:0;left:0;bottom:0;right:var(--paneW,0px)}
+#wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.ring{position:absolute;border-radius:50%;border:1px solid rgba(57,199,223,.1);pointer-events:none}.ring.r2{border-style:dashed;border-color:rgba(57,199,223,.07)}
+.core{position:absolute;z-index:6;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px;cursor:pointer;background:radial-gradient(circle at 50% 42%,rgba(57,199,223,.15),rgba(9,16,20,.2) 72%);border:1.5px solid rgba(57,199,223,.55);box-shadow:0 0 30px rgba(57,199,223,.14)}
+.core:hover{border-color:var(--cyan)}
+.core .cl{font:700 11px ui-monospace,Menlo,monospace;letter-spacing:4px;color:var(--cyan)}
+.core .ct{font-weight:800;font-size:clamp(16px,1.6vw,22px);line-height:1.15;margin:8px 0 4px}
+.core .cc{font:700 10.5px ui-monospace,Menlo,monospace;color:var(--dim)}
+.bub{position:absolute;z-index:5;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px;overflow:hidden;background:var(--card);border:1px solid rgba(57,199,223,.3);box-shadow:0 6px 18px rgba(0,0,0,.45);transition:transform .15s,border-color .15s,opacity .2s}
+.bub:hover,.bub:focus-visible{transform:scale(1.06);border-color:var(--cyan);z-index:7;outline:none}
+.bub.on{border-color:var(--cyan);background:radial-gradient(circle at 50% 40%,rgba(57,199,223,.22),var(--card) 75%);box-shadow:0 0 24px rgba(57,199,223,.25)}
+.bub.dimmed{opacity:.45}
+.bub .bn{font:800 10px ui-monospace,Menlo,monospace;color:var(--dim)}
+.bub .bcap{font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;text-transform:uppercase;color:var(--cyan);margin-top:2px}
+.bub .bit{margin-top:6px;font-weight:600;font-size:12px;line-height:1.2}
+.bub .warnd{position:absolute;top:14%;right:16%;width:9px;height:9px;border-radius:50%;background:var(--orange)}
+.leaf{position:absolute;z-index:4;transform:translate(-50%,-50%);max-width:170px;padding:5px 10px;border-radius:999px;background:rgba(13,26,33,.95);border:1px solid var(--line);font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;animation:pop .2s ease-out}
+.leaf:hover,.leaf:focus-visible{border-color:var(--cyan);color:#cdf3ff;outline:none;z-index:8}
+.leaf.ok{border-color:rgba(58,143,95,.7)}.leaf.warn{border-color:rgba(232,104,60,.8)}.leaf.off{color:var(--dim)}
+.leaf i{font-style:normal;color:var(--dim);font:700 10px ui-monospace,Menlo,monospace;margin-left:5px}
+@keyframes pop{from{opacity:0;transform:translate(-50%,-50%) scale(.7)}}
+@media(prefers-reduced-motion:reduce){.leaf{animation:none}.bub{transition:none}}
+/* detail pane */
+#pane{position:fixed;top:0;right:0;bottom:0;width:var(--paneW,0px);overflow:auto;background:rgba(9,18,24,.96);border-left:1px solid var(--line);padding:64px 18px 30px;display:none}
+#pane.show{display:block}
+.ph{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+.ph h2{margin:0;font-size:22px}.ph .x{margin-left:auto;font:700 12px ui-monospace,Menlo,monospace;color:var(--dim);border:1px solid var(--line);border-radius:8px;padding:5px 9px}.ph .x:hover{color:var(--cyan);border-color:var(--cyan)}
+.psum{font:600 12px ui-monospace,Menlo,monospace;color:var(--dim);margin-bottom:10px}
+.gh{font:700 10px ui-monospace,Menlo,monospace;letter-spacing:1.4px;text-transform:uppercase;color:var(--cyan);margin:18px 0 6px}
+.row{display:flex;gap:8px;padding:7px 2px;border-bottom:1px solid rgba(57,199,223,.08);font-size:13.5px;scroll-margin-top:70px}
+.row .n{flex:none;width:22px;text-align:right;color:var(--dim);font:700 11px ui-monospace,Menlo,monospace;padding-top:2px}
+.row .b{flex:1}.row b{font-weight:700}.row .d{color:var(--dim);font-size:12.5px;margin-top:1px}
+.row.hi{background:rgba(57,199,223,.1);border-radius:6px}
+.dot{flex:none;width:8px;height:8px;border-radius:50%;margin-top:6px;background:rgba(127,154,163,.4)}.dot.ok{background:var(--green)}.dot.warn{background:var(--orange)}.dot.off{background:#2a3a42}
+.chip{display:inline-block;font:700 10px ui-monospace,Menlo,monospace;color:#07141a;background:var(--cyan);border-radius:4px;padding:0 5px;margin-right:4px}
+.od{color:var(--orange);font-weight:700}
+.foot{position:fixed;left:14px;bottom:max(10px,env(safe-area-inset-bottom));z-index:15;font:600 11px ui-monospace,Menlo,monospace;color:var(--dim)}
+.foot a{color:var(--dim)}.foot a:hover{color:var(--cyan)}
+/* phones: map on top, pane as a scrolling sheet */
+@media(max-width:760px){
+ html,body{overflow:visible;height:auto}.top .sum,.clk{display:none}.top{gap:6px;padding-inline:10px}.cmdbtn{padding:6px 9px}.cmdbtn .l{display:none}
+ #stage{position:relative;height:min(118vw,640px);right:0;margin-top:52px}
+ #pane{position:static;width:auto;border-left:0;border-top:1px solid var(--line);padding:16px 14px 70px;min-height:40vh}
+ .leaf{max-width:120px;font-size:11px;padding:4px 8px}
+ .bub{padding:6px}.bub .bit{display:none}.bub .bcap{font-size:9px;letter-spacing:.3px;white-space:normal;word-break:break-word}.core .ct{font-size:16px}.core .cc{display:none}
+ .foot{position:static;padding:0 14px 20px}
+}
+</style>
+</head><body>
+<div class="top">
+ <span class="greet">◈ AIOS MAP</span><span class="sum" id="sum"></span>
+ <a class="cmdbtn" href="radial.html?focus=1" title="Focus">◎<span class="l"> FOCUS</span></a>
+ <a class="cmdbtn" href="focus2.html" title="Focus 2">◉<span class="l"> FOCUS 2</span></a>
+ <a class="cmdbtn" href="email.html" title="Email">✉<span class="l"> EMAIL</span></a>
+ <a class="cmdbtn" href="dashboard.html" title="Dashboard">⌂<span class="l"> DASHBOARD</span></a>
+ <span class="clk" id="clk"></span>
+</div>
+<div id="stage"><svg id="wires"></svg><div class="ring" id="ring1"></div><div class="ring r2" id="ring2"></div><div class="core" id="core" role="button" tabindex="0"></div><div id="nodes"></div></div>
+<aside id="pane" aria-live="polite"></aside>
+<div class="foot" id="foot"></div>
+
+<script src="aios-data.js"></script>
+<script>
+{
+const D=window.AIOS||{branches:[]};
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=id=>document.getElementById(id);
+const TZ='America/New_York';
+const today=new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date());
+let cfg={};try{cfg=JSON.parse(localStorage.getItem('tb.cfg')||'{}')}catch(e){}
+const BASE=cfg.baseId||'appdDTNBbVrp6hVOv',ITEMS=cfg.tableId||'tblLpOdHqxoP3siYk',AUTO='tblDBZXPxzKDKVKJh';
+let sel=null,hiGroup=null;
+const live={todos:null,health:null,err:''};
+
+/* ---------- live Airtable ---------- */
+async function atAll(table,params){
+ if(!cfg.apiKey) throw new Error('nokey');
+ const out=[];let offset='';
+ for(let i=0;i<20;i++){const u=new URL('https://api.airtable.com/v0/'+BASE+'/'+table);
+  for(const[k,v]of params)u.searchParams.append(k,v);u.searchParams.set('pageSize','100');if(offset)u.searchParams.set('offset',offset);
+  const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}});if(!r.ok)throw new Error('HTTP '+r.status);
+  const d=await r.json();out.push(...(d.records||[]));if(!d.offset)break;offset=d.offset;}
+ return out;}
+async function loadLive(){
+ try{
+  const f=['Task','Project','SBLead','DoDate','RoniFlag','NextStep','Status'];
+  const recs=await atAll(ITEMS,[['filterByFormula',"OR({Status}='Open',{Status}='Active')"],...f.map(x=>['fields[]',x])]);
+  live.todos=recs.map(r=>{const c=r.fields||{};return{id:r.id,task:String(c.Task||'').replace(/\s+/g,' ').trim(),proj:c.Project||'',owner:c.SBLead||'',due:c.DoDate||'',next:String(c.NextStep||'').trim(),flag:!!c.RoniFlag}});
+ }catch(e){live.err=e.message==='nokey'?'nokey':e.message}
+ try{
+  const a=await atAll(AUTO,[['filterByFormula',"{Kind}='Task'"],...['Name','Status','LastRun','Schedule','Detail'].map(x=>['fields[]',x])]);
+  live.health=a.map(r=>r.fields||{}).filter(x=>x.Name);
+ }catch(e){}
+ build();render();}
+
+/* ---------- branch content ---------- */
+const short=(s,n)=>{s=String(s||'');return s.length>n?s.slice(0,n-1)+'…':s};
+const fmtD=d=>{if(!d)return'';const p=d.split('-');return (+p[1])+'/'+(+p[2])};
+function todoGroups(){
+ const T=live.todos;
+ if(!T) return [{h:'To-dos',items:[[live.err==='nokey'?'Connect Airtable':'Loading…','warn',live.err==='nokey'?'Add your Airtable key in ⚙︎ on the Dashboard, then reload. Snapshot 11/23: 656 open, 54 overdue, 5 ⭐, 554 with no owner.':(live.err?'Airtable error: '+live.err:'Reading Items from Airtable')]]}];
+ const od=T.filter(t=>t.due&&t.due<today).sort((a,b)=>a.due<b.due?-1:1);
+ const soon=T.filter(t=>t.due&&t.due>=today).sort((a,b)=>a.due<b.due?-1:1).slice(0,15);
+ const fl=T.filter(t=>t.flag);
+ const by={};T.forEach(t=>{const k=t.owner||'(no owner)';by[k]=(by[k]||0)+1});
+ const row=t=>[(t.proj?t.proj+' · ':'')+short(t.task,90),t.due&&t.due<today?'warn':(t.flag?'ok':''),(t.due?'Due '+fmtD(t.due)+' · ':'')+(t.owner||'no owner')+(t.next?' — '+short(t.next,120):'')];
+ return [
+  {h:'Overdue ('+od.length+')',items:od.slice(0,40).map(row)},
+  {h:'⭐ Flagged ('+fl.length+')',items:fl.map(row)},
+  {h:'Due next',items:soon.map(row)},
+  {h:'By owner',items:Object.entries(by).sort((a,b)=>b[1]-a[1]).map(([k,n])=>[k,k==='(no owner)'?'warn':'',n+' open'])}];
+}
+function healthGroup(){
+ if(!live.health||!live.health.length) return null;
+ const rank={Failing:0,Missed:1,Paused:3,OK:2};
+ const h=live.health.slice().sort((a,b)=>(rank[a.Status]??2)-(rank[b.Status]??2));
+ return {h:'Health — live from Automations',items:h.map(x=>[x.Name,x.Status==='OK'?'ok':(x.Status==='Failing'||x.Status==='Missed'?'warn':'off'),(x.Status||'—')+(x.LastRun?' · last '+new Date(x.LastRun).toLocaleString('en-US',{timeZone:TZ,month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}):'')+(x.Detail?' · '+short(x.Detail,90):'')])};
+}
+let B=[];
+function build(){
+ B=D.branches.map(b=>{let g=b.groups.slice();
+  if(b.id==='todos'){g=todoGroups();const T=live.todos;b={...b,sum:T?T.length+' open · '+T.filter(t=>t.due&&t.due<today).length+' overdue':b.sum};}
+  if(b.id==='routines'){const h=healthGroup();if(h)g=[h,...g];}
+  const warn=g.some(x=>x.items.some(i=>i[1]==='warn'));
+  return {...b,groups:g,warn};});
+ const T=live.todos;
+ $('sum').innerHTML=`<b>${B.length}</b> branches · <b>${T?T.length:'—'}</b> open to-dos · snapshot ${esc(D.snapshot||'')}`;
+ $('foot').innerHTML=`Snapshot ${esc(D.snapshot||'')} · say “refresh my AIOS map” to rebuild${D.artifact?` · <a href="${esc(D.artifact)}" target="_blank" rel="noopener">full page</a>`:''}`;
+}
+
+/* ---------- layout & render ---------- */
+function geom(){const s=$('stage').getBoundingClientRect();const w=s.width,h=s.height,mob=innerWidth<=760;
+ const cx=w/2,cy=mob?h/2:h*.53,m=Math.min(w,h-(mob?0:60));
+ return{w,h,cx,cy,R1:m*(mob?.335:.31),core:m*(mob?.165:.14),bub:mob?Math.max(78,m*.22):Math.max(88,Math.min(134,m*.155)),R2:m*(mob?.47:.46),mob};}
+function leavesFor(b){const n=b.groups.reduce((a,g)=>a+g.items.length,0);
+ if(n<=14) return b.groups.flatMap((g,gi)=>g.items.map((it,ii)=>({t:it[0],k:it[1],g:gi,i:ii})));
+ return b.groups.map((g,gi)=>({t:g.h.replace(/\s*\(\d+\)$/,''),k:g.items.some(i=>i[1]==='warn')?'warn':'',g:gi,i:-1,c:g.items.length}));}
+function render(){
+ const pane=$('pane'),G0=innerWidth<=760;
+ document.documentElement.style.setProperty('--paneW',sel&&!G0?Math.min(420,Math.max(320,innerWidth*.32))+'px':'0px');
+ pane.classList.toggle('show',!!sel||G0);
+ const G=geom();
+ const set=(el,x,y,d)=>{el.style.left=(x-d/2)+'px';el.style.top=(y-d/2)+'px';el.style.width=el.style.height=d+'px'};
+ set($('ring1'),G.cx,G.cy,G.R1*2);set($('ring2'),G.cx,G.cy,G.R2*2);
+ const core=$('core');set(core,G.cx,G.cy,G.core*2);
+ const T=live.todos;
+ core.innerHTML=`<div class="cl">AIOS</div><div class="ct">Roni's<br>Claude setup</div><div class="cc">${sel?'TAP TO CLOSE':'TAP A BRANCH'}</div>`;
+ let wires='',html='';
+ const ang=i=>-Math.PI/2+i*2*Math.PI/B.length;
+ B.forEach((b,i)=>{const a=ang(i),x=G.cx+G.R1*Math.cos(a),y=G.cy+G.R1*Math.sin(a);b._x=x;b._y=y;b._a=a;
+  const on=sel===b.id;
+  wires+=`<line x1="${G.cx}" y1="${G.cy}" x2="${x}" y2="${y}" stroke="rgba(57,199,223,${on?.6:.18})" stroke-width="${on?1.6:1}"/>`;
+  html+=`<button class="bub${on?' on':''}${sel&&!on?' dimmed':''}" data-b="${esc(b.id)}" style="left:${x-G.bub/2}px;top:${y-G.bub/2}px;width:${G.bub}px;height:${G.bub}px" aria-pressed="${on}">${b.warn?'<span class="warnd" title="Needs attention"></span>':''}<span class="bn">${i+1}</span><span class="bcap">${esc(b.label)}</span><span class="bit">${esc(b.sum)}</span></button>`;});
+ const b=B.find(x=>x.id===sel);
+ if(b&&!G.mob){const L=leavesFor(b),n=L.length,span=Math.min(Math.PI*1.25,.34*Math.max(n-1,1)+.2),R=G.R2+(n>9?(G.mob?6:14):0);
+  L.forEach((l,j)=>{const t=n===1?0:j/(n-1)-.5,a=b._a+t*span,rr=R+(n>9&&j%2?(G.mob?26:38):0);
+   let x=G.cx+rr*Math.cos(a),y=G.cy+rr*Math.sin(a);x=Math.max(56,Math.min(G.w-56,x));y=Math.max(G.mob?14:70,Math.min(G.h-18,y));
+   wires+=`<path d="M${b._x},${b._y} Q${(b._x+x)/2+(G.cx-x)*.08},${(b._y+y)/2+(G.cy-y)*.08} ${x},${y}" fill="none" stroke="rgba(57,199,223,.32)"/>`;
+   html+=`<button class="leaf ${esc(l.k)}" data-g="${l.g}" data-i="${l.i}" style="left:${x}px;top:${y}px;animation-delay:${j*18}ms" title="${esc(l.t)}">${esc(l.t)}${l.c!=null?`<i>${l.c}</i>`:''}</button>`;});}
+ $('wires').innerHTML=wires;$('nodes').innerHTML=html;
+ renderPane(b);}
+function renderPane(b){
+ const p=$('pane');
+ if(!b){p.innerHTML=innerWidth<=760?`<div class="gh">Branches</div>`+B.map((x,i)=>`<div class="row"><span class="n">${i+1}</span><span class="dot ${x.warn?'warn':'ok'}"></span><span class="b"><b>${esc(x.label)}</b><div class="d">${esc(x.sum)}</div></span></div>`).join(''):'';return;}
+ let k=0,h=`<div class="ph"><h2>${B.indexOf(b)+1}. ${esc(b.label)}</h2><button class="x" id="close">✕ CLOSE</button></div><div class="psum">${esc(b.sum)}</div>`;
+ b.groups.forEach((g,gi)=>{h+=`<div class="gh" id="g${gi}">${esc(g.h)}</div>`;
+  if(!g.items.length)h+=`<div class="row"><span class="b d">None.</span></div>`;
+  g.items.forEach((it,ii)=>{k++;h+=`<div class="row" id="r${gi}-${ii}"><span class="n">${k}</span><span class="dot ${esc(it[1])}"></span><span class="b"><b>${esc(it[0])}</b>${it[2]?`<div class="d">${esc(it[2])}</div>`:''}</span></div>`});});
+ if(b.id==='todos'&&live.todos)h+=`<p class="d" style="margin-top:16px"><a href="dashboard.html">Open the Dashboard</a> to work these.</p>`;
+ p.innerHTML=h;$('close').onclick=()=>{sel=null;render()};}
+function jump(g,i){const el=document.getElementById(i>=0?`r${g}-${i}`:`g${g}`);if(!el)return;
+ document.querySelectorAll('.row.hi').forEach(r=>r.classList.remove('hi'));
+ el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});
+ if(i>=0)el.classList.add('hi');}
+
+$('nodes').addEventListener('click',e=>{const bb=e.target.closest('.bub'),lf=e.target.closest('.leaf');
+ if(bb){sel=sel===bb.dataset.b?null:bb.dataset.b;try{localStorage.setItem('tb.aios.sel',sel||'')}catch(_){};render();if(sel&&innerWidth<=760)$('pane').scrollIntoView({behavior:'smooth'});}
+ else if(lf){jump(+lf.dataset.g,+lf.dataset.i);}});
+$('core').addEventListener('click',()=>{sel=null;render()});
+$('core').addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();sel=null;render()}});
+addEventListener('keydown',e=>{if(e.target.closest('input,textarea'))return;
+ if(e.key==='Escape'){sel=null;render()}
+ const n=+e.key;if(n>=1&&n<=B.length){sel=B[n-1].id;render()}});
+const ro=new ResizeObserver(()=>render());ro.observe(document.body);
+const tick=()=>{$('clk').textContent=new Date().toLocaleTimeString('en-US',{timeZone:TZ,hour:'numeric',minute:'2-digit'})};tick();setInterval(tick,30000);
+try{const s=localStorage.getItem('tb.aios.sel');if(s&&D.branches.some(b=>b.id===s))sel=s}catch(e){}
+const h=location.hash.slice(1);if(h&&D.branches.some(b=>b.id===h))sel=h;
+build();render();loadLive();
+}
+</script>
+</body></html>
