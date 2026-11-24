@@ -1,8 +1,8 @@
 /* AIOS map data — snapshot of Roni's Claude setup.
    Rebuilt by Claude on "refresh my AIOS map". Live parts (To-dos, routine health) load from Airtable in aios.html.
-   Item = [title, tag, detail]. tag: ok | warn | off | '' */
+   Item = [title, tag, detail, optional https link]. tag: ok | warn | off | '' */
 window.AIOS = {
-snapshot: '2026-11-24 07:10 ET',
+snapshot: '2026-11-24 12:20 ET',
 artifact: 'https://claude.ai/artifact/Bc8En9htMBg2ENWiUU6X5n',
 branches: [
 { id:'connectors', label:'Connectors', sum:'10 of 12 working', groups:[
@@ -91,6 +91,28 @@ branches: [
   { h:'Pre-approved sends', items:[
     ['Friday Weekly List','warn','Sends each Confirmed + Active lead their list — no review'],
     ['Alumtec text to Yosef','warn','One-time, Tue 11/24 5:23 AM']]}]},
+{ id:'openitems', label:'Open items', sum:'chats · code · Duet · Instinct', groups:[
+  { h:'From chats (last 7 days)', items:[
+    ['NYSIF audit text to Rebecca','warn','Draft in Outbox waiting for your y / edit (audit #9044736). Same chat: MF donation receipts, STA next action, Charney ~$20k owed.','https://claude.ai/chat/ee8f7a46-d4b0-452d-b35f-a7363975433d'],
+    ['Sewer refund $24,425','warn','Text to John + email to John/Kristina drafted, not sent. Question open: send as written for the full amount?','https://claude.ai/chat/d13268d9-91ea-4917-9856-e14604d184d4'],
+    ['Crown invoices $63,326','warn','72-01 QB $38,285 to pay; hold 41-05 29th St $25,041 until Crown sends backup.','https://claude.ai/chat/cf9fd4a9-9a91-4935-bbe4-d4953b9e1fef'],
+    ['NOVA cellar + lobby heaters','','Group text sent 11/24; check of replies runs Wed 11/25 9:30 AM.','https://claude.ai/chat/90cdcfcd-a4fc-4821-884a-6b590ac59f41'],
+    ['Buffalo — package to Ben & Leo','warn','Send before Allsure call; bank deadline still unconfirmed.','https://claude.ai/chat/6f9b320c-1fc2-4a35-884a-40b4065b5c09'],
+    ['46C shower drain','warn','Draft reply to Adam ready; open question: did it ever drain normally?','https://claude.ai/chat/582152a5-d46b-4d6d-b0cf-269c347b928b'],
+    ['Gallagher insurance pitch','','Questions ready for the meeting on the 9th; offer open to pull your current GL rate.','https://claude.ai/chat/8b164f70-c461-478d-ba9b-bf7c4539ed68'],
+    ['DreamHQ cover letter','warn','Needs your Cooper thesis copy to finish point 1.','https://claude.ai/chat/094a2cc6-c916-420e-919b-d54a27b79625'],
+    ['Alumtec text — "Require this computer"','warn','Turn it on in the desktop app or the 5:23 AM text may not send.','https://claude.ai/chat/1093cb38-0ce6-4c50-a1df-b52b671b6169'],
+    ['LED strip blinking','','Next test: disconnect 24 V leads, watch the Mean Well LED.','https://claude.ai/chat/55375266-61b3-4a2d-a795-c82e344f5eb6'],
+    ['John Capobianco cell','','Only office line found (516) 239-8775.','https://claude.ai/chat/e054946d-8038-49c5-a428-394393d33c69'],
+    ['Jack Dushey texts via Outbox','','Outbox sender may try iMessage first — check for "Not Delivered".','https://claude.ai/chat/096e92a9-94ba-499a-9298-8639a18c94d1'],
+    ['Property-tax email sent 5:44 PM','','Still unknown why it went out instead of holding to morning.','https://claude.ai/chat/a8b5b89d-09e7-419d-8440-040707b30375']]},
+  { h:'From Code sessions', items:[
+    ['Todo PWA — snooze undo','warn','Unsent ask in the "do it now" session: undo should put the task back in Next Up.','https://claude.ai/code/session_01EJBxbrvQQ8nKx8JR2Q4bDt'],
+    ['Other Code sessions','','gse281/gse, Meetings, Call and messaging app — not read yet.','https://claude.ai/code']]},
+  { h:'Duet', items:[
+    ['Not connected','warn','Claude Duet is phone-only; no connector or desktop view to read its open items yet.']]},
+  { h:'Instinct', items:[
+    ['Not connected','warn','Instinct works by text/call only; its open items live in your Messages thread, which this page can\'t read yet.']]}]},
 { id:'todos', label:'To-dos', sum:'656 open', live:true, groups:[]},
 { id:'routines', label:'Routines', sum:'14 on · 9 queued · 10 paused', groups:[
   { h:'Recurring — on', items:[

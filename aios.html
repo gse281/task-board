@@ -187,7 +187,7 @@ function renderPane(b){
  let k=0,h=`<div class="ph"><h2>${B.indexOf(b)+1}. ${esc(b.label)}</h2><button class="x" id="close">✕ CLOSE</button></div><div class="psum">${esc(b.sum)}</div>`;
  b.groups.forEach((g,gi)=>{h+=`<div class="gh" id="g${gi}">${esc(g.h)}</div>`;
   if(!g.items.length)h+=`<div class="row"><span class="b d">None.</span></div>`;
-  g.items.forEach((it,ii)=>{k++;h+=`<div class="row" id="r${gi}-${ii}"><span class="n">${k}</span><span class="dot ${esc(it[1])}"></span><span class="b"><b>${esc(it[0])}</b>${it[2]?`<div class="d">${esc(it[2])}</div>`:''}</span></div>`});});
+  g.items.forEach((it,ii)=>{k++;h+=`<div class="row" id="r${gi}-${ii}"><span class="n">${k}</span><span class="dot ${esc(it[1])}"></span><span class="b"><b>${esc(it[0])}</b>${/^https:\/\//.test(it[3]||'')?` <a href="${esc(it[3])}" target="_blank" rel="noopener">open ↗</a>`:''}${it[2]?`<div class="d">${esc(it[2])}</div>`:''}</span></div>`});});
  if(b.id==='todos'&&live.todos)h+=`<p class="d" style="margin-top:16px"><a href="dashboard.html">Open the Dashboard</a> to work these.</p>`;
  p.innerHTML=h;$('close').onclick=()=>{sel=null;render()};}
 function jump(g,i){const el=document.getElementById(i>=0?`r${g}-${i}`:`g${g}`);if(!el)return;
