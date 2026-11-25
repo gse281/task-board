@@ -106,7 +106,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 /* STANDARD row + group headers (shared component) */
 .grphd{font:700 10px ui-monospace,Menlo,monospace;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin:11px 2px 5px}
 .grphd:first-child{margin-top:0}
-.grphd.tap{cursor:pointer;display:flex;align-items:center;gap:8px;padding:9px 6px;border:1px solid var(--line,rgba(57,199,223,.18));border-radius:10px;font-size:12px;user-select:none}.grphd.tap:hover{border-color:rgba(57,199,223,.5)}.grphd .gcv{color:#39c7df;font-size:13px}.grphd .gcn{margin-left:auto;color:#39c7df;letter-spacing:0}.lrow.gshut{display:none!important}
+.grphd.tap{cursor:pointer;display:flex;align-items:center;gap:8px;padding:6px 10px;margin-top:18px;border:0;border-left:3px solid #39c7df;border-radius:4px;background:rgba(57,199,223,.10);color:#39c7df;font-size:11px;font-weight:800;user-select:none}.grphd.tap:first-child{margin-top:0}.grphd.tap:hover{background:rgba(57,199,223,.18)}.grphd .gcv{color:#39c7df;font-size:13px}.grphd .gcn{margin-left:auto;color:#39c7df;letter-spacing:0}.lrow.gshut{display:none!important}
 .lrow.std{background:rgba(13,26,33,.55);border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin-bottom:5px}
 .lrow.std:hover{border-color:rgba(57,199,223,.45);background:rgba(13,26,33,.85)}
 .lrow .lnum{flex:none;font:700 11px ui-monospace,Menlo,monospace;color:var(--dim);min-width:16px;text-align:center;font-variant-numeric:tabular-nums}
@@ -235,6 +235,9 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .plist .lrow{border-bottom:1px solid var(--line);padding:11px 8px}.plist .lrow:last-child{border-bottom:0}
 .plist .ln{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .phint{color:var(--dim);font:600 11px ui-monospace,Menlo,monospace;padding:0 2px 10px}
+.pill.padd{color:#39c7df;border-color:#39c7df}
+.faddbar{display:flex;gap:8px;padding:0 2px 10px}.faddbar[hidden]{display:none}
+.faddin{flex:1;background:transparent;border:1px solid var(--line);border-radius:10px;padding:8px 10px;color:inherit;font:15px system-ui,sans-serif}
 /* command bar */
 #cmd{position:fixed;inset:0;z-index:50;display:none;align-items:flex-start;justify-content:center;background:rgba(3,7,10,.8);padding:13vh 16px 20px}
 #cmd.show{display:flex}
@@ -651,15 +654,17 @@ function groupRows(items,cap){ if(!items.length) return '<div class="none">Nothi
   const g={}; items.forEach(t=>{ const k=(t.lead||'').trim(); (g[k]=g[k]||[]).push(t); });
   const keys=Object.keys(g).sort((a,b)=>{ if(!!a!==!!b) return a?-1:1; return a.localeCompare(b); });
   let n=0,shown=0,h=''; const lim=cap||200;
-  const op=grpOpenSet();   // groups start collapsed; tap a header to open (remembered)
-  for(const k of keys){ if(shown>=lim) break; const gk=esc(k||'NO LEAD'), on=op.has(k||'NO LEAD');
+  const sh=grpShutSet();   // groups start EXPANDED; tap a header to collapse (remembered)
+  for(const k of keys){ if(shown>=lim) break; const gk=esc(k||'NO LEAD'), on=!sh.has(k||'NO LEAD');
     h+='<div class="grphd tap" data-grptog="'+gk+'"><span class="gcv">'+(on?'▾':'▸')+'</span>'+gk+'<span class="gcn">'+g[k].length+'</span></div>';
     for(const t of g[k]){ if(shown>=lim){ h+='<div class="none">+ more…</div>'; break; } h+=rowHTML(t,++n).replace('<div class="lrow std" ','<div class="lrow std'+(on?'':' gshut')+'" data-grp="'+gk+'" '); shown++; } }
   return h; }
-function grpOpenSet(){ try{ return new Set(JSON.parse(localStorage.getItem('tb.grpOpen')||'[]')); }catch(e){ return new Set(); } }
-document.addEventListener('click',e=>{ const hd=e.target.closest&&e.target.closest('[data-grptog]'); if(!hd) return; const k=hd.dataset.grptog, S=grpOpenSet(); const on=!S.has(k); on?S.add(k):S.delete(k);
-  try{ localStorage.setItem('tb.grpOpen',JSON.stringify([...S])); }catch(_){}
-  const root=hd.parentElement; root.querySelectorAll('.lrow[data-grp]').forEach(r=>{ if(r.dataset.grp===k) r.classList.toggle('gshut',!on); }); const cv=hd.querySelector('.gcv'); if(cv) cv.textContent=on?'▾':'▸'; });
+function grpShutSet(){ try{ return new Set(JSON.parse(localStorage.getItem('tb.grpShut')||'[]')); }catch(e){ return new Set(); } }
+function grpSaveShut(S){ try{ localStorage.setItem('tb.grpShut',JSON.stringify([...S])); }catch(_){} }
+function grpSet(hd,on){ const k=hd.dataset.grptog; hd.parentElement.querySelectorAll('.lrow[data-grp]').forEach(r=>{ if(r.dataset.grp===k) r.classList.toggle('gshut',!on); }); const cv=hd.querySelector('.gcv'); if(cv) cv.textContent=on?'▾':'▸'; }
+document.addEventListener('click',e=>{ const hd=e.target.closest&&e.target.closest('[data-grptog]'); if(!hd) return; const k=hd.dataset.grptog, S=grpShutSet(); const on=S.has(k); on?S.delete(k):S.add(k); grpSaveShut(S); grpSet(hd,on); });
+/* expand / collapse every group in a list root; returns new state */
+function grpAll(root,on){ if(!root) return; const S=grpShutSet(); root.querySelectorAll('[data-grptog]').forEach(hd=>{ on?S.delete(hd.dataset.grptog):S.add(hd.dataset.grptog); grpSet(hd,on); }); grpSaveShut(S); }
 function wireRows(root,key){ if(!root)return; root.querySelectorAll('.lrow[data-id]').forEach(r=>{ const id=r.dataset.id;
   const dn=r.querySelector('[data-done]'); if(dn)dn.onclick=e=>{ e.stopPropagation(); markDone(id); r.remove(); };
   const rm=r.querySelector('[data-rm]'); if(rm)rm.onclick=e=>{ e.stopPropagation(); removeFromCat(id); r.remove(); };
@@ -842,10 +847,30 @@ function openFiltered(field,value){
   const match=t=>(t_=t, field==='__none')?(blank('project')&&blank('lead')&&blank('sub')):(value===''&&field!=='category')?blank(field):field==='project'?(t.project||'')===value:field==='sub'?(t.sub||'')===value:field==='lead'?(t.lead||'')===value:field==='category'?catName(sectionOf(t))===value:false;
   const items=tasks.filter(t=>live(t)&&match(t)).sort(byLeadProj);
   ovh.innerHTML='▦ '+esc(field==='__none'?'No P · L · S':value===''?'No '+field:value)+' · '+items.length+'<button class="x" data-x>✕</button>';
-  ovb.innerHTML='<div class="phint"><button class="pill" data-back>‹ All filters</button> · tap a task to edit</div><div class="plist" id="plist">'+groupRows(items,200)+'</div>';
-  ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; wireRows($('#plist'),null);
+  const canAdd=field!=='__none';
+  ovb.innerHTML='<div class="phint"><button class="pill" data-back>‹ All filters</button> <button class="pill" data-gall>⊟ Collapse all</button>'+(canAdd?' <button class="pill padd" data-fadd>＋ New</button>':'')+' · tap a task to edit</div>'
+    +(canAdd?'<div class="faddbar" data-faddbar hidden><input class="faddin" type="text" enterkeyhint="done" placeholder="New task'+(value?' · '+esc(value):'')+'…" autocomplete="off"><button class="pill padd" data-faddgo>Add</button></div>':'')
+    +'<div class="plist" id="plist">'+groupRows(items,200)+'</div>';
+  ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; const pl=$('#plist'); wireRows(pl,null);
   const bk=ovb.querySelector('[data-back]'); if(bk) bk.onclick=openFilters;
+  const ga=ovb.querySelector('[data-gall]'), anyOpen=()=>!!pl.querySelector('.lrow[data-grp]:not(.gshut)');
+  const gaLab=()=>{ ga.textContent=anyOpen()?'⊟ Collapse all':'⊞ Expand all'; }; gaLab();
+  ga.onclick=()=>{ grpAll(pl,!anyOpen()); gaLab(); }; pl.addEventListener('click',e=>{ if(e.target.closest('[data-grptog]')) setTimeout(gaLab,0); });
+  const fa=ovb.querySelector('[data-fadd]'); if(fa){ const bar=ovb.querySelector('[data-faddbar]'), inp=bar.querySelector('input');
+    const go=()=>{ const txt=inp.value.trim(); if(!txt){ inp.focus(); return; } createFiltered(field,value,txt).then(()=>openFiltered(field,value)); };
+    fa.onclick=()=>{ bar.hidden=!bar.hidden; if(!bar.hidden) inp.focus(); };
+    bar.querySelector('[data-faddgo]').onclick=go; inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); go(); } }); }
 }
+/* new task pre-filled with the current filter (Project / Sub / Lead / Category) */
+async function createFiltered(field,value,text){
+  if(field==='category'){ const sec=Object.keys(CAT).find(k=>catName(k)===value); if(sec&&sec!=='backlog') return createTask(sec,text); }
+  const t={id:'d'+Date.now(),createdTime:new Date().toISOString(),name:text,project:'',lead:'',sub:'',status:'Open',slotRemote:'',sectionRemote:'',priorityRemote:0,typeRemote:'',phone:''};
+  const FN={project:'Project',lead:'SBLead',sub:'Sub'}; const fields={Task:text,Status:'Open'};
+  if(FN[field]&&value){ t[field]=value; fields[FN[field]]=value; }
+  tasks.unshift(t); renderAll(); toast('Added');
+  if(demo||!cfg.apiKey) return;
+  try{ const r=await fetch(atUrl(),{method:'POST',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({fields,typecast:true})});
+    if(r.ok){ const d=await r.json(); t.id=d.id; t.createdTime=d.createdTime; renderAll(); } else toast('Add failed '+r.status); }catch(e){ toast('Offline'); } }
 function openCQList(){ const L=CQ.list(); ovh.innerHTML='✨ Claude requests · '+L.length+'<button class="x" data-x>✕</button>';
   ovb.innerHTML='<div class="phint">'+CQ.summary()+'</div>'+(L.length?L.map(q=>CQ.rowHTML(q)).join(''):'<div class="none">No requests this week.</div>');
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; CQ.wire(ovb,{toast,onOpen:cqOpenTask}); }
