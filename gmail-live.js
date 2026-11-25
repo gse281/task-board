@@ -738,8 +738,34 @@ function queueSort(btn) {
 // Big Archive all at the end of a long list, so no scrolling back up to the header.
 function bottomArchive(key, label, ask, go) {
   var b = document.createElement('button'); b.className = 'glv-btn glv-ab'; b.dataset.a = 'ab-' + key; b.textContent = label;
-  b.addEventListener('click', function(e){ e.stopPropagation(); if (confirm(ask)) archiveThreads(go, b); });
+  b.addEventListener('click', function(e){ e.stopPropagation(); askAt(e, ask, function(){ archiveThreads(go, b); }); });
   return b;
+}
+
+// Confirm popup that opens at the cursor, OK button right under the pointer. Enter = OK, Esc / click outside = cancel.
+function askAt(e, msg, ok) {
+  var old = document.getElementById('glv-ask'); if (old) old.remove();
+  var d = document.createElement('div'); d.id = 'glv-ask';
+  d.style.cssText = 'position:fixed;z-index:99999;background:#14222b;border:1px solid #39c7df;border-radius:12px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.6);color:#e6f1f5;font:600 14px system-ui,sans-serif;max-width:320px';
+  var m = document.createElement('div'); m.textContent = msg; m.style.cssText = 'margin-bottom:10px';
+  var row = document.createElement('div'); row.style.cssText = 'display:flex;gap:8px;justify-content:flex-end';
+  var no = document.createElement('button'), yes = document.createElement('button');
+  no.textContent = 'Cancel'; yes.textContent = 'OK';
+  no.style.cssText = 'background:transparent;border:1px solid #3a5260;color:#9fb6c2;border-radius:999px;padding:6px 14px;font:700 13px system-ui;cursor:pointer';
+  yes.style.cssText = 'background:#39c7df;border:0;color:#06222a;border-radius:999px;padding:6px 18px;font:800 13px system-ui;cursor:pointer';
+  row.append(no, yes); d.append(m, row); document.body.appendChild(d);
+  var close = function(){ d.remove(); document.removeEventListener('keydown', key, true); document.removeEventListener('pointerdown', out, true); };
+  var key = function(k){ if (k.key === 'Escape') { k.preventDefault(); close(); } else if (k.key === 'Enter') { k.preventDefault(); close(); ok(); } };
+  var out = function(p){ if (!d.contains(p.target)) close(); };
+  no.onclick = function(x){ x.stopPropagation(); close(); };
+  yes.onclick = function(x){ x.stopPropagation(); close(); ok(); };
+  // place so the OK button's centre sits on the cursor, clamped inside the window
+  var x = (e && e.clientX) || innerWidth / 2, y = (e && e.clientY) || innerHeight / 2;
+  var r = d.getBoundingClientRect(), yr = yes.getBoundingClientRect();
+  var left = x - (yr.left - r.left) - yr.width / 2, top = y - (yr.top - r.top) - yr.height / 2;
+  d.style.left = Math.max(8, Math.min(left, innerWidth - r.width - 8)) + 'px';
+  d.style.top = Math.max(8, Math.min(top, innerHeight - r.height - 8)) + 'px';
+  setTimeout(function(){ document.addEventListener('keydown', key, true); document.addEventListener('pointerdown', out, true); yes.focus(); }, 0);
 }
 
 function archiveThreads(list, btn) {
@@ -1034,7 +1060,7 @@ function rebuildList(listEl) {
       all.textContent = 'Archive ' + (kept ? go.length + ' (' + kept + ' kept)' : 'all ' + go.length);
       all.disabled = !go.length;
       all.addEventListener('click', function(e){ e.stopPropagation();
-        if (confirm('Archive ' + go.length + ' in "' + bk[1] + '"?' + (kept ? ' (' + kept + ' kept stay)' : ''))) archiveThreads(go, all); });
+        askAt(e, 'Archive ' + go.length + ' in "' + bk[1] + '"?' + (kept ? ' (' + kept + ' kept stay)' : ''), function(){ archiveThreads(go, all); }); });
       sh.insertBefore(all, sh.querySelector('.glv-xi'));
     }
     if (L === 'N' && window.TE && TE.key && TE.key()) {
@@ -1088,7 +1114,7 @@ function rebuildList(listEl) {
               var pa = document.createElement('button'); pa.className = 'glv-arch'; pa.textContent = 'Archive all ' + pgo.length;
               pa.title = 'Archive every email in ' + k + ' (Kept ones stay)';
               pa.addEventListener('click', function(e){ e.stopPropagation();
-                if (confirm('Archive ' + pgo.length + ' in "' + k + '"?')) archiveThreads(pgo, pa); });
+                askAt(e, 'Archive ' + pgo.length + ' in "' + k + '"?', function(){ archiveThreads(pgo, pa); }); });
               ph.appendChild(pa);
             }
             ph.addEventListener('click', function(e){ e.stopPropagation(); _expanded[pk] = !pOpen; rebuildList(_listEl); });
