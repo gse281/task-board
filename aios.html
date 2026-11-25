@@ -92,7 +92,7 @@ const today=new Intl.DateTimeFormat('en-CA',{timeZone:TZ}).format(new Date());
 let cfg={};try{cfg=JSON.parse(localStorage.getItem('tb.cfg')||'{}')}catch(e){}
 const BASE=cfg.baseId||'appdDTNBbVrp6hVOv',ITEMS=cfg.tableId||'tblLpOdHqxoP3siYk',AUTO='tblDBZXPxzKDKVKJh';
 let sel=null,hiGroup=null;
-const live={todos:null,health:null,err:''};
+const live={todos:null,health:null,feeds:null,srcItems:null,err:''};
 
 /* ---------- live Airtable ---------- */
 async function atAll(table,params){
@@ -109,6 +109,12 @@ async function loadLive(){
   const recs=await atAll(ITEMS,[['filterByFormula',"OR({Status}='Open',{Status}='Active')"],...f.map(x=>['fields[]',x])]);
   live.todos=recs.map(r=>{const c=r.fields||{};return{id:r.id,task:String(c.Task||'').replace(/\s+/g,' ').trim(),proj:c.Project||'',owner:c.SBLead||'',due:c.DoDate||'',next:String(c.NextStep||'').trim(),flag:!!c.RoniFlag}});
  }catch(e){live.err=e.message==='nokey'?'nokey':e.message}
+ try{
+  const n=await atAll('tblfAeWMfvocVGxZk',[['filterByFormula',"OR({Key}='aios:instinct',{Key}='aios:duet')"],['fields[]','Key'],['fields[]','Text'],['fields[]','Updated']]);
+  live.feeds={};n.forEach(r=>{const c=r.fields||{};if(c.Key)live.feeds[c.Key.slice(5)]=c.Text||''});
+  const src=await atAll(ITEMS,[['filterByFormula',"AND(OR({Source}='Duet',{Source}='Instinct'),OR({Status}='Open',{Status}='Active'))"],...['Task','Source','NextStep','DoDate'].map(x=>['fields[]',x])]);
+  live.srcItems=src.map(r=>r.fields||{});
+ }catch(e){}
  try{
   const a=await atAll(AUTO,[['filterByFormula',"{Kind}='Task'"],...['Name','Status','LastRun','Schedule','Detail'].map(x=>['fields[]',x])]);
   live.health=a.map(r=>r.fields||{}).filter(x=>x.Name);
@@ -138,11 +144,26 @@ function healthGroup(){
  const h=live.health.slice().sort((a,b)=>(rank[a.Status]??2)-(rank[b.Status]??2));
  return {h:'Health — live from Automations',items:h.map(x=>[x.Name,x.Status==='OK'?'ok':(x.Status==='Failing'||x.Status==='Missed'?'warn':'off'),(x.Status||'—')+(x.LastRun?' · last '+new Date(x.LastRun).toLocaleString('en-US',{timeZone:TZ,month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}):'')+(x.Detail?' · '+short(x.Detail,90):'')])};
 }
+function feedGroups(who,label){
+ const txt=(live.feeds||{})[who],items=(live.srcItems||[]).filter(x=>x.Source===label);
+ const g=[];
+ if(txt){const lines=txt.split('\n');let m0=lines[0].match(/^@(\S+)\s*(\S*)/),when=m0?new Date(m0[1]):null,thread=m0?m0[2]:'';
+  let cur=null;
+  const url=thread?'https://mail.google.com/mail/u/?authuser=rbenjamini%40gmail.com#all/'+thread:'';
+  lines.slice(m0?1:0).forEach(l=>{l=l.trim();if(!l)return;const m=l.match(/^(\d+(?:\/\d+)?)\.\s+(.*)$/);
+   if(m){if(!cur){cur={h:label,items:[]};g.push(cur)}const t=m[2],i=t.indexOf(':');
+    cur.items.push([`#${m[1]} `+(i>0&&i<60?t.slice(0,i):short(t,60)),cur.h.startsWith(label+' — New')?'warn':'',i>0&&i<60?t.slice(i+1).trim():(t.length>60?t:''),url]);}
+   else if(!/^dropped/i.test(l)){cur={h:label+' — '+(/new/i.test(l)?'New':/earlier|still/i.test(l)?'Older':short(l,18))+(when?' ('+when.toLocaleDateString('en-US',{timeZone:TZ,month:'numeric',day:'numeric'})+')':''),items:[]};g.push(cur)}});}
+ if(items.length)g.push({h:label+' — on task board',items:items.map(x=>[short(x.Task||'',70),'',(x.DoDate?'Due '+fmtD(x.DoDate)+' · ':'')+(x.NextStep||'')])});
+ return g.filter(x=>x.items.length);
+}
 let B=[];
 function build(){
  B=D.branches.map(b=>{let g=b.groups.slice();
   if(b.id==='todos'){g=todoGroups();const T=live.todos;b={...b,sum:T?T.length+' open · '+T.filter(t=>t.due&&t.due<today).length+' overdue':b.sum};}
   if(b.id==='routines'){const h=healthGroup();if(h)g=[h,...g];}
+  if(b.id==='openitems'){for(const[w,l]of[['duet','Duet'],['instinct','Instinct']]){const fg=feedGroups(w,l);if(fg.length){const i=g.findIndex(x=>x.h===l);g.splice(i<0?g.length:i,i<0?0:1,...fg);}}
+   const n=g.reduce((a,x)=>a+x.items.length,0);b={...b,sum:n+' open · chats · code · Duet · Instinct'};}
   const warn=g.some(x=>x.items.some(i=>i[1]==='warn'));
   return {...b,groups:g,warn};});
  const T=live.todos;

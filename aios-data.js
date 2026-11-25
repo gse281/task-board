@@ -2,7 +2,7 @@
    Rebuilt by Claude on "refresh my AIOS map". Live parts (To-dos, routine health) load from Airtable in aios.html.
    Item = [title, tag, detail, optional https link]. tag: ok | warn | off | '' */
 window.AIOS = {
-snapshot: '2026-11-24 12:20 ET',
+snapshot: '2026-11-25 07:10 ET',
 artifact: 'https://claude.ai/artifact/Bc8En9htMBg2ENWiUU6X5n',
 branches: [
 { id:'connectors', label:'Connectors', sum:'10 of 12 working', groups:[
@@ -110,9 +110,9 @@ branches: [
     ['Todo PWA — snooze undo','warn','Unsent ask in the "do it now" session: undo should put the task back in Next Up.','https://claude.ai/code/session_01EJBxbrvQQ8nKx8JR2Q4bDt'],
     ['Other Code sessions','','gse281/gse, Meetings, Call and messaging app — not read yet.','https://claude.ai/code']]},
   { h:'Duet', items:[
-    ['Not connected','warn','Claude Duet is phone-only; no connector or desktop view to read its open items yet.']]},
+    ['Waiting for Duet','warn','Ask Duet: email rbenjamini@gmail.com a numbered list, subject "Duet open items" — or add items to Airtable Items with Source = Duet. Shows here after the Friday feed run.']]},
   { h:'Instinct', items:[
-    ['Not connected','warn','Instinct works by text/call only; its open items live in your Messages thread, which this page can\'t read yet.']]}]},
+    ['Waiting for feed','','Instinct emails "Instinct open items" every Friday; the Friday feed run copies it here.']]}]},
 { id:'todos', label:'To-dos', sum:'656 open', live:true, groups:[]},
 { id:'routines', label:'Routines', sum:'14 on · 9 queued · 10 paused', groups:[
   { h:'Recurring — on', items:[

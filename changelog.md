@@ -278,3 +278,4 @@
 - 2026-11-10 10:40  iPhone Meetings icon: GSE signature over a calendar
 - 2026-11-24 07:08  AIOS map page (aios.html) + ◈ AIOS links on Focus, Focus 2, Dashboard, Email
 - 2026-11-24 12:01  AIOS map: Open items branch (chats, Code, Duet, Instinct)
+- 2026-11-25 06:59  AIOS map: Duet/Instinct nodes fill from AppNotes feeds + Items Source=Duet/Instinct
