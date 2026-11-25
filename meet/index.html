@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
 <style>
-/* Meetings — standalone iPhone app, separate from Tasks (/m/).
+/* Meetings — the meetings-only page: on the web (linked from every page's top-right nav) and as its own iPhone app, separate from Tasks (/m/).
    Same Airtable Calendar table + the weekday 8:30 / 3:00 Dialpad calls as the Tasks home card. */
 :root{--bg:#14110f;--panel:#1d1916;--panel2:#262019;--ink:#f5f3ee;--muted:#a8a29a;--dim:#6f6861;--line:#2c2723;
   --join:#0A84FF;--call:#30D158;--callink:#0b1a10;--now:#e5533a;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
@@ -55,13 +55,21 @@ h3{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)
 .sb{display:block;width:100%;padding:14px;border-radius:14px;background:var(--panel2);margin-bottom:8px;font-weight:700;text-align:center}
 .sb.go{background:var(--call);color:var(--callink)}
 label{font-size:13px;color:var(--muted)}
+/* On the web: page links on top (same as every other page) and a centred column. Hidden in the Home Screen app. */
+.mtnav{display:flex;margin:-2px -6px 4px}
+@media (display-mode:standalone){.mtnav{display:none}}
+@media (min-width:760px){body{max-width:760px;margin:0 auto;padding-top:14px}.mtnav{position:fixed;top:8px;right:12px;margin:0;z-index:30}header{padding-top:34px}
+  .veil{align-items:center;justify-content:center}.sheet{max-width:460px;border-radius:22px}}
 </style>
 </head>
 <body>
+<div class="mtnav"><span data-tbnav="meetings"></span></div>
 <header><h1>Meetings</h1><div style="display:flex;gap:8px"><button class="hb" id="ref" aria-label="Refresh">↻</button><button class="hb" id="set" aria-label="Settings">⚙︎</button></div></header>
 <main id="out"></main>
 <div class="veil" id="veil"><div class="sheet" id="sheet"></div></div>
+<script src="../nav.js?v=1795649698"></script>
 <script>
+if(navigator.standalone) document.querySelector('.mtnav').style.display='none';   // older iPhones: Home Screen app
 function load(k,d){ try{ const v=JSON.parse(localStorage.getItem(k)||'null'); return v==null?d:v; }catch(e){ return d; } }
 function save(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
 const $=s=>document.querySelector(s);

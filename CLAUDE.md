@@ -1,0 +1,44 @@
+# Task board — notes for Claude Code sessions
+
+Static site on GitHub Pages (`gse281/task-board`). No build step. Data lives in Airtable base `appdDTNBbVrp6hVOv` ("Project & Task Manager").
+
+## 1. Log what you leave open (feeds the AIOS map)
+
+The AIOS map (`aios.html` › Open items › Claude Code) shows every Claude Code session's open items, from every device.
+It reads Airtable table **AppNotes** (`tblfAeWMfvocVGxZk`), one row per device, Key = `aios:code:<device>`:
+
+- `<device>` = the computer's name, lower case, no spaces (`rmb-home-pro`, `rmbimac24`). Cloud sessions use `web`.
+- Text, line 1: `@<ISO time>`. Then one numbered line per open item, newest first:
+  `1. Short title: what is open and what happens next <https://link-to-the-session-or-file>`
+  Start the text with `!` when it is waiting on Roni: `2. ! Deploy: waiting for your OK to push`.
+- Updated = the same time, plain text.
+
+Rules:
+
+1. Before you end a turn with anything unfinished, unanswered or waiting on Roni, upsert your device's row: read it, change only your own lines, write it back.
+2. When an item closes, delete its line. No open items = line 1 only.
+3. Never touch another device's row, or the `aios:duet` / `aios:instinct` rows.
+4. A real task for Roni (not session state) goes in **Items** instead: Task, Status `Open`, Source `Code`, TextExclude checked.
+
+## 2. Pages
+
+| Page | File | Notes |
+|---|---|---|
+| Focus (site root) | `index.html` = `radial.html` | keep the two files identical |
+| Dashboard | `dashboard.html` = `grid.html` | keep the two files identical |
+| Focus 2 | `focus2.html` | also runs off-site, so it loads `nav.js` by absolute URL there |
+| Email | `email.html` + `gmail-live.js` (Live) + `emailrun.js` (Scan) | extra run rules: `EMAIL_RULES.md` |
+| Meetings | `meet/` | meetings-only page, also its own iPhone Home Screen app |
+| AIOS map | `aios.html` + `aios-data.js` | snapshot in `aios-data.js`; to-dos, feeds and health load live |
+| iPhone Tasks | `m/` | own service worker |
+
+- The top-right page links are `nav.js` on every page. Add or reorder a page there, nowhere else.
+- Bump the `?v=` on a script tag when you change that script.
+- Add one line to `changelog.md` per change: `- YYYY-MM-DD HH:MM  what changed`.
+
+## 3. Email page
+
+- Categories: `H` Last hour, `D` Starred, `Z` Snoozed, `C` Reply, `B` Don't miss, `N` Not sorted yet, `E` Everything else, `A` Archive, `K` Kept, `X` Hidden 24h. Defined once, in `gmail-live.js` (`BUCKETS`).
+- Scan takes its thread list and categories from Live (`GL.snapshot()`), so the two tabs always show the same counts. Don't give Scan its own classification.
+- Kept and Hidden are stored in AppNotes, Keys `email:kept` and `email:hide` (JSON). Hidden lasts 24 h, or until a new message arrives in the thread.
+- Never send, trash or unsubscribe from the page. Archive only on Roni's press.

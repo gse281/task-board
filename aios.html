@@ -71,17 +71,15 @@ a{color:var(--cyan)}
 </head><body>
 <div class="top">
  <span class="greet">◈ AIOS MAP</span><span class="sum" id="sum"></span>
- <a class="cmdbtn" href="radial.html?focus=1" title="Focus">◎<span class="l"> FOCUS</span></a>
- <a class="cmdbtn" href="focus2.html" title="Focus 2">◉<span class="l"> FOCUS 2</span></a>
- <a class="cmdbtn" href="email.html" title="Email">✉<span class="l"> EMAIL</span></a>
- <a class="cmdbtn" href="dashboard.html" title="Dashboard">⌂<span class="l"> DASHBOARD</span></a>
  <span class="clk" id="clk"></span>
+ <span data-tbnav="aios"></span>
 </div>
 <div id="stage"><svg id="wires"></svg><div class="ring" id="ring1"></div><div class="ring r2" id="ring2"></div><div class="core" id="core" role="button" tabindex="0"></div><div id="nodes"></div></div>
 <aside id="pane" aria-live="polite"></aside>
 <div class="foot" id="foot"></div>
 
-<script src="aios-data.js"></script>
+<script src="nav.js?v=1795649698"></script>
+<script src="aios-data.js?v=1795649698"></script>
 <script>
 {
 const D=window.AIOS||{branches:[]};
@@ -105,15 +103,14 @@ async function atAll(table,params){
  return out;}
 async function loadLive(){
  try{
-  const f=['Task','Project','SBLead','DoDate','RoniFlag','NextStep','Status'];
+  const f=['Task','Project','SBLead','DoDate','RoniFlag','NextStep','Status','Section','Source'];
   const recs=await atAll(ITEMS,[['filterByFormula',"OR({Status}='Open',{Status}='Active')"],...f.map(x=>['fields[]',x])]);
-  live.todos=recs.map(r=>{const c=r.fields||{};return{id:r.id,task:String(c.Task||'').replace(/\s+/g,' ').trim(),proj:c.Project||'',owner:c.SBLead||'',due:c.DoDate||'',next:String(c.NextStep||'').trim(),flag:!!c.RoniFlag}});
+  live.todos=recs.map(r=>{const c=r.fields||{};return{id:r.id,task:String(c.Task||'').replace(/\s+/g,' ').trim(),proj:c.Project||'',owner:c.SBLead||'',due:c.DoDate||'',next:String(c.NextStep||'').trim(),flag:!!c.RoniFlag,sec:c.Section||'',src:String(c.Source||'').trim()}});
  }catch(e){live.err=e.message==='nokey'?'nokey':e.message}
  try{
-  const n=await atAll('tblfAeWMfvocVGxZk',[['filterByFormula',"OR({Key}='aios:instinct',{Key}='aios:duet')"],['fields[]','Key'],['fields[]','Text'],['fields[]','Updated']]);
+  // Open-item feeds in AppNotes: aios:duet, aios:instinct, and one per device for Claude Code (aios:code:<device>).
+  const n=await atAll('tblfAeWMfvocVGxZk',[['filterByFormula',"OR({Key}='aios:instinct',{Key}='aios:duet',LEFT({Key},9)='aios:code')"],['fields[]','Key'],['fields[]','Text'],['fields[]','Updated']]);
   live.feeds={};n.forEach(r=>{const c=r.fields||{};if(c.Key)live.feeds[c.Key.slice(5)]=c.Text||''});
-  const src=await atAll(ITEMS,[['filterByFormula',"AND(OR({Source}='Duet',{Source}='Instinct'),OR({Status}='Open',{Status}='Active'))"],...['Task','Source','NextStep','DoDate'].map(x=>['fields[]',x])]);
-  live.srcItems=src.map(r=>r.fields||{});
  }catch(e){}
  try{
   const a=await atAll(AUTO,[['filterByFormula',"{Kind}='Task'"],...['Name','Status','LastRun','Schedule','Detail'].map(x=>['fields[]',x])]);
@@ -144,26 +141,52 @@ function healthGroup(){
  const h=live.health.slice().sort((a,b)=>(rank[a.Status]??2)-(rank[b.Status]??2));
  return {h:'Health — live from Automations',items:h.map(x=>[x.Name,x.Status==='OK'?'ok':(x.Status==='Failing'||x.Status==='Missed'?'warn':'off'),(x.Status||'—')+(x.LastRun?' · last '+new Date(x.LastRun).toLocaleString('en-US',{timeZone:TZ,month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit'}):'')+(x.Detail?' · '+short(x.Detail,90):'')])};
 }
-function feedGroups(who,label){
- const txt=(live.feeds||{})[who],items=(live.srcItems||[]).filter(x=>x.Source===label);
+/* One feed (AppNotes text: "@ISO-time [gmail-thread]" then numbered lines "1. Title: detail", optional section lines)
+   + the board items whose Source matches. A line may start with "!" (needs Roni) and end with " <https://link>".
+   seen = ids of board items already listed in this branch, so nothing shows twice. */
+function feedGroups(who,label,seen,srcRe){
+ const re=srcRe||new RegExp('^'+label+'$','i'),items=(live.todos||[]).filter(t=>re.test(t.src)&&!(seen&&seen.has(t.id)));
+ const txt=(live.feeds||{})[who];
  const g=[];
  if(txt){const lines=txt.split('\n');let m0=lines[0].match(/^@(\S+)\s*(\S*)/),when=m0?new Date(m0[1]):null,thread=m0?m0[2]:'';
   let cur=null;
   const url=thread?'https://mail.google.com/mail/u/?authuser=rbenjamini%40gmail.com#all/'+thread:'';
   lines.slice(m0?1:0).forEach(l=>{l=l.trim();if(!l)return;const m=l.match(/^(\d+(?:\/\d+)?)\.\s+(.*)$/);
-   if(m){if(!cur){cur={h:label,items:[]};g.push(cur)}const t=m[2],i=t.indexOf(':');
-    cur.items.push([`#${m[1]} `+(i>0&&i<60?t.slice(0,i):short(t,60)),cur.h.startsWith(label+' — New')?'warn':'',i>0&&i<60?t.slice(i+1).trim():(t.length>60?t:''),url]);}
+   if(m){if(!cur){cur={h:label+(when&&!isNaN(when)?' ('+when.toLocaleDateString('en-US',{timeZone:TZ,month:'numeric',day:'numeric'})+')':''),items:[]};g.push(cur)}
+    let t=m[2];const lk=t.match(/\s*<(https:\/\/[^>\s]+)>\s*$/);if(lk)t=t.slice(0,lk.index);
+    const need=/^!\s*/.test(t);t=t.replace(/^!\s*/,'');const i=t.indexOf(':');
+    cur.items.push([`#${m[1]} `+(i>0&&i<60?t.slice(0,i):short(t,60)),need||cur.h.startsWith(label+' — New')?'warn':'',i>0&&i<60?t.slice(i+1).trim():(t.length>60?t:''),lk?lk[1]:url]);}
    else if(!/^dropped/i.test(l)){cur={h:label+' — '+(/new/i.test(l)?'New':/earlier|still/i.test(l)?'Older':short(l,18))+(when?' ('+when.toLocaleDateString('en-US',{timeZone:TZ,month:'numeric',day:'numeric'})+')':''),items:[]};g.push(cur)}});}
- if(items.length)g.push({h:label+' — on task board',items:items.map(x=>[short(x.Task||'',70),'',(x.DoDate?'Due '+fmtD(x.DoDate)+' · ':'')+(x.NextStep||'')])});
+ if(items.length)g.push({h:label+' — on task board',items:items.map(x=>{if(seen)seen.add(x.id);return[short(x.task,70),x.due&&x.due<today?'warn':'',(x.due?'Due '+fmtD(x.due)+' · ':'')+(x.next||'')]})});
  return g.filter(x=>x.items.length);
+}
+/* Claude Code open items, every device: each device's sessions keep one feed (aios:code:<device>; "web" = cloud sessions). */
+function codeGroups(seen){
+ const g=[];
+ Object.keys(live.feeds||{}).filter(k=>k==='code'||k.startsWith('code:')).sort().forEach(k=>g.push(...feedGroups(k,'Claude Code'+(k.length>5?' · '+k.slice(5):''),seen,/(?!)/)));   // feed lines only; board items are added once, below
+ g.push(...feedGroups('','Claude Code',seen,/^(claude )?code$/i));
+ return g;
+}
+/* 🖥 @Computer – Claude: the board's "needs Roni at the Mac" list (Project or Section has @Computer). Same rule as the Dashboard pane.
+   Skips anything already listed above in this branch and repeated task names. */
+function computerGroup(seen){
+ const T=live.todos;if(!T)return null;
+ const names=new Set();
+ const its=T.filter(t=>/@computer/i.test(t.proj+' '+t.sec)&&!seen.has(t.id)).filter(t=>{const k=t.task.toLowerCase();if(!k||names.has(k))return false;names.add(k);return true})
+  .sort((a,b)=>(a.due||'9999')<(b.due||'9999')?-1:(a.due||'9999')>(b.due||'9999')?1:0);
+ if(!its.length)return null;
+ return {h:'@Computer – Claude ('+its.length+')',items:its.map(t=>[short(t.task,90),t.due&&t.due<today?'warn':(t.flag?'ok':''),(t.due?'Due '+fmtD(t.due)+' · ':'')+(t.next?short(t.next,120):'needs you at the Mac')])};
 }
 let B=[];
 function build(){
  B=D.branches.map(b=>{let g=b.groups.slice();
   if(b.id==='todos'){g=todoGroups();const T=live.todos;b={...b,sum:T?T.length+' open · '+T.filter(t=>t.due&&t.due<today).length+' overdue':b.sum};}
   if(b.id==='routines'){const h=healthGroup();if(h)g=[h,...g];}
-  if(b.id==='openitems'){for(const[w,l]of[['duet','Duet'],['instinct','Instinct']]){const fg=feedGroups(w,l);if(fg.length){const i=g.findIndex(x=>x.h===l);g.splice(i<0?g.length:i,i<0?0:1,...fg);}}
-   const n=g.reduce((a,x)=>a+x.items.length,0);b={...b,sum:n+' open · chats · code · Duet · Instinct'};}
+  if(b.id==='openitems'){const seen=new Set();
+   const cg=codeGroups(seen);if(cg.length){const i=g.findIndex(x=>x.h==='From Code sessions');g.splice(i<0?g.length:i,i<0?0:1,...cg);}
+   for(const[w,l]of[['duet','Duet'],['instinct','Instinct']]){const fg=feedGroups(w,l,seen);if(fg.length){const i=g.findIndex(x=>x.h===l);g.splice(i<0?g.length:i,i<0?0:1,...fg);}}
+   const pc=computerGroup(seen);if(pc)g.push(pc);
+   const n=g.reduce((a,x)=>a+x.items.length,0);b={...b,sum:n+' open · chats · code · @Computer · Duet · Instinct'};}
   const warn=g.some(x=>x.items.some(i=>i[1]==='warn'));
   return {...b,groups:g,warn};});
  const T=live.todos;

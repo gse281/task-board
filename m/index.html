@@ -19,9 +19,11 @@
 <script src="../photos.js"></script>
 <script src="../bills.js"></script>
 <script>
-/* Deep links: /m/#morning, /m/#afternoon, /m/#meetings, /m/#review, /m/#notes.
+/* Deep links: /m/#morning, /m/#afternoon, /m/#review, /m/#notes. (/m/#meetings → ../meet/, the meetings-only page.)
    For the two calls and Meetings, swap manifest + icon + title so "Add to Home Screen" makes a dedicated one-tap icon. */
-(function(){ var h=(location.hash||'').slice(1).toLowerCase(); var M={morning:['AM Call','am'],afternoon:['PM Call','pm'],meetings:['Meetings','meet'],meet:['Meetings','meet']}[h]; if(!M) return;
+(function(){ var h=(location.hash||'').slice(1).toLowerCase();
+  if(h==='meetings'||h==='meet'){ location.replace('../meet/'); return; }   // Meetings has its own page + Home Screen app (/meet/); this link used to land on Tasks
+  var M={morning:['AM Call','am'],afternoon:['PM Call','pm'],meetings:['Meetings','meet'],meet:['Meetings','meet']}[h]; if(!M) return;
   document.querySelector('link[rel=manifest]').href='manifest-'+M[1]+'.webmanifest';
   document.querySelector('link[rel=apple-touch-icon]').href='icon-'+M[1]+'-180.png';
   document.querySelector('meta[name=apple-mobile-web-app-title]').content=M[0]; document.title=M[0]; })();

@@ -108,7 +108,7 @@ branches: [
     ['Property-tax email sent 5:44 PM','','Still unknown why it went out instead of holding to morning.','https://claude.ai/chat/a8b5b89d-09e7-419d-8440-040707b30375']]},
   { h:'From Code sessions', items:[
     ['Todo PWA — snooze undo','warn','Unsent ask in the "do it now" session: undo should put the task back in Next Up.','https://claude.ai/code/session_01EJBxbrvQQ8nKx8JR2Q4bDt'],
-    ['Other Code sessions','','gse281/gse, Meetings, Call and messaging app — not read yet.','https://claude.ai/code']]},
+    ['Other devices','','Fills in live: every Claude Code session logs what it leaves open to Airtable AppNotes (Key aios:code:<device>, rule in CLAUDE.md). Board items with Source = Code show here too.','https://claude.ai/code']]},
   { h:'Duet', items:[
     ['Waiting for Duet','warn','Ask Duet: email rbenjamini@gmail.com a numbered list, subject "Duet open items" — or add items to Airtable Items with Source = Duet. Shows here after the Friday feed run.']]},
   { h:'Instinct', items:[

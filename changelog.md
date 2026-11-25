@@ -279,3 +279,10 @@
 - 2026-11-24 07:08  AIOS map page (aios.html) + ◈ AIOS links on Focus, Focus 2, Dashboard, Email
 - 2026-11-24 12:01  AIOS map: Open items branch (chats, Code, Duet, Instinct)
 - 2026-11-25 06:59  AIOS map: Duet/Instinct nodes fill from AppNotes feeds + Items Source=Duet/Instinct
+- 2026-11-25 19:10  Top-right page links are now one shared nav (nav.js) on every page: Dashboard · Focus · Focus 2 · Meetings · Email · AIOS, same order and look, current page lit
+- 2026-11-25 19:10  Email › Live: categories moved to a rail on the left; page opens with only Reply and Don't miss unfolded
+- 2026-11-25 19:10  Email › Live: Hide button (gone for 24 h, back sooner if a new message arrives) + Hidden 24h category with Unhide
+- 2026-11-25 19:10  Email › Live: Keep now moves the email into its own Kept category; Kept and Hidden sync across devices (Airtable AppNotes)
+- 2026-11-25 19:10  Email › Scan: same left rail; matched to the live inbox (one row per thread, gone when it leaves the inbox), so Scan and Live counts are the same
+- 2026-11-25 19:10  Meetings-only page on the web (meet/), in the nav; iPhone /m/#meetings now goes there
+- 2026-11-25 19:10  AIOS map › Open items: Claude Code feed per device (AppNotes aios:code:<device>) + the board's @Computer – Claude list, no repeats

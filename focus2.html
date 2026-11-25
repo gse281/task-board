@@ -142,13 +142,12 @@ a.pill{text-decoration:none}
 <body>
 <div class="top">
   <div class="brand">◉ Focus 2</div>
-  <nav class="nav"><a class="pill" id="navFocus" href="radial.html?focus=1">◎ Focus</a><a class="pill" id="navDash" href="dashboard.html">⌂ Dashboard</a><a class="pill" id="navAios" href="aios.html" title="AIOS map — your Claude setup">◈ AIOS</a></nav>
   <div class="stat" id="stat"></div>
-  <span id="erSlot" style="display:contents"></span>
   <button class="pill" id="revertBtn" type="button" title="Undo everything since the last save">↺ Revert</button>
   <button class="pill save" id="saveBtn" type="button" title="Save (⌘S)">Save</button>
   <button class="pill" id="resetBtn" type="button">Clear</button>
   <button class="pill go" id="sendAll" type="button">Send all</button>
+  <span data-tbnav="focus2"></span>
 </div>
 <div id="stage">
   <div class="ring" id="ring1"></div><div class="ring r2" id="ring2"></div>
@@ -172,10 +171,12 @@ a.pill{text-decoration:none}
   <div class="sphs" id="sphs"></div>
 </div>
 <div id="toastHost"></div>
+<script>/* page links (top right): same file on every page; absolute when this page runs off the task-board site */
+(function(){var on=/github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname)||location.protocol==='file:';var s=document.createElement('script');s.src=(on?'':'https://gse281.github.io/task-board/')+'nav.js?v=1795649698';document.head.appendChild(s);})();</script>
 <script src="task-editor.js"></script>
 <script src="photos.js"></script>
 <script src="claudeq.js"></script>
-<script src="emailrun.js?v=1793620000"></script>
+<script src="emailrun.js?v=1795649698"></script>
 
 <script>
 (function(){
@@ -265,10 +266,6 @@ function buildMsg(s){
 }
 var isApple=/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent);
 function smsHref(phone,body){var p=String(phone||'').replace(/[^\d+]/g,'');return 'sms:'+p+(isApple?'&':'?')+'body='+encodeURIComponent(body);}
-
-// nav links: relative on the task-board site, absolute anywhere else
-(function(){ var onSite=/github\.io$/.test(location.hostname); var root=onSite?'':'https://gse281.github.io/task-board/';
-  $('#navFocus').href=root+'radial.html?focus=1'; $('#navDash').href=root+'dashboard.html'; })();
 
 // ---------- render ----------
 var selected=null;

@@ -1,7 +1,9 @@
-/* gmail-live.js — live Gmail inbox panel v4
+/* gmail-live.js — live Gmail inbox panel v5
+   Categories sit in a rail on the left; the page opens with only Reply and Don't miss unfolded.
+   Hide = out of sight for 24 h. Keep = moves the email to its own Kept category.
    Requires Google Identity Services:
      <script src="https://accounts.google.com/gsi/client" async defer></script>
-   Public API:  window.GL = { mount(host, cfg) }
+   Public API:  window.GL = { mount(host, cfg), snapshot(), onChange(fn), CATS, ic(name) }
 */
 (function () {
 'use strict';
@@ -33,7 +35,11 @@ var _loading  = false;
 var _error    = null;
 var _expanded = {};
 var _bodies   = {};
-var _pjAll    = {};   // bucket → true when its project subgroups are unfolded (default: folded, headers only)
+// Page opens with every category closed except Reply and Don't miss, and those two fully unfolded.
+var OPEN0     = { C: 1, B: 1 };
+function pj0() { return { C: true, B: true }; }
+function isOpen(L) { var v = _expanded['bk-' + L]; return v !== undefined ? v : !!OPEN0[L]; }
+var _pjAll    = pj0();   // bucket → true when its project subgroups are unfolded (default: folded, headers only)
 var _notes    = {};   // threadId → { rid, note } (Airtable EmailNotes)
 var _editing  = null, _draft = '';
 var _snoozing = null;   // thread id whose snooze choices are showing
@@ -43,6 +49,8 @@ var _rk = {}; function rk(id) { return _rk[id] !== undefined ? _rk[id] : (_rk[id
 var HOUR = 3600e3;
 var _host     = null;
 var _listEl   = null;
+var _railEl   = null;   // left rail: one line per category
+var _subs     = [];     // GL.onChange listeners (the Scan tab matches itself to this inbox)
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
 
@@ -303,7 +311,7 @@ function fmtDate(d) {
 
 // First open: show the list only once everything that can move an email has arrived (first page of
 // mail, Scan, notes/snoozes, Always-archive rules). Drawing earlier reshuffles it under your first tap.
-var _ready = false, _wait = { page: 1, scan: 1, notes: 1, rules: 1 };
+var _ready = false, _wait = { page: 1, scan: 1, notes: 1, rules: 1, flags: 1 };
 function arrived(k) {
   delete _wait[k];
   if (!_ready && (k === 'all' || !Object.keys(_wait).length)) { _ready = true; redraw(); }
@@ -449,12 +457,37 @@ function addCss() {
 .glv-dr{display:inline-flex;align-items:center;margin-top:6px}.glv-drb{margin-top:4px}
 .glv-zz{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}.glv-zz .glv-ck{opacity:1}.glv-zi{margin-top:4px;color:#8aa6af}
 .glv-chip.bk{cursor:pointer}.glv-chip.cB b{color:#e5533a}.glv-chip.cD b{color:#e0a458}
-@media (hover:none){.glv-ck,.glv-arch{opacity:1}}
+/* categories: rail on the left, the open ones on the right */
+.glv-main{display:flex;gap:16px;align-items:flex-start}
+.glv-main>.glv-list{flex:1;min-width:0}
+.glv-rail{flex:none;width:212px;position:sticky;top:50px;display:flex;flex-direction:column;gap:3px;max-height:calc(100vh - 120px);overflow:auto;padding-bottom:6px}
+.glv-rhd{font:800 10.5px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:#64838d;padding:2px 9px 4px}
+.glv-ri{display:flex;align-items:center;gap:8px;width:100%;padding:7px 9px;border-radius:9px;border:1px solid transparent;background:none;color:#9fb9c2;font:700 14px -apple-system,system-ui,sans-serif;text-align:left;cursor:pointer}
+.glv-ri:hover{background:rgba(57,199,223,.08);color:#e7f3f6}
+.glv-ri.on{background:rgba(57,199,223,.12);border-color:rgba(57,199,223,.38);color:#e7f3f6}
+.glv-ri.zero{opacity:.42}
+.glv-rn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.glv-ri.rB .glv-sl,.glv-ri.rB .glv-sc{background:#e5533a;color:#fff}.glv-ri.rD .glv-sl,.glv-ri.rD .glv-sc{background:#e0a458;color:#07141a}
+.glv-ri.rA .glv-sl,.glv-ri.rN .glv-sl,.glv-ri.rX .glv-sl{color:#8aa6af}
+.glv-K .glv-sl,.glv-ri.rK .glv-sl{color:#e0a458}.glv-X .glv-sl{color:#8aa6af}
+.glv-pick{padding:34px 20px;text-align:center;color:#8aa6af;font-size:14px}
+/* row buttons */
+.glv-row{position:relative}
+.glv-acts{display:flex;gap:4px;flex:none;align-items:center}
+.glv-acts .glv-ck{display:none}.glv-acts .glv-ck.on{display:inline-block}
+@media (hover:hover){
+.glv-row:hover .glv-acts{position:absolute;top:3px;right:5px;z-index:2;padding:3px 5px;border-radius:8px;background:#14262f;box-shadow:-14px 0 14px -4px #14262f}
+.glv-row:hover .glv-acts .glv-ck{display:inline-block;opacity:1}
+}
+@media (hover:none){.glv-ck,.glv-arch{opacity:1}.glv-acts{flex-wrap:wrap;width:100%}.glv-acts .glv-ck{display:inline-block}}
 @media (max-width:600px){
   .glv{padding:0 10px calc(24px + env(safe-area-inset-bottom))}
   .glv-cols{flex-direction:column;gap:0}.glv-col{width:100%}
+  .glv-main{flex-direction:column;gap:6px}.glv-main>.glv-list{width:100%}
+  .glv-rail{width:100%;flex-direction:row;gap:5px;overflow-x:auto;max-height:none;z-index:4;background:#070d11;padding:5px 0;scrollbar-width:none}.glv-rail::-webkit-scrollbar{display:none}
+  .glv-rhd{display:none}.glv-ri{width:auto;flex:none;padding:6px 10px;border-color:rgba(57,199,223,.2)}.glv-rn{flex:none}
   .glv-bar{padding:6px 0;gap:6px;background:#070d11}
-  .glv-chips{order:3;flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:none}.glv-chips::-webkit-scrollbar{display:none}
+  .glv-chips{flex:none}
   .glv-chip{flex-shrink:0;padding:2px 9px;font-size:12.5px}
   .glv-row{padding:9px 11px;border-radius:11px}
   .glv-rh{flex-wrap:wrap;row-gap:6px}.glv-rf{flex:1 0 45%}
@@ -496,14 +529,17 @@ var ICONS = {
   spark: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4"/>',
   mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/>',
-  plus: '<path d="M12 5v14M5 12h14"/>'
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  hide: '<path d="M3 3l18 18"/><path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a10.7 10.7 0 0 0 4.9-1.2"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
 };
 function ic(n) { return '<svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[n] || '') + '</svg>'; }
 function icT(n, txt) { var e = document.createElement('span'); e.textContent = txt; return ic(n) + (txt ? '<span>' + e.innerHTML + '</span>' : ''); }
 
 var BUCKETS = [
   ['H', 'Last hour', 'clock'], ['D', 'Starred', 'star'], ['Z', 'Snoozed', 'moon'], ['C', 'Reply', 'reply'], ['B', "Don't miss", 'alert'],
-  ['N', 'Not sorted yet', 'inbox'],  ['E', 'Everything else', 'file'], ['A', 'Archive', 'archive']
+  ['N', 'Not sorted yet', 'inbox'],  ['E', 'Everything else', 'file'], ['A', 'Archive', 'archive'],
+  ['K', 'Kept', 'pin'], ['X', 'Hidden 24h', 'hide']
 ];
 var _scan = { byThread: {}, bySender: {}, loaded: false };
 
@@ -575,10 +611,72 @@ async function setSnooze(t, iso) {
 function snoozedTill(t) { var n = _notes[t.id], u = n && n.snooze && new Date(n.snooze); return u && u > new Date() ? u : null; }
 function wakeAt(days) { var d = new Date(); d.setDate(d.getDate() + days); d.setHours(8, 0, 0, 0); return d.toISOString(); }
 
-// "Keep" = skip this thread in Archive all (this browser only).
-var KEEP_KEY = 'gl.keep';
-var _keep = {}; try { _keep = JSON.parse(localStorage.getItem(KEEP_KEY) || '{}'); } catch (e) {}
-function toggleKeep(t) { if (_keep[t.id]) delete _keep[t.id]; else _keep[t.id] = 1; try { localStorage.setItem(KEEP_KEY, JSON.stringify(_keep)); } catch (e) {} }
+// ── Kept + Hidden ──────────────────────────────────────────────────────────────
+// Keep = the email leaves its category and sits in "Kept" until you un-keep it (so it is never in an Archive all).
+// Hide = read it, nothing to do: gone for 24 hours, then back where it was. A new message in the thread brings it back sooner.
+// Both live in Airtable AppNotes (Key 'email:kept' / 'email:hide', Text = JSON), so phone and Mac agree.
+// localStorage keeps a copy, so the list is already right before Airtable answers.
+var KEEP_KEY = 'gl.keep', HIDE_KEY = 'gl.hide', HIDE_MS = 24 * 3600e3;
+var FLAG_TBL = 'tblfAeWMfvocVGxZk', FLAG_KEYS = { keep: 'email:kept', hide: 'email:hide' };
+var _keep = {}, _hide = {}, _flagRid = {}, _flagQ = Promise.resolve(), _flagPend = { keep: [], hide: [] };
+try { _keep = JSON.parse(localStorage.getItem(KEEP_KEY) || '{}') || {}; } catch (e) {}
+try { _hide = JSON.parse(localStorage.getItem(HIDE_KEY) || '{}') || {}; } catch (e) {}
+function flagStore(w) { return w === 'hide' ? _hide : _keep; }
+function setStore(w, m) { if (w === 'hide') _hide = m; else _keep = m; }
+function applyChange(m, c) { if (c.v === undefined) delete m[c.id]; else m[c.id] = c.v; }
+function saveFlagsLocal() { try { localStorage.setItem(KEEP_KEY, JSON.stringify(_keep)); localStorage.setItem(HIDE_KEY, JSON.stringify(_hide)); } catch (e) {} }
+function hasKey() { return !!(window.TE && TE.key && TE.key()); }
+function inboxComplete() { return _authed && !_loading && !_nextPage && !_error && _threads.length > 0; }
+function pruneFlags(w, m) {
+  var now = Date.now();
+  if (w === 'hide') Object.keys(m).forEach(function(k){ if (!m[k] || !(m[k].u > now)) delete m[k]; });   // the 24 h are over
+  else if (inboxComplete()) {   // whole inbox is loaded: forget kept emails that have left it
+    var have = {}; _threads.forEach(function(t){ have[t.id] = 1; });
+    Object.keys(m).forEach(function(k){ if (!have[k]) delete m[k]; });
+  }
+  return m;
+}
+async function loadFlags() {
+  if (!hasKey()) return;
+  var d = await airtable(FLAG_TBL, '?filterByFormula=' + encodeURIComponent("OR({Key}='email:kept',{Key}='email:hide')"));
+  var got = {};
+  (d.records || []).forEach(function(x){
+    var w = x.fields.Key === FLAG_KEYS.hide ? 'hide' : 'keep', v = {};
+    try { v = JSON.parse(x.fields.Text || '{}') || {}; } catch (e) {}
+    _flagRid[w] = x.id; got[w] = 1;
+    _flagPend[w].forEach(function(c){ applyChange(v, c); });   // taps made while this was loading
+    setStore(w, v);
+  });
+  // First time on Airtable: send up what this browser already had (the old Keep list was per browser).
+  ['keep', 'hide'].forEach(function(w){ if (!got[w] && Object.keys(flagStore(w)).length) pushFlags(w, null); });
+  saveFlagsLocal();
+}
+// One change at a time, read-modify-write, so two devices never overwrite each other's list.
+function pushFlags(w, change) {
+  if (!hasKey()) return Promise.resolve();
+  if (change) _flagPend[w].push(change);
+  _flagQ = _flagQ.then(async function(){
+    var cur = null;
+    if (_flagRid[w] && change) { try { cur = JSON.parse((await airtable(FLAG_TBL, '/' + _flagRid[w])).fields.Text || '{}') || {}; } catch (e) { cur = null; } }
+    if (!cur) cur = Object.assign({}, flagStore(w));
+    if (change) applyChange(cur, change);
+    pruneFlags(w, cur);
+    var body = JSON.stringify({ fields: { Key: FLAG_KEYS[w], Text: JSON.stringify(cur), Updated: new Date().toLocaleString() } });
+    var r = await airtable(FLAG_TBL, _flagRid[w] ? '/' + _flagRid[w] : '', { method: _flagRid[w] ? 'PATCH' : 'POST', body: body });
+    _flagRid[w] = r.id;
+    if (change) _flagPend[w].splice(_flagPend[w].indexOf(change), 1);
+    var next = Object.assign({}, cur); _flagPend[w].forEach(function(c){ applyChange(next, c); });   // taps still waiting their turn
+    setStore(w, next); saveFlagsLocal();
+  }).catch(function(){ if (change) { var i = _flagPend[w].indexOf(change); if (i >= 0) _flagPend[w].splice(i, 1); } });   // offline: the local copy still holds it
+  return _flagQ;
+}
+function setFlag(w, id, v) {
+  applyChange(flagStore(w), { id: id, v: v }); saveFlagsLocal();
+  pushFlags(w, { id: id, v: v }).then(function(){ rebuildList(_listEl); });
+}
+function toggleKeep(t) { setFlag('keep', t.id, _keep[t.id] ? undefined : 1); }
+function hiddenTill(t) { var h = _hide[t.id]; return h && h.u > Date.now() && !(+t.date > h.d) ? new Date(h.u) : null; }
+function setHide(t, on) { setFlag('hide', t.id, on ? { u: Date.now() + HIDE_MS, d: +t.date } : undefined); }
 
 // Always-archive senders live in Gmail as the label "ER/Always archive", so every
 // device (and Superhuman) sees the same rules. Cache: threadId → sender email.
@@ -640,9 +738,12 @@ function classify(t) {
   var project = (r && r.project) || (snd ? snd.project : '');
   var recent = Date.now() - t.date < HOUR;
   var hour = { b: 'H', project: project, summary: r && r.summary, advice: r && r.advice, starred: t.starred };
+  var always = !!_rule.senders[(t.senderEmail || '').toLowerCase()];
+  if (hiddenTill(t)) return { b: 'X', project: project, summary: r && r.summary, advice: r && r.advice, always: always };   // hidden beats everything, for 24 h
   if (recent && t.starred && !hasNote(t)) return hour;
   if (t.starred && snoozedTill(t)) return { b: 'Z', project: project, summary: r && r.summary };
   if (t.starred) return { b: 'D', project: project, summary: r && r.summary, advice: r && r.advice };
+  if (_keep[t.id]) return { b: 'K', project: project, summary: r && r.summary, advice: r && r.advice, always: always };   // kept: out of its category
   var c = sorted(t, r, snd, project);
   return recent && c.b !== 'A' ? hour : c;   // Last hour = new real mail; junk goes straight to Archive
 }
@@ -820,13 +921,21 @@ function makeRow(t, showSender) {
     }).catch(function(){ arch.textContent = '!'; arch.disabled = false; });
   });
   var c = t._c || {};
-  if (c.b === 'A' || c.b === 'E' || c.b === 'N') {
-    var kp = document.createElement('button'); kp.className = 'glv-ck' + (_keep[t.id] ? ' on' : '');
-    kp.innerHTML = _keep[t.id] ? icT('pin', 'Kept') : 'Keep';
-    kp.title = 'Keep = skip this one when you press Archive all';
+  // Row buttons sit in their own strip: only the lit ones (Kept, ✓ Task…) show at rest, so the sender name keeps its room;
+  // hover floats the full strip over the right end of the row. Touch screens always show it, wrapped under the name.
+  var acts = document.createElement('span'); acts.className = 'glv-acts';
+  if (c.b === 'K' || (!t.starred && c.b !== 'X')) {
+    var kp = document.createElement('button'); kp.className = 'glv-ck' + (c.b === 'K' ? ' on' : '');
+    kp.innerHTML = c.b === 'K' ? icT('pin', 'Kept ✕') : 'Keep';
+    kp.title = c.b === 'K' ? 'Un-keep: back to its category' : 'Keep: moves it to the Kept list, out of this category (never in an Archive all)';
     kp.addEventListener('click', function(e){ e.stopPropagation(); toggleKeep(t); rebuildList(_listEl); });
-    h.appendChild(kp);
+    acts.appendChild(kp);
   }
+  var hd = document.createElement('button'); hd.className = 'glv-ck' + (c.b === 'X' ? ' on' : '');
+  hd.innerHTML = c.b === 'X' ? icT('eye', 'Unhide') : icT('hide', 'Hide');
+  hd.title = c.b === 'X' ? 'Show it again now' : 'Read it, nothing to do: hide for 24 hours (a new message brings it back sooner)';
+  hd.addEventListener('click', function(e){ e.stopPropagation(); setHide(t, c.b !== 'X'); rebuildList(_listEl); });
+  acts.appendChild(hd);
   var al = document.createElement('button'); al.className = 'glv-ck' + (c.always ? ' on' : '');
   al.textContent = c.always ? '✕ Always-archive' : 'Always archive';
   al.title = c.always ? 'Stop putting this sender in Archive' : 'Put this sender in Archive from now on (Gmail label "' + RULE_LABEL + '")';
@@ -843,7 +952,7 @@ function makeRow(t, showSender) {
       zz.textContent = '…'; zz.disabled = true;
       setSnooze(t, '').then(function(){ rebuildList(_listEl); }).catch(function(){ zz.textContent = '!'; zz.disabled = false; });
     });
-    h.append(zz);
+    acts.append(zz);
   }
   if (window.TE && TE.key && TE.key()) {
     var tk = document.createElement('button'); tk.className = 'glv-ck' + (_tasked[t.id] ? ' on' : '');
@@ -855,9 +964,10 @@ function makeRow(t, showSender) {
       createTask(t, name.trim()).then(function(){ tk.textContent = '✓ Task'; tk.className = 'glv-ck on'; tk.disabled = false; })
         .catch(function(){ tk.textContent = '! retry'; tk.disabled = false; });
     });
-    h.append(tk);
+    acts.append(tk);
   }
-  h.append(al, arch);
+  acts.append(al, arch);
+  h.appendChild(acts);
 
   div.appendChild(h);
 
@@ -877,6 +987,11 @@ function makeRow(t, showSender) {
     var zu = snoozedTill(t), zi = document.createElement('div'); zi.className = 'glv-rw glv-zi';
     zi.textContent = 'Back ' + zu.toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' });
     div.appendChild(zi);
+  }
+  if (c.b === 'X') {
+    var xu = hiddenTill(t), xi = document.createElement('div'); xi.className = 'glv-rw glv-zi';
+    xi.textContent = 'Hidden · back ' + xu.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+    div.appendChild(xi);
   }
 
   var body = document.createElement('div'); body.className = 'glv-rs';
@@ -1025,9 +1140,40 @@ document.addEventListener('click', function(e){
   if (!it.dataset.id || e.target.closest('button,textarea')) markAct(it);
 }, true);
 
+// ── Left rail: every category, with its count. Tap = open / close it on the right. ──
+function closeCat(L) { _expanded['bk-' + L] = false; _pjAll[L] = pj0()[L]; Object.keys(_expanded).forEach(function(k){ if (k.indexOf('pj-' + L + '-') === 0) delete _expanded[k]; }); }
+function toggleCat(L) {
+  var on = !isOpen(L);
+  if (on) _expanded['bk-' + L] = true; else closeCat(L);
+  _act = null;
+  rebuildList(_listEl);
+  if (on) { var s = document.getElementById('glv-' + L); if (s && s.scrollIntoView) s.scrollIntoView({ block: 'nearest' }); }
+}
+function buildRail(by) {
+  if (!_railEl) return;
+  var f = document.createDocumentFragment();
+  var hd = document.createElement('div'); hd.className = 'glv-rhd'; hd.textContent = 'Categories'; f.appendChild(hd);
+  BUCKETS.forEach(function(bk){
+    var L = bk[0], n = (by[L] || []).length, on = isOpen(L);
+    var b = document.createElement('button'); b.type = 'button';
+    b.className = 'glv-ri r' + L + (on ? ' on' : '') + (n ? '' : ' zero');
+    b.innerHTML = '<span class="glv-sl">' + ic(bk[2]) + '</span><span class="glv-rn"></span><i class="glv-sc">' + n + '</i>';
+    b.querySelector('.glv-rn').textContent = bk[1];
+    b.title = (on ? 'Close ' : 'Open ') + bk[1]; b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.addEventListener('click', function(){ toggleCat(L); });
+    f.appendChild(b);
+  });
+  _railEl.replaceChildren(f);
+  var bar = _railEl.parentNode && _railEl.parentNode.previousSibling;   // keep the rail just under the sticky bar, however tall it is
+  if (bar && bar.offsetHeight) _railEl.style.top = bar.offsetHeight + 'px';
+}
+var _subT;
+function notifySubs() { clearTimeout(_subT); _subT = setTimeout(function(){ _subs.forEach(function(fn){ try { fn(); } catch (e) {} }); }, 250); }
+
 function rebuildList(listEl) {
   if (!listEl) return;
   _listEl = listEl;
+  notifySubs();
   if (!_ready && !_error) {
     var hold = document.createElement('div'); hold.className = 'glv-spin';
     hold.textContent = 'Loading inbox…' + (_threads.length ? ' ' + _threads.length : '');
@@ -1036,20 +1182,20 @@ function rebuildList(listEl) {
   var frag = document.createDocumentFragment();
   var by = {};
   _threads.forEach(function(t){ t._c = classify(t); (by[t._c.b] = by[t._c.b] || []).push(t); });
+  buildRail(by);
 
-  // Fixed columns so archiving a row never reflows sections across columns.
+  // Only the open categories are drawn, side by side, dealt into columns in rail order.
+  // Columns change only when you open or close a category, never when a row is archived.
+  var shown = BUCKETS.filter(function(bk){ return isOpen(bk[0]) && by[bk[0]] && by[bk[0]].length; });
   var cols = document.createElement('div'); cols.className = 'glv-cols';
-  // Wide screens: 3 columns (D | C B Not-sorted | E A); else 2 (D C B | Not-sorted E A); phones stack.
-  var three = (listEl.clientWidth || window.innerWidth) >= 1300;
-  var colA = document.createElement('div'), colB = document.createElement('div'), colC = document.createElement('div');
-  colA.className = colB.className = colC.className = 'glv-col';
-  cols.append(colA, colB); if (three) cols.appendChild(colC);
-  function colFor(L) { return three ? ('HDZ'.indexOf(L) >= 0 ? colA : 'CBN'.indexOf(L) >= 0 ? colB : colC) : ('HDZCB'.indexOf(L) >= 0 ? colA : colB); }
-  BUCKETS.forEach(function(bk){
-    var L = bk[0], its = by[L]; if (!its || !its.length) return;
+  var cw = listEl.clientWidth || (window.innerWidth - 240);
+  var nCol = Math.max(1, Math.min(shown.length, cw >= 1150 ? 3 : cw >= 700 ? 2 : 1)), colEls = [];
+  for (var ci = 0; ci < nCol; ci++) { var ce = document.createElement('div'); ce.className = 'glv-col'; colEls.push(ce); cols.appendChild(ce); }
+  shown.forEach(function(bk, si){
+    var L = bk[0], its = by[L];
     its.sort(function(a, b){ return b.date - a.date; });
     var sec = document.createElement('section'); sec.className = 'glv-bk glv-' + L; sec.id = 'glv-' + L;
-    var open = _expanded['bk-' + L] !== undefined ? _expanded['bk-' + L] : true;   // open, but subgroups folded
+    var open = true;   // closed categories live in the rail only
     var sh = document.createElement('div'); sh.className = 'glv-bh'; sh.dataset.a = 'bk-' + L;
     sh.innerHTML = '<span class="glv-sl">' + ic(bk[2]) + '</span><h2></h2><i class="glv-sc">' + its.length + '</i><span class="glv-xi">' + (open ? '▾' : '▸') + '</span>';
     sh.querySelector('h2').textContent = bk[1];
@@ -1087,10 +1233,14 @@ function rebuildList(listEl) {
       fb.addEventListener('click', function(e){ e.stopPropagation(); setFold(L, !allOpen); rebuildList(_listEl); });
       sh.insertBefore(fb, sh.querySelector('.glv-xi'));
     }
-    // Header tap cycles: subgroups folded, all open, section closed.
+    if (L === 'X') {
+      var ua = document.createElement('button'); ua.className = 'glv-btn glv-aa'; ua.innerHTML = icT('eye', 'Unhide all');
+      ua.addEventListener('click', function(e){ e.stopPropagation(); its.slice().forEach(function(t){ setHide(t, false); }); rebuildList(_listEl); });
+      sh.insertBefore(ua, sh.querySelector('.glv-xi'));
+    }
+    // Header tap: groups folded → all groups open → category closed (back to the rail).
     sh.addEventListener('click', function(){
-      if (!open) { _expanded['bk-' + L] = true; setFold(L, false); }
-      else if (L === 'N' || _pjAll[L] === true) _expanded['bk-' + L] = false;
+      if (L === 'N' || _pjAll[L] === true) closeCat(L);
       else setFold(L, true);
       rebuildList(_listEl);
     });
@@ -1141,9 +1291,14 @@ function rebuildList(listEl) {
       sec.appendChild(list);
       if (go && go.length) sec.appendChild(bottomArchive('bk-' + L, 'Archive ' + (kept ? go.length + ' (' + kept + ' kept)' : 'all ' + go.length), 'Archive ' + go.length + ' in "' + bk[1] + '"?' + (kept ? ' (' + kept + ' kept stay)' : ''), go));
     }
-    colFor(L).appendChild(sec);
+    colEls[si % nCol].appendChild(sec);
   });
   frag.appendChild(cols);
+  if (!shown.length && _threads.length && !_loading) {
+    var pick = document.createElement('div'); pick.className = 'glv-pick';
+    pick.textContent = 'All categories are closed. Pick one on the left.';
+    frag.appendChild(pick);
+  }
 
   if (_loading) {
     var n = _threads.length, est = _total || 0;
@@ -1293,15 +1448,18 @@ function buildPanel(host) {
 
   var refreshBtn = document.createElement('button'); refreshBtn.className = 'glv-btn';
   refreshBtn.innerHTML = icT('refresh', 'Refresh');
-  refreshBtn.addEventListener('click', function() { _expanded = {}; _scan.loaded = false; loadScan().then(function(){ rebuildList(_listEl); }); loadPage(true); });
+  refreshBtn.addEventListener('click', function() {
+    _expanded = {}; _pjAll = pj0(); _scan.loaded = false;   // back to the opening view: only Reply and Don't miss unfolded
+    loadScan().then(function(){ rebuildList(_listEl); }); loadFlags().catch(function(){}).then(function(){ rebuildList(_listEl); }); loadPage(true);
+  });
   bar.appendChild(refreshBtn);
 
-  // Master: fold / unfold every bucket.
-  var anyOpen = BUCKETS.some(function(b){ var v = _expanded['bk-' + b[0]]; return v !== undefined ? v : true; });
+  // Master: close / open every category.
+  var anyOpen = BUCKETS.some(function(b){ return isOpen(b[0]); });
   var mb = document.createElement('button'); mb.className = 'glv-btn';
   mb.textContent = anyOpen ? '⊟ Collapse all' : '⊞ Expand all';
   mb.addEventListener('click', function(){
-    BUCKETS.forEach(function(b){ _expanded['bk-' + b[0]] = !anyOpen; if (!anyOpen) setFold(b[0], true); });
+    BUCKETS.forEach(function(b){ if (anyOpen) closeCat(b[0]); else { _expanded['bk-' + b[0]] = true; setFold(b[0], true); } });
     redraw();
   });
   bar.appendChild(mb);
@@ -1328,16 +1486,7 @@ function buildPanel(host) {
     c1.innerHTML = ic('inbox') + ' <b>' + Math.max(_total, _threads.length) + '</b>' + (IS_PHONE ? '' : ' in inbox');
     chips.appendChild(c1);
   }
-  var counts = {};
-  _threads.forEach(function(t){ var b = (t._c || classify(t)).b; counts[b] = (counts[b] || 0) + 1; });
-  BUCKETS.forEach(function(bk){
-    if (!counts[bk[0]]) return;
-    var c = document.createElement('a'); c.className = 'glv-chip bk c' + bk[0]; c.href = '#glv-' + bk[0];
-    c.innerHTML = ic(bk[2]) + ' <b>' + counts[bk[0]] + '</b>';
-    c.title = bk[1];
-    chips.appendChild(c);
-  });
-  bar.appendChild(chips);
+  bar.appendChild(chips);   // the per-category counts are in the rail on the left
 
   var st = document.createElement('div'); st.className = 'glv-st';
   if (_loading) {
@@ -1361,8 +1510,12 @@ function buildPanel(host) {
 
   var list = document.createElement('div'); list.className = 'glv-list'; list.style.marginTop = '0';
   _listEl = list;
+  var rail = document.createElement('nav'); rail.className = 'glv-rail'; rail.setAttribute('aria-label', 'Categories');
+  _railEl = rail;
+  var main = document.createElement('div'); main.className = 'glv-main';
+  main.append(rail, list);
 
-  wrap.append(bar, list);
+  wrap.append(bar, main);
   host.appendChild(wrap);
   rebuildList(list);
   restoreAnchor(sc, anc);
@@ -1391,6 +1544,7 @@ function mount(host, cfg) {
   if (_linkBackend) cfg.gmailBackend = _linkBackend;
   if (_linkApiKey && !cfg.apiKey) cfg.apiKey = _linkApiKey;
   loadScan().then(function(){ if (!_scan.loaded) arrived('notes'); arrived('scan'); if (_scan.loaded && _listEl) redraw(); });
+  loadFlags().catch(function(){}).then(function(){ arrived('flags'); if (_ready) rebuildList(_listEl); });
   setTimeout(function(){ arrived('all'); }, 10000);   // something slow or down: show what we have
 
   if (IS_PHONE && !backendUrl()) { buildPhoneScreen(host); return; }
@@ -1425,5 +1579,19 @@ function mount(host, cfg) {
 
 // Width only: iPhone Safari fires resize when its address bar slides during a scroll.
 var _rz, _rw = window.innerWidth; window.addEventListener('resize', function(){ if (window.innerWidth === _rw) return; _rw = window.innerWidth; clearTimeout(_rz); _rz = setTimeout(function(){ rebuildList(_listEl); }, 200); });
-window.GL = { mount: mount };
+
+// What the Scan tab needs to match itself to this inbox: every loaded thread with the category it sits in here.
+// complete = the whole inbox is in, so "not in this list" really means "no longer in the inbox".
+function snapshot() {
+  return {
+    connected: !!(_authed || backendUrl()),
+    complete: _ready && _authed && !_loading && !_nextPage && !_error && _total != null,
+    total: Math.max(_total || 0, _threads.length), loaded: _threads.length,
+    threads: _threads.map(function(t){
+      var c = t._c || classify(t);
+      return { id: t.id, b: c.b, project: c.project || '', from: t.senderName, email: t.senderEmail, subject: t.subject, snippet: t.snippet, date: t.date, starred: t.starred };
+    })
+  };
+}
+window.GL = { mount: mount, snapshot: snapshot, onChange: function(fn){ _subs.push(fn); }, CATS: BUCKETS, ic: ic };
 })();

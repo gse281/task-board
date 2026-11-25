@@ -272,7 +272,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 <div id="stage">
   <div class="ring r1" id="ring1"></div><div class="ring r2" id="ring2"></div>
   <div id="fltrail"></div>
-  <div class="top"><span class="greet" id="greet">FOCUS</span><span class="sum" id="sum"></span><button class="cmdbtn cxbtn" id="cxBtn" title="Call someone — contacts search (/)">🔍 CONTACTS</button><span class="ringseg" id="ringSeg" title="Ring shows: Projects / Leads / Subs / Categories"></span><button class="cmdbtn" id="cmdBtn">⌘ ADD · JUMP · FIND</button><a class="cmdbtn" href="email.html" style="text-decoration:none" title="Email — live Gmail + scan">✉ EMAIL</a><a class="cmdbtn" href="focus2.html" style="text-decoration:none">◉ FOCUS 2</a><a class="cmdbtn" href="aios.html" style="text-decoration:none" title="AIOS map — your Claude setup">◈ AIOS</a><a class="cmdbtn" href="dashboard.html" style="text-decoration:none">⌂ DASHBOARD</a><span class="clk" id="clk"></span></div>
+  <div class="top"><span class="greet" id="greet">FOCUS</span><span class="sum" id="sum"></span><button class="cmdbtn cxbtn" id="cxBtn" title="Call someone — contacts search (/)">🔍 CONTACTS</button><span class="ringseg" id="ringSeg" title="Ring shows: Projects / Leads / Subs / Categories"></span><button class="cmdbtn" id="cmdBtn">⌘ ADD · JUMP · FIND</button><span class="clk" id="clk"></span><span data-tbnav="focus"></span></div>
   <div class="core" id="core"></div>
   <div id="bubbles"></div>
   <div class="corner tl" id="cTL"></div><div class="corner tr" id="cTR"></div><div class="corner ml" id="cML"></div><div class="corner bl" id="cBL"></div><div class="corner br" id="cBR"></div>
@@ -283,6 +283,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 <div id="setup"><div class="hint">Paste your Airtable key to see live data (or just preview the demo).</div><input id="keyin" type="password" placeholder="Airtable Personal Access Token (pat…)"><div style="display:flex;gap:8px"><button id="keygo">Connect</button><button id="demo" style="background:#13232b;color:var(--cyan)">Preview demo</button></div></div>
 <div id="filesBox" class="fbox fbox-float" hidden></div>
 <div id="toast"></div>
+<script src="nav.js?v=1795649698"></script>
 <script src="task-editor.js"></script>
 <script src="photos.js"></script>
 <script src="guide.js"></script>
