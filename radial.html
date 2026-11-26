@@ -140,6 +140,9 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .addrow button{flex:none;background:var(--cyan);color:#07141a;border-radius:9px;padding:0 12px;font-weight:800}
 .addrow.ovadd{margin:0 0 10px}
 .phint .hiball{float:right;margin-top:-3px}.phint .hiball:hover,.pill.wk:hover{color:#9fdbe7;border-color:#9fdbe7}
+.sendta{width:100%;box-sizing:border-box;height:min(38vh,340px);resize:vertical;background:var(--card2);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:10px 12px;font:13px/1.45 ui-monospace,Menlo,monospace;outline:none}.sendta:focus{border-color:var(--cyan)}
+.sendto{display:flex;flex-direction:column;gap:6px;margin-top:10px}.sendto a,.sendto button{display:flex;align-items:center;gap:10px;text-align:left;text-decoration:none;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13px;font-weight:700;background:rgba(13,26,33,.55);cursor:pointer}
+.sendto a:hover,.sendto button:hover{border-color:var(--cyan)}.sendto small{margin-left:auto;color:var(--dim);font:600 11px ui-monospace,Menlo,monospace;white-space:nowrap}.sendto .first{border-color:rgba(57,199,223,.55);background:rgba(57,199,223,.10)}
 .grphd.hibg{cursor:default}.grphd.hibg .pill{text-transform:none;letter-spacing:.4px;margin-left:4px}
 .lrow .tick.wake:hover{color:#f2c94c;border-color:#f2c94c}
 .cardh .prun{letter-spacing:.6px;text-transform:none;color:var(--cyan);border-color:rgba(57,199,223,.5);padding:4px 11px;font-size:11px}.cardh .prun:hover{background:rgba(57,199,223,.14)}.cardh .prun[disabled]{opacity:.35;pointer-events:none}
@@ -852,13 +855,45 @@ function openHib(){ const L=tasks.filter(isHib), g={}; L.forEach(t=>{ const s=se
   ovb.querySelectorAll('.lrow[data-id]').forEach(r=>{ const id=r.dataset.id; r.onclick=e=>{ if(e.target.closest('[data-wake]')){ const t=tasks.find(x=>x.id===id); hibSet([id],false,'☀ Awake: '+(t?cleanName(t):'')); return; } openTask(id); }; });
   ovb.querySelectorAll('[data-wakeall]').forEach(b=>b.onclick=()=>{ const k=keys[+b.dataset.wakeall]; hibSet(g[k].map(t=>t.id),false,'☀ '+k+' awake · '+g[k].length); }); }
 
+/* ===== 💬 Send a list as a text (same idea as the iPhone's "Text … list" and the Dashboard's Send list).
+   Numbers and order match the list on screen. Nothing is sent from here: it opens Messages with the text filled in, you press send. ===== */
+function goSms(u){ location.href=u; }
+let _leadPh=null;
+async function leadPhones(){ if(_leadPh) return _leadPh; _leadPh=[]; if(demo||!cfg.apiKey) return _leadPh;
+  try{ const d=await fetch('https://api.airtable.com/v0/'+cfg.baseId+'/tblH8xQDy6UrNAmWC?pageSize=100',{headers:{Authorization:'Bearer '+cfg.apiKey}}).then(r=>r.ok?r.json():{records:[]});
+    _leadPh=(d.records||[]).map(r=>({lab:String(r.fields.SBLead||''),n:String(r.fields.Name||r.fields.SBLead||''),ph:String(r.fields.Phone||'')})).filter(x=>x.ph); }catch(e){} return _leadPh; }
+function sendListText(title,L){ const leads=[...new Set(L.map(t=>(t.lead||'').trim()))]; let h=title+' — open items ('+L.length+')', cur=null;
+  L.forEach((t,i)=>{ const ld=(t.lead||'').trim(); if(leads.length>1&&ld!==cur){ cur=ld; h+='\n\n'+(ld||'No lead'); }
+    const pj=t.project?String(t.project).split(',')[0].trim():''; h+='\n'+(i+1)+'. '+(pj&&pj.toLowerCase()!==title.toLowerCase()?pj+' · ':'')+cleanName(t); });
+  return h; }
+async function openSendList(title,L,back){ const memK='tb.listTo', mem=(()=>{ try{ return JSON.parse(localStorage.getItem(memK)||'{}'); }catch(e){ return {}; } })();
+  ovh.innerHTML='💬 Text · '+esc(title)+' · '+L.length+'<button class="x" data-x>✕</button>';
+  ovb.innerHTML='<div class="phint"><button class="pill" data-back>‹ Back to the list</button> · edit the text if you like, then pick who</div><textarea class="sendta" id="sendTa" spellcheck="false"></textarea><div class="sendto" id="sendTo"></div>';
+  const ta=$('#sendTa'); ta.value=sendListText(title,L); ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; ovb.querySelector('[data-back]').onclick=back;
+  const cand=[], seen=new Set(), add=(n,ph,why)=>{ const k=cxKey(ph); if(!k||k.length<7||seen.has(k)) return; seen.add(k); cand.push({n,ph,why}); };
+  if(mem[title]) add(mem[title].n,mem[title].ph,'last used');
+  const q=String(title||'').trim().toLowerCase(), leadSet=new Set(L.map(t=>(t.lead||'').trim().toLowerCase()).filter(Boolean));
+  const draw=()=>{ const box=$('#sendTo'); if(!box) return;
+    box.innerHTML=cand.slice(0,6).map((c,i)=>'<a class="'+(i?'':'first')+'" href="#" data-to="'+i+'">💬 '+esc(c.n)+'<small>'+esc(cxFmt(c.ph))+' · '+c.why+'</small></a>').join('')+
+      '<a href="#" data-to="-1">👤 '+(cand.length?'Someone else':'Pick who')+'<small>choose in Messages</small></a><button data-copy>📋 Copy the text</button>';
+    box.querySelectorAll('[data-to]').forEach(a=>{ a.onclick=e=>{ e.preventDefault(); const i=+a.dataset.to, c=cand[i]; if(c){ mem[title]={n:c.n,ph:c.ph}; try{ localStorage.setItem(memK,JSON.stringify(mem)); }catch(_){ } }
+      if(c&&typeof cxUse==='function'){ try{ cxUse(c.n,c.ph); }catch(_){ } }
+      goSms('sms:'+(c?String(c.ph).replace(/[^\d+]/g,''):'')+'&body='+encodeURIComponent(ta.value)); toast(c?'Opening Messages → '+c.n:'Opening Messages'); }; });
+    box.querySelector('[data-copy]').onclick=()=>{ try{ navigator.clipboard.writeText(ta.value).then(()=>toast('Copied'),()=>fbCopy(ta.value)); }catch(e){ fbCopy(ta.value); } }; };
+  if(q&&q.length>=2) ctSearch(q).filter(c=>(c.p||[]).length).slice(0,4).forEach(c=>add(c.n||c.o||c.p[0],c.p[0],'contacts'));
+  draw();
+  const LP=await leadPhones(); if(!$('#sendTo')||!LP.length) return; const before=cand.length;
+  LP.filter(x=>{ const lab=x.lab.toLowerCase(), nm=x.n.toLowerCase(); return lab===q||nm===q||(q&&nm.split(' ')[0]===q)||(leadSet.size===1&&(leadSet.has(lab)||leadSet.has(nm.split(' ')[0]))); }).forEach(x=>add(x.n,x.ph,'lead'));
+  if(cand.length>before){ const mine=cand.splice(before); const keep=cand.length&&cand[0].why==='last used'?cand.splice(0,1):[]; cand.unshift(...keep,...mine); draw(); } }
+
 /* every list pop-up: the same add box on top, and ▸ Run in the header (hands this list, in this order, to run.html) */
-const RUNBTN='<button class="pill prun" data-run title="Run through this list one task at a time">▸ Run</button>';
+const RUNBTN='<button class="pill prun" data-run title="Run through this list one task at a time">▸ Run</button><button class="pill prun" data-sendlist title="Send this list as a text">💬 Text</button>';
 function ovAddHTML(ph){ return '<div class="addrow ovadd"><input id="ovAdd" enterkeyhint="done" autocomplete="off" placeholder="＋ '+esc(ph)+'…"><button id="ovAddBtn">Add</button></div>'; }
 function ovAddWire(add,reopen){ const oa=$('#ovAdd'); if(!oa) return; let busy=0;
   const go=async()=>{ const v=oa.value.trim(); if(!v||busy){ oa.focus(); return; } busy=1; oa.value=''; try{ await add(v); }catch(_){ } busy=0; reopen(); const n=$('#ovAdd'); if(n) n.focus(); };
   $('#ovAddBtn').onclick=go; oa.addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.isComposing){ e.preventDefault(); go(); } }); }
-function ovRunWire(title){ const b=ovh.querySelector('[data-run]'); if(!b) return; const ids=()=>[...ovb.querySelectorAll('#plist .lrow[data-id]')].map(r=>r.dataset.id).filter(id=>/^rec/.test(id));
+function ovRunWire(title,back){ const sb=ovh.querySelector('[data-sendlist]'); if(sb){ const rows=()=>[...ovb.querySelectorAll('#plist .lrow[data-id]')]; sb.disabled=!rows().length; sb.onclick=()=>{ const L=rows().map(r=>tasks.find(t=>t.id===r.dataset.id)).filter(Boolean); if(L.length) openSendList(title,L,back||(()=>openList(title))); }; }
+  const b=ovh.querySelector('[data-run]'); if(!b) return; const ids=()=>[...ovb.querySelectorAll('#plist .lrow[data-id]')].map(r=>r.dataset.id).filter(id=>/^rec/.test(id));
   b.disabled=!ids().length; b.onclick=()=>{ const L=ids(); if(!L.length) return; try{ localStorage.setItem('tb.run.list',JSON.stringify({title,ids:L,at:Date.now(),back:location.pathname.split('/').pop()||'index.html'})); }catch(_){ } location.href='run.html?list=1'; }; }
 function openList(key){ const em=capOf(key)[0],cap=capOf(key)[1]; const items=key==='incoming'?incItems():itemsFor(key);
   ovh.innerHTML=em+' '+esc(cap)+' · '+items.length+(key==='meeting'||key==='respond'?'':RUNBTN)+(key==='incoming'?'<span class="ovnav">'+(incDay?'<button data-otd class="tdy">Today</button>':'')+'<button data-oip>‹</button><span class="'+(incDay?'past':'')+'">'+esc(dnLabel(incDay||todayISO()))+'</span><button data-oin '+(incDay?'':'disabled')+'>›</button></span>':'')+'<button class="x" data-x>✕</button>';
@@ -872,7 +907,7 @@ function openList(key){ const em=capOf(key)[0],cap=capOf(key)[1]; const items=ke
   const own=!/^(priority|still|attention)$/.test(key);   // computed lists have no category of their own: a new task lands in Incoming
   ovb.innerHTML=ovAddHTML(own?'Add to '+cap:'Add a task')+'<div class="phint">'+(own?hibAllBtn(items.length):'')+'Tap a task to edit · ⋮⋮ drag to reorder · ⊘ remove · ✓ done</div><div class="plist" id="plist">'+groupRows(items,200)+'</div>';
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; wireRows($('#plist'),key);
-  ovAddWire(v=>createTask(own?key:'incoming',v),()=>openList(key)); ovRunWire(cap); hibAllWire(cap); }
+  ovAddWire(v=>createTask(own?key:'incoming',v),()=>openList(key)); ovRunWire(cap,()=>openList(key)); hibAllWire(cap); }
 
 /* ===== ✨ Claude requests pane (claudeq.js) ===== */
 function cqOpenTask(id){ const t=tasks.find(x=>x.id===id); if(t){ closeOv(); openTask(t.id); } else toast('Task not loaded'); }
@@ -1005,7 +1040,7 @@ function openFiltered(field,value){
   const ga=ovb.querySelector('[data-gall]'), anyOpen=()=>!!pl.querySelector('.lrow[data-grp]:not(.gshut)');
   const gaLab=()=>{ ga.textContent=anyOpen()?'⊟ Collapse all':'⊞ Expand all'; }; gaLab();
   ga.onclick=()=>{ grpAll(pl,!anyOpen()); gaLab(); }; pl.addEventListener('click',e=>{ if(e.target.closest('[data-grptog]')) setTimeout(gaLab,0); });
-  ovAddWire(v=>createFiltered(field,value,v),()=>openFiltered(field,value)); hibAllWire(value||'List'); ovRunWire(field==='__none'?'No P · L · S':value===''?'No '+field:value);
+  ovAddWire(v=>createFiltered(field,value,v),()=>openFiltered(field,value)); hibAllWire(value||'List'); ovRunWire(field==='__none'?'No P · L · S':value===''?'No '+field:value,()=>openFiltered(field,value));
 }
 /* new task pre-filled with the current filter (Project / Sub / Lead / Category) */
 async function createFiltered(field,value,text){

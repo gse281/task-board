@@ -37,7 +37,7 @@ Rules:
 - Bump the `?v=` on a script tag when you change that script.
 - Add one line to `changelog.md` per change: `- YYYY-MM-DD HH:MM  what changed`.
 - Task editor (`task-editor.js`, every page): keep it calm. Top = Task, Next step, Project/Lead/Sub, Category, Notes. Anything else goes in the folded **More** or **Claude** section, not on top. Footer stays one row.
-- Focus list pop-ups (`openList`, `openFiltered`): every one gets the add box (`ovAddHTML` / `ovAddWire`) and ▸ Run (`RUNBTN` / `ovRunWire`).
+- Focus list pop-ups (`openList`, `openFiltered`): every one gets the add box (`ovAddHTML` / `ovAddWire`), ▸ Run and 💬 Text (`RUNBTN` / `ovRunWire`; `openSendList` only opens Messages with the text filled in, it never sends).
 
 ## 3. Task categories
 
