@@ -6,6 +6,8 @@
    Task · Project · Lead · Sub · Category (Section / MeetingSlot / Calls) · Status ·
    Priority · Do date · Reminder · Next step · Notes · Call contact · Phone ·
    ⭐ Flag · Next Up · Don't text lead   + actions: Done · Snooze · Next Up.
+   Layout: Task · Next step · Project/Lead/Sub · Category (current one; Change ▾ shows all) · Notes on top;
+   “More” and “Claude” are folded sections; the footer is one row: Done · Snooze · Next up · Close.
 
    Choices come live from the Airtable schema (meta API, cached 24h) PLUS every value
    already used on tasks; typing a new value saves with typecast → Airtable adds it.
@@ -104,20 +106,29 @@ input.te-i{text-overflow:ellipsis}
 .te-gs{display:flex;align-items:center;gap:6px;margin-top:5px}.te-gs:empty{display:none}
 .te-gv{flex:1;min-width:0;color:#39c7df;font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.te-gn{color:#64838d;font-size:12px}
 .te-gok,.te-gx{flex:none;width:40px;height:34px;border-radius:9px;border:1px solid rgba(57,199,223,.5);background:transparent;color:#62e08a;font-weight:800;cursor:pointer}.te-gx{color:#e5533a;border-color:rgba(229,83,58,.4)}
-.te-guessbar{display:flex;gap:8px;margin:0 0 12px}.te-gbtn{color:#39c7df!important;border-color:rgba(57,199,223,.5)!important}
 .te-note{color:#64838d;font-size:12px;margin:0 2px 10px}
-/* 🎨 chip rows tinted too: Category · Status · Priority · Do date */
-.te-r:has([data-catchips]){--tc:255,150,60}.te-r:has([data-segfor="Status"]){--tc:120,220,100}.te-r:has([data-segfor="Priority"]){--tc:255,90,90}.te-r:has([data-dchips]){--tc:100,180,255}
-.te-r:has([data-catchips],[data-segfor],[data-dchips]) > .te-l{color:rgb(var(--tc))}
-.te-r:has([data-catchips],[data-segfor],[data-dchips]) .te-ch{background:rgba(var(--tc),.08);border-color:rgba(var(--tc),.35)}
-.te-r:has([data-catchips],[data-segfor],[data-dchips]) .te-ch.on{background:rgb(var(--tc));border-color:rgb(var(--tc));color:#04161c}
-/* 🎨 each field its own tint so they're easy to tell apart (label picks up the same color) */
-.te-r{--tc:57,199,223}
-.te-r:has([data-f="Task"]){--tc:57,199,223}.te-r:has([data-f="Project"]){--tc:240,170,70}.te-r:has([data-f="SBLead"]){--tc:170,130,255}.te-r:has([data-f="Sub"]){--tc:80,210,120}
-.te-r:has([data-f="NextStep"]){--tc:90,150,255}.te-r:has([data-f="ReminderAt"]){--tc:255,110,140}.te-r:has([data-f="CallContact"]){--tc:40,215,200}.te-r:has([data-f="Phone"]){--tc:40,215,200}.te-r:has([data-f="Notes"]){--tc:200,200,120}
-.te-r:has([data-f]) .te-i:not(.te-hide){background:rgba(var(--tc),.10);border-color:rgba(var(--tc),.45)}
-.te-r:has([data-f]) .te-i:not(.te-hide):focus{border-color:rgba(var(--tc),.9);box-shadow:0 0 0 2px rgba(var(--tc),.18)}
-.te-r:has([data-f="Task"],[data-f="Project"],[data-f="SBLead"],[data-f="Sub"],[data-f="NextStep"],[data-f="ReminderAt"],[data-f="CallContact"],[data-f="Phone"],[data-f="Notes"]) > .te-l{color:rgb(var(--tc))}
+/* Calm look (2026-11): one accent colour, the two things you act on (task + next step) on top, everything rarely touched folded away. */
+.te-hx{flex:none;width:34px;height:34px;border-radius:10px;border:1px solid rgba(57,199,223,.22);background:transparent;color:#8aa6af;font-size:15px;cursor:pointer}
+.te-hg{flex:none;height:30px;padding:0 11px;border-radius:15px;border:1px solid rgba(57,199,223,.22);background:transparent;color:#8aa6af;font:700 11px ui-monospace,Menlo,monospace;letter-spacing:.4px;cursor:pointer}
+.te-hg:hover,.te-hx:hover{color:#39c7df;border-color:#39c7df}.te-hg[hidden]{display:none}
+.te-gl{display:none}
+.te-b{padding-top:14px}
+textarea.te-i{field-sizing:content;max-height:38vh}
+.te-ph{margin:0 0 10px}
+[data-catchips]:not(.open) .te-ch:not(.on):not([data-catmore]){display:none}
+[data-catchips].open [data-catmore]{display:none}
+.te-ch[data-catmore]{background:transparent;color:#8aa6af;border-style:dashed}
+.te-sec{margin:0;border-top:1px solid rgba(57,199,223,.12)}
+.te-sec>summary{list-style:none;display:flex;align-items:center;gap:8px;padding:12px 2px;cursor:pointer;font:700 10.5px ui-monospace,Menlo,monospace;letter-spacing:1.4px;text-transform:uppercase;color:#8aa6af;-webkit-user-select:none;user-select:none}
+.te-sec>summary::-webkit-details-marker{display:none}
+.te-sec>summary::before{content:'▸';color:#39c7df;width:10px}
+.te-sec[open]>summary::before{content:'▾'}
+.te-sec>summary:hover{color:#eaf6fb}
+.te-dg{margin-left:auto;min-width:0;font:500 12.5px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;letter-spacing:0;text-transform:none;color:#64838d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.te-sec[open]{padding-bottom:6px}
+.te-sec .te-cl{margin:0 0 6px;padding:0;border:0;background:none}
+.te-a{flex-wrap:wrap}.te-a .te-btn{min-width:0;flex:1 1 0}
+.te-btn.ok{background:rgba(48,209,88,.16);border-color:rgba(48,209,88,.55)}
 `;
 function ensureCss(){ if(document.getElementById('te-css')) return; const s=document.createElement('style'); s.id='te-css'; s.textContent=CSS; document.head.appendChild(s); }
 
@@ -130,22 +141,29 @@ function formHTML(t){ const E=window.TE; const e=s=>E.esc(s==null?'':String(s));
   const gl=f=>`<button type="button" class="te-gl" data-guess1="${f}">guess</button>`;
   const pick=(label,f,key,ph)=>row(`${label} ${gl(f)}`,`<div class="te-pw"><input type="hidden" data-f="${f}" value="${e(g(f))}"><button type="button" class="te-i te-pb${g(f)?'':' ph'}" data-pick="${f}" data-ph="${e(ph||'tap to pick')}" data-lab="${e(label)}">${e(g(f)||ph||'tap to pick')}</button><button type="button" class="te-x${g(f)?'':' hid'}" data-clr="${f}" aria-label="Clear">✕</button></div><div class="te-gs" data-gsf="${f}"></div>`);
   const days=[['Today',0],['Tomorrow',1],['Mon','mon'],['+3d',3],['+1w',7],['+1m',30]];
-  return `${row('Task',`<textarea class="te-i te-name" data-f="Task" rows="2">${e(g('Task'))}</textarea>`)}
-    <div class="te-cl" data-cl></div>
-    <div class="te-ph" data-ph></div>
-    <div class="te-guessbar"><button type="button" class="te-btn sm te-gbtn" data-guess>✨ Guess fields</button><button type="button" class="te-btn sm" data-acceptall hidden>Accept all</button></div>
+  return `<label class="te-r"><textarea class="te-i te-name" data-f="Task" rows="2" aria-label="Task">${e(g('Task'))}</textarea></label>
+    ${row(`Next step ${gl('NextStep')}`,`<input class="te-i" data-f="NextStep" value="${e(g('NextStep'))}" placeholder="What happens next?"><div class="te-gs" data-gsf="NextStep"></div>`)}
     <div class="te-3">${pick('Project','Project','project')}${pick('Lead','SBLead','lead')}${pick('Sub','Sub','sub')}</div>
     ${row(`Category ${gl('Category')}`,`<select class="te-i te-hide" data-cat>${catOptions().map(([v,l])=>`<option value="${e(v)}"${v.toLowerCase()===String(cat).toLowerCase()?' selected':''}>${e(l)}</option>`).join('')}<option value="__new">+ New category…</option></select>
-      <div class="te-seg" data-catchips>${catOptions().map(([v,l])=>`<button type="button" class="te-ch${v.toLowerCase()===String(cat).toLowerCase()?' on':''}" data-catv="${e(v)}">${e(l)}</button>`).join('')}<button type="button" class="te-ch new" data-catv="__new">＋ New</button></div><div class="te-gs" data-gsf="Category"></div>`)}
+      <div class="te-seg" data-catchips>${catOptions().map(([v,l])=>`<button type="button" class="te-ch${v.toLowerCase()===String(cat).toLowerCase()?' on':''}" data-catv="${e(v)}">${e(l)}</button>`).join('')}<button type="button" class="te-ch new" data-catv="__new">＋ New</button><button type="button" class="te-ch" data-catmore>Change ▾</button></div><div class="te-gs" data-gsf="Category"></div>`)}
+    ${row('Notes',`<textarea class="te-i" data-f="Notes" rows="2">${e(g('Notes'))}</textarea>`)}
+    <details class="te-sec" data-sec="more"><summary>More<span class="te-dg" data-dg>${e(digest(t))}</span></summary>
     <div class="te-2">${row('Status',`<select class="te-i te-hide" data-f="Status">${stat.map(v=>`<option${v===(g('Status')||'Open')?' selected':''}>${e(v)}</option>`).join('')}</select><div class="te-seg" data-segfor="Status">${['Open','Done','Disposed'].map(v=>`<button type="button" class="te-ch${v===(g('Status')||'Open')?' on':''}" data-segv="${v}">${v}</button>`).join('')}</div>`)}
       ${row('Priority',`<input class="te-i te-hide" data-f="Priority" value="${e(g('Priority'))}"><div class="te-seg" data-segfor="Priority"><button type="button" class="te-ch${!g('Priority')?' on':''}" data-segv="">—</button>${pri.map(v=>`<button type="button" class="te-ch${String(g('Priority'))===v?' on':''}" data-segv="${e(v)}">${e(v)}</button>`).join('')}</div>`)}</div>
     ${row('Do date',`<div class="te-seg" data-dchips>${days.map(([l,d])=>`<button type="button" class="te-ch" data-dd="${d}">${l}</button>`).join('')}<label class="te-ch te-dpick">${g('DoDate')?e(g('DoDate')):'Pick'}<input type="date" data-f="DoDate" value="${e(g('DoDate'))}"></label>${g('DoDate')?'<button type="button" class="te-ch" data-dd="clear">✕</button>':''}</div>`)}
     ${row('Reminder',`<input class="te-i" type="datetime-local" data-f="ReminderAt" value="${e(localDT(g('ReminderAt')))}">`)}
-    ${row(`Next step ${gl('NextStep')}`,`<input class="te-i" data-f="NextStep" value="${e(g('NextStep'))}"><div class="te-gs" data-gsf="NextStep"></div>`)}
-    ${row('Notes',`<textarea class="te-i" data-f="Notes" rows="4">${e(g('Notes'))}</textarea>`)}
     <div class="te-2">${row(`Call contact ${gl('CallContact')}`,`<input class="te-i" data-f="CallContact" value="${e(g('CallContact')==='-'?'':g('CallContact'))}" autocomplete="off"><div class="te-gs" data-gsf="CallContact"></div>`)}${row('Phone',`<input class="te-i" type="tel" data-f="Phone" value="${e(g('Phone'))}" autocomplete="off">`)}</div>
     <div class="te-tg">${tog('RoniFlag','Flag')}${tog('NextUp','Next Up')}${tog('TextExclude','Don’t text lead')}</div>
-    ${schema&&schema.denied?`<div class="te-note">Showing values already in use. Give the Airtable token schema read access for every option.</div>`:''}`; }
+    <div class="te-ph" data-ph></div>
+    ${schema&&schema.denied?`<div class="te-note">Showing values already in use. Give the Airtable token schema read access for every option.</div>`:''}
+    </details>
+    <details class="te-sec" data-sec="claude"><summary>Claude<span class="te-dg" data-cdg>send it · chase it</span></summary><div class="te-cl" data-cl></div></details>`; }
+/* one-line summary of what is set inside the folded "More" section */
+function digest(t){ const E=window.TE, g=k=>E.get(t,k), a=[]; const st=g('Status'); if(st&&st!=='Open') a.push(st);
+  if(g('Priority')) a.push('P'+g('Priority')); const d=String(g('DoDate')||'').slice(0,10).split('-'); if(d.length===3) a.push('do '+(+d[1])+'/'+(+d[2]));
+  if(g('ReminderAt')) a.push('reminder'); const c=g('CallContact'); if(c&&c!=='-') a.push(c); else if(g('Phone')) a.push(g('Phone'));
+  if(g('RoniFlag')) a.push('flagged'); const n=(t.photos||[]).length; if(n) a.push(n+' photo'+(n>1?'s':''));
+  return a.join(' · ')||'status · priority · date · contact · photos'; }
 
 /* ── Pickers: tap a field → chips right away (Suggested · Recent · All A–Z), type to filter, ＋ New ── */
 const KEYOF={Project:'project',SBLead:'lead',Sub:'sub'};
@@ -266,17 +284,18 @@ function cqRowHTML(q){ if(window.CQ){ CQ.css(); return CQ.rowHTML(q,{task:false,
       <div class="cqb"><button class="te-btn ok" data-ok>Approve &amp; send</button><button class="te-btn" data-save>Save edit</button><button class="te-btn" data-x>Cancel</button></div></div>`:''}
     ${st==='Queued'?`<div class="cqb"><button class="te-btn sm" data-x>Cancel</button></div>`:''}</div>`; }
 // 📷 Photos on the task: Photo Library / camera / paste; drop or ⌘V on desktop. Thumbnails → full-screen viewer.
-function wirePhotos(root,t){ const box=root.querySelector('[data-ph]'); if(!box||!window.Photos) return; Photos.css();
+function wirePhotos(root,t){ const box=root.querySelector('.te-ph[data-ph]'); if(!box||!window.Photos) return; Photos.css();
   const draw=()=>{ const L=t.photos||[]; box.innerHTML=`<span class="te-l">Photos${L.length?' · '+L.length:''}</span>${Photos.thumbsHTML(L)}<div class="ph-btns"><button type="button" class="te-btn sm" data-phadd>📷 Add photo</button><button type="button" class="te-btn sm" data-phpaste>📋 Paste</button></div>`;
     Photos.wireThumbs(box,L); box.querySelector('[data-phadd]').onclick=async()=>{ const f=await Photos.pick(); add(f); }; box.querySelector('[data-phpaste]').onclick=async()=>{ const f=await Photos.fromClipboard(); add(f); }; };
   const add=f=>{ if(!f||!f.length) return; if(!/^rec/.test(t.id)){ alert('Saving the task first — try again in a second'); return; } const n=box.querySelector('.te-l'); if(n) n.textContent='Photos · uploading '+f.length+'…'; Photos.add(t,f,()=>{ draw(); try{ window.TE.refresh&&window.TE.refresh(); }catch(e){} }); };
   root.addEventListener('paste',e=>{ const f=Photos.imagesFrom(e); if(f.length){ e.preventDefault(); add(f); } }); Photos.dropZone(root,f=>add(f)); draw(); }
 function wireClaude(root,t){ const box=root.querySelector('[data-cl]'); if(!box) return; const E=window.TE;
-  box.innerHTML=`<span class="te-l">Instructions for Claude</span><textarea class="te-i" rows="3" data-ci placeholder="e.g. Find Joe's email in Gmail and draft a follow-up asking for the revised quote"></textarea>
+  box.innerHTML=`<textarea class="te-i" rows="2" data-ci aria-label="Instructions for Claude" placeholder="e.g. Find Joe's email in Gmail and draft a follow-up asking for the revised quote"></textarea>
     <div class="cqb"><button class="te-btn pri" data-csend>Send to Claude ✨</button><button class="te-btn" data-chase title="Chase to done — Claude drives the next step and nudges until it's resolved">⚡ Chase it</button></div><div data-clist></div>`;
   const list=box.querySelector('[data-clist]');
   const draw=async()=>{ if(!E.key()){ list.innerHTML='<div class="te-note">Connect Airtable (⚙︎) to use Send to Claude.</div>'; return; } try{ const L=await cqLoad(t); if(!document.body.contains(list)) return; list.innerHTML=L.map(cqRowHTML).join('');
-      { const hd=root.querySelector('.te-h'); if(hd&&window.CQ){ let c=hd.querySelector('.te-cqchip'); if(!c){ c=document.createElement('span'); c.className='te-cqchip'; c.style.cssText='margin-left:8px;cursor:pointer'; hd.querySelector('b').after(c); c.onclick=()=>box.scrollIntoView({behavior:'smooth',block:'start'}); } c.innerHTML=L[0]?CQ.chipHTML(L[0])+' <span style="color:#64838d;font-size:11px;font-weight:400">'+(L[0].Status==='Done'&&L[0].DoneAt?CQ.when(L[0].DoneAt):CQ.when(L[0].QueuedAt))+'</span>':''; } }
+      { const sec=box.closest('.te-sec'), dg=sec&&sec.querySelector('[data-cdg]'); if(dg) dg.textContent=L[0]?(L[0].Status||'Queued'):'send it · chase it'; if(sec&&L.some(q=>/^(Queued|Working|Needs approval)$/.test(q.Status||'Queued'))) sec.open=true; }
+      { const hd=root.querySelector('.te-h'); if(hd&&window.CQ){ let c=hd.querySelector('.te-cqchip'); if(!c){ c=document.createElement('span'); c.className='te-cqchip'; c.style.cssText='margin-left:8px;cursor:pointer'; hd.querySelector('b').after(c); c.onclick=()=>{ const sec=box.closest('.te-sec'); if(sec) sec.open=true; box.scrollIntoView({behavior:'smooth',block:'start'}); }; } c.innerHTML=L[0]?CQ.chipHTML(L[0])+' <span style="color:#64838d;font-size:11px;font-weight:400">'+(L[0].Status==='Done'&&L[0].DoneAt?CQ.when(L[0].DoneAt):CQ.when(L[0].QueuedAt))+'</span>':''; } }
       list.querySelectorAll('.cq').forEach(row=>{ const id=row.dataset.q; const ta=row.querySelector('[data-draft]');
         const upd=(fields,msg)=>cqApi('/'+id,{method:'PATCH',body:JSON.stringify({fields,typecast:true})}).then(()=>{ if(msg) E.undo(msg,()=>{}); draw(); }).catch(()=>alert('Save failed'));
         const ok=row.querySelector('[data-ok]'); if(ok) ok.onclick=()=>upd({Status:'Approved',ApprovedAt:new Date().toISOString(),Draft:ta?ta.value:undefined},'Approved — sends on the next queue run');
@@ -294,24 +313,25 @@ let cur=null;
 function close(){ if(!cur) return; const {sc,sh}=cur; const a=document.activeElement; if(a&&sh.contains(a)) a.blur(); sc.classList.remove('on'); sh.classList.remove('on'); setTimeout(()=>{ sc.remove(); sh.remove(); },280); cur=null; }
 function open(t,opts){ const E=window.TE; if(!E||!t) return; ensureCss(); if(cur) close();
   const sc=document.createElement('div'); sc.className='te-scrim'; const sh=document.createElement('div'); sh.className='te'; sh.setAttribute('role','dialog');
-  const render=()=>{ sh.innerHTML=`<div class="te-h"><b>Edit task</b><button class="te-x" data-close aria-label="Close">✕</button></div><div class="te-b">${formHTML(t)}</div>
-    <div class="te-a"><button class="te-btn ok" data-done>✓ Done</button><button class="te-btn" data-snz>Snooze…</button><button class="te-btn${E.get(t,'NextUp')?' on':''}" data-nu>⏫ Next up</button>
-      <div class="te-snz"><button class="te-btn" data-d="1">Tomorrow</button><button class="te-btn" data-d="3">3 days</button><button class="te-btn" data-d="10">10 days</button><button class="te-btn" data-d="30">Month</button><label class="te-btn te-pick">Pick date<input type="date" data-pick></label></div>
-      <button class="te-btn sm" data-mv="morning">→ AM</button><button class="te-btn sm" data-mv="afternoon">→ PM</button><button class="te-btn sm" data-mv="">Remove from category</button><button class="te-btn pri" data-close>Close</button></div>`;
+  const render=()=>{ sh.innerHTML=`<div class="te-h"><b>Edit task</b><button class="te-hg" data-acceptall hidden>Accept all</button><button class="te-hg" data-guess title="Guess the empty fields from similar tasks">✨ Guess</button><button class="te-hx" data-close aria-label="Close">✕</button></div><div class="te-b">${formHTML(t)}</div>
+    <div class="te-a"><div class="te-snz"><button class="te-btn" data-d="1">Tomorrow</button><button class="te-btn" data-d="3">3 days</button><button class="te-btn" data-d="10">10 days</button><button class="te-btn" data-d="30">Month</button><label class="te-btn te-pick">Pick date<input type="date" data-pick></label></div>
+      <button class="te-btn ok" data-done>✓ Done</button><button class="te-btn" data-snz>Snooze</button><button class="te-btn${E.get(t,'NextUp')?' on':''}" data-nu>⏫ Next up</button><button class="te-btn" data-close>Close</button></div>`;
     wire(sh,t); wirePhotos(sh,t); wireClaude(sh,t);
     sh.querySelectorAll('[data-close]').forEach(b=>b.onclick=close);
+    { const cc=sh.querySelector('[data-catchips]'), more=sh.querySelector('[data-sec="more"]'), dg=sh.querySelector('[data-dg]');
+      sh.querySelector('[data-catmore]').onclick=()=>cc.classList.add('open');
+      cc.addEventListener('click',e=>{ const b=e.target.closest('[data-catv]'); if(b&&b.dataset.catv!=='__new') cc.classList.remove('open'); });
+      const upd=()=>setTimeout(()=>{ if(dg&&document.body.contains(dg)) dg.textContent=digest(t); },60); more.addEventListener('change',upd); more.addEventListener('click',upd);
+      sh.querySelector('[data-guess]').addEventListener('click',()=>{ if(more.querySelector('.te-gv')) more.open=true; }); }
     sh.querySelector('[data-done]').onclick=()=>{ close(); E.done(t); };
     sh.querySelector('[data-snz]').onclick=()=>sh.querySelector('.te-snz').classList.toggle('on');
     sh.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ close(); E.snooze(t,+b.dataset.d); });
     sh.querySelector('[data-pick]').onchange=ev=>{ const v=ev.target.value; if(!v) return; const days=Math.max(1,Math.round((new Date(v+'T12:00:00')-new Date())/864e5)); close(); E.snooze(t,days,v); };
     sh.querySelector('[data-nu]').onclick=()=>{ const tg=sh.querySelector('[data-tog="NextUp"]'); if(tg) tg.click(); sh.querySelector('[data-nu]').classList.toggle('on',!!E.get(t,'NextUp')); };
-    const mvMark=()=>{ const c=String(E.cat(t)||''); sh.querySelectorAll('[data-mv]').forEach(x=>x.classList.toggle('on',!!x.dataset.mv&&x.dataset.mv===c)); const cs=sh.querySelector('[data-cat]'); if(cs) cs.value=c; sh.querySelectorAll('[data-catv]').forEach(x=>x.classList.toggle('on',x.dataset.catv===c)); };
-    sh.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{ const v=b.dataset.mv; const prevRaw=E.catRaw(t); E.setCat(t,v); mvMark(); E.refresh(); if(navigator.vibrate) navigator.vibrate(8);
-      E.undo(v==='morning'?'Moved to AM call':v==='afternoon'?'Moved to PM call':'Removed from category',()=>{ E.restoreCat(t,prevRaw); mvMark(); E.refresh(); }); }); mvMark();
     sh.querySelectorAll('.te-a button').forEach(b=>b.addEventListener('pointerdown',e=>{ const a=document.activeElement; if(a&&sh.contains(a)&&/INPUT|TEXTAREA/.test(a.tagName)) e.preventDefault(); })); };
   render(); sc.onclick=close; document.body.append(sc,sh); cur={sc,sh,t};
   const show=()=>{ sc.classList.add('on'); sh.classList.add('on'); }; requestAnimationFrame(()=>requestAnimationFrame(show)); setTimeout(show,60);
-  if(opts&&opts.claude) setTimeout(()=>{ const ci=sh.querySelector('[data-ci]'); if(ci){ ci.scrollIntoView({block:'center'}); ci.focus(); } },350);
+  if(opts&&opts.claude) setTimeout(()=>{ const cs=sh.querySelector('[data-sec="claude"]'); if(cs) cs.open=true; const ci=sh.querySelector('[data-ci]'); if(ci){ ci.scrollIntoView({block:'center'}); ci.focus(); } },350);
   if(!schema) loadSchema().then(()=>{ if(cur&&cur.t===t&&!sh.contains(document.activeElement)) render(); });
   document.addEventListener('keydown',function k(e){ if(e.key==='Escape'){ close(); document.removeEventListener('keydown',k); } }); }
 

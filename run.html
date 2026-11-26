@@ -82,6 +82,11 @@ var tasks=[], queue=[], pos=0, undo=[], log=[], cnt={done:0,snz:0,nu:0,park:0}, 
 var mode='all'; try{ mode=localStorage.getItem('tb.run.mode')||'all'; }catch(e){}
 var proj='';
 var MODES=[['all','All'],['nextup','Next Up'],['due','Due'],['computer','@Computer'],['dtd','Drive to done']];
+// A list handed over from Focus (▸ Run in a list pop-up): run.html?list=1 runs exactly those tasks, in that order. Key 6.
+var LIST=null; try{ if(/[?&]list=1/.test(location.search)){ var L0=JSON.parse(localStorage.getItem('tb.run.list')||'null');
+  if(L0&&L0.ids&&L0.ids.length&&Date.now()-L0.at<864e5){ LIST={title:String(L0.title||'List'),back:/^[\w.-]+\.html$/.test(L0.back||'')?L0.back:'index.html',ix:{}}; L0.ids.forEach(function(id,i){ LIST.ix[id]=i; }); } } }catch(e){}
+if(LIST){ MODES.push(['list',LIST.title]); mode='list'; } else if(mode==='list') mode='all';
+function pool(m){ return (m||mode)==='list'?tasks:tasks.filter(live); }   // a handed-over list shows every task in it, snoozed ones too
 
 // ── Airtable ──
 function hdr(){ return {Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'}; }
@@ -107,6 +112,7 @@ function patch(id,fields){ return fetch(url('/'+id),{method:'PATCH',headers:hdr(
 function live(t){ return !(t.due&&t.due>today()) && String(t.section).toLowerCase()!=='parked'; }
 function inMode(t,m){
   m=m||mode;
+  if(m==='list') return !!LIST && LIST.ix[t.id]!=null;
   if(proj && t.project!==proj) return false;
   if(m==='nextup') return !!t.nextUp;
   if(m==='due') return !!t.due;
@@ -118,7 +124,7 @@ function rank(a,b){   // Next Up (your order) → flagged → due (oldest date f
   return (!!b.nextUp-!!a.nextUp) || (a.nextUp&&b.nextUp ? (a.nuOrder||0)-(b.nuOrder||0) : 0) || (b.flag-a.flag) ||
     ((a.due||'9999')<(b.due||'9999')?-1:(a.due||'9999')>(b.due||'9999')?1:0) || (b.pri-a.pri) || (new Date(a.created)-new Date(b.created));
 }
-function build(){ queue=tasks.filter(live).filter(function(t){ return inMode(t); }).sort(rank); pos=0; undo=[]; log=[]; cnt={done:0,snz:0,nu:0,park:0}; total=queue.length; }
+function build(){ queue=pool().filter(function(t){ return inMode(t); }).sort(mode==='list'?function(a,b){ return LIST.ix[a.id]-LIST.ix[b.id]; }:rank); pos=0; undo=[]; log=[]; cnt={done:0,snz:0,nu:0,park:0}; total=queue.length; }
 
 // ── Actions: change it here first, save behind, Z puts it back ──
 function toast(m,bad){ var e=$('toast'); e.textContent=m; e.className='toast on'+(bad?' bad':''); clearTimeout(toast.t); toast.t=setTimeout(function(){ e.className='toast'; },bad?3500:1300); }
@@ -166,15 +172,16 @@ var KEYS=[['D','Done','go',done],['S','Tomorrow','',function(){ snooze(1); }],['
 function draw(){
   var handled=cnt.done+cnt.snz+cnt.nu+cnt.park;
   $('bar').style.width=(total?Math.round(handled/total*100):0)+'%';
-  $('seg').innerHTML=MODES.map(function(m,i){ var n=tasks.filter(live).filter(function(t){ return inMode(t,m[0]); }).length;
-    return '<button data-m="'+m[0]+'" class="'+(mode===m[0]?'on':'')+'" title="Press '+(i+1)+'">'+m[1]+'<i>'+(loaded?n:'')+'</i></button>'; }).join('');
+  $('seg').innerHTML=MODES.map(function(m,i){ var n=pool(m[0]).filter(function(t){ return inMode(t,m[0]); }).length;
+    return '<button data-m="'+m[0]+'" class="'+(mode===m[0]?'on':'')+'" title="Press '+(i+1)+'">'+esc(m[1])+'<i>'+(loaded?n:'')+'</i></button>'; }).join('');
+  $('proj').style.display=mode==='list'?'none':'';   // a handed-over list ignores the project filter
   var pj={}; tasks.filter(live).forEach(function(t){ if(t.project) pj[t.project]=(pj[t.project]||0)+1; });
   $('proj').innerHTML='<option value="">All projects</option>'+Object.keys(pj).sort(function(a,b){ return pj[b]-pj[a]||a.localeCompare(b); }).map(function(k){ return '<option value="'+esc(k)+'"'+(k===proj?' selected':'')+'>'+esc(k)+' · '+pj[k]+'</option>'; }).join('');
   $('stat').innerHTML=loaded&&!err?'<b>'+queue.length+'</b> left · ✓ <b>'+cnt.done+'</b> · 😴 <b>'+cnt.snz+'</b> · ⏫ <b>'+cnt.nu+'</b> · ⊘ <b>'+cnt.park+'</b>':'';
   var M=$('main'), S=$('side'), t=cur();
   if(!loaded){ M.innerHTML='<div class="empty">Loading tasks…</div>'; S.innerHTML=''; return; }
   if(err){ M.innerHTML='<div class="empty"><h2>'+(err==='nokey'?'Connect Airtable':'Could not load')+'</h2>'+(err==='nokey'?'Add your key in ⚙︎ on the <a href="dashboard.html">Dashboard</a>, then come back.':esc(err)+' · <a href="run.html">retry</a>')+'</div>'; S.innerHTML=''; return; }
-  if(!t){ M.innerHTML='<div class="empty"><h2>'+(handled?'Queue clear':'Nothing here')+'</h2>'+(handled?'✓ '+cnt.done+' done · 😴 '+cnt.snz+' snoozed · ⏫ '+cnt.nu+' to Next Up · ⊘ '+cnt.park+' parked<br><br>Z = undo the last one':'No live tasks in this list. Pick another on top.')+'</div>'; S.innerHTML=logHTML(); return; }
+  if(!t){ M.innerHTML='<div class="empty"><h2>'+(handled?'Queue clear':'Nothing here')+'</h2>'+(handled?'✓ '+cnt.done+' done · 😴 '+cnt.snz+' snoozed · ⏫ '+cnt.nu+' to Next Up · ⊘ '+cnt.park+' parked<br><br>Z = undo the last one':'No live tasks in this list. Pick another on top.')+(mode==='list'?'<br><br><a href="'+LIST.back+'">‹ Back to the list</a>':'')+'</div>'; S.innerHTML=logHTML(); return; }
   M.innerHTML='<div class="card '+dir+'"><div class="meta">'+chips(t)+'<span class="pos">'+(pos+1)+' / '+queue.length+'</span></div>'+
     '<div class="title">'+esc(t.name)+'</div>'+
     (editing?'<textarea class="edit" id="ed" rows="2" placeholder="Next step… (Enter = save, Esc = cancel)">'+esc(t.next)+'</textarea>'
@@ -187,7 +194,7 @@ function draw(){
 function logHTML(){ return log.length?'<div class="log"><h3>Just handled</h3>'+log.slice(0,8).map(function(l){ return '<div>'+esc(l)+'</div>'; }).join('')+'</div>':''; }
 
 // ── Input ──
-function setMode(m){ mode=m; try{ localStorage.setItem('tb.run.mode',m); }catch(e){} build(); dir='in'; draw(); }
+function setMode(m){ mode=m; try{ if(m!=='list') localStorage.setItem('tb.run.mode',m); }catch(e){} build(); dir='in'; draw(); }
 $('seg').addEventListener('click',function(e){ var b=e.target.closest('[data-m]'); if(b) setMode(b.dataset.m); });
 $('proj').addEventListener('change',function(e){ proj=e.target.value; e.target.blur(); build(); dir='in'; draw(); });
 $('main').addEventListener('click',function(e){ var b=e.target.closest('[data-k]'); if(b) KEYS[+b.dataset.k][3](); });

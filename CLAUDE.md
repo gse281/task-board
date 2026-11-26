@@ -28,7 +28,7 @@ Rules:
 | Dashboard | `dashboard.html` = `grid.html` | keep the two files identical |
 | Focus 2 | `focus2.html` | also runs off-site, so it loads `nav.js` by absolute URL there |
 | Email | `email.html` + `gmail-live.js` (Live) + `emailrun.js` (Scan) | extra run rules: `EMAIL_RULES.md` |
-| Run | `run.html` | one task at a time, keyboard-first; same field rules as the iPhone cards |
+| Run | `run.html` | one task at a time, keyboard-first; same field rules as the iPhone cards. `run.html?list=1` runs the list a Focus pop-up handed over (▸ Run → `localStorage['tb.run.list']` = `{title, ids, at, back}`) |
 | Meetings | `meet/` | meetings-only page, also its own iPhone Home Screen app |
 | AIOS map | `aios.html` + `aios-data.js` | snapshot in `aios-data.js`; to-dos, feeds and health load live |
 | iPhone Tasks | `m/` | own service worker |
@@ -36,6 +36,8 @@ Rules:
 - The top-right page links are `nav.js` on every page. Add or reorder a page there, nowhere else.
 - Bump the `?v=` on a script tag when you change that script.
 - Add one line to `changelog.md` per change: `- YYYY-MM-DD HH:MM  what changed`.
+- Task editor (`task-editor.js`, every page): keep it calm. Top = Task, Next step, Project/Lead/Sub, Category, Notes. Anything else goes in the folded **More** or **Claude** section, not on top. Footer stays one row.
+- Focus list pop-ups (`openList`, `openFiltered`): every one gets the add box (`ovAddHTML` / `ovAddWire`) and ▸ Run (`RUNBTN` / `ovRunWire`).
 
 ## 3. Task categories
 

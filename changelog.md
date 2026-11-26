@@ -296,3 +296,5 @@
 - 2026-11-25 21:18  Focus: ☀ Today pane (was Incoming). Drag any task in to do it today · 5 picked for you each morning (↻ redraws) · today's incoming · ⊘ = not today, back tomorrow. Same on every computer
 - 2026-11-25 21:19  Focus bubbles: click the task's text = open that task; click anywhere else in the bubble = open the category
 - 2026-11-25 21:28  Focus bubbles: dragging the task no longer drags or wobbles the bubble; Today and the center light up while a task is in the air
+- 2026-11-25 21:45  Focus list pop-ups: fixed the stray line under the last row (tree line ran past it, last row had no bottom edge) · the same Add box on top of every list (filters, Priority, Meetings, Replies too) · ▸ Run in the header runs that list, in that order, on the Run page (key 6)
+- 2026-11-25 21:45  Task editor cleaned up: Task · Next step · Project/Lead/Sub · Category (current one, Change ▾ for all) · Notes on top; status, priority, dates, contact, photos fold into More; Send to Claude / Chase fold into Claude; footer is one row (Done · Snooze · Next up · Close); one accent colour; ✨ Guess moved to the header; fixed the ✕ that floated mid-sheet
