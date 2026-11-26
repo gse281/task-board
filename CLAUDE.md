@@ -49,6 +49,10 @@ category list, a pane on Focus, list 5 on Run, and a group in the AIOS map. New 
 Every page loads `Open` tasks only, so a hibernating task disappears everywhere by itself; a new page or job must not load `Hibernating`.
 One task: editor › Snooze › ❄ Hibernate, or `H` on Run. A whole category: ❄ Hibernate all in its Focus list. Wake: Focus footer › ❄ HIBERNATING (Focus loads them alongside the open ones; `isHib`, `hibSet`, `openHib`).
 
+**Call reminders** (two scheduled tasks, not page code): Sunday 5:38 PM "Call reminders — weekly plan" spreads every open Calls task over the week's free 9–4 slots
+and writes AppNotes `calls:plan` (JSON `{week, made, items:[{id, at, name, sent}]}`); "Call reminders — send due texts" (Mon–Fri hourly at :23, needs the Mac `rmb-home-pro`)
+texts Roni each due call with the number on its own line. Don't reuse or overwrite `calls:plan`.
+
 ## 4. Email page
 
 - Categories: `H` Last hour, `D` Starred, `Z` Snoozed, `C` Reply, `B` Don't miss, `I` Invitations, `N` Not sorted yet, `E` Everything else, `A` Archive, `K` Kept, `X` Hidden 24h. Defined once, in `gmail-live.js` (`BUCKETS`).
