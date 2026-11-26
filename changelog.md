@@ -293,3 +293,5 @@
 - 2026-11-25 20:43  Focus: arrows stay under the mouse. Pop-ups hang from a fixed top; pager labels fixed width; Today chip in front of ‹; bubble pagers pinned; meeting pane keeps its height
 - 2026-11-26  Email icon: GSE signature over an envelope
 - 2026-11-25 21:10  Drive to done category: in the task editor, a pane on Focus, list 5 on Run, a group in the AIOS map
+- 2026-11-25 21:18  Focus: ☀ Today pane (was Incoming). Drag any task in to do it today · 5 picked for you each morning (↻ redraws) · today's incoming · ⊘ = not today, back tomorrow. Same on every computer
+- 2026-11-25 21:19  Focus bubbles: click the task's text = open that task; click anywhere else in the bubble = open the category

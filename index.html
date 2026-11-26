@@ -287,6 +287,18 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .bub:has(.bnav) .bit{-webkit-line-clamp:2;min-height:2.44em}
 .bub .bnav{position:absolute;left:0;right:0;bottom:13%;justify-content:center;margin:0}
 .bub .bnav span{display:inline-block;min-width:36px;text-align:center;font-variant-numeric:tabular-nums}
+.tsh{display:flex;align-items:center;gap:6px;min-height:20px;font:800 9.5px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);margin:5px 2px 0}
+.inclist>.tsh:first-child{margin-top:0}.tsh.tshh{cursor:pointer}.tsh.tshh:hover{color:var(--cyan)}
+.tsh .tre{margin-left:auto;width:26px;height:20px;border:1px solid var(--line);border-radius:6px;color:var(--cyan);font-size:12px;line-height:1}.tsh .tre:hover{border-color:var(--cyan)}
+.trow .tb{width:22px;height:22px;font-size:11px;opacity:0}.trow:hover .tb,.trow .tb:focus-visible{opacity:1}.trow .tb[data-thide]:hover{color:var(--orange);border-color:var(--orange)}
+@media(hover:none){.trow .tb{opacity:1}}
+.trow.thid{opacity:.5}
+.pane .ph:has(.nnav){min-height:22px}   /* the Today chip must not make the header taller: the Notes pane hangs from the bottom, so 1px there moves its arrows */
+.none.tdz{border:1px dashed var(--line);border-radius:8px;text-align:center;padding:3px 4px;font-size:11.5px}
+.pane.today.tdrop{border-color:var(--cyan);box-shadow:0 0 0 2px rgba(57,199,223,.35) inset}.pane.today.tdrop .tdz{border-color:var(--cyan);color:var(--cyan)}
+.bub .bit[data-id]{border-radius:8px;padding:2px 5px;margin-left:-5px;margin-right:-5px}
+.bub .bit[data-id]:hover{background:rgba(57,199,223,.16);color:#fff}
+.bub .bcap{cursor:pointer}.bub:hover .bcap:hover,.bub:hover .bn:hover{color:#fff}
 </style></head>
 <body>
 <div id="stage">
@@ -487,10 +499,10 @@ const bSel={}; const ORDERED=new Set(['calls','morning','afternoon','nextup']);
 const bubOf=(k,list)=>{ const sel=bSel[k]; const i=(sel&&Date.now()-sel.at<180000)?sel.i:bubIdx; return list.length?((i%list.length)+list.length)%list.length:0; };
 function renderBubbles(){ const box=$('#bubbles'); box.innerHTML=ringKeys().map(k=>{ const list=itemsFor(k); const ix=bubOf(k,list); const it=list.length?list[ix]:null; const [em,nm]=capOf(k);
     const cls='bub'+(list.length?'':' empty')+(hasStale(list)?' urgent':'');
-    const prev=it?'<div class="bit" draggable="true" data-id="'+esc(it.id)+'" title="Drag to the center to add to Focus">'+bubPrev(it)+'</div>':'<div class="bit e">—</div>';
+    const prev=it?'<div class="bit" draggable="true" data-id="'+esc(it.id)+'" title="Click = open this task · drag to the center for Focus, or onto Today">'+bubPrev(it)+'</div>':'<div class="bit e">—</div>';
     const nav=list.length>1?'<div class="bnav"><button data-bs="-1" aria-label="Previous task">‹</button><span>'+(ix+1)+'/'+list.length+'</span><button data-bs="1" aria-label="Next task">›</button>'+(ORDERED.has(k)?'<button data-btop aria-label="Move to top" title="Move to top"'+(ix>0?'':' style="visibility:hidden" tabindex="-1"')+'>⤒</button>':'')+'</div>':'';
     return '<div class="'+cls+'" data-key="'+esc(k)+'"><div class="bcap">'+em+' '+esc(nm)+'</div><div class="bn">'+list.length+'</div>'+prev+nav+'</div>'; }).join('');
-  box.querySelectorAll('.bub').forEach(el=>{ const k=el.dataset.key; el.onclick=e=>{ if(e.target.closest('.bnav')) return; openList(k); };
+  box.querySelectorAll('.bub').forEach(el=>{ const k=el.dataset.key; el.onclick=e=>{ if(e.target.closest('.bnav')) return; const it=e.target.closest('.bit[data-id]'); if(it) openTask(it.dataset.id); else openList(k); };   // the task's text opens that task; anywhere else in the bubble opens the category
     el.querySelectorAll('[data-bs]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const list=itemsFor(k); bSel[k]={i:bubOf(k,list)+(+b.dataset.bs),at:Date.now()}; renderBubbles(); layout(); });
     const tb=el.querySelector('[data-btop]'); if(tb) tb.onclick=e=>{ e.stopPropagation(); moveTop(k); }; }); }
 function moveTop(k){ const list=itemsFor(k); const t=list[bubOf(k,list)]; if(!t) return;
@@ -549,6 +561,47 @@ function renderAmPm(){ const el=$('#amPm'); if(!el) return; el.innerHTML=[['morn
   el.querySelectorAll('.amb').forEach(b=>{ const k=b.dataset.amk; b.onclick=e=>{ if(e.target.closest('[data-amd]')) return; openList(k); };
     b.querySelectorAll('[data-amd]').forEach(x=>x.onclick=e=>{ e.stopPropagation(); amI[k]+=(+x.dataset.amd); amAt[k]=Date.now(); renderAmPm(); }); }); }
 /* corners */
+/* ===== ☀ Today =====
+   On today's page the Incoming pane is the Today pane:
+   1. DO TODAY       tasks you dragged in (from a bubble, a list, anywhere). They stay until done or ⊘, overnight too.
+   2. PICKED FOR YOU 5 open tasks drawn at random each morning, weighted to old, flagged, due and Next Up ones. ↻ draws 5 others.
+   3. INCOMING       everything that came in today.
+   ⊘ on a row = not today: it leaves this pane until tomorrow and stays on every other list.
+   Kept in this browser and in Airtable AppNotes (Key focus:today), so every computer shows the same Today. */
+const TDY_N=5;
+let TDY=LS('focus.today',null)||{day:'',pins:[],hide:[],picks:[],ts:0}, tdyShow=false, tdyReady=!cfg.apiKey, _tdyT=0, _tdyAt=0;
+function tdyNorm(){ const td=todayISO(); TDY.pins=TDY.pins||[]; TDY.hide=TDY.hide||[]; TDY.picks=TDY.picks||[];
+  if(TDY.day!==td) TDY={day:td,pins:TDY.pins,hide:[],picks:[],ts:TDY.ts||0}; }   // new day: pins carry over, the rest starts fresh
+function tdySave(){ TDY.ts=Date.now(); SV('focus.today',TDY); clearTimeout(_tdyT); if(demo||!cfg.apiKey) return;
+  _tdyT=setTimeout(()=>{ fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
+    body:JSON.stringify({performUpsert:{fieldsToMergeOn:['Key']},typecast:true,records:[{fields:{Key:'focus:today',Text:JSON.stringify(TDY),Updated:new Date().toLocaleString()}}]})}).catch(()=>{}); },700); }
+async function tdyLoad(){ _tdyAt=Date.now();
+  if(!demo&&cfg.apiKey){ try{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE); u.searchParams.set('pageSize','1'); u.searchParams.set('filterByFormula',"{Key}='focus:today'");
+      const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); const rec=r.ok?((await r.json()).records||[])[0]:null; const v=rec?JSON.parse(rec.fields.Text||'null'):null;
+      if(v&&(v.ts||0)>(TDY.ts||0)) TDY=v; }catch(e){} }   // whichever computer changed it last wins
+  tdyReady=true; SV('focus.today',TDY); renderCorners(); layout(); }
+function tdyWeight(t){ const td=todayISO(); return 1+Math.min(daysOpen(t),90)/15+(t.flag?3:0)+(t.nextUp?2:0)+(t.doDate&&t.doDate<=td?3:0)+Math.min(3,(t.priorityRemote||0)/3); }
+function tdyDraw(pool,n){ const out=[]; pool=pool.slice(); while(out.length<n&&pool.length){ const W=pool.map(tdyWeight), sum=W.reduce((a,b)=>a+b,0); let r=Math.random()*sum, i=0; while(i<pool.length-1&&(r-=W[i])>0) i++; out.push(pool.splice(i,1)[0]); } return out; }
+function tdyPin(id){ tdyNorm(); TDY.hide=TDY.hide.filter(x=>x!==id); TDY.picks=TDY.picks.filter(x=>x!==id); if(!TDY.pins.includes(id)) TDY.pins.unshift(id); tdySave(); incDay=null; renderCorners(); layout(); toast('☀ On Today'); }
+function tdyRow(t){ const hid=TDY.hide.includes(t.id);
+  return '<div class="lrow trow'+(hid?' thid':'')+'" data-open="'+t.id+'" data-id="'+t.id+'" draggable="true"><span class="dot" style="background:'+projColor(t.project)+'"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(daysOpen(t)>=21?' o':'')+'">'+daysOpen(t)+'d</span>'+
+    (hid?'<button class="tick tb" data-tun="'+t.id+'" title="Back on Today">↩</button>'
+        :'<button class="tick tb" data-thide="'+t.id+'" title="Not today: hides it here until tomorrow. It stays on your other lists.">⊘</button><button class="tick tb" data-tdone="'+t.id+'" title="Done">✓</button>')+'</div>'; }
+function todayPane(incT){ tdyNorm(); const byId=new Map(tasks.map(t=>[t.id,t])), hid=new Set(TDY.hide), ok=t=>t&&live(t);
+  const pins=TDY.pins.map(id=>byId.get(id)).filter(t=>ok(t)&&!hid.has(t.id)), pinned=new Set(pins.map(t=>t.id));
+  const inc=incT.filter(t=>!hid.has(t.id)&&!pinned.has(t.id)), taken=new Set([...pinned,...incT.map(t=>t.id)]);
+  let picks=TDY.picks.map(id=>byId.get(id)).filter(t=>ok(t)&&!hid.has(t.id)&&!taken.has(t.id));
+  if(tdyReady&&tasks.length&&picks.length<TDY_N){   // top the five back up (first look of the day, or one was done / silenced)
+    const have=new Set(picks.map(t=>t.id)); const td=todayISO(); const more=tdyDraw(tasks.filter(t=>live(t)&&!hid.has(t.id)&&!taken.has(t.id)&&!have.has(t.id)&&sectionOf(t)!=='focus'&&!(t.doDate&&t.doDate>td)),TDY_N-picks.length);   // never a task snoozed to a later day
+    if(more.length){ picks=picks.concat(more); TDY.picks=picks.map(t=>t.id); tdySave(); } }
+  const off=TDY.hide.map(id=>byId.get(id)).filter(ok);
+  const sec=(lab,rows,extra)=>'<div class="tsh"><span>'+lab+'</span>'+(extra||'')+'</div>'+rows.join('');
+  const html='<div class="inclist">'+
+    sec('Do today'+(pins.length?' · '+pins.length:''),pins.length?pins.map(tdyRow):['<div class="none tdz">Drag any task here to do it today</div>'])+
+    sec('Picked for you',picks.length?picks.map(tdyRow):['<div class="none">'+(tdyReady?'Nothing left to pick.':'…')+'</div>'],'<button class="tre" data-tre title="Draw 5 others">↻</button>')+
+    sec('Incoming'+(inc.length?' · '+inc.length:''),inc.length?inc.slice(0,60).map(tdyRow):['<div class="none">—</div>'])+
+    (off.length?'<div class="tsh tshh" data-tshow title="Silenced for today. They come back tomorrow."><span>'+(tdyShow?'▾':'▸')+' Not today · '+off.length+'</span></div>'+(tdyShow?off.map(tdyRow).join(''):''):'')+'</div>';
+  return {count:pins.length+picks.length+inc.length, html}; }
 function miniRow(t){ return '<div class="lrow" data-open="'+t.id+'"><span class="dot" style="background:'+projColor(t.project)+'"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(daysOpen(t)>=21?' o':'')+'">'+daysOpen(t)+'d</span></div>'; }
 function miniList(key,n){ const items=itemsFor(key); return {count:items.length, html:(items.length?items.slice(0,n).map(miniRow).join(''):'<div class="none">—</div>')}; }
 function renderCorners(){
@@ -566,10 +619,11 @@ function renderCorners(){
   } else mh='<div class="none">No meetings today or tomorrow.</div>';
   const incT=incItems();
   const inc={count:incT.length, html:'<div class="inclist">'+(incT.length?incT.slice(0,60).map(miniRow).join(''):'<div class="none">'+(incDay?'Nothing came in.':'—')+'</div>')+'</div>'};
+  const tdy=incDay?null:todayPane(incT);   // today's page of this pane = the Today pane
   const incNav='<span class="nnav">'+(incDay?'<button data-itd class="tdy">Today</button>':'')+'<button data-ip>‹</button><span class="nlbl'+(incDay?' past':'')+'">'+esc(dnLabel(incDay||todayISO()))+'</span><button data-in '+(incDay?'':'disabled')+'>›</button></span>';
   if(!$('#cTRb')){ $('#cTR').innerHTML='<div id="cTRb" style="display:flex;flex-direction:column;gap:10px"></div>'; }
   $('#cTRb').innerHTML='<div class="pane meet'+(nn.now?' urgent':'')+'"><div class="ph" data-list="meeting">▣ Next Meeting<span class="pn">'+nn.L.length+'</span></div>'+mh+'</div>'+
-    '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span>'+incNav+'</div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div><div class="pane" id="cqPane" style="display:none"></div>';
+    '<div class="pane'+(incDay?'':' today')+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">'+(incDay?'▽ Incoming':'☀ Today')+'<span class="pn">'+(tdy?tdy.count:inc.count)+'</span>'+incNav+'</div>'+(tdy?tdy.html:inc.html)+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div><div class="pane" id="cqPane" style="display:none"></div>';
   renderCQPane();
   const shortTime=x=>{ const r=String(x).match(/(\d+)\s*(h|hr|hour|m|min)/i); return r?'~'+r[1]+(/^h/i.test(r[2])?'h':'m'):''; };
   const oi=window.Guide?Guide.list(tasks):[]; const oiN=oi.length; const oc=oiN?oi[((oiI%oiN)+oiN)%oiN]:null;
@@ -619,8 +673,8 @@ function layout(){ const st=$('#stage'); const W=st.clientWidth, H=st.clientHeig
     const cl=$('#cqPane .cqlist'), tr=$('#cTR'), br=$('#cBR'); if(cl&&tr&&br){ cl.style.maxHeight='300px'; const over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop; if(over>0) cl.style.maxHeight=Math.max(70,300-over)+'px'; }
     const il=$('#cTR .inclist'), nt=$('#noteTa'); if(il&&tr&&br){ il.style.maxHeight='none'; if(nt) nt.style.height='';
       let over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop;
-      if(over>0&&nt){ const cut=Math.min(over,Math.max(0,nt.offsetHeight-230)); nt.style.height=(nt.offsetHeight-cut)+'px'; over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop; }
-      if(over>0) il.style.maxHeight=Math.max(260,il.scrollHeight-over)+'px'; } }
+      if(over>0&&nt){ const cut=Math.min(over,Math.max(0,nt.offsetHeight-120)); nt.style.height=(nt.offsetHeight-cut)+'px'; over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop; }
+      if(over>0) il.style.maxHeight=Math.max(110,il.scrollHeight-over)+'px'; } }   // Today scrolls inside itself before it ever runs under Notes
   const m=Math.min(W,H); const CS=Math.max(176,Math.min(286,m*0.25)); const BS=Math.max(104,Math.min(140,m*0.135));
   // Ring: as big as the height allows, but it stays between the side columns (never under them), and never tighter than the core.
   let colL=0, colR=W; ['#cTL','#cML','#cBL'].forEach(q=>{ const e=$(q); if(e&&e.offsetWidth) colL=Math.max(colL,e.offsetLeft+e.offsetWidth); }); ['#cTR','#cBR'].forEach(q=>{ const e=$(q); if(e&&e.offsetWidth) colR=Math.min(colR,e.offsetLeft); });
@@ -722,6 +776,19 @@ document.addEventListener('dragstart',e=>{ const r=e.target.closest&&e.target.cl
   core.addEventListener('dragover',e=>{ if(e.dataTransfer&&(e.dataTransfer.types||[]).indexOf&&[].indexOf.call(e.dataTransfer.types,'text/tbid')>=0){ e.preventDefault(); core.classList.add('coredrop'); } });
   core.addEventListener('dragleave',e=>{ if(!core.contains(e.relatedTarget)) core.classList.remove('coredrop'); });
   core.addEventListener('drop',e=>{ core.classList.remove('coredrop'); const id=e.dataTransfer&&e.dataTransfer.getData('text/tbid'); if(id){ e.preventDefault(); moveSection(id,'focus'); toast('◎ Added to Focus'); } }); })();
+/* ☀ Today: row buttons, and drop a task on the pane to do it today (the pane is rebuilt on every render, so listen on its column) */
+{ const tr=$('#cTR'); const paneOf=e=>e.target.closest&&e.target.closest('.pane.today'); const has=e=>e.dataTransfer&&[].indexOf.call(e.dataTransfer.types||[],'text/tbid')>=0;
+  tr.addEventListener('click',e=>{ const b=e.target.closest('[data-thide],[data-tdone],[data-tun],[data-tre],[data-tshow]'); if(!b) return; e.stopPropagation(); e.preventDefault(); tdyNorm();
+    if(b.dataset.tdone){ markDone(b.dataset.tdone); return; }
+    if(b.dataset.thide){ const id=b.dataset.thide; TDY.pins=TDY.pins.filter(x=>x!==id); TDY.picks=TDY.picks.filter(x=>x!==id); if(!TDY.hide.includes(id)) TDY.hide.push(id); toast('⊘ Not today. Back tomorrow'); }
+    else if(b.dataset.tun){ TDY.hide=TDY.hide.filter(x=>x!==b.dataset.tun); }
+    else if('tre' in b.dataset){ TDY.picks=[]; }
+    else if('tshow' in b.dataset){ tdyShow=!tdyShow; renderCorners(); layout(); return; }
+    tdySave(); renderCorners(); layout(); },true);
+  tr.addEventListener('dragover',e=>{ const p=paneOf(e); if(p&&has(e)){ e.preventDefault(); p.classList.add('tdrop'); } });
+  tr.addEventListener('dragleave',e=>{ const p=paneOf(e); if(p&&!p.contains(e.relatedTarget)) p.classList.remove('tdrop'); });
+  tr.addEventListener('drop',e=>{ const p=paneOf(e); if(!p) return; p.classList.remove('tdrop'); const id=e.dataTransfer&&e.dataTransfer.getData('text/tbid'); if(id){ e.preventDefault(); tdyPin(id); } }); }
+tdyLoad(); document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&Date.now()-_tdyAt>60000) tdyLoad(); });
 /* ===== overlays ===== */
 const ov=$('#ov'), ovh=$('#ovh'), ovb=$('#ovb');
 function closeOv(){ ov.classList.remove('show','ivwide'); ovb.innerHTML=''; }
