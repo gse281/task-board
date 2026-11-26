@@ -78,7 +78,7 @@ var today=function(){ return iso(new Date()); };
 var isoIn=function(n){ var d=new Date(); d.setDate(d.getDate()+n); return iso(d); };
 var fmtD=function(d){ var p=d.split('-'); return (+p[1])+'/'+(+p[2]); };
 
-var tasks=[], queue=[], pos=0, undo=[], log=[], cnt={done:0,snz:0,nu:0,park:0}, total=0, editing=false, dir='in', loaded=false, err='';
+var tasks=[], queue=[], pos=0, undo=[], log=[], cnt={done:0,snz:0,nu:0,park:0,hib:0}, total=0, editing=false, dir='in', loaded=false, err='';
 var mode='all'; try{ mode=localStorage.getItem('tb.run.mode')||'all'; }catch(e){}
 var proj='';
 var MODES=[['all','All'],['nextup','Next Up'],['due','Due'],['computer','@Computer'],['dtd','Drive to done']];
@@ -124,7 +124,7 @@ function rank(a,b){   // Next Up (your order) → flagged → due (oldest date f
   return (!!b.nextUp-!!a.nextUp) || (a.nextUp&&b.nextUp ? (a.nuOrder||0)-(b.nuOrder||0) : 0) || (b.flag-a.flag) ||
     ((a.due||'9999')<(b.due||'9999')?-1:(a.due||'9999')>(b.due||'9999')?1:0) || (b.pri-a.pri) || (new Date(a.created)-new Date(b.created));
 }
-function build(){ queue=pool().filter(function(t){ return inMode(t); }).sort(mode==='list'?function(a,b){ return LIST.ix[a.id]-LIST.ix[b.id]; }:rank); pos=0; undo=[]; log=[]; cnt={done:0,snz:0,nu:0,park:0}; total=queue.length; }
+function build(){ queue=pool().filter(function(t){ return inMode(t); }).sort(mode==='list'?function(a,b){ return LIST.ix[a.id]-LIST.ix[b.id]; }:rank); pos=0; undo=[]; log=[]; cnt={done:0,snz:0,nu:0,park:0,hib:0}; total=queue.length; }
 
 // ── Actions: change it here first, save behind, Z puts it back ──
 function toast(m,bad){ var e=$('toast'); e.textContent=m; e.className='toast on'+(bad?' bad':''); clearTimeout(toast.t); toast.t=setTimeout(function(){ e.className='toast'; },bad?3500:1300); }
@@ -145,6 +145,8 @@ function nextUp(){ var t=cur(); if(!t) return; var p={d:t.nextUp,o:t.nuOrder};
   apply('nu','⏫ Next Up',t,function(){ t.nextUp=d; t.nuOrder=max+10; },{NextUp:d,NextUpOrder:max+10},function(){ t.nextUp=p.d; t.nuOrder=p.o; },{NextUp:p.d||null,NextUpOrder:p.o==null?null:p.o}); }
 function park(){ var t=cur(); if(!t) return; var s=t.section;
   apply('park','⊘ Parked',t,function(){ t.section='parked'; },{Section:'parked'},function(){ t.section=s; },{Section:s||''}); }
+function hibernate(){ var t=cur(); if(!t) return;   // ❄ out of circulation, kept: Status only, category stays. Wake it on Focus › ❄ HIBERNATING
+  apply('hib','❄ Hibernating',t,function(){ tasks=tasks.filter(function(x){ return x!==t; }); },{Status:'Hibernating'},function(){ tasks.push(t); },{Status:'Open'}); }
 function skip(){ if(pos<queue.length-1){ pos++; dir='in'; draw(); } else if(queue.length>1){ pos=0; dir='in'; draw(); toast('Back to the top'); } }
 function back(){ if(pos>0){ pos--; dir='back'; draw(); } }
 function undoLast(){ var u=undo.pop(); if(!u) return toast('Nothing to undo');
@@ -168,20 +170,20 @@ function chips(t){ var td=today(), h='';
   if(t.due) h+='<span class="chip'+(t.due<td?' od':'')+'">'+(t.due<td?'Overdue ':t.due===td?'Today ':'Due ')+fmtD(t.due)+'</span>';
   var age=Math.max(0,Math.floor((Date.now()-new Date(t.created))/864e5)); h+='<span class="chip">open '+age+'d</span>';
   return h; }
-var KEYS=[['D','Done','go',done],['S','Tomorrow','',function(){ snooze(1); }],['W','1 week','',function(){ snooze(7); }],['M','1 month','',function(){ snooze(30); }],['N','Next Up','',nextUp],['P','Park','',park],['E','Next step','dim',editNext],['→','Skip','dim',skip],['←','Back','dim',back],['Z','Undo','dim',undoLast]];
+var KEYS=[['D','Done','go',done],['S','Tomorrow','',function(){ snooze(1); }],['W','1 week','',function(){ snooze(7); }],['M','1 month','',function(){ snooze(30); }],['N','Next Up','',nextUp],['P','Park','',park],['H','Hibernate','',hibernate],['E','Next step','dim',editNext],['→','Skip','dim',skip],['←','Back','dim',back],['Z','Undo','dim',undoLast]];
 function draw(){
-  var handled=cnt.done+cnt.snz+cnt.nu+cnt.park;
+  var handled=cnt.done+cnt.snz+cnt.nu+cnt.park+cnt.hib;
   $('bar').style.width=(total?Math.round(handled/total*100):0)+'%';
   $('seg').innerHTML=MODES.map(function(m,i){ var n=pool(m[0]).filter(function(t){ return inMode(t,m[0]); }).length;
     return '<button data-m="'+m[0]+'" class="'+(mode===m[0]?'on':'')+'" title="Press '+(i+1)+'">'+esc(m[1])+'<i>'+(loaded?n:'')+'</i></button>'; }).join('');
   $('proj').style.display=mode==='list'?'none':'';   // a handed-over list ignores the project filter
   var pj={}; tasks.filter(live).forEach(function(t){ if(t.project) pj[t.project]=(pj[t.project]||0)+1; });
   $('proj').innerHTML='<option value="">All projects</option>'+Object.keys(pj).sort(function(a,b){ return pj[b]-pj[a]||a.localeCompare(b); }).map(function(k){ return '<option value="'+esc(k)+'"'+(k===proj?' selected':'')+'>'+esc(k)+' · '+pj[k]+'</option>'; }).join('');
-  $('stat').innerHTML=loaded&&!err?'<b>'+queue.length+'</b> left · ✓ <b>'+cnt.done+'</b> · 😴 <b>'+cnt.snz+'</b> · ⏫ <b>'+cnt.nu+'</b> · ⊘ <b>'+cnt.park+'</b>':'';
+  $('stat').innerHTML=loaded&&!err?'<b>'+queue.length+'</b> left · ✓ <b>'+cnt.done+'</b> · 😴 <b>'+cnt.snz+'</b> · ⏫ <b>'+cnt.nu+'</b> · ⊘ <b>'+cnt.park+'</b>'+(cnt.hib?' · ❄ <b>'+cnt.hib+'</b>':''):'';
   var M=$('main'), S=$('side'), t=cur();
   if(!loaded){ M.innerHTML='<div class="empty">Loading tasks…</div>'; S.innerHTML=''; return; }
   if(err){ M.innerHTML='<div class="empty"><h2>'+(err==='nokey'?'Connect Airtable':'Could not load')+'</h2>'+(err==='nokey'?'Add your key in ⚙︎ on the <a href="dashboard.html">Dashboard</a>, then come back.':esc(err)+' · <a href="run.html">retry</a>')+'</div>'; S.innerHTML=''; return; }
-  if(!t){ M.innerHTML='<div class="empty"><h2>'+(handled?'Queue clear':'Nothing here')+'</h2>'+(handled?'✓ '+cnt.done+' done · 😴 '+cnt.snz+' snoozed · ⏫ '+cnt.nu+' to Next Up · ⊘ '+cnt.park+' parked<br><br>Z = undo the last one':'No live tasks in this list. Pick another on top.')+(mode==='list'?'<br><br><a href="'+LIST.back+'">‹ Back to the list</a>':'')+'</div>'; S.innerHTML=logHTML(); return; }
+  if(!t){ M.innerHTML='<div class="empty"><h2>'+(handled?'Queue clear':'Nothing here')+'</h2>'+(handled?'✓ '+cnt.done+' done · 😴 '+cnt.snz+' snoozed · ⏫ '+cnt.nu+' to Next Up · ⊘ '+cnt.park+' parked'+(cnt.hib?' · ❄ '+cnt.hib+' hibernating':'')+'<br><br>Z = undo the last one':'No live tasks in this list. Pick another on top.')+(mode==='list'?'<br><br><a href="'+LIST.back+'">‹ Back to the list</a>':'')+'</div>'; S.innerHTML=logHTML(); return; }
   M.innerHTML='<div class="card '+dir+'"><div class="meta">'+chips(t)+'<span class="pos">'+(pos+1)+' / '+queue.length+'</span></div>'+
     '<div class="title">'+esc(t.name)+'</div>'+
     (editing?'<textarea class="edit" id="ed" rows="2" placeholder="Next step… (Enter = save, Esc = cancel)">'+esc(t.next)+'</textarea>'
@@ -202,7 +204,7 @@ $('side').addEventListener('click',function(e){ var b=e.target.closest('[data-j]
 document.addEventListener('keydown',function(e){
   if(editing||e.metaKey||e.ctrlKey||e.altKey) return;
   if(e.target.closest&&e.target.closest('select,input,textarea')) return;
-  var k=e.key.length===1?e.key.toLowerCase():e.key, f={d:done,s:function(){ snooze(1); },w:function(){ snooze(7); },m:function(){ snooze(30); },n:nextUp,p:park,e:editNext,z:undoLast,
+  var k=e.key.length===1?e.key.toLowerCase():e.key, f={d:done,s:function(){ snooze(1); },w:function(){ snooze(7); },m:function(){ snooze(30); },n:nextUp,p:park,h:hibernate,e:editNext,z:undoLast,
     ArrowRight:skip,' ':skip,j:skip,ArrowLeft:back,k:back,Backspace:undoLast}[k];
   if(f){ e.preventDefault(); return f(); }
   var n=+k; if(n>=1&&n<=MODES.length){ e.preventDefault(); setMode(MODES[n-1][0]); }

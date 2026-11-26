@@ -5,7 +5,7 @@
    Every meaningful Airtable field, saved the moment it changes, each change undoable:
    Task · Project · Lead · Sub · Category (Section / MeetingSlot / Calls) · Status ·
    Priority · Do date · Reminder · Next step · Notes · Call contact · Phone ·
-   ⭐ Flag · Next Up · Don't text lead   + actions: Done · Snooze · Next Up.
+   ⭐ Flag · Next Up · Don't text lead   + actions: Done · Snooze (incl. ❄ Hibernate) · Next Up.
    Layout: Task · Next step · Project/Lead/Sub · Category (current one; Change ▾ shows all) · Notes on top;
    “More” and “Claude” are folded sections; the footer is one row: Done · Snooze · Next up · Close.
 
@@ -129,12 +129,14 @@ textarea.te-i{field-sizing:content;max-height:38vh}
 .te-sec .te-cl{margin:0 0 6px;padding:0;border:0;background:none}
 .te-a{flex-wrap:wrap}.te-a .te-btn{min-width:0;flex:1 1 0}
 .te-btn.ok{background:rgba(48,209,88,.16);border-color:rgba(48,209,88,.55)}
+/* ❄ Hibernate: Status = Hibernating. Out of circulation on every page, category kept; wake it from Focus › ❄ Hibernating. */
+.te-snz{flex-wrap:wrap}.te-snz .te-btn{flex:1 1 0;font-size:13px;padding:0 2px;white-space:nowrap}.te-snz .te-hib{flex:1 1 100%;color:#9fdbe7}
 `;
 function ensureCss(){ if(document.getElementById('te-css')) return; const s=document.createElement('style'); s.id='te-css'; s.textContent=CSS; document.head.appendChild(s); }
 
 function formHTML(t){ const E=window.TE; const e=s=>E.esc(s==null?'':String(s)); const g=k=>E.get(t,k);
   const dl=(id,vals)=>`<datalist id="${id}">${vals.map(v=>`<option value="${e(v)}">`).join('')}</datalist>`;
-  const cat=E.cat(t); const stat=values('Status','status'); ['Open','Done','Disposed'].forEach(x=>{ if(!stat.includes(x)) stat.push(x); });
+  const cat=E.cat(t); const stat=values('Status','status'); ['Open','Hibernating','Done','Disposed'].forEach(x=>{ if(!stat.includes(x)) stat.push(x); });
   const row=(l,inner)=>`<label class="te-r"><span class="te-l">${l}</span>${inner}</label>`;
   const tog=(f,l)=>`<button type="button" class="te-t${g(f)?' on':''}" data-tog="${f}"><i></i>${l}</button>`;
   const pri=[...new Set(values('Priority','priorityRaw').map(x=>String(x).trim()).filter(Boolean))].sort((a,b)=>(+a)-(+b)).slice(0,6);
@@ -148,7 +150,7 @@ function formHTML(t){ const E=window.TE; const e=s=>E.esc(s==null?'':String(s));
       <div class="te-seg" data-catchips>${catOptions().map(([v,l])=>`<button type="button" class="te-ch${v.toLowerCase()===String(cat).toLowerCase()?' on':''}" data-catv="${e(v)}">${e(l)}</button>`).join('')}<button type="button" class="te-ch new" data-catv="__new">＋ New</button><button type="button" class="te-ch" data-catmore>Change ▾</button></div><div class="te-gs" data-gsf="Category"></div>`)}
     ${row('Notes',`<textarea class="te-i" data-f="Notes" rows="2">${e(g('Notes'))}</textarea>`)}
     <details class="te-sec" data-sec="more"><summary>More<span class="te-dg" data-dg>${e(digest(t))}</span></summary>
-    <div class="te-2">${row('Status',`<select class="te-i te-hide" data-f="Status">${stat.map(v=>`<option${v===(g('Status')||'Open')?' selected':''}>${e(v)}</option>`).join('')}</select><div class="te-seg" data-segfor="Status">${['Open','Done','Disposed'].map(v=>`<button type="button" class="te-ch${v===(g('Status')||'Open')?' on':''}" data-segv="${v}">${v}</button>`).join('')}</div>`)}
+    <div class="te-2">${row('Status',`<select class="te-i te-hide" data-f="Status">${stat.map(v=>`<option${v===(g('Status')||'Open')?' selected':''}>${e(v)}</option>`).join('')}</select><div class="te-seg" data-segfor="Status">${['Open','Hibernating','Done','Disposed'].map(v=>`<button type="button" class="te-ch${v===(g('Status')||'Open')?' on':''}" data-segv="${v}">${v}</button>`).join('')}</div>`)}
       ${row('Priority',`<input class="te-i te-hide" data-f="Priority" value="${e(g('Priority'))}"><div class="te-seg" data-segfor="Priority"><button type="button" class="te-ch${!g('Priority')?' on':''}" data-segv="">—</button>${pri.map(v=>`<button type="button" class="te-ch${String(g('Priority'))===v?' on':''}" data-segv="${e(v)}">${e(v)}</button>`).join('')}</div>`)}</div>
     ${row('Do date',`<div class="te-seg" data-dchips>${days.map(([l,d])=>`<button type="button" class="te-ch" data-dd="${d}">${l}</button>`).join('')}<label class="te-ch te-dpick">${g('DoDate')?e(g('DoDate')):'Pick'}<input type="date" data-f="DoDate" value="${e(g('DoDate'))}"></label>${g('DoDate')?'<button type="button" class="te-ch" data-dd="clear">✕</button>':''}</div>`)}
     ${row('Reminder',`<input class="te-i" type="datetime-local" data-f="ReminderAt" value="${e(localDT(g('ReminderAt')))}">`)}
@@ -309,13 +311,17 @@ function wireClaude(root,t){ const box=root.querySelector('[data-cl]'); if(!box)
 // Count of drafts waiting for Roni (for an app-level "Claude needs approval" badge)
 async function claudePending(){ const E=window.TE; if(!E||!E.key()) return []; try{ const d=await cqApi('?pageSize=20&filterByFormula='+encodeURIComponent("{Status}='Needs approval'")); return (d.records||[]).map(r=>Object.assign({id:r.id},r.fields)); }catch(e){ return []; } }
 
+/* ❄ Hibernate / ☀ wake: only the Status changes, so the task keeps its category, dates and notes. */
+function setStatus(t,v,msg){ const E=window.TE; if(!E||!t) return; const prev=E.get(t,'Status')||'Open'; if(prev===v) return;
+  E.set(t,'Status',v); E.patch(t.id,{Status:v}); E.refresh(); E.undo(msg,()=>{ E.set(t,'Status',prev); E.patch(t.id,{Status:prev}); E.refresh(); }); }
+function hibernate(t){ setStatus(t,'Hibernating','❄ Hibernating — out of circulation'); }
 let cur=null;
 function close(){ if(!cur) return; const {sc,sh}=cur; const a=document.activeElement; if(a&&sh.contains(a)) a.blur(); sc.classList.remove('on'); sh.classList.remove('on'); setTimeout(()=>{ sc.remove(); sh.remove(); },280); cur=null; }
 function open(t,opts){ const E=window.TE; if(!E||!t) return; ensureCss(); if(cur) close();
   const sc=document.createElement('div'); sc.className='te-scrim'; const sh=document.createElement('div'); sh.className='te'; sh.setAttribute('role','dialog');
   const render=()=>{ sh.innerHTML=`<div class="te-h"><b>Edit task</b><button class="te-hg" data-acceptall hidden>Accept all</button><button class="te-hg" data-guess title="Guess the empty fields from similar tasks">✨ Guess</button><button class="te-hx" data-close aria-label="Close">✕</button></div><div class="te-b">${formHTML(t)}</div>
-    <div class="te-a"><div class="te-snz"><button class="te-btn" data-d="1">Tomorrow</button><button class="te-btn" data-d="3">3 days</button><button class="te-btn" data-d="10">10 days</button><button class="te-btn" data-d="30">Month</button><label class="te-btn te-pick">Pick date<input type="date" data-pick></label></div>
-      <button class="te-btn ok" data-done>✓ Done</button><button class="te-btn" data-snz>Snooze</button><button class="te-btn${E.get(t,'NextUp')?' on':''}" data-nu>⏫ Next up</button><button class="te-btn" data-close>Close</button></div>`;
+    <div class="te-a"><div class="te-snz"><button class="te-btn" data-d="1">Tomorrow</button><button class="te-btn" data-d="3">3 days</button><button class="te-btn" data-d="10">10 days</button><button class="te-btn" data-d="30">Month</button><label class="te-btn te-pick">Pick date<input type="date" data-pick></label><button class="te-btn te-hib" data-hib title="Out of circulation until you wake it. Keeps its category.">❄ Hibernate — keep it, out of circulation</button></div>
+      <button class="te-btn ok" data-done>✓ Done</button>${E.get(t,'Status')==='Hibernating'?'<button class="te-btn" data-wake>☀ Wake</button>':'<button class="te-btn" data-snz>Snooze</button>'}<button class="te-btn${E.get(t,'NextUp')?' on':''}" data-nu>⏫ Next up</button><button class="te-btn" data-close>Close</button></div>`;
     wire(sh,t); wirePhotos(sh,t); wireClaude(sh,t);
     sh.querySelectorAll('[data-close]').forEach(b=>b.onclick=close);
     { const cc=sh.querySelector('[data-catchips]'), more=sh.querySelector('[data-sec="more"]'), dg=sh.querySelector('[data-dg]');
@@ -324,7 +330,9 @@ function open(t,opts){ const E=window.TE; if(!E||!t) return; ensureCss(); if(cur
       const upd=()=>setTimeout(()=>{ if(dg&&document.body.contains(dg)) dg.textContent=digest(t); },60); more.addEventListener('change',upd); more.addEventListener('click',upd);
       sh.querySelector('[data-guess]').addEventListener('click',()=>{ if(more.querySelector('.te-gv')) more.open=true; }); }
     sh.querySelector('[data-done]').onclick=()=>{ close(); E.done(t); };
-    sh.querySelector('[data-snz]').onclick=()=>sh.querySelector('.te-snz').classList.toggle('on');
+    { const sz=sh.querySelector('[data-snz]'); if(sz) sz.onclick=()=>sh.querySelector('.te-snz').classList.toggle('on');
+      const wk=sh.querySelector('[data-wake]'); if(wk) wk.onclick=()=>{ close(); setStatus(t,'Open','☀ Awake — back in circulation'); };
+      sh.querySelector('[data-hib]').onclick=()=>{ close(); hibernate(t); }; }
     sh.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{ close(); E.snooze(t,+b.dataset.d); });
     sh.querySelector('[data-pick]').onchange=ev=>{ const v=ev.target.value; if(!v) return; const days=Math.max(1,Math.round((new Date(v+'T12:00:00')-new Date())/864e5)); close(); E.snooze(t,days,v); };
     sh.querySelector('[data-nu]').onclick=()=>{ const tg=sh.querySelector('[data-tog="NextUp"]'); if(tg) tg.click(); sh.querySelector('[data-nu]').classList.toggle('on',!!E.get(t,'NextUp')); };
@@ -349,5 +357,5 @@ function plainOne(el,iconOnly){ if(el.dataset.plain) return; el.dataset.plain='1
 function plain(selector,iconSel){ if(!document.body){ document.addEventListener('DOMContentLoaded',()=>plain(selector,iconSel)); return; } const css=document.createElement('style'); css.textContent='.te-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin:0 7px 1px 0;vertical-align:middle;flex:none;box-shadow:0 0 6px currentColor}.te-ic{position:relative}.te-ic::after{content:"";position:absolute;left:50%;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#39c7df;box-shadow:0 0 10px rgba(57,199,223,.6)}'; document.head.appendChild(css);
   const run=root=>{ if(!root.querySelectorAll) return; if(root.matches&&root.matches(selector)) plainOne(root); root.querySelectorAll(selector).forEach(e=>plainOne(e)); if(iconSel){ if(root.matches&&root.matches(iconSel)) plainOne(root,true); root.querySelectorAll(iconSel).forEach(e=>plainOne(e,true)); } };
   run(document.body); new MutationObserver(ms=>ms.forEach(m=>m.addedNodes.forEach(n=>n.nodeType===1&&run(n)))).observe(document.body,{childList:true,subtree:true}); }
-window.TaskEditor={open,close,loadSchema,plain,dotColor,claudePending,chase,guessFor};
+window.TaskEditor={open,close,loadSchema,plain,dotColor,claudePending,chase,guessFor,hibernate,setStatus};
 })();

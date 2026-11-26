@@ -173,7 +173,7 @@ a.pill{text-decoration:none}
 <div id="toastHost"></div>
 <script>/* page links (top right): same file on every page; absolute when this page runs off the task-board site */
 (function(){var on=/github\.io$|^localhost$|^127\.0\.0\.1$/.test(location.hostname)||location.protocol==='file:';var s=document.createElement('script');s.src=(on?'':'https://gse281.github.io/task-board/')+'nav.js?v=1795654629';document.head.appendChild(s);})();</script>
-<script src="task-editor.js?v=1795661131"></script>
+<script src="task-editor.js?v=1795661621"></script>
 <script src="photos.js"></script>
 <script src="claudeq.js"></script>
 <script src="emailrun.js?v=1795649698"></script>
@@ -705,7 +705,7 @@ function loadLive(){
   var out=[];
   function page(off){
     var u=new URL('https://api.airtable.com/v0/'+BASE+'/'+encodeURIComponent(ITEMS));
-    u.searchParams.set('filterByFormula',"{Status}!='Done'");
+    u.searchParams.set('filterByFormula',"AND({Status}!='Done',{Status}!='Hibernating')");   // ❄ hibernating = out of circulation
     u.searchParams.set('pageSize','100'); if(off)u.searchParams.set('offset',off);
     return fetch(u,{headers:H()}).then(function(r){if(!r.ok)throw r.status;return r.json();}).then(function(d){
       (d.records||[]).forEach(function(rec){var f=rec.fields;RAW[rec.id]={f:f,ct:rec.createdTime};out.push({id:rec.id,text:flat(f.Task)||flat(f.Name),project:flat(f.Project).trim().toUpperCase(),lead:flat(f.SBLead).trim(),sub:flat(f.Sub).trim(),slot:flat(f.MeetingSlot).toLowerCase(),section:flat(f.Section).toLowerCase(),order:(f.ListOrder==null?null:+f.ListOrder),done:false});});

@@ -45,6 +45,10 @@ A task's category is its `Section` text in Items (plus `MeetingSlot` for the two
 `Drive to done` = handed to Claude to own until closed (the drive-to-done skill sets it on its tracking record). It is in the task editor's
 category list, a pane on Focus, list 5 on Run, and a group in the AIOS map. New fixed categories go in `task-editor.js` (`CATS`) and Focus (`CAT`).
 
+**Hibernate** = `Status` `Hibernating`: kept, but out of circulation. Only the Status changes, so the task keeps its category and wakes back into it.
+Every page loads `Open` tasks only, so a hibernating task disappears everywhere by itself; a new page or job must not load `Hibernating`.
+One task: editor › Snooze › ❄ Hibernate, or `H` on Run. A whole category: ❄ Hibernate all in its Focus list. Wake: Focus footer › ❄ HIBERNATING (Focus loads them alongside the open ones; `isHib`, `hibSet`, `openHib`).
+
 ## 4. Email page
 
 - Categories: `H` Last hour, `D` Starred, `Z` Snoozed, `C` Reply, `B` Don't miss, `I` Invitations, `N` Not sorted yet, `E` Everything else, `A` Archive, `K` Kept, `X` Hidden 24h. Defined once, in `gmail-live.js` (`BUCKETS`).

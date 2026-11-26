@@ -139,6 +139,9 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .addrow input:focus{border-color:var(--cyan)} .addrow input::placeholder{color:var(--dim)}
 .addrow button{flex:none;background:var(--cyan);color:#07141a;border-radius:9px;padding:0 12px;font-weight:800}
 .addrow.ovadd{margin:0 0 10px}
+.phint .hiball{float:right;margin-top:-3px}.phint .hiball:hover,.pill.wk:hover{color:#9fdbe7;border-color:#9fdbe7}
+.grphd.hibg{cursor:default}.grphd.hibg .pill{text-transform:none;letter-spacing:.4px;margin-left:4px}
+.lrow .tick.wake:hover{color:#f2c94c;border-color:#f2c94c}
 .cardh .prun{letter-spacing:.6px;text-transform:none;color:var(--cyan);border-color:rgba(57,199,223,.5);padding:4px 11px;font-size:11px}.cardh .prun:hover{background:rgba(57,199,223,.14)}.cardh .prun[disabled]{opacity:.35;pointer-events:none}
 /* meeting */
 .meet .mtime{font:800 13px ui-monospace,Menlo,monospace;color:var(--cyan);letter-spacing:.3px}
@@ -311,7 +314,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
   <div class="core" id="core"></div>
   <div id="bubbles"></div>
   <div class="corner tl" id="cTL"></div><div class="corner tr" id="cTR"></div><div class="corner ml" id="cML"></div><div class="corner bl" id="cBL"></div><div class="corner br" id="cBR"></div>
-  <div class="foot"><button id="mvReset" onclick="resetMoves()" title="Put bubbles and panes back">↺ LAYOUT</button><button id="cmdBtn2">⌘ ADD · JUMP · FIND</button><button id="fltBtn" onclick="openFilters()" title="Filter by Project · Sub · Lead · Category">▦ P·S·L·C</button><button id="cxFootBtn" onclick="openContacts()" title="Contacts — search, copy, text, call, add">👤 CONTACTS</button><button id="homeToggle"></button></div>
+  <div class="foot"><button id="mvReset" onclick="resetMoves()" title="Put bubbles and panes back">↺ LAYOUT</button><button id="cmdBtn2">⌘ ADD · JUMP · FIND</button><button id="fltBtn" onclick="openFilters()" title="Filter by Project · Sub · Lead · Category">▦ P·S·L·C</button><button id="hibBtn" onclick="openHib()" title="Hibernating — tasks and categories kept out of circulation. Wake them here.">❄ HIBERNATING</button><button id="cxFootBtn" onclick="openContacts()" title="Contacts — search, copy, text, call, add">👤 CONTACTS</button><button id="homeToggle"></button></div>
 </div>
 <div class="back" id="ov"><div class="card"><div class="cardh" id="ovh"></div><div class="cardb" id="ovb"></div></div></div>
 <div id="cmd"><div class="cmdbox"><div class="cmdin"><span>⌘</span><input id="cmdInp" placeholder="Add a task, jump to a list, or search everything…" autocomplete="off"></div><div class="cmdres" id="cmdRes"></div><div class="cmdhint">↑↓ move · ⏎ select · esc close · type then ⏎ to add</div></div></div>
@@ -319,7 +322,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 <div id="filesBox" class="fbox fbox-float" hidden></div>
 <div id="toast"></div>
 <script src="nav.js?v=1795654629"></script>
-<script src="task-editor.js?v=1795661131"></script>
+<script src="task-editor.js?v=1795661621"></script>
 <script src="photos.js"></script>
 <script src="guide.js"></script>
 <script src="claudeq.js"></script>
@@ -350,6 +353,7 @@ function defaultSection(t){ if(t.slotRemote==='morning')return'morning'; if(t.sl
 const isOpen=t=>(t.status||'Open')==='Open';
 const snoozed=t=>A(t.id).snoozeUntil>Date.now();
 const live=t=>isOpen(t)&&!snoozed(t)&&sectionOf(t)!=='parked';
+const isHib=t=>t.status==='Hibernating';   // ❄ out of circulation, kept (category and all)
 const score=t=>(t.priorityRemote||0)+(A(t.id).priAdj||0)+daysOpen(t);
 const hasStale=list=>Array.isArray(list)&&list.some(t=>t&&!t._mtg&&daysOpen(t)>=14);
 const PAL=['#39c7df','#5eead4','#67E8F9','#60A5FA','#A78BFA','#818CF8','#34D399','#2dd4bf','#7dd3fc','#c4b5fd','#4ADE80','#38bdf8'];
@@ -440,7 +444,7 @@ async function saveNoteDay(day,text){ dnPut(day,text); if(demo||!cfg.apiKey){ se
 /* fetch */
 async function fetchAll(){ if(!cfg.apiKey){ demo=true; demoData(); renderAll(); return; }
   try{ let out=[],off,g=0;
-    do{ const u=new URL(atUrl()); u.searchParams.set('pageSize','100'); u.searchParams.set('filterByFormula',"OR({Status}='Open',{Status}=BLANK())"); if(off)u.searchParams.set('offset',off);
+    do{ const u=new URL(atUrl()); u.searchParams.set('pageSize','100'); u.searchParams.set('filterByFormula',"OR({Status}='Open',{Status}=BLANK(),{Status}='Hibernating')"); if(off)u.searchParams.set('offset',off);   // hibernating tasks ride along: isOpen() keeps them off the board, ❄ lists them
       const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); if(!r.ok) throw new Error(r.status); const d=await r.json();
       out=out.concat((d.records||[]).map(rec=>{const f=rec.fields;return{id:rec.id,createdTime:rec.createdTime,name:flat(f.Task),project:flat(f.Project).trim(),lead:flat(f.SBLead).trim(),sub:flat(f.Sub).trim(),status:flat(f.Status)||'Open',slotRemote:flat(f.MeetingSlot).toLowerCase(),sectionRemote:flat(f.Section).toLowerCase(),doDate:flat(f.DoDate).slice(0,10),priorityRemote:+flat(f.Priority)||0,typeRemote:flat(f.Type).toLowerCase(),phone:flat(f.Phone),guide:flat(f.Guide),next:flat(f.NextStep),guideStep:+f.GuideStep||0,notes:flat(f.Notes),callWho:flat(f.CallContact),priorityRaw:flat(f.Priority),nextUp:flat(f.NextUp).slice(0,10),nuOrder:(f.NextUpOrder==null?null:+f.NextUpOrder),remindAt:flat(f.ReminderAt),textEx:!!f.TextExclude,flag:!!f.RoniFlag,photos:Array.isArray(f.Photos)?f.Photos:[],listOrder:(f.ListOrder==null?null:+f.ListOrder)};}));
       off=d.offset; }while(off&&++g<40);
@@ -483,7 +487,7 @@ function renderFltRail(){ const el=$('#fltrail'); if(!el) return;
     +'<div class="fcols"><div class="fcol">'+sec('P','project',fltTally(t=>t.project))+sec('S','sub',fltTally(t=>t.sub))+'</div>'
     +'<div class="fcol">'+sec('L','lead',fltTally(t=>t.lead))+sec('C','category',fltTally(t=>catName(sectionOf(t))))+'</div></div>';
   el.querySelectorAll('[data-ff]').forEach(b=>b.onclick=()=>openFiltered(b.dataset.ff,b.dataset.fv)); }
-function renderAll(){ clearIF(); if(window.Files&&!window._filesInit&&cfg&&cfg.apiKey){ window._filesInit=1; Files.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); Files.onChange(()=>{ if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.te')) return; renderFilesBox(); }); } renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); renderFltRail(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
+function renderAll(){ clearIF(); { const hb=$('#hibBtn'); if(hb){ const n=tasks.filter(isHib).length; hb.textContent='❄ HIBERNATING'+(n?' · '+n:''); } } if(window.Files&&!window._filesInit&&cfg&&cfg.apiKey){ window._filesInit=1; Files.init({key:()=>cfg.apiKey,base:()=>cfg.baseId}); Files.onChange(()=>{ if(document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.te')) return; renderFilesBox(); }); } renderRingSeg(); renderHeader(); renderCore(); renderBubbles(); renderCorners(); renderFltRail(); layout(); const gid=window.Guide&&Guide.hashId(); if(gid&&gid!==window._gdShown&&tasks.some(t=>t.id===gid)){ window._gdShown=gid; openGuide(gid); } }
 window.addEventListener('hashchange',()=>{ window._gdShown=null; const gid=window.Guide&&Guide.hashId(); if(gid) openGuide(gid); });
 function renderHeader(){ const h=new Date().getHours(); $('#greet').textContent=(h<12?'GOOD MORNING':h<17?'GOOD AFTERNOON':'GOOD EVENING')+' ◎';
   const open=tasks.filter(live).length; const att=itemsFor('attention').length;
@@ -812,7 +816,7 @@ window.TE={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.table
   get:(t,f)=>{ const v=t[ED_KEYS[f]]; return v==null?'':v; },
   set:(t,f,v)=>{ t[ED_KEYS[f]]=(v==null?'':v); if(f==='DoDate'){ A(t.id).snoozeUntil=0; saveAug(); } if(f==='Priority') t.priorityRemote=+v||0; if(f==='NextUp'&&!v) t.nuOrder=null; if(f==='Status'&&v&&v!=='Open'){ /* Done / Disposed leave the board */ } },
   patch:(id,f)=>patchTask(id,f), nextOrder:()=>tasks.reduce((m,x)=>Math.max(m,x.nuOrder||0),0)+10,
-  refresh:()=>renderAll(), contactGuess:()=>null, undo:(msg,fn)=>toastU('✎ '+msg,fn),
+  refresh:()=>{ renderAll(); if(hibShown()) openHib(); }, contactGuess:()=>null, undo:(msg,fn)=>toastU('✎ '+msg,fn),
   done:t=>markDone(t.id),
   snooze:(t,d,date)=>{ const prev=t.doDate; const dd=date||isoOf(new Date(Date.now()+d*864e5)); t.doDate=dd; A(t.id).snoozeUntil=new Date(dd+'T06:00:00').getTime(); saveAug(); patchTask(t.id,{DoDate:dd}); renderAll();
     toastU('Snoozed to '+dnLabel(dd),()=>{ t.doDate=prev; A(t.id).snoozeUntil=0; saveAug(); patchTask(t.id,{DoDate:prev||null}); renderAll(); }); },
@@ -826,6 +830,28 @@ window.TE={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.table
     saveAug(); patchTask(t.id,f); renderAll(); },
   restoreCat:(t,p)=>{ const a=A(t.id); if(p.sec) a.section=p.sec; else delete a.section; t.sectionRemote=p.sr; t.slotRemote=p.m; t.typeRemote=p.ty; saveAug(); patchTask(t.id,Object.assign({Section:p.sr,MeetingSlot:p.m},p.ty==='call'?{Type:'call'}:{})); renderAll(); } };
 function openTask(id){ const t=tasks.find(x=>x.id===id); if(!t){ toast('Task not found'); return; } closeOv(); if(window.TaskEditor) TaskEditor.open(t); else toast('Editor not loaded'); }
+/* ===== ❄ Hibernate: Status = 'Hibernating'. Out of circulation on every page; the task keeps its category, so waking puts it back where it was.
+   One task: editor › Snooze › ❄ Hibernate (or H on Run). A whole category: ❄ Hibernate all in its list. Wake: ❄ HIBERNATING in the footer. ===== */
+async function patchMany(ids,fields){ ids=ids.filter(id=>/^rec/.test(id)); if(demo||!cfg.apiKey||!ids.length) return true; let ok=true;
+  for(let i=0;i<ids.length;i+=10){ try{ const r=await fetch(atUrl(),{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},body:JSON.stringify({records:ids.slice(i,i+10).map(id=>({id,fields})),typecast:true})}); if(!r.ok) ok=false; }catch(e){ ok=false; } }
+  if(!ok) toast('Some changes did not save — reload to check'); return ok; }
+const hibShown=()=>ov.classList.contains('show')&&ovh.textContent.indexOf('❄ Hibernating')===0;
+function hibSet(ids,on,msg){ const S=new Set(ids), prev=new Map(); tasks.forEach(t=>{ if(S.has(t.id)){ prev.set(t.id,t.status||'Open'); t.status=on?'Hibernating':'Open'; } }); if(!prev.size) return;
+  patchMany(ids,{Status:on?'Hibernating':'Open'}); renderAll(); if(hibShown()) openHib();
+  toastU(msg,()=>{ const back={}; tasks.forEach(t=>{ if(prev.has(t.id)){ t.status=prev.get(t.id); (back[t.status]=back[t.status]||[]).push(t.id); } }); Object.keys(back).forEach(st=>patchMany(back[st],{Status:st})); renderAll(); if(hibShown()) openHib(); }); }
+function hibAllBtn(n){ return n?'<button class="pill hiball" data-hiball title="Take this whole list out of circulation. Each task keeps its category; wake them from ❄ HIBERNATING.">❄ Hibernate all</button>':''; }
+function hibAllWire(title){ const b=ovb.querySelector('[data-hiball]'); if(!b) return; b.onclick=()=>{ const ids=[...ovb.querySelectorAll('#plist .lrow[data-id]')].map(r=>r.dataset.id); if(!ids.length) return; closeOv(); hibSet(ids,true,'❄ '+title+' hibernating · '+ids.length); }; }
+function openHib(){ const L=tasks.filter(isHib), g={}; L.forEach(t=>{ const s=sectionOf(t), k=(s&&s!=='backlog')?catName(s):'No category'; (g[k]=g[k]||[]).push(t); });
+  const keys=Object.keys(g).sort((a,b)=>a.localeCompare(b));
+  ovh.innerHTML='❄ Hibernating · '+L.length+'<button class="x" data-x>✕</button>';
+  ovb.innerHTML='<div class="phint">Kept, out of circulation. ☀ wakes it back into its category · tap a task to edit</div><div class="plist" id="plist">'+
+    (L.length?keys.map((k,i)=>'<div class="grphd tap hibg"><span>'+esc(k)+'</span><span class="gcn">'+g[k].length+'</span><button class="pill wk" data-wakeall="'+i+'">☀ Wake all</button></div>'+
+      g[k].map(t=>{ const pj=t.project?String(t.project).split(',')[0].trim():''; return '<div class="lrow std" data-grp="h'+i+'" data-id="'+t.id+'"><span class="dot" style="background:'+projColor(t.project)+'"></span>'+(pj?'<span class="pchip" style="--pc:'+projColor(t.project)+'">'+esc(pj)+'</span>':'')+'<span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span>'+(t.lead?'<span class="lchip">'+esc(t.lead)+'</span>':'')+'<button class="tick wake" data-wake title="Wake — back in circulation">☀</button></div>'; }).join('')).join('')
+     :'<div class="none">Nothing is hibernating.<br><br>One task: open it › Snooze › ❄ Hibernate.<br>A whole category: open its list › ❄ Hibernate all.</div>')+'</div>';
+  ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv;
+  ovb.querySelectorAll('.lrow[data-id]').forEach(r=>{ const id=r.dataset.id; r.onclick=e=>{ if(e.target.closest('[data-wake]')){ const t=tasks.find(x=>x.id===id); hibSet([id],false,'☀ Awake: '+(t?cleanName(t):'')); return; } openTask(id); }; });
+  ovb.querySelectorAll('[data-wakeall]').forEach(b=>b.onclick=()=>{ const k=keys[+b.dataset.wakeall]; hibSet(g[k].map(t=>t.id),false,'☀ '+k+' awake · '+g[k].length); }); }
+
 /* every list pop-up: the same add box on top, and ▸ Run in the header (hands this list, in this order, to run.html) */
 const RUNBTN='<button class="pill prun" data-run title="Run through this list one task at a time">▸ Run</button>';
 function ovAddHTML(ph){ return '<div class="addrow ovadd"><input id="ovAdd" enterkeyhint="done" autocomplete="off" placeholder="＋ '+esc(ph)+'…"><button id="ovAddBtn">Add</button></div>'; }
@@ -844,9 +870,9 @@ function openList(key){ const em=capOf(key)[0],cap=capOf(key)[1]; const items=ke
   if(key==='respond'){ ovb.innerHTML=ovAddHTML('Add a task')+'<div class="plist">'+(items.length?items.map(e=>'<div class="lrow">'+(e.link?'<a href="'+esc(e.link)+'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit;display:flex;gap:10px;align-items:center;flex:1;min-width:0">':'<span style="display:flex;gap:10px;align-items:center;flex:1;min-width:0">')+'<span class="dot" style="background:'+projColor(e.project)+'"></span><span class="lt"><span class="ln">'+esc(e.name)+'</span><span class="lm">'+esc(e.project||'')+'</span></span>'+(e.link?'</a>':'</span>')+'</div>').join(''):'<div class="none">No replies.</div>')+'</div>';
     ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; ovAddWire(v=>createTask('incoming',v),()=>openList(key)); return; }
   const own=!/^(priority|still|attention)$/.test(key);   // computed lists have no category of their own: a new task lands in Incoming
-  ovb.innerHTML=ovAddHTML(own?'Add to '+cap:'Add a task')+'<div class="phint">Tap a task to edit · ⋮⋮ drag to reorder · ⊘ remove · ✓ done</div><div class="plist" id="plist">'+groupRows(items,200)+'</div>';
+  ovb.innerHTML=ovAddHTML(own?'Add to '+cap:'Add a task')+'<div class="phint">'+(own?hibAllBtn(items.length):'')+'Tap a task to edit · ⋮⋮ drag to reorder · ⊘ remove · ✓ done</div><div class="plist" id="plist">'+groupRows(items,200)+'</div>';
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; wireRows($('#plist'),key);
-  ovAddWire(v=>createTask(own?key:'incoming',v),()=>openList(key)); ovRunWire(cap); }
+  ovAddWire(v=>createTask(own?key:'incoming',v),()=>openList(key)); ovRunWire(cap); hibAllWire(cap); }
 
 /* ===== ✨ Claude requests pane (claudeq.js) ===== */
 function cqOpenTask(id){ const t=tasks.find(x=>x.id===id); if(t){ closeOv(); openTask(t.id); } else toast('Task not loaded'); }
@@ -972,14 +998,14 @@ function openFiltered(field,value){
   const items=tasks.filter(t=>live(t)&&match(t)).sort(byLeadProj);
   ovh.innerHTML='▦ '+esc(field==='__none'?'No P · L · S':value===''?'No '+field:value)+' · '+items.length+RUNBTN+'<button class="x" data-x>✕</button>';
   const flab=field==='__none'?'':value;
-  ovb.innerHTML=ovAddHTML(flab?'Add to '+flab:'Add a task')+'<div class="phint"><button class="pill" data-back>‹ All filters</button> <button class="pill" data-gall>⊟ Collapse all</button> · tap a task to edit</div>'
+  ovb.innerHTML=ovAddHTML(flab?'Add to '+flab:'Add a task')+'<div class="phint"><button class="pill" data-back>‹ All filters</button> <button class="pill" data-gall>⊟ Collapse all</button> · tap a task to edit'+(field==='category'?hibAllBtn(items.length):'')+'</div>'
     +'<div class="plist" id="plist">'+groupRows(items,200)+'</div>';
   ov.classList.add('show'); ovh.querySelector('[data-x]').onclick=closeOv; const pl=$('#plist'); wireRows(pl,null);
   const bk=ovb.querySelector('[data-back]'); if(bk) bk.onclick=openFilters;
   const ga=ovb.querySelector('[data-gall]'), anyOpen=()=>!!pl.querySelector('.lrow[data-grp]:not(.gshut)');
   const gaLab=()=>{ ga.textContent=anyOpen()?'⊟ Collapse all':'⊞ Expand all'; }; gaLab();
   ga.onclick=()=>{ grpAll(pl,!anyOpen()); gaLab(); }; pl.addEventListener('click',e=>{ if(e.target.closest('[data-grptog]')) setTimeout(gaLab,0); });
-  ovAddWire(v=>createFiltered(field,value,v),()=>openFiltered(field,value)); ovRunWire(field==='__none'?'No P · L · S':value===''?'No '+field:value);
+  ovAddWire(v=>createFiltered(field,value,v),()=>openFiltered(field,value)); hibAllWire(value||'List'); ovRunWire(field==='__none'?'No P · L · S':value===''?'No '+field:value);
 }
 /* new task pre-filled with the current filter (Project / Sub / Lead / Category) */
 async function createFiltered(field,value,text){
