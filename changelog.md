@@ -302,3 +302,6 @@
 - 2026-11-25 22:02  Focus list pop-ups: 💬 Text in the header sends the list as a text — same numbers and order as on screen, editable, the lead offered first (Leads table), then contacts, Someone else, or Copy. Opens Messages; the page never sends
 - 2026-11-25 22:07  Focus side panes (Drive to done · Big Tix · Next Up): the list height now snaps to whole rows, so the last task is never cut in half; scrolling stops on a row
 - 2026-11-25 22:22  Run: the action buttons are above the card now and stay put (they stick to the top if a long card scrolls), so they are always in the same place whatever the card's size
+- 2026-11-26 13:40  Email: one category open at a time (click cycles full, folded, closed), halo on subcategories, removed per-subcategory Archive all buttons
+- 2026-11-26 13:50  Email: month bubble at top (this month's ___Mon YYYY label count); click = review that month's mail by category, read-only, click again = back to inbox
+- 2026-11-26 13:58  Email: Archive all is per subcategory only (header + bottom); category-level Archive all removed except Not sorted yet

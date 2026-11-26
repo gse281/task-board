@@ -31,13 +31,16 @@ var _authed    = false;
 var _threads  = [];
 var _nextPage = null;
 var _total    = null;
+var _mon      = null;    // this month's archive label: { id, name, count } (labels named "___Nov 2026")
+var _monTried = false;
+var _mv       = null;    // month view on: { id, name, stash } — stash = the inbox state to come back to
 var _loading  = false;
 var _error    = null;
 var _expanded = {};
 var _bodies   = {};
-// Page opens with every category closed except Reply and Don't miss, and those two fully unfolded.
-var OPEN0     = { C: 1, B: 1 };
-function pj0() { return { C: true, B: true }; }
+// Page opens with every category closed except Reply, fully unfolded. Only one category is open at a time.
+var OPEN0     = { C: 1 };
+function pj0() { return { C: true }; }
 function isOpen(L) { var v = _expanded['bk-' + L]; return v !== undefined ? v : !!OPEN0[L]; }
 var _pjAll    = pj0();   // bucket → true when its project subgroups are unfolded (default: folded, headers only)
 var _notes    = {};   // threadId → { rid, note } (Airtable EmailNotes)
@@ -203,7 +206,7 @@ async function pool(items, limit, fn) {
 }
 
 async function apiListThreads(pageToken) {
-  var qs = 'threads?maxResults=100&labelIds=INBOX';
+  var qs = 'threads?maxResults=100&labelIds=' + (_mv ? _mv.id : 'INBOX');
   if (pageToken) qs += '&pageToken=' + encodeURIComponent(pageToken);
   return gfetch(qs);
 }
@@ -320,14 +323,37 @@ function arrived(k) {
   if (!_ready && (k === 'all' || !Object.keys(_wait).length)) { _ready = true; redraw(); }
 }
 
+// Month bubble: find this month's label ("___Nov 2026") and its thread count.
+async function loadMonth() {
+  try {
+    var d = new Date(), name = '___' + d.toLocaleString('en-US', { month: 'short' }) + ' ' + d.getFullYear();
+    var l = ((await gfetch('labels')).labels || []).filter(function(x){ return x.name === name; })[0];
+    if (!l) return;
+    var info = await gfetch('labels/' + l.id);
+    _mon = { id: l.id, name: name.replace(/^_+/, ''), count: info.threadsTotal || 0 };
+    redraw();
+  } catch (e) {}
+}
+// Bubble click: review the month's mail by category, like the inbox (read-only: no Archive buttons). Click again = back to the inbox.
+function toggleMonth() {
+  if (!_mon || (_loading && !_mv)) return;
+  if (_mv) { _threads = _mv.stash.threads; _nextPage = _mv.stash.nextPage; _total = _mv.stash.total; _mv = null; }
+  else { _mv = { id: _mon.id, name: _mon.name, stash: { threads: _threads, nextPage: _nextPage, total: _total } }; _threads = []; _nextPage = null; _total = _mon.count; }
+  _expanded = {}; _pjAll = pj0(); _ready = true;
+  redraw();
+  if (_mv) loadPage(false);
+}
+
 async function loadPage(reset) {
   if (_loading) return;
+  var mv0 = _mv;   // left the month view (or entered it) mid-load → drop what this run was fetching
   _loading = true; _error = null;
   if (reset) { _threads = []; _nextPage = null; _total = null; loadRules().then(function(){ rebuildList(_listEl); }).catch(function(){}).then(function(){ arrived('rules'); }); }
   redraw();
   try {
     var startTok = _nextPage;
     var list = await apiListThreads(_nextPage);
+    if (_mv !== mv0) { _loading = false; return; }
     _nextPage = list.nextPageToken || null;
     if (reset || _total == null) {
       try { _total = (await gfetch('labels/INBOX')).threadsTotal; } catch(e) { _total = list.resultSizeEstimate || 0; }
@@ -344,6 +370,7 @@ async function loadPage(reset) {
     redraw();
     for (var c = 0; c < need.length; c += 20) {
       var fetched = await pool(need.slice(c, c + 20), 4, function(t){ return apiGetThread(t.id).catch(function(e){ if (e.code === 'auth' || e.code === 'busy') throw e; return null; }); });
+      if (_mv !== mv0) { _loading = false; return; }
       fetched.forEach(function(raw, k){
         if (!raw) return; var t = parseThread(raw), id = need[c + k].id;
         _cache[id] = { h: need[c + k].historyId, d: t };
@@ -440,9 +467,11 @@ function addCss() {
 .glv-B .glv-sl{background:#e5533a;color:#fff}.glv-D .glv-sl{background:#e0a458;color:#07141a}.glv-A .glv-sl,.glv-N .glv-sl{color:#8aa6af}
 .glv-B .glv-row{border-color:rgba(229,83,58,.35)}.glv-D .glv-row{border-color:rgba(224,164,88,.35)}
 .glv-aa{height:26px;padding:0 9px;font-size:12px}
+.glv-mon{cursor:pointer;border:1px solid rgba(57,199,223,.4);background:rgba(57,199,223,.08);color:#e7f3f6;border-radius:999px;padding:3px 12px;font:700 13px -apple-system,system-ui,sans-serif}
+.glv-mon:hover{background:rgba(57,199,223,.18)}.glv-mon.on{background:#39c7df;color:#06222a}
 .glv-ab{display:block;width:100%;height:44px;margin:6px 0 12px;font-size:14px}
 .glv-pj{cursor:pointer;user-select:none;break-after:avoid;font:800 12px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:#64838d;margin:6px 2px 0}
-.glv-pj{display:flex;align-items:center;gap:6px}.glv-pj i{font-style:normal;color:#39c7df;margin-left:3px;flex:1}
+.glv-pj{display:flex;align-items:center;gap:6px;margin:10px 2px 4px;padding:6px 10px;border:1px solid rgba(57,199,223,.38);border-radius:10px;background:rgba(57,199,223,.05);box-shadow:0 0 0 3px rgba(57,199,223,.08),0 0 14px rgba(57,199,223,.22)}.glv-pj i{font-style:normal;color:#39c7df;margin-left:3px;flex:1}
 .glv-pj:hover .glv-arch{opacity:1}
 .glv-rsnip.sum{color:#9fc3cc;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .glv-adv{margin-top:2px;color:#e0a458;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -932,6 +961,7 @@ function makeRow(t, showSender) {
   }
 
   var arch = document.createElement('button'); arch.className = 'glv-ck'; arch.textContent = 'Archive';
+  if (_mv) arch.style.display = 'none';   // month view is read-only
   arch.addEventListener('click', function(e) {
     e.stopPropagation(); arch.textContent = '…'; arch.disabled = true;
     apiModify(t.id, {removeLabelIds:['INBOX']}).then(function(){
@@ -1178,9 +1208,17 @@ document.addEventListener('click', function(e){
 
 // ── Left rail: every category, with its count. Tap = open / close it on the right. ──
 function closeCat(L) { _expanded['bk-' + L] = false; _pjAll[L] = pj0()[L]; Object.keys(_expanded).forEach(function(k){ if (k.indexOf('pj-' + L + '-') === 0) delete _expanded[k]; }); }
+// One category open at a time. Click cycles: open full → groups folded → closed.
+function cycleCat(L) {
+  if (!isOpen(L)) {
+    BUCKETS.forEach(function(b){ if (b[0] !== L && isOpen(b[0])) closeCat(b[0]); });
+    _expanded['bk-' + L] = true; setFold(L, true); return true;
+  }
+  if (L !== 'N' && _pjAll[L] === true) { setFold(L, false); return false; }
+  closeCat(L); return false;
+}
 function toggleCat(L) {
-  var on = !isOpen(L);
-  if (on) _expanded['bk-' + L] = true; else closeCat(L);
+  var on = cycleCat(L);
   _act = null;
   rebuildList(_listEl);
   if (on) { var s = document.getElementById('glv-' + L); if (s && s.scrollIntoView) s.scrollIntoView({ block: 'nearest' }); }
@@ -1195,7 +1233,7 @@ function buildRail(by) {
     b.className = 'glv-ri r' + L + (on ? ' on' : '') + (n ? '' : ' zero');
     b.innerHTML = '<span class="glv-sl">' + ic(bk[2]) + '</span><span class="glv-rn"></span><i class="glv-sc">' + n + '</i>';
     b.querySelector('.glv-rn').textContent = bk[1];
-    b.title = (on ? 'Close ' : 'Open ') + bk[1]; b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.title = (on ? 'Click: fold groups, then close ' : 'Open ') + bk[1]; b.setAttribute('aria-pressed', on ? 'true' : 'false');
     b.addEventListener('click', function(){ toggleCat(L); });
     f.appendChild(b);
   });
@@ -1236,7 +1274,7 @@ function rebuildList(listEl) {
     sh.innerHTML = '<span class="glv-sl">' + ic(bk[2]) + '</span><h2></h2><i class="glv-sc">' + its.length + '</i><span class="glv-xi">' + (open ? '▾' : '▸') + '</span>';
     sh.querySelector('h2').textContent = bk[1];
     var go = null, kept = 0;
-    if (L === 'A' || L === 'E' || L === 'N') {
+    if (!_mv && L === 'N') {   // Not sorted yet has no subgroups, so it keeps its own Archive all; the rest archive per subgroup
       go = its.filter(function(t){ return !_keep[t.id]; }); kept = its.length - go.length;
       var all = document.createElement('button'); all.className = 'glv-btn glv-aa';
       all.textContent = 'Archive ' + (kept ? go.length + ' (' + kept + ' kept)' : 'all ' + go.length);
@@ -1274,12 +1312,8 @@ function rebuildList(listEl) {
       ua.addEventListener('click', function(e){ e.stopPropagation(); its.slice().forEach(function(t){ setHide(t, false); }); rebuildList(_listEl); });
       sh.insertBefore(ua, sh.querySelector('.glv-xi'));
     }
-    // Header tap: groups folded → all groups open → category closed (back to the rail).
-    sh.addEventListener('click', function(){
-      if (L === 'N' || _pjAll[L] === true) closeCat(L);
-      else setFold(L, true);
-      rebuildList(_listEl);
-    });
+    // Header tap: same cycle as the rail: full → groups folded → closed.
+    sh.addEventListener('click', function(){ cycleCat(L); rebuildList(_listEl); });
     sec.appendChild(sh);
     if (open) {
       var list = document.createElement('div'); list.className = 'glv-list';
@@ -1295,7 +1329,7 @@ function rebuildList(listEl) {
             var pk = 'pj-' + L + '-' + k, pOpen = _expanded[pk] !== undefined ? _expanded[pk] : _pjAll[L] === true;
             var ph = document.createElement('div'); ph.className = 'glv-pj'; ph.dataset.a = pk; ph.textContent = (pOpen ? '▾ ' : '▸ ') + k + ' ';
             var pi = document.createElement('i'); pi.textContent = g[k].length; ph.appendChild(pi);
-            var pgo = g[k].filter(function(t){ return !_keep[t.id]; });
+            var pgo = _mv ? [] : g[k].filter(function(t){ return !_keep[t.id]; });
             if (pgo.length) {
               var pa = document.createElement('button'); pa.className = 'glv-arch'; pa.textContent = 'Archive all ' + pgo.length;
               pa.title = 'Archive every email in ' + k + ' (Kept ones stay)';
@@ -1325,7 +1359,7 @@ function rebuildList(listEl) {
         }
       }
       sec.appendChild(list);
-      if (go && go.length) sec.appendChild(bottomArchive('bk-' + L, 'Archive ' + (kept ? go.length + ' (' + kept + ' kept)' : 'all ' + go.length), 'Archive ' + go.length + ' in "' + bk[1] + '"?' + (kept ? ' (' + kept + ' kept stay)' : ''), go));
+      if (L === 'N' && go && go.length > 3) sec.appendChild(bottomArchive('bk-' + L, 'Archive ' + (kept ? go.length + ' (' + kept + ' kept)' : 'all ' + go.length), 'Archive ' + go.length + ' in "' + bk[1] + '"?' + (kept ? ' (' + kept + ' kept stay)' : ''), go));
     }
     colEls[si % nCol].appendChild(sec);
   });
@@ -1485,7 +1519,7 @@ function buildPanel(host) {
   var refreshBtn = document.createElement('button'); refreshBtn.className = 'glv-btn';
   refreshBtn.innerHTML = icT('refresh', 'Refresh');
   refreshBtn.addEventListener('click', function() {
-    _expanded = {}; _pjAll = pj0(); _scan.loaded = false;   // back to the opening view: only Reply and Don't miss unfolded
+    _mv = null; _expanded = {}; _pjAll = pj0(); _scan.loaded = false;   // back to the opening view: only Reply unfolded
     loadScan().then(function(){ rebuildList(_listEl); }); loadFlags().catch(function(){}).then(function(){ rebuildList(_listEl); }); loadPage(true);
   });
   bar.appendChild(refreshBtn);
@@ -1493,9 +1527,9 @@ function buildPanel(host) {
   // Master: close / open every category.
   var anyOpen = BUCKETS.some(function(b){ return isOpen(b[0]); });
   var mb = document.createElement('button'); mb.className = 'glv-btn';
-  mb.textContent = anyOpen ? '⊟ Collapse all' : '⊞ Expand all';
+  mb.textContent = anyOpen ? '⊟ Close' : '⊞ Reply';
   mb.addEventListener('click', function(){
-    BUCKETS.forEach(function(b){ if (anyOpen) closeCat(b[0]); else { _expanded['bk-' + b[0]] = true; setFold(b[0], true); } });
+    if (anyOpen) BUCKETS.forEach(function(b){ closeCat(b[0]); }); else cycleCat('C');
     redraw();
   });
   bar.appendChild(mb);
@@ -1519,8 +1553,16 @@ function buildPanel(host) {
   var chips = document.createElement('div'); chips.className = 'glv-chips';
   if (_total != null) {
     var c1 = document.createElement('span'); c1.className = 'glv-chip';
-    c1.innerHTML = ic('inbox') + ' <b>' + Math.max(_total, _threads.length) + '</b>' + (IS_PHONE ? '' : ' in inbox');
+    c1.innerHTML = ic('inbox') + ' <b>' + Math.max(_total, _threads.length) + '</b>' + (IS_PHONE ? '' : (_mv ? ' in ' + _mv.name : ' in inbox'));
     chips.appendChild(c1);
+  }
+  if (!_monTried && (_authed || backendUrl())) { _monTried = true; loadMonth(); }
+  if (_mon) {
+    var mo = document.createElement('button'); mo.type = 'button'; mo.className = 'glv-mon' + (_mv ? ' on' : '');
+    mo.textContent = (_mv ? '← Inbox · ' : '▦ ') + _mon.name + ' · ' + _mon.count.toLocaleString();
+    mo.title = _mv ? 'Back to the inbox' : 'Review ' + _mon.name + ' mail by category';
+    mo.addEventListener('click', toggleMonth);
+    chips.appendChild(mo);
   }
   bar.appendChild(chips);   // the per-category counts are in the rail on the left
 
@@ -1621,9 +1663,9 @@ var _rz, _rw = window.innerWidth; window.addEventListener('resize', function(){ 
 function snapshot() {
   return {
     connected: !!(_authed || backendUrl()),
-    complete: _ready && _authed && !_loading && !_nextPage && !_error && _total != null,
-    total: Math.max(_total || 0, _threads.length), loaded: _threads.length,
-    threads: _threads.map(function(t){
+    complete: !_mv && _ready && _authed && !_loading && !_nextPage && !_error && _total != null,   // month view: Scan keeps seeing the inbox, never the month
+    total: Math.max(_mv ? _mv.stash.total || 0 : _total || 0, (_mv ? _mv.stash.threads : _threads).length), loaded: (_mv ? _mv.stash.threads : _threads).length,
+    threads: (_mv ? _mv.stash.threads : _threads).map(function(t){
       var c = t._c || classify(t);
       return { id: t.id, b: c.b, project: c.project || '', from: t.senderName, email: t.senderEmail, subject: t.subject, snippet: t.snippet, date: t.date, starred: t.starred };
     })
