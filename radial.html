@@ -169,7 +169,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .fbox .fbh .fbc{font:700 12px ui-monospace,Menlo,monospace;color:var(--dim)}
 .fbox .fbb{overflow:auto;flex:1;min-height:0;padding:2px 12px 10px}
 .fbox-float{resize:both;min-width:200px;min-height:90px;max-height:none!important}
-#cML .pane.xlp{flex:none}#cML .xll{max-height:21vh;overflow-y:auto;overflow-x:hidden;margin:0 -4px}
+#cML .pane.xlp{flex:none}#cML .xll{max-height:15vh;overflow-y:auto;overflow-x:hidden;margin:0 -4px}
 .pane,.bub,.amb,.cxr,.cxchip,.cxc,.cxt,.minvite,.fbox,.fqrow,.lrow,.pill,.cmdbtn,.mjoin,.oinav button,.wxc,.fbc{transition:background-color .2s ease,border-color .2s ease,color .2s ease,transform .2s ease,opacity .2s ease}
 .lrow:hover,.cxr:hover{transform:translateX(1px)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -304,7 +304,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 <div id="filesBox" class="fbox fbox-float" hidden></div>
 <div id="toast"></div>
 <script src="nav.js?v=1795654629"></script>
-<script src="task-editor.js"></script>
+<script src="task-editor.js?v=1795659021"></script>
 <script src="photos.js"></script>
 <script src="guide.js"></script>
 <script src="claudeq.js"></script>
@@ -343,9 +343,10 @@ function toast(m){ const t=$('#toast'); t.textContent=m; t.classList.add('show')
 
 const CAT={ focus:['◎','Now / Focus'], attention:['△','Need Attention'], priority:['▲','Priority'], meeting:['▣','Meeting'], respond:['↩','Respond'],
   calls:['☎︎','Calls'], morning:['☀︎','Morning'], afternoon:['◑','Afternoon'], incoming:['▽','Incoming'],
-  nextup:['⇥','Next Up'], bigticket:['◆','Big Tix'], sunday:['◉','Sunday'], backlog:['▤','Backlog'], still:['○','Still Open'] };
+  nextup:['⇥','Next Up'], bigticket:['◆','Big Tix'], sunday:['◉','Sunday'], backlog:['▤','Backlog'], still:['○','Still Open'],
+  'drive to done':['➤','Drive to done'] };   // items handed to Claude to own until closed (Section "Drive to done")
 const ORBIT=['priority','respond','calls','nextup','bigticket','sunday','backlog','still'];   // 8 bubbles in the ring
-const SECTIONS=[['focus','◎ Focus'],['morning','☀︎ Morning'],['afternoon','◑ Afternoon'],['calls','☎︎ Calls'],['nextup','⇥ Next Up'],['bigticket','◆ Big Tix'],['sunday','◉ Sunday'],['backlog','▤ Backlog'],['parked','⊘ Parked']];
+const SECTIONS=[['focus','◎ Focus'],['morning','☀︎ Morning'],['afternoon','◑ Afternoon'],['calls','☎︎ Calls'],['nextup','⇥ Next Up'],['bigticket','◆ Big Tix'],['drive to done','➤ Drive to done'],['sunday','◉ Sunday'],['backlog','▤ Backlog'],['parked','⊘ Parked']];
 
 function applyOrder(key,list){ const o=order[key]; if(!o||!o.length) return list; const pos={}; o.forEach((id,i)=>pos[id]=i); return list.slice().sort((a,b)=>((pos[a.id]==null?1e9:pos[a.id])-(pos[b.id]==null?1e9:pos[b.id]))); }
 let _if={}; function clearIF(){ _if={}; }
@@ -576,7 +577,7 @@ function renderCorners(){
     return '<div class="lrow" data-guide="'+t.id+'" title="'+esc(cleanName(t))+'"><span class="dot'+(od||Guide.ageDays(t)>=7?' o':'')+'" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(cleanName(t))+'</span></span><span class="ld'+(od?' o':'')+'">'+(m.on?'<span class="tm">step '+(m.on+1)+'/'+m.n+'</span>':m.time?'<span class="tm">'+esc(shortTime(m.time))+'</span>':'')+(od?od+'d late':Guide.ageDays(t)+'d')+'</span></div>'; };
   $('#cML').innerHTML='<div class="pane'+(oi.some(t=>Guide.overdue(t))?' urgent':'')+'"><div class="ph" style="cursor:default">▤ At the computer<span class="pn">'+oiN+'</span></div>'+
     (oc?('<div class="oione">'+ocRow(oc)+'<div class="oinav"><button data-oip aria-label="Previous">‹</button><span>'+((((oiI%oiN)+oiN)%oiN)+1)+' / '+oiN+'</span><button data-oin aria-label="Next">›</button></div></div>'):'<div class="none">All clear.</div>')+'</div>'
-    +[['bigticket','◆ Big Tix'],['nextup','⇥ Next Up']].map(([k,lab])=>{ const L=itemsFor(k); return '<div class="pane xlp"><div class="ph" data-list="'+k+'">'+lab+'<span class="pn">'+L.length+'</span></div><div class="xll">'+(L.length?L.slice(0,40).map(miniRow).join(''):'<div class="none">Empty.</div>')+'</div></div>'; }).join('');
+    +[['drive to done','➤ Drive to done'],['bigticket','◆ Big Tix'],['nextup','⇥ Next Up']].map(([k,lab])=>{ const L=itemsFor(k); return '<div class="pane xlp"><div class="ph" data-list="'+k+'">'+lab+'<span class="pn">'+L.length+'</span></div><div class="xll">'+(L.length?L.slice(0,40).map(miniRow).join(''):'<div class="none">Empty.</div>')+'</div></div>'; }).join('');
   document.querySelectorAll('#cML [data-guide]').forEach(r=>r.onclick=()=>openGuide(r.dataset.guide));
   { const p=$('#cML [data-oip]'), n=$('#cML [data-oin]'); if(p)p.onclick=e=>{e.stopPropagation();oiI--;renderCorners();}; if(n)n.onclick=e=>{e.stopPropagation();oiI++;renderCorners();}; }
   renderFilesBox();
@@ -728,7 +729,7 @@ ov.addEventListener('click',e=>{ if(e.target===ov) closeOv(); });
 addEventListener('keydown',e=>{ if(e.key==='Escape') closeOv(); });
 /* ===== the ONE universal task editor (task-editor.js), same as iPhone + grid. Focus sections appear as Category chips. ===== */
 const ED_KEYS={Task:'name',Project:'project',SBLead:'lead',Sub:'sub',Status:'status',Priority:'priorityRaw',DoDate:'doDate',ReminderAt:'remindAt',NextStep:'next',Notes:'notes',CallContact:'callWho',Phone:'phone',RoniFlag:'flag',NextUp:'nextUp',TextExclude:'textEx',NextUpOrder:'nuOrder'};
-const SEC_LAB={focus:'◎ Focus',morning:'☀︎ Morning',afternoon:'◑ Afternoon',calls:'☎︎ Calls',nextup:'⇥ Next Up',bigticket:'◆ Big Tix',sunday:'◉ Sunday',parked:'⊘ Parked',incoming:'▽ Incoming'};
+const SEC_LAB={focus:'◎ Focus',morning:'☀︎ Morning',afternoon:'◑ Afternoon',calls:'☎︎ Calls',nextup:'⇥ Next Up',bigticket:'◆ Big Tix',sunday:'◉ Sunday',parked:'⊘ Parked',incoming:'▽ Incoming','drive to done':'➤ Drive to done'};
 function toastU(m,undo){ const t=$('#toast'); t.innerHTML=''; t.append(document.createTextNode(m)); if(undo){ const b=document.createElement('button'); b.textContent='Undo'; b.style.cssText='margin-left:12px;background:none;border:0;color:#39c7df;font-weight:800;cursor:pointer'; b.onclick=()=>{ t.classList.remove('show'); t.style.pointerEvents=''; undo(); }; t.append(b); t.style.pointerEvents='auto'; }
   t.classList.add('show'); clearTimeout(window._tt); window._tt=setTimeout(()=>{ t.classList.remove('show'); t.style.pointerEvents=''; },undo?5000:1700); }
 window.TE={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.tableId, esc, all:()=>tasks, today:todayISO,

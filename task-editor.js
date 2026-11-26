@@ -27,7 +27,7 @@ async function loadSchema(){ const E=window.TE; if(schema||!E||!E.key()) return;
     schema={at:Date.now(),choices:ch}; localStorage.setItem(SKEY,JSON.stringify(schema)); }catch(e){ schema={at:Date.now(),choices:{}}; } }
 function values(field,key){ const E=window.TE; const set=new Set(((schema&&schema.choices[field])||[]).filter(Boolean));
   E.all().forEach(t=>{ const v=t[key]; if(v) String(v).split(', ').forEach(x=>x&&set.add(x)); }); return [...set].sort((a,b)=>a.localeCompare(b)); }
-const CATS=[['','None'],['morning','Morning call'],['afternoon','Afternoon call'],['calls','Calls'],['incoming','Incoming'],['focus','Focus'],['@Computer – Claude','@Computer – Claude'],['Open Items','Open Items'],['parked','Parked']];
+const CATS=[['','None'],['morning','Morning call'],['afternoon','Afternoon call'],['calls','Calls'],['incoming','Incoming'],['focus','Focus'],['@Computer – Claude','@Computer – Claude'],['Drive to done','Drive to done'],['Open Items','Open Items'],['parked','Parked']];
 function catOptions(){ const E=window.TE; const seen=new Set(CATS.map(c=>c[0].toLowerCase())); const out=CATS.slice();
   [...((schema&&schema.choices.Section)||[]),...(E.extraCats?E.extraCats():[]),...E.all().map(t=>t.sectionRemote)].forEach(v=>{ const k=String(v||'').trim();
     if(k&&!seen.has(k.toLowerCase())&&k!=='backlog'){ seen.add(k.toLowerCase()); out.push([k,(E.catLabel&&E.catLabel(k))||k]); } });

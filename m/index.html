@@ -12,7 +12,7 @@
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<script src="../task-editor.js"></script>
+<script src="../task-editor.js?v=1795659021"></script>
 <script src="../learning.js?v=1793916267"></script>
 <script src="../guide.js"></script>
 <script src="../claudeq.js"></script>
@@ -2766,7 +2766,7 @@ function sheet(html,onOpen){
 
 // adapter: iPhone app → editor engine
 const ED_KEYS={Task:'name',Project:'project',SBLead:'lead',Sub:'sub',Status:'status',Priority:'priorityRaw',DoDate:'doDate',ReminderAt:'remindAt',NextStep:'next',Notes:'notes',CallContact:'callWho',Phone:'phone',RoniFlag:'flag',NextUp:'nextUp',TextExclude:'textEx',NextUpOrder:'nuOrder'};
-const TE_CATS=[['',''],['morning',''],['afternoon',''],['calls',''],['incoming',''],['focus',''],['@Computer – Claude',''],['Open Items',''],['parked','']];
+const TE_CATS=[['',''],['morning',''],['afternoon',''],['calls',''],['incoming',''],['focus',''],['@Computer – Claude',''],['Drive to done',''],['Open Items',''],['parked','']];
 const EDA=window.TE={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.tableId, esc, all:()=>tasks, today:todayISO, extraCats:()=>[], catLabel:k=>'',
   get:(t,f)=>{ const v=t[ED_KEYS[f]]; return v==null?'':v; },
   set:(t,f,v)=>{ const k=ED_KEYS[f]; t[k]=(v==null?'':v); if(f==='DoDate'){ A(t.id).doDate=v||''; A(t.id).snoozeUntil=0; saveAug(); } if(f==='Priority') t.priorityRemote=+v||0; if(f==='NextUp'&&!v) t.nuOrder=null; save(LS_CACHE,tasks); },

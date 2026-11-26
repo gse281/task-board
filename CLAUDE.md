@@ -37,7 +37,13 @@ Rules:
 - Bump the `?v=` on a script tag when you change that script.
 - Add one line to `changelog.md` per change: `- YYYY-MM-DD HH:MM  what changed`.
 
-## 3. Email page
+## 3. Task categories
+
+A task's category is its `Section` text in Items (plus `MeetingSlot` for the two calls). `@Computer – Claude` = needs Roni at the Mac.
+`Drive to done` = handed to Claude to own until closed (the drive-to-done skill sets it on its tracking record). It is in the task editor's
+category list, a pane on Focus, list 5 on Run, and a group in the AIOS map. New fixed categories go in `task-editor.js` (`CATS`) and Focus (`CAT`).
+
+## 4. Email page
 
 - Categories: `H` Last hour, `D` Starred, `Z` Snoozed, `C` Reply, `B` Don't miss, `I` Invitations, `N` Not sorted yet, `E` Everything else, `A` Archive, `K` Kept, `X` Hidden 24h. Defined once, in `gmail-live.js` (`BUCKETS`).
 - Scan takes its thread list and categories from Live (`GL.snapshot()`), so the two tabs always show the same counts. Don't give Scan its own classification.

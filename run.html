@@ -81,7 +81,7 @@ var fmtD=function(d){ var p=d.split('-'); return (+p[1])+'/'+(+p[2]); };
 var tasks=[], queue=[], pos=0, undo=[], log=[], cnt={done:0,snz:0,nu:0,park:0}, total=0, editing=false, dir='in', loaded=false, err='';
 var mode='all'; try{ mode=localStorage.getItem('tb.run.mode')||'all'; }catch(e){}
 var proj='';
-var MODES=[['all','All'],['nextup','Next Up'],['due','Due'],['computer','@Computer']];
+var MODES=[['all','All'],['nextup','Next Up'],['due','Due'],['computer','@Computer'],['dtd','Drive to done']];
 
 // ── Airtable ──
 function hdr(){ return {Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'}; }
@@ -111,6 +111,7 @@ function inMode(t,m){
   if(m==='nextup') return !!t.nextUp;
   if(m==='due') return !!t.due;
   if(m==='computer') return /@computer/i.test(t.project+' '+t.section);
+  if(m==='dtd') return /drive to done/i.test(t.section);
   return true;
 }
 function rank(a,b){   // Next Up (your order) → flagged → due (oldest date first) → priority → oldest

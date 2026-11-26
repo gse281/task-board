@@ -167,6 +167,13 @@ function codeGroups(seen){
  g.push(...feedGroups('','Claude Code',seen,/^(claude )?code$/i));
  return g;
 }
+/* A board category as a group (Section match). Used for "Drive to done": items handed to Claude to own until closed. */
+function sectionGroup(seen,re,label,blank){
+ const T=live.todos;if(!T)return null;
+ const its=T.filter(t=>re.test(t.sec)&&!seen.has(t.id)).sort((a,b)=>(a.due||'9999')<(b.due||'9999')?-1:(a.due||'9999')>(b.due||'9999')?1:0);
+ if(!its.length)return null;
+ return {h:label+' ('+its.length+')',items:its.map(t=>{seen.add(t.id);return[(t.proj?t.proj+' · ':'')+short(t.task,90),t.due&&t.due<today?'warn':(t.flag?'ok':''),(t.due?'Due '+fmtD(t.due)+' · ':'')+(t.next?short(t.next,120):blank)]})};
+}
 /* 🖥 @Computer – Claude: the board's "needs Roni at the Mac" list (Project or Section has @Computer). Same rule as the Dashboard pane.
    Skips anything already listed above in this branch and repeated task names. */
 function computerGroup(seen){
@@ -185,8 +192,9 @@ function build(){
   if(b.id==='openitems'){const seen=new Set();
    const cg=codeGroups(seen);if(cg.length){const i=g.findIndex(x=>x.h==='From Code sessions');g.splice(i<0?g.length:i,i<0?0:1,...cg);}
    for(const[w,l]of[['duet','Duet'],['instinct','Instinct']]){const fg=feedGroups(w,l,seen);if(fg.length){const i=g.findIndex(x=>x.h===l);g.splice(i<0?g.length:i,i<0?0:1,...fg);}}
+   const dd=sectionGroup(seen,/drive to done/i,'Drive to done','Claude is driving this');if(dd)g.push(dd);
    const pc=computerGroup(seen);if(pc)g.push(pc);
-   const n=g.reduce((a,x)=>a+x.items.length,0);b={...b,sum:n+' open · chats · code · @Computer · Duet · Instinct'};}
+   const n=g.reduce((a,x)=>a+x.items.length,0);b={...b,sum:n+' open · chats · code · Drive to done · @Computer · Duet · Instinct'};}
   const warn=g.some(x=>x.items.some(i=>i[1]==='warn'));
   return {...b,groups:g,warn};});
  const T=live.todos;

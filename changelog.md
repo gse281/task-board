@@ -292,3 +292,4 @@
 - 2026-11-25 19:57  Focus: slim scrollbars; moved panes saved as a share of the window and kept on screen; ring stays between the side columns; layout follows the window live while resizing
 - 2026-11-25 20:43  Focus: arrows stay under the mouse. Pop-ups hang from a fixed top; pager labels fixed width; Today chip in front of ‹; bubble pagers pinned; meeting pane keeps its height
 - 2026-11-26  Email icon: GSE signature over an envelope
+- 2026-11-25 21:10  Drive to done category: in the task editor, a pane on Focus, list 5 on Run, a group in the AIOS map
