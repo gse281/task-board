@@ -305,3 +305,4 @@
 - 2026-11-26 13:40  Email: one category open at a time (click cycles full, folded, closed), halo on subcategories, removed per-subcategory Archive all buttons
 - 2026-11-26 13:50  Email: month bubble at top (this month's ___Mon YYYY label count); click = review that month's mail by category, read-only, click again = back to inbox
 - 2026-11-26 13:58  Email: Archive all is per subcategory only (header + bottom); category-level Archive all removed except Not sorted yet
+- 2026-11-26 13:53  Email: category column capped at half width (phone stays full width)
