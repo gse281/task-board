@@ -36,7 +36,8 @@ select{background:#0a161c;color:var(--dim);border:1px solid var(--line);border-r
 .next{color:var(--am);font-size:16px;margin-top:2px;white-space:pre-wrap;overflow-wrap:anywhere;cursor:text}.next.none{color:var(--faint);font-size:14px}
 .notes{color:var(--dim);font-size:14px;margin-top:12px;white-space:pre-wrap;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden}
 .edit{width:100%;margin-top:4px;background:#06141a;border:1px solid var(--am);border-radius:10px;color:var(--ink);font:16px/1.4 -apple-system,system-ui,sans-serif;padding:9px 11px;resize:vertical}
-.keys{display:flex;flex-wrap:wrap;gap:7px;margin-top:16px;justify-content:center}
+/* keys sit ABOVE the card, so they never move when a card is taller or shorter */
+.keys{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 14px;justify-content:center;position:sticky;top:0;z-index:3;padding:6px 0;background:rgba(7,13,17,.94);border-radius:12px}
 .k{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:11px;padding:8px 12px;font:700 12.5px var(--mono);color:#cfe7ee;background:rgba(13,26,33,.7)}
 .k:hover{border-color:var(--cyan);color:#fff}.k kbd{font:800 11px var(--mono);color:#07141a;background:var(--cyan);border-radius:5px;padding:1px 6px;min-width:20px;text-align:center}
 .k.go kbd{background:var(--green)}.k.dim{color:var(--dim)}.k.dim kbd{background:#2a3d46;color:#cfe7ee}
@@ -184,12 +185,12 @@ function draw(){
   if(!loaded){ M.innerHTML='<div class="empty">Loading tasks…</div>'; S.innerHTML=''; return; }
   if(err){ M.innerHTML='<div class="empty"><h2>'+(err==='nokey'?'Connect Airtable':'Could not load')+'</h2>'+(err==='nokey'?'Add your key in ⚙︎ on the <a href="dashboard.html">Dashboard</a>, then come back.':esc(err)+' · <a href="run.html">retry</a>')+'</div>'; S.innerHTML=''; return; }
   if(!t){ M.innerHTML='<div class="empty"><h2>'+(handled?'Queue clear':'Nothing here')+'</h2>'+(handled?'✓ '+cnt.done+' done · 😴 '+cnt.snz+' snoozed · ⏫ '+cnt.nu+' to Next Up · ⊘ '+cnt.park+' parked'+(cnt.hib?' · ❄ '+cnt.hib+' hibernating':'')+'<br><br>Z = undo the last one':'No live tasks in this list. Pick another on top.')+(mode==='list'?'<br><br><a href="'+LIST.back+'">‹ Back to the list</a>':'')+'</div>'; S.innerHTML=logHTML(); return; }
-  M.innerHTML='<div class="card '+dir+'"><div class="meta">'+chips(t)+'<span class="pos">'+(pos+1)+' / '+queue.length+'</span></div>'+
+  M.innerHTML='<div class="keys">'+KEYS.map(function(k,i){ return '<button class="k '+k[2]+'" data-k="'+i+'"><kbd>'+k[0]+'</kbd>'+k[1]+'</button>'; }).join('')+'</div>'+
+    '<div class="card '+dir+'"><div class="meta">'+chips(t)+'<span class="pos">'+(pos+1)+' / '+queue.length+'</span></div>'+
     '<div class="title">'+esc(t.name)+'</div>'+
     (editing?'<textarea class="edit" id="ed" rows="2" placeholder="Next step… (Enter = save, Esc = cancel)">'+esc(t.next)+'</textarea>'
             :'<div class="next'+(t.next?'':' none')+'" id="nx" title="E = edit">'+(t.next?'→ '+esc(t.next):'no next step · E to add')+'</div>')+
-    (t.notes?'<div class="notes">'+esc(t.notes)+'</div>':'')+'</div>'+
-    '<div class="keys">'+KEYS.map(function(k,i){ return '<button class="k '+k[2]+'" data-k="'+i+'"><kbd>'+k[0]+'</kbd>'+k[1]+'</button>'; }).join('')+'</div>';
+    (t.notes?'<div class="notes">'+esc(t.notes)+'</div>':'')+'</div>';
   var nx=$('nx'); if(nx) nx.onclick=editNext;
   S.innerHTML='<h3>Coming up</h3>'+(queue.slice(pos+1,pos+9).map(function(x,i){ return '<button class="up" data-j="'+(pos+1+i)+'"><b>'+(pos+2+i)+'</b>'+esc((x.project?x.project+' · ':'')+x.name)+'</button>'; }).join('')||'<div class="up">Last one.</div>')+logHTML();
 }
