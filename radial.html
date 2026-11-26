@@ -179,7 +179,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .fbox .fbh .fbc{font:700 12px ui-monospace,Menlo,monospace;color:var(--dim)}
 .fbox .fbb{overflow:auto;flex:1;min-height:0;padding:2px 12px 10px}
 .fbox-float{resize:both;min-width:200px;min-height:90px;max-height:none!important}
-#cML .pane.xlp{flex:none}#cML .xll{max-height:15vh;overflow-y:auto;overflow-x:hidden;margin:0 -4px}
+#cML .pane.xlp{flex:none}#cML .xll{max-height:15vh;overflow-y:auto;overflow-x:hidden;margin:0 -4px;scroll-snap-type:y mandatory}#cML .xll>.lrow{scroll-snap-align:start}   /* layout() snaps the height to whole rows, so the last one is never cut */
 .pane,.bub,.amb,.cxr,.cxchip,.cxc,.cxt,.minvite,.fbox,.fqrow,.lrow,.pill,.cmdbtn,.mjoin,.oinav button,.wxc,.fbc{transition:background-color .2s ease,border-color .2s ease,color .2s ease,transform .2s ease,opacity .2s ease}
 .lrow:hover,.cxr:hover{transform:translateX(1px)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -683,6 +683,7 @@ async function noteSearchRemote(){ const q=nq.trim().toLowerCase(); if(q.length<
 /* layout: position core + bubbles in a ring (computed once per render / resize — cheap) */
 function layout(){ const st=$('#stage'); const W=st.clientWidth, H=st.clientHeight, CX=W/2, CY=H/2+8;
   { const ml=$('#cML'), tl=$('#cTL'), bl=$('#cBL'); if(ml&&tl&&bl){ const top=tl.offsetTop+tl.offsetHeight+10, bot=bl.offsetTop-10; ml.style.top=top+'px'; ml.style.height=Math.max(120,bot-top)+'px'; ml.style.transform='none'; }
+    document.querySelectorAll('#cML .xll').forEach(x=>{ const r=x.querySelectorAll('.lrow'); if(!r.length){ x.style.maxHeight=''; return; } const h=r.length>1?r[1].offsetTop-r[0].offsetTop:r[0].offsetHeight; if(h>0) x.style.maxHeight=Math.max(3,Math.floor(H*0.15/h))*h+'px'; });   // whole rows only
     const cl=$('#cqPane .cqlist'), tr=$('#cTR'), br=$('#cBR'); if(cl&&tr&&br){ cl.style.maxHeight='300px'; const over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop; if(over>0) cl.style.maxHeight=Math.max(70,300-over)+'px'; }
     const il=$('#cTR .inclist'), nt=$('#noteTa'); if(il&&tr&&br){ il.style.maxHeight='none'; if(nt) nt.style.height='';
       let over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop;
