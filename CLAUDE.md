@@ -28,6 +28,7 @@ Rules:
 | Dashboard | `dashboard.html` = `grid.html` | keep the two files identical |
 | Focus 2 | `focus2.html` | also runs off-site, so it loads `nav.js` by absolute URL there |
 | Email | `email.html` + `gmail-live.js` (Live) + `emailrun.js` (Scan) | extra run rules: `EMAIL_RULES.md` |
+| Run | `run.html` | one task at a time, keyboard-first; same field rules as the iPhone cards |
 | Meetings | `meet/` | meetings-only page, also its own iPhone Home Screen app |
 | AIOS map | `aios.html` + `aios-data.js` | snapshot in `aios-data.js`; to-dos, feeds and health load live |
 | iPhone Tasks | `m/` | own service worker |

@@ -1,13 +1,14 @@
 /* nav.js — the page links in the top-right corner. Same links, same order, same look on every page.
    Put <span data-tbnav="email"></span> where the links go (value = this page's id) and load this file,
    or call TBNav.mount(el, 'email') when the bar is built in JS.
-   Page ids: dashboard · focus · focus2 · meetings · email · aios.  To add a page: one line in PAGES. */
+   Page ids: dashboard · focus · focus2 · run · meetings · email · aios.  To add a page: one line in PAGES. */
 (function(){
 'use strict';
 var PAGES = [
   ['dashboard', '⌂', 'Dashboard', 'dashboard.html',      'Dashboard — the full board'],
   ['focus',     '◎', 'Focus',     'radial.html?focus=1', 'Focus — the home screen'],
   ['focus2',    '◉', 'Focus 2',   'focus2.html',         'Focus 2 — AM/PM calls'],
+  ['run',       '▸', 'Run',       'run.html',            'Run — one task at a time, one key each'],
   ['meetings',  '◷', 'Meetings',  'meet/',               'Meetings only — now / next with one-tap Join'],
   ['email',     '✉', 'Email',     'email.html',          'Email — live Gmail + scan'],
   ['aios',      '◈', 'AIOS',      'aios.html',           'AIOS map — your Claude setup']
@@ -23,7 +24,7 @@ var CSS = '.tbnav{display:flex;align-items:center;flex:none;margin-left:auto;gap
   '.tbnav a:hover,.tbnav a:focus-visible{color:#c8e6f0;background:rgba(57,199,223,.1);outline:none}' +
   '.tbnav a.cur{color:#39c7df;background:rgba(57,199,223,.12);cursor:default}' +
   '.tbnav .tbn-i{font-size:14px;line-height:1}' +
-  '@media(max-width:900px){.tbnav .tbn-l{display:none}.tbnav a{padding:9px 10px}.tbnav .tbn-i{font-size:18px}}';
+  '@media(max-width:1100px){.tbnav .tbn-l{display:none}.tbnav a{padding:9px 10px}.tbnav .tbn-i{font-size:18px}}';
 var cssDone = false;
 function css(){ if (cssDone) return; cssDone = true; var s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s); }
 
