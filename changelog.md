@@ -290,3 +290,4 @@
 - 2026-11-25 19:35  Email: Invitations category (calendar invites, updates, cancellations); calendar accept / decline replies go to Archive
 - 2026-11-25 19:44  Email: Draft reply button on every email. Claude drafts at the next Email run; you approve on the email before it sends
 - 2026-11-25 19:57  Focus: slim scrollbars; moved panes saved as a share of the window and kept on screen; ring stays between the side columns; layout follows the window live while resizing
+- 2026-11-25 20:43  Focus: arrows stay under the mouse. Pop-ups hang from a fixed top; pager labels fixed width; Today chip in front of ‹; bubble pagers pinned; meeting pane keeps its height

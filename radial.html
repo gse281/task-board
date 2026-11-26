@@ -267,6 +267,26 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 #setup input{background:var(--card2);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:10px 12px;width:min(420px,86vw);font:14px ui-monospace,Menlo}
 #setup button{background:var(--cyan);border:0;color:#07141a;font-weight:800;border-radius:8px;padding:10px 18px}
 .hint{color:var(--dim);font-size:12px}
+
+/* ===== Arrows stay under the mouse =====
+   Anything you click through (‹ ›) keeps its exact spot while the content changes:
+   · pop-ups hang from a fixed top instead of re-centring on their new height
+   · every pager label has a fixed width, and the "Today" chip sits in front of ‹
+   · bubble pagers are pinned to the bottom of the bubble
+   · the meeting pane keeps its height, so the panes under it don't jump */
+.back{align-items:flex-start;padding:clamp(34px,9vh,96px) 20px 20px}
+.card,.back.ivwide .card{max-height:calc(100vh - clamp(34px,9vh,96px) - 20px)}
+.cardh .ovnav{margin-left:auto}.cardh .ovnav~.x{margin-left:8px}
+.ovnav>span{display:inline-block;width:112px;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nnav .tdy,.ovnav .tdy{margin-left:0;margin-right:6px}
+.nnav .nlbl{display:inline-block;width:74px;min-width:74px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meet .mnav span{display:inline-block;width:132px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
+.meet .mtitle{min-height:2.5em}
+.oinav span{display:inline-block;min-width:66px;text-align:center}
+.bub:has(.bnav){padding-bottom:34px}
+.bub:has(.bnav) .bit{-webkit-line-clamp:2;min-height:2.44em}
+.bub .bnav{position:absolute;left:0;right:0;bottom:13%;justify-content:center;margin:0}
+.bub .bnav span{display:inline-block;min-width:36px;text-align:center;font-variant-numeric:tabular-nums}
 </style></head>
 <body>
 <div id="stage">
@@ -467,7 +487,7 @@ const bubOf=(k,list)=>{ const sel=bSel[k]; const i=(sel&&Date.now()-sel.at<18000
 function renderBubbles(){ const box=$('#bubbles'); box.innerHTML=ringKeys().map(k=>{ const list=itemsFor(k); const ix=bubOf(k,list); const it=list.length?list[ix]:null; const [em,nm]=capOf(k);
     const cls='bub'+(list.length?'':' empty')+(hasStale(list)?' urgent':'');
     const prev=it?'<div class="bit" draggable="true" data-id="'+esc(it.id)+'" title="Drag to the center to add to Focus">'+bubPrev(it)+'</div>':'<div class="bit e">—</div>';
-    const nav=list.length>1?'<div class="bnav"><button data-bs="-1" aria-label="Previous task">‹</button><span>'+(ix+1)+'/'+list.length+'</span><button data-bs="1" aria-label="Next task">›</button>'+(ORDERED.has(k)&&ix>0?'<button data-btop aria-label="Move to top" title="Move to top">⤒</button>':'')+'</div>':'';
+    const nav=list.length>1?'<div class="bnav"><button data-bs="-1" aria-label="Previous task">‹</button><span>'+(ix+1)+'/'+list.length+'</span><button data-bs="1" aria-label="Next task">›</button>'+(ORDERED.has(k)?'<button data-btop aria-label="Move to top" title="Move to top"'+(ix>0?'':' style="visibility:hidden" tabindex="-1"')+'>⤒</button>':'')+'</div>':'';
     return '<div class="'+cls+'" data-key="'+esc(k)+'"><div class="bcap">'+em+' '+esc(nm)+'</div><div class="bn">'+list.length+'</div>'+prev+nav+'</div>'; }).join('');
   box.querySelectorAll('.bub').forEach(el=>{ const k=el.dataset.key; el.onclick=e=>{ if(e.target.closest('.bnav')) return; openList(k); };
     el.querySelectorAll('[data-bs]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); const list=itemsFor(k); bSel[k]={i:bubOf(k,list)+(+b.dataset.bs),at:Date.now()}; renderBubbles(); layout(); });
@@ -538,14 +558,14 @@ function renderCorners(){
     const also=mt._today?ML.filter(e=>e!==mt&&e._today&&e.start-5<=cur&&cur<e.end):[];
     const nx=ML[mi+1];
     mh='<div class="mnav"><button data-mp '+(mi<=0?'disabled':'')+'>‹</button><span>'+(mi+1)+' / '+ML.length+(mt._today?'':' · Tomorrow')+'</span><button data-mn '+(mi>=ML.length-1?'disabled':'')+'>›</button></div>'+
-       '<div class="mtime">'+esc(mt.when||'')+(isNow?'<span class="nowtag">NOW</span>':'')+'</div><div class="mtitle">'+esc(mt.title||'(untitled)')+'</div>'+(mt.location?'<div class="mloc">📍 '+esc(mt.location)+'</div>':'')+
+       '<div class="mtime">'+esc(mt.when||'')+(isNow?'<span class="nowtag">NOW</span>':'')+'</div><div class="mtitle">'+esc(mt.title||'(untitled)')+'</div>'+'<div class="mloc">'+(mt.location?'📍 '+esc(mt.location):'&nbsp;')+'</div>'+
        (h?'<a class="mjoin'+(tel?' tel':'')+'" href="'+esc(h)+'"'+(tel?'':' target="_blank" rel="noopener"')+'>'+(tel?'📞 Call':'▶ Join')+'</a>':'')+'<button class="minvite" data-minvite title="Text an invite to this call">☎︎ Invite</button>'+
        also.map(e=>{ const h2=joinHref(e); return '<div class="malso"><span class="nowtag">ALSO NOW</span> <b>'+esc(String(e.title||'').slice(0,40))+'</b>'+(h2?' <a class="mjoin" style="margin:4px 0 0" href="'+esc(h2)+'" target="_blank" rel="noopener">▶ Join</a>':'')+'</div>'; }).join('')+
-       (nx&&!also.includes(nx)?'<div class="mnext">Next · '+(nx._today?'':'Tmrw ')+esc(nx.when||'')+' <b>'+esc(String(nx.title||'').slice(0,24))+'</b></div>':'');
+       (nx&&!also.includes(nx)?'<div class="mnext">Next · '+(nx._today?'':'Tmrw ')+esc(nx.when||'')+' <b>'+esc(String(nx.title||'').slice(0,24))+'</b></div>':'<div class="mnext" style="visibility:hidden">&nbsp;</div>');
   } else mh='<div class="none">No meetings today or tomorrow.</div>';
   const incT=incItems();
   const inc={count:incT.length, html:'<div class="inclist">'+(incT.length?incT.slice(0,60).map(miniRow).join(''):'<div class="none">'+(incDay?'Nothing came in.':'—')+'</div>')+'</div>'};
-  const incNav='<span class="nnav"><button data-ip>‹</button><span class="nlbl'+(incDay?' past':'')+'">'+esc(dnLabel(incDay||todayISO()))+'</span><button data-in '+(incDay?'':'disabled')+'>›</button>'+(incDay?'<button data-itd class="tdy">Today</button>':'')+'</span>';
+  const incNav='<span class="nnav">'+(incDay?'<button data-itd class="tdy">Today</button>':'')+'<button data-ip>‹</button><span class="nlbl'+(incDay?' past':'')+'">'+esc(dnLabel(incDay||todayISO()))+'</span><button data-in '+(incDay?'':'disabled')+'>›</button></span>';
   if(!$('#cTRb')){ $('#cTR').innerHTML='<div id="cTRb" style="display:flex;flex-direction:column;gap:10px"></div>'; }
   $('#cTRb').innerHTML='<div class="pane meet'+(nn.now?' urgent':'')+'"><div class="ph" data-list="meeting">▣ Next Meeting<span class="pn">'+nn.L.length+'</span></div>'+mh+'</div>'+
     '<div class="pane'+(hasStale(itemsFor('incoming'))?' urgent':'')+'"><div class="ph" data-list="incoming">▽ Incoming<span class="pn">'+inc.count+'</span>'+incNav+'</div>'+inc.html+'<div class="addrow"><input id="incAdd" placeholder="＋ Add incoming…"><button id="incAddBtn">Add</button></div></div><div class="pane" id="cqPane" style="display:none"></div>';
@@ -565,7 +585,7 @@ function renderCorners(){
     return '<div class="wxc'+(w.date===td?' today':'')+(w.pr>0.08?' wet':'')+'"><div class="wd">'+nm+'</div><div class="we">'+wxEmoji(w.code)+'</div><div class="wt '+tc+'">'+w.hi+'°</div><div class="wp">'+amt+'</div></div>'; };
   $('#cBL').innerHTML='<div class="pane"><div class="ph" style="cursor:default">☁︎ Weather<span class="pn">NYC</span></div>'+(days.length?'<div class="wxstrip">'+days.map(cell).join('')+'</div>':'<div class="none">Loading…</div>')+'</div>';
   const day=noteDay||todayISO(), isToday=day===todayISO(); const prev=$('#noteTa'), keep=(prev&&prev.dataset.day===day)?prev.value:null;
-  $('#cBR').innerHTML='<div class="pane notes"><div class="ph" style="cursor:default">✎ '+(isToday?"Today's Notes":'Notes')+'<span class="nnav"><button data-dp>‹</button><span class="nlbl'+(isToday?'':' past')+'">'+esc(dnLabel(day))+'</span><button data-dn '+(isToday?'disabled':'')+'>›</button>'+(isToday?'':'<button data-dt>Today</button>')+'</span></div><textarea id="noteTa" placeholder="'+(isToday?'Jot anything — new page every day. ‹ for yesterday.':'Nothing on '+esc(dnLabel(day)))+'">'+(keep!=null?esc(keep):esc(dnGet()[day]||''))+'</textarea><div class="nfoot"><span id="noteSt"></span></div><div class="addrow"><input id="noteQ" placeholder="⌕ Search all notes…" value="'+esc(nq)+'"></div><div id="noteR" class="nres"></div></div>';
+  $('#cBR').innerHTML='<div class="pane notes"><div class="ph" style="cursor:default">✎ '+(isToday?"Today's Notes":'Notes')+'<span class="nnav">'+(isToday?'':'<button data-dt class="tdy">Today</button>')+'<button data-dp>‹</button><span class="nlbl'+(isToday?'':' past')+'">'+esc(dnLabel(day))+'</span><button data-dn '+(isToday?'disabled':'')+'>›</button></span></div><textarea id="noteTa" placeholder="'+(isToday?'Jot anything — new page every day. ‹ for yesterday.':'Nothing on '+esc(dnLabel(day)))+'">'+(keep!=null?esc(keep):esc(dnGet()[day]||''))+'</textarea><div class="nfoot"><span id="noteSt"></span></div><div class="addrow"><input id="noteQ" placeholder="⌕ Search all notes…" value="'+esc(nq)+'"></div><div id="noteR" class="nres"></div></div>';
   // wiring
   { const ip=$('#cTR [data-ip]'), inn=$('#cTR [data-in]'); if(ip) ip.onclick=e=>{ e.stopPropagation(); incDay=incStepD(incDay||todayISO(),-1); renderCorners(); layout(); }; if(inn) inn.onclick=e=>{ e.stopPropagation(); const n=incStepD(incDay||todayISO(),1); incDay=n>=todayISO()?null:n; renderCorners(); layout(); }; const itd=$('#cTR [data-itd]'); if(itd) itd.onclick=e=>{ e.stopPropagation(); incDay=null; renderCorners(); layout(); }; }
   { const mp=$('#cTR [data-mp]'), mn=$('#cTR [data-mn]'); if(mp)mp.onclick=e=>{ e.stopPropagation(); mSel=Math.max(0,mSel-1); mSelAt=Date.now(); renderCorners(); layout(); }; if(mn)mn.onclick=e=>{ e.stopPropagation(); mSel=mSel+1; mSelAt=Date.now(); renderCorners(); layout(); };
@@ -731,7 +751,7 @@ window.TE={ key:()=>demo?'':cfg.apiKey, base:()=>cfg.baseId, table:()=>cfg.table
   restoreCat:(t,p)=>{ const a=A(t.id); if(p.sec) a.section=p.sec; else delete a.section; t.sectionRemote=p.sr; t.slotRemote=p.m; t.typeRemote=p.ty; saveAug(); patchTask(t.id,Object.assign({Section:p.sr,MeetingSlot:p.m},p.ty==='call'?{Type:'call'}:{})); renderAll(); } };
 function openTask(id){ const t=tasks.find(x=>x.id===id); if(!t){ toast('Task not found'); return; } closeOv(); if(window.TaskEditor) TaskEditor.open(t); else toast('Editor not loaded'); }
 function openList(key){ const em=capOf(key)[0],cap=capOf(key)[1]; const items=key==='incoming'?incItems():itemsFor(key);
-  ovh.innerHTML=em+' '+esc(cap)+' · '+items.length+(key==='incoming'?'<span class="ovnav"><button data-oip>‹</button><span class="'+(incDay?'past':'')+'">'+esc(dnLabel(incDay||todayISO()))+'</span><button data-oin '+(incDay?'':'disabled')+'>›</button>'+(incDay?'<button data-otd class="tdy">Today</button>':'')+'</span>':'')+'<button class="x" data-x>✕</button>';
+  ovh.innerHTML=em+' '+esc(cap)+' · '+items.length+(key==='incoming'?'<span class="ovnav">'+(incDay?'<button data-otd class="tdy">Today</button>':'')+'<button data-oip>‹</button><span class="'+(incDay?'past':'')+'">'+esc(dnLabel(incDay||todayISO()))+'</span><button data-oin '+(incDay?'':'disabled')+'>›</button></span>':'')+'<button class="x" data-x>✕</button>';
   if(key==='incoming'){ ovh.querySelector('[data-oip]').onclick=()=>{ incDay=incStepD(incDay||todayISO(),-1); openList('incoming'); renderCorners(); layout(); }; ovh.querySelector('[data-oin]').onclick=()=>{ const n=incStepD(incDay||todayISO(),1); incDay=n>=todayISO()?null:n; openList('incoming'); renderCorners(); layout(); }; const otd=ovh.querySelector('[data-otd]'); if(otd) otd.onclick=()=>{ incDay=null; openList('incoming'); renderCorners(); layout(); }; }
   if(key==='meeting'){ const cur=nowMin(); const row=(e,td)=>{ const h=joinHref(e), past=td&&e.end<=cur, now=td&&e.start-5<=cur&&cur<e.end; return '<div class="lrow"'+(past?' style="opacity:.45"':'')+'><span class="dot" style="background:var(--cyan)"></span><span class="lt"><span class="ln">'+esc(e.title||'(untitled)')+(now?'<span class="nowtag">NOW</span>':'')+'</span><span class="lm">'+esc(e.when||'')+'</span></span>'+(h?'<a class="edlink" style="margin:0;padding:6px 10px" href="'+esc(h)+'" target="_blank" rel="noopener">'+(h.indexOf('tel:')===0?'📞':'▶ Join')+'</a>':'')+'</div>'; };
     const T=meetingsToday(todayISO()), M=meetingsToday(tomorrowISO()); ovh.innerHTML=em+' Meetings · '+(T.length+M.length)+'<button class="x" data-x>✕</button>';
