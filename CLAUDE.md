@@ -42,5 +42,6 @@ Rules:
 - Categories: `H` Last hour, `D` Starred, `Z` Snoozed, `C` Reply, `B` Don't miss, `I` Invitations, `N` Not sorted yet, `E` Everything else, `A` Archive, `K` Kept, `X` Hidden 24h. Defined once, in `gmail-live.js` (`BUCKETS`).
 - Scan takes its thread list and categories from Live (`GL.snapshot()`), so the two tabs always show the same counts. Don't give Scan its own classification.
 - Calendar mail: invitations (new, updated, cancelled) go to `I`; accept / decline replies go to `A`, only when a calendar sent them (`calKind`, in the Live script).
+- Draft reply button: writes an EmailNotes Note "Draft a reply[: what to say]". The Email run drafts it (`EMAIL_RULES.md` rule 20); the page never drafts or sends by itself.
 - Kept and Hidden are stored in AppNotes, Keys `email:kept` and `email:hide` (JSON). Hidden lasts 24 h, or until a new message arrives in the thread.
 - Never send, trash or unsubscribe from the page. Archive only on Roni's press.

@@ -288,3 +288,4 @@
 - 2026-11-25 19:10  AIOS map › Open items: Claude Code feed per device (AppNotes aios:code:<device>) + the board's @Computer – Claude list, no repeats
 - 2026-11-25 19:03  ▸ Run page (run.html, in the nav): one task at a time, one key each. D done · S/W/M snooze · N Next Up · P park · E next step · arrows skip/back · Z undo
 - 2026-11-25 19:35  Email: Invitations category (calendar invites, updates, cancellations); calendar accept / decline replies go to Archive
+- 2026-11-25 19:44  Email: Draft reply button on every email. Claude drafts at the next Email run; you approve on the email before it sends

@@ -984,6 +984,23 @@ function makeRow(t, showSender) {
         .catch(function(){ tk.textContent = '! retry'; tk.disabled = false; });
     });
     acts.append(tk);
+    // Draft reply: leaves an instruction for the Email run (EmailNotes). The run writes the draft; you approve it here
+    // ("Review reply") before anything is sent. Hidden once a draft is already waiting on this email.
+    var rr = _scan.byThread[t.id], nn = _notes[t.id], asked = !!(nn && /draft a reply/i.test(nn.note || ''));
+    if (!(rr && rr.draft && (rr.status === 'New' || rr.status === 'Approved'))) {
+      var dr = document.createElement('button'); dr.className = 'glv-ck' + (asked ? ' on' : '');
+      dr.innerHTML = icT('pen', asked ? 'Draft asked' : 'Draft reply');
+      dr.title = asked ? 'Claude drafts this at the next Email run (11a / 2:47p). Tap to change what it should say.' : 'Have Claude draft a reply. Nothing is sent until you approve it.';
+      dr.addEventListener('click', function(e){ e.stopPropagation();
+        var how = prompt('Draft a reply to ' + t.senderName + '. What should it say? (blank = Claude decides)', asked ? String(nn.note).replace(/^[\s\S]*draft a reply:?\s*/i, '') : '');
+        if (how === null) return;
+        var ask = 'Draft a reply' + (how.trim() ? ': ' + how.trim() : ''), keep = nn && nn.note && !asked ? nn.note.trim() + '\n' : '';
+        dr.textContent = '…'; dr.disabled = true;
+        saveNote(t, keep + ask).then(function(){ rebuildList(_listEl); })
+          .catch(function(){ dr.textContent = '! retry'; dr.disabled = false; });
+      });
+      acts.append(dr);
+    }
   }
   acts.append(al, arch);
   h.appendChild(acts);
@@ -1030,8 +1047,8 @@ function makeRow(t, showSender) {
     div.appendChild(adv);
   }
 
-  // Starred → a to-do note you type (saved to Airtable).
-  if (c.b === 'D' || c.b === 'Z') {
+  // Starred → a to-do note you type (saved to Airtable). Any other email shows its note once it has one (e.g. "Draft a reply").
+  if (c.b === 'D' || c.b === 'Z' || hasNote(t)) {
     var nt = _notes[t.id]; if (nt && !nt.note) nt = null;
     if (_editing === t.id) {
       var ta = document.createElement('textarea'); ta.className = 'glv-note-in'; ta.rows = 2;
