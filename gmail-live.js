@@ -209,7 +209,8 @@ async function apiListThreads(pageToken) {
 }
 
 async function apiGetThread(id) {
-  return gfetch('threads/' + id + '?format=METADATA&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date&metadataHeaders=Auto-Submitted');
+  // Sender + Content-Class tell a calendar invite / reply from ordinary mail (Google Calendar, Outlook).
+  return gfetch('threads/' + id + '?format=METADATA&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date&metadataHeaders=Auto-Submitted&metadataHeaders=Sender&metadataHeaders=Content-Class');
 }
 
 // Plain text of the newest message (for the ▸ more preview).
@@ -263,8 +264,8 @@ function htmlDecode(s) {
   return (s||'').replace(/&#39;/g,"'").replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>');
 }
 
-var CACHE_KEY = 'gl.cache3';   // v3: sender = latest message too
-try { localStorage.removeItem('gl.cache'); localStorage.removeItem('gl.cache2'); } catch (e) {}
+var CACHE_KEY = 'gl.cache4';   // v4: + cal (calendar invite / reply)
+try { localStorage.removeItem('gl.cache'); localStorage.removeItem('gl.cache2'); localStorage.removeItem('gl.cache3'); } catch (e) {}
 var _cache = {}; try { _cache = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch (e) {}
 function fromCache(d) { var t = Object.assign({}, d); t.date = new Date(d.date); return t; }
 function saveCache() {
@@ -294,7 +295,9 @@ function parseThread(t) {
     starred:     msgs.some(function(m){ return (m.labelIds || []).indexOf('STARRED') >= 0; }),
     unread:      msgs.some(function(m){ return (m.labelIds || []).indexOf('UNREAD') >= 0; }),
     msgCount:    msgs.length,
-    autoReply:   msgs.some(function(m){ return /auto-replied/i.test(hdr(m, 'Auto-Submitted')); })
+    autoReply:   msgs.some(function(m){ return /auto-replied/i.test(hdr(m, 'Auto-Submitted')); }),
+    // sent by a calendar: Google Calendar (Sender header) or an Outlook / Exchange meeting message
+    cal:         /calendar-notification@google\.com/i.test(hdr(other, 'Sender') + ' ' + hdr(other, 'From')) || /calendarmessage/i.test(hdr(other, 'Content-Class'))
   };
 }
 
@@ -531,14 +534,15 @@ var ICONS = {
   mail: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   hide: '<path d="M3 3l18 18"/><path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6A17.3 17.3 0 0 0 2 12s3.5 7 10 7a10.7 10.7 0 0 0 4.9-1.2"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
-  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'
+  eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  cal: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'
 };
 function ic(n) { return '<svg class="gi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[n] || '') + '</svg>'; }
 function icT(n, txt) { var e = document.createElement('span'); e.textContent = txt; return ic(n) + (txt ? '<span>' + e.innerHTML + '</span>' : ''); }
 
 var BUCKETS = [
   ['H', 'Last hour', 'clock'], ['D', 'Starred', 'star'], ['Z', 'Snoozed', 'moon'], ['C', 'Reply', 'reply'], ['B', "Don't miss", 'alert'],
-  ['N', 'Not sorted yet', 'inbox'],  ['E', 'Everything else', 'file'], ['A', 'Archive', 'archive'],
+  ['I', 'Invitations', 'cal'], ['N', 'Not sorted yet', 'inbox'],  ['E', 'Everything else', 'file'], ['A', 'Archive', 'archive'],
   ['K', 'Kept', 'pin'], ['X', 'Hidden 24h', 'hide']
 ];
 var _scan = { byThread: {}, bySender: {}, loaded: false };
@@ -745,11 +749,26 @@ function classify(t) {
   if (t.starred) return { b: 'D', project: project, summary: r && r.summary, advice: r && r.advice };
   if (_keep[t.id]) return { b: 'K', project: project, summary: r && r.summary, advice: r && r.advice, always: always };   // kept: out of its category
   var c = sorted(t, r, snd, project);
-  return recent && c.b !== 'A' ? hour : c;   // Last hour = new real mail; junk goes straight to Archive
+  return recent && c.b !== 'A' && c.b !== 'I' ? hour : c;   // Last hour = new real mail; junk goes straight to Archive, invitations to Invitations
 }
+// Calendar mail. Invitations (new, updated, cancelled) get their own category; accept / decline replies go to Archive.
+// A reply only counts when a calendar sent it, so "Accepted: change order 12" from a person stays where it was.
+// "Invitation:" needs the colon right after it, so "Invitation to bid" is left alone.
+var RSVP_RE = /^(accepted|declined|tentatively accepted|tentatively declined|tentative)\s*:/i;
+var INVITE_RE = /^(updated\s+)?invitation(\s+with note)?(\s+from google calendar)?\s*:/i;
+var GCAL_SUBJ = /\s@\s(mon|tue|wed|thu|fri|sat|sun|daily|weekly|monthly|annually|every)\b/i;   // "… @ Thu Nov 26, 2026 10am"
+function calKind(t) {
+  var s = t.subject || '', cal = t.cal || GCAL_SUBJ.test(s);
+  if (RSVP_RE.test(s)) return cal ? 'rsvp' : '';
+  return INVITE_RE.test(s) || t.cal ? 'invite' : '';
+}
+
 function sorted(t, r, snd, project) {
   if (isAutoReply(t)) return { b: 'A', project: project, summary: r && r.summary, auto: true };
   if (_rule.senders[(t.senderEmail || '').toLowerCase()]) return { b: 'A', project: project, summary: r && r.summary, always: true };
+  var ck = calKind(t);
+  if (ck === 'rsvp') return { b: 'A', project: project, summary: r && r.summary, rsvp: true };
+  if (ck === 'invite') return { b: 'I', project: project, summary: r && r.summary, advice: r && r.advice };
   if (r && r.bucket) return { b: r.bucket, project: r.project, summary: r.summary, advice: r.advice, sorted: true };
   if (snd && (snd.bucket === 'A' || snd.bucket === 'E')) return { b: snd.bucket, project: project, guess: true };
   if (t.labels.some(function(l){ return /^CATEGORY_(PROMOTIONS|SOCIAL|FORUMS)$/.test(l); })) return { b: 'A', project: project, guess: true };

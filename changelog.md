@@ -287,3 +287,4 @@
 - 2026-11-25 19:10  Meetings-only page on the web (meet/), in the nav; iPhone /m/#meetings now goes there
 - 2026-11-25 19:10  AIOS map › Open items: Claude Code feed per device (AppNotes aios:code:<device>) + the board's @Computer – Claude list, no repeats
 - 2026-11-25 19:03  ▸ Run page (run.html, in the nav): one task at a time, one key each. D done · S/W/M snooze · N Next Up · P park · E next step · arrows skip/back · Z undo
+- 2026-11-25 19:35  Email: Invitations category (calendar invites, updates, cancellations); calendar accept / decline replies go to Archive
