@@ -377,7 +377,7 @@ html,body{ -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale
 .panel{ border-radius:18px; box-shadow:0 6px 20px rgba(0,0,0,.28); }
 .panel-head{ padding:10px 12px; border-bottom-color:rgba(255,255,255,.055); }
 .panel-head h3{ font-size:14.5px; letter-spacing:.1px; }
-.panel-body{ padding:8px; gap:7px; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,.16) transparent; }
+.panel-body{ padding:8px; gap:7px; }   /* no scrollbar-width here: Chrome then ignores the slim ::-webkit-scrollbar rules below and draws its fat native bar */
 .task{ border-radius:13px; padding:8px 10px; border-color:rgba(255,255,255,.06); box-shadow:0 1px 2px rgba(0,0,0,.22); transition:background .14s var(--ease), box-shadow .14s var(--ease); }
 .task:hover{ background:#2a241f; box-shadow:0 5px 16px rgba(0,0,0,.38); }
 .task .name{ font-size:14px; line-height:1.3; }
@@ -569,7 +569,7 @@ body::before{ opacity:.7 }
 <div id="grid"></div>
 <input type="file" id="picInput" accept="image/*" class="hidden">
 
-<script src="nav.js?v=1795651417"></script>
+<script src="nav.js?v=1795654629"></script>
 <script src="task-editor.js"></script>
 <script src="learning.js?v=1793916267"></script>
 <script src="claudeq.js"></script>

@@ -6,7 +6,7 @@
 :root{ --bg:#070d11; --ink:#eaf6fb; --cyan:#39c7df; --dim:#7f9aa3; --gold:#6fd0e0; --green:#3a8f5f; --orange:#e8683c;
   --line:rgba(57,199,223,.18); --card:#0d1a21; --card2:#102029; }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:rgba(57,199,223,.18);border-radius:6px}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:rgba(57,199,223,.2);border-radius:6px}::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent}
 html,body{margin:0;height:100%;background:radial-gradient(130% 120% at 50% 42%,#0b141a 0%,#070d11 62%,#04070a 100%);color:var(--ink);font:15px/1.4 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-select:text}
@@ -83,7 +83,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .cxpane .rq{width:100%;box-sizing:border-box;background:rgba(20,36,42,.85);border:1px solid var(--line);border-radius:9px;color:var(--ink);padding:8px 10px;font-size:13px;outline:none}.cxpane .rq:focus{border-color:var(--cyan)}
 .bub.empty{opacity:.4} .bub.empty:hover{opacity:.85}
 /* corners */
-.corner{position:absolute;z-index:8;width:min(290px,30vw);display:flex;flex-direction:column;gap:10px}
+.corner{position:absolute;z-index:8;width:min(30vw,clamp(290px,17vw,380px));display:flex;flex-direction:column;gap:10px}
 .tl{top:50px;left:14px}.ml{left:14px;top:50%}
 #cML .pane{display:flex;flex-direction:column;max-height:100%;min-height:0}#cML .oil{overflow-y:auto;overflow-x:hidden;min-height:0;margin:0 -4px}#cML .lt{overflow:hidden}#cML .ln{display:block}#cML .ld{white-space:nowrap}#cML .ld .tm{color:var(--cyan);margin-right:5px;font-weight:600}#cML .lrow .dot.o{background:var(--orange)!important}#cML .oisub{color:var(--dim);font:600 10.5px ui-monospace,Menlo,monospace;margin:-3px 0 5px}.tr{top:50px;right:14px}.bl{bottom:58px;left:14px}.br{bottom:58px;right:14px}
 @media(max-width:620px){ .corner{width:42vw} }
@@ -120,7 +120,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 #fltrail:hover{opacity:1;z-index:20}
 #fltrail .fcols{flex:1;min-height:0;display:flex;gap:7px}
 #fltrail .fcol{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px;min-height:0}
-#fltrail .fsec{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;scrollbar-width:thin}
+#fltrail .fsec{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column}
 #fltrail .fsec::-webkit-scrollbar{width:4px}#fltrail .fsec::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
 #fltrail .fh{font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--cyan);margin:0 0 4px;position:sticky;top:0;background:var(--bg,#070d11);padding:3px 0;z-index:1}
 #fltrail .fc{display:flex;align-items:center;justify-content:space-between;gap:4px;flex:none;border:1px solid var(--line);background:rgba(9,18,24,.6);color:var(--ink);border-radius:6px;padding:3px 6px;margin-bottom:3px;font-size:10.5px;cursor:pointer;white-space:nowrap;overflow:hidden}
@@ -258,7 +258,7 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .cmdrow .d{color:var(--dim);font-size:12px;flex:none;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cmdhint{padding:9px 15px;color:var(--dim);font:600 11px ui-monospace,Menlo,monospace;border-top:1px solid var(--line)}
 /* bottom controls */
-.foot{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:9;display:flex;gap:8px}
+.foot{position:absolute;bottom:14px;left:0;right:0;z-index:9;display:flex;gap:8px;justify-content:center;pointer-events:none}.foot>*{pointer-events:auto;white-space:nowrap;flex:none}
 .foot button,.foot a{border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:700 11px ui-monospace,Menlo,monospace;letter-spacing:1px;color:var(--dim);text-decoration:none}
 .foot button:hover,.foot a:hover{color:var(--cyan);border-color:var(--cyan)}
 #toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--card2);border:1px solid var(--cyan);color:var(--ink);border-radius:12px;padding:10px 16px;font-size:13px;z-index:9600;opacity:0;transition:opacity .2s;pointer-events:none}
@@ -276,14 +276,14 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
   <div class="core" id="core"></div>
   <div id="bubbles"></div>
   <div class="corner tl" id="cTL"></div><div class="corner tr" id="cTR"></div><div class="corner ml" id="cML"></div><div class="corner bl" id="cBL"></div><div class="corner br" id="cBR"></div>
-  <div class="foot"><button id="mvReset" onclick="resetMoves()" title="Put bubbles and panes back">↺ LAYOUT</button><button id="cmdBtn2">⌘ ADD · JUMP · FIND</button><button id="fltBtn" onclick="openFilters()" title="Filter by Project · Sub · Lead · Category">▦ P·S·L·C</button><button id="cxFootBtn" onclick="openContacts()" title="Contacts — search, copy, text, call, add">👤 CONTACTS</button><button id="homeToggle"></button><a href="email.html" title="Email — live Gmail + scan">✉ EMAIL</a><a href="focus2.html" title="Focus 2 — AM/PM calls">◉ FOCUS 2</a><a href="aios.html" title="AIOS map — your Claude setup">◈ AIOS</a><a href="dashboard.html">⌂ DASHBOARD</a></div>
+  <div class="foot"><button id="mvReset" onclick="resetMoves()" title="Put bubbles and panes back">↺ LAYOUT</button><button id="cmdBtn2">⌘ ADD · JUMP · FIND</button><button id="fltBtn" onclick="openFilters()" title="Filter by Project · Sub · Lead · Category">▦ P·S·L·C</button><button id="cxFootBtn" onclick="openContacts()" title="Contacts — search, copy, text, call, add">👤 CONTACTS</button><button id="homeToggle"></button></div>
 </div>
 <div class="back" id="ov"><div class="card"><div class="cardh" id="ovh"></div><div class="cardb" id="ovb"></div></div></div>
 <div id="cmd"><div class="cmdbox"><div class="cmdin"><span>⌘</span><input id="cmdInp" placeholder="Add a task, jump to a list, or search everything…" autocomplete="off"></div><div class="cmdres" id="cmdRes"></div><div class="cmdhint">↑↓ move · ⏎ select · esc close · type then ⏎ to add</div></div></div>
 <div id="setup"><div class="hint">Paste your Airtable key to see live data (or just preview the demo).</div><input id="keyin" type="password" placeholder="Airtable Personal Access Token (pat…)"><div style="display:flex;gap:8px"><button id="keygo">Connect</button><button id="demo" style="background:#13232b;color:var(--cyan)">Preview demo</button></div></div>
 <div id="filesBox" class="fbox fbox-float" hidden></div>
 <div id="toast"></div>
-<script src="nav.js?v=1795651417"></script>
+<script src="nav.js?v=1795654629"></script>
 <script src="task-editor.js"></script>
 <script src="photos.js"></script>
 <script src="guide.js"></script>
@@ -600,7 +600,10 @@ function layout(){ const st=$('#stage'); const W=st.clientWidth, H=st.clientHeig
       let over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop;
       if(over>0&&nt){ const cut=Math.min(over,Math.max(0,nt.offsetHeight-230)); nt.style.height=(nt.offsetHeight-cut)+'px'; over=tr.offsetTop+tr.offsetHeight+10-br.offsetTop; }
       if(over>0) il.style.maxHeight=Math.max(260,il.scrollHeight-over)+'px'; } }
-  const m=Math.min(W,H); const CS=Math.max(176,Math.min(286,m*0.25)); const BS=Math.max(104,Math.min(140,m*0.135)); const R=Math.min(W,H)*0.34;
+  const m=Math.min(W,H); const CS=Math.max(176,Math.min(286,m*0.25)); const BS=Math.max(104,Math.min(140,m*0.135));
+  // Ring: as big as the height allows, but it stays between the side columns (never under them), and never tighter than the core.
+  let colL=0, colR=W; ['#cTL','#cML','#cBL'].forEach(q=>{ const e=$(q); if(e&&e.offsetWidth) colL=Math.max(colL,e.offsetLeft+e.offsetWidth); }); ['#cTR','#cBR'].forEach(q=>{ const e=$(q); if(e&&e.offsetWidth) colR=Math.min(colR,e.offsetLeft); });
+  const R=Math.max(CS/2+BS/2+6, Math.min(m*0.34, Math.min(CX-colL,colR-CX)-BS/2-10));
   const core=$('#core'); core.style.width=core.style.height=CS+'px'; core.style.left=(CX-CS/2)+'px'; core.style.top=(CY-CS/2)+'px';
   const r1=$('#ring1'), r2=$('#ring2'); const D1=R*2+BS*0.2, D2=CS+40;
   r1.style.width=r1.style.height=D1+'px'; r1.style.left=(CX-D1/2)+'px'; r1.style.top=(CY-D1/2)+'px';
@@ -616,7 +619,7 @@ function layout(){ const st=$('#stage'); const W=st.clientWidth, H=st.clientHeig
       if(R0-L0>=170){ fr.style.left=L0+'px'; fr.style.right='auto'; fr.style.width=(R0-L0)+'px'; fr.style.display=''; }
       else { fr.style.left=''; fr.style.right=''; fr.style.width=''; fr.style.display='none'; } } }
   if(typeof applyMoves==='function') applyMoves(); }
-addEventListener('resize',()=>{ clearTimeout(window._rz); window._rz=setTimeout(layout,160); });
+addEventListener('resize',()=>{ if(window._rz) return; window._rz=requestAnimationFrame(()=>{ window._rz=0; layout(); }); });
 /* ===== movable bubbles / core / panes: drag a bubble, the core, or a pane's header; offsets saved (CSS translate — no layout math) ===== */
 let MV=LS('focus.mv',{}); let mvDrag=null, mvJustDragged=0; const GRID=24; const snap=v=>Math.round(v/GRID)*GRID;
 function mvKey(el){ if(el.id==='core') return 'core'; if(el.classList.contains('bub')) return 'b:'+el.dataset.key;
@@ -628,17 +631,30 @@ function ensureRz(el,k){ if(el.querySelector(':scope>.rz')) return; const h=docu
     const mv=e=>{ el.style.width=Math.max(160,snap(sw+e.clientX-sx))+'px'; el.style.height=Math.max(80,snap(sh+e.clientY-sy))+'px'; el.style.overflow='auto'; };
     const up=()=>{ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); MVS[k]=[parseInt(el.style.width),parseInt(el.style.height)]; SV('focus.mvsize',MVS); mvJustDragged=Date.now(); toast('Size saved · ↺ LAYOUT resets'); };
     document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up); }); }
-function applyMoves(){ document.querySelectorAll('#core,#bubbles .bub,.corner .pane,.corner .ampm').forEach(el=>{ const k=mvKey(el), o=MV[k]; el.style.translate=o?o[0]+'px '+o[1]+'px':''; if(o) el.style.zIndex=el.closest('.corner')?'12':'';
-    const s=MVS[k]; if(s){ el.style.width=s[0]+'px'; el.style.height=s[1]+'px'; el.style.overflow='auto'; }
-    if(el.matches('.corner .pane')) ensureRz(el,k); }); }
+/* A move is saved as a fraction of the window (dx/W, dy/H), not in pixels, so what you moved keeps its place when the window
+   is resized or the page opens on another screen. Every moved thing is then pulled back inside the window, and a saved
+   size never exceeds it. (Older saves were plain pixels: converted once, at the window size they are first seen in.) */
+function stageWH(){ const st=$('#stage'); return [st.clientWidth||innerWidth, st.clientHeight||innerHeight]; }
+function mvFrac(dx,dy){ const [W,H]=stageWH(); return [dx/W,dy/H,'f']; }
+function mvNow(el){ const m=/(-?[\d.]+)px\s+(-?[\d.]+)px/.exec(el.style.translate||''); return m?[+m[1],+m[2]]:[0,0]; }
+function applyMoves(){ const [W,H]=stageWH(), sr=$('#stage').getBoundingClientRect(); let conv=false;
+  document.querySelectorAll('#core,#bubbles .bub,.corner .pane,.corner .ampm').forEach(el=>{ const k=mvKey(el); let o=MV[k];
+    if(o&&o[2]!=='f'){ o=MV[k]=mvFrac(o[0],o[1]); conv=true; }
+    const s=MVS[k]; if(s){ el.style.width=Math.min(s[0],W-24)+'px'; el.style.height=Math.min(s[1],H-110)+'px'; el.style.overflow='auto'; }
+    if(o){ el.style.translate='none'; const r=el.getBoundingClientRect(); let dx=o[0]*W, dy=o[1]*H;
+      dx=Math.max(6-(r.left-sr.left),Math.min(W-6-(r.right-sr.left),dx)); dy=Math.max(46-(r.top-sr.top),Math.min(H-52-(r.bottom-sr.top),dy));
+      el.style.translate=Math.round(dx)+'px '+Math.round(dy)+'px'; el.style.zIndex=el.closest('.corner')?'12':''; }
+    else el.style.translate='';
+    if(el.matches('.corner .pane')) ensureRz(el,k); });
+  if(conv) SV('focus.mv',MV); }
 addEventListener('pointerdown',e=>{ if(e.button!==0) return; const t=e.target; if(t.closest('a,button,input,textarea,select,.lrow,.tick,.rmcat,.nhit')) return;
   if(t.closest('.rz')) return;
   const el=t.closest('#core,#bubbles .bub')||((t.closest('.ph,.cxh,.cxf')||t.matches('.corner .pane,.cxb'))&&t.closest('.corner .pane'))||((t.closest('.amb .h'))&&t.closest('.corner .ampm')); if(!el) return;
-  const o=MV[mvKey(el)]||[0,0]; mvDrag={el,k:mvKey(el),x:e.clientX,y:e.clientY,o,on:false}; },true);
+  const o=mvNow(el); mvDrag={el,k:mvKey(el),x:e.clientX,y:e.clientY,o,on:false}; },true);
 addEventListener('pointermove',e=>{ const d=mvDrag; if(!d) return; const dx=e.clientX-d.x, dy=e.clientY-d.y; if(!d.on){ if(Math.abs(dx)+Math.abs(dy)<6) return; d.on=true; d.el.classList.add('moving'); document.body.style.userSelect='none'; }
   d.el.style.translate=snap(d.o[0]+dx)+'px '+snap(d.o[1]+dy)+'px'; });
 addEventListener('pointerup',e=>{ const d=mvDrag; mvDrag=null; if(!d||!d.on) return; d.el.classList.remove('moving'); document.body.style.userSelect='';
-  MV[d.k]=[snap(d.o[0]+e.clientX-d.x),snap(d.o[1]+e.clientY-d.y)]; SV('focus.mv',MV); mvJustDragged=Date.now(); applyMoves(); toast('Snapped & saved · ↺ LAYOUT resets'); });
+  MV[d.k]=mvFrac(snap(d.o[0]+e.clientX-d.x),snap(d.o[1]+e.clientY-d.y)); SV('focus.mv',MV); mvJustDragged=Date.now(); applyMoves(); toast('Snapped & saved · ↺ LAYOUT resets'); });
 addEventListener('click',e=>{ if(Date.now()-mvJustDragged<350){ e.stopPropagation(); e.preventDefault(); } },true);
 function resetMoves(){ MV={}; MVS={}; SV('focus.mv',MV); SV('focus.mvsize',MVS); document.querySelectorAll('.corner .pane').forEach(el=>{ el.style.width=''; el.style.height=''; el.style.overflow=''; const h=el.querySelector(':scope>.rz'); if(h)h.remove(); }); renderCorners(); layout(); toast('Layout reset'); }
 { const _rc=renderCorners; renderCorners=function(){ const r=_rc.apply(this,arguments); applyMoves(); return r; }; const _rb=renderBubbles; renderBubbles=function(){ const r=_rb.apply(this,arguments); applyMoves(); return r; }; }

@@ -24,7 +24,11 @@ var CSS = '.tbnav{display:flex;align-items:center;flex:none;margin-left:auto;gap
   '.tbnav a:hover,.tbnav a:focus-visible{color:#c8e6f0;background:rgba(57,199,223,.1);outline:none}' +
   '.tbnav a.cur{color:#39c7df;background:rgba(57,199,223,.12);cursor:default}' +
   '.tbnav .tbn-i{font-size:14px;line-height:1}' +
-  '@media(max-width:1100px){.tbnav .tbn-l{display:none}.tbnav a{padding:9px 10px}.tbnav .tbn-i{font-size:18px}}';
+  '@media(max-width:1100px){.tbnav .tbn-l{display:none}.tbnav a{padding:9px 10px}.tbnav .tbn-i{font-size:18px}}' +
+  // Slim dark scrollbars, the same on every page. (Don't set scrollbar-width on an element: Chrome then drops these and draws its wide native bar.)
+  '::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:transparent}' +
+  '::-webkit-scrollbar-thumb{background:rgba(57,199,223,.2);border-radius:6px}::-webkit-scrollbar-thumb:hover{background:rgba(57,199,223,.45)}' +
+  '@supports not selector(::-webkit-scrollbar){*{scrollbar-width:thin;scrollbar-color:rgba(57,199,223,.3) transparent}}';
 var cssDone = false;
 function css(){ if (cssDone) return; cssDone = true; var s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s); }
 
