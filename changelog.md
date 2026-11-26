@@ -306,3 +306,4 @@
 - 2026-11-26 13:50  Email: month bubble at top (this month's ___Mon YYYY label count); click = review that month's mail by category, read-only, click again = back to inbox
 - 2026-11-26 13:58  Email: Archive all is per subcategory only (header + bottom); category-level Archive all removed except Not sorted yet
 - 2026-11-26 13:53  Email: category column capped at half width (phone stays full width)
+- 2026-11-26 13:58  Email month view: Archive groups same-sender emails into one folded line with count; tap to expand

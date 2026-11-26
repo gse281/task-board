@@ -468,6 +468,10 @@ function addCss() {
 .glv-B .glv-row{border-color:rgba(229,83,58,.35)}.glv-D .glv-row{border-color:rgba(224,164,88,.35)}
 .glv-aa{height:26px;padding:0 9px;font-size:12px}
 .glv-mon{cursor:pointer;border:1px solid rgba(57,199,223,.4);background:rgba(57,199,223,.08);color:#e7f3f6;border-radius:999px;padding:3px 12px;font:700 13px -apple-system,system-ui,sans-serif}
+.glv-sd{display:flex;align-items:center;gap:8px;margin:4px 0;padding:8px 12px;border:1px solid rgba(57,199,223,.2);border-radius:10px;background:rgba(57,199,223,.04);cursor:pointer;color:#cfe3e8;font:600 14px -apple-system,system-ui,sans-serif}
+.glv-sd:hover{background:rgba(57,199,223,.1)}.glv-sd b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:45%}
+.glv-sd i{font-style:normal;background:#39c7df;color:#06222a;border-radius:999px;padding:0 8px;font:800 12px ui-monospace,Menlo,monospace}
+.glv-sds{flex:1;min-width:0;color:#7f9aa3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.glv-sdx{color:#39c7df}
 .glv-mon:hover{background:rgba(57,199,223,.18)}.glv-mon.on{background:#39c7df;color:#06222a}
 .glv-ab{display:block;width:100%;height:44px;margin:6px 0 12px;font-size:14px}
 .glv-pj{cursor:pointer;user-select:none;break-after:avoid;font:800 12px ui-monospace,Menlo,monospace;letter-spacing:1.2px;text-transform:uppercase;color:#64838d;margin:6px 2px 0}
@@ -1345,7 +1349,23 @@ function rebuildList(listEl) {
             else if (L === 'A' || L === 'D') rows.sort(function(a, b){
               return a.senderName.toLowerCase().localeCompare(b.senderName.toLowerCase()) || b.date - a.date;
             });
-            rows.forEach(function(t){ list.appendChild(makeRow(t, true)); });
+            if (_mv && L === 'A') {
+              // Month view, Archive: one line per sender, folded; tap to see that sender's emails.
+              var bs = {}, order = [];
+              rows.forEach(function(t){ var e = (t.senderEmail || t.senderName || '').toLowerCase(); if (!bs[e]) { bs[e] = []; order.push(e); } bs[e].push(t); });
+              order.forEach(function(e){
+                var ts = bs[e];
+                if (ts.length === 1) { list.appendChild(makeRow(ts[0], true)); return; }
+                var sk = 'sd-' + pk + '-' + e, sOpen = !!_expanded[sk];
+                var sd = document.createElement('div'); sd.className = 'glv-sd'; sd.dataset.a = sk;
+                sd.innerHTML = '<span class="glv-sdx">' + (sOpen ? '▾' : '▸') + '</span><b></b><i>' + ts.length + '</i><span class="glv-sds"></span>';
+                sd.querySelector('b').textContent = ts[0].senderName || e;
+                sd.querySelector('.glv-sds').textContent = ts[0].subject || '';
+                sd.addEventListener('click', function(ev){ ev.stopPropagation(); _expanded[sk] = !sOpen; rebuildList(_listEl); });
+                list.appendChild(sd);
+                if (sOpen) ts.forEach(function(t){ list.appendChild(makeRow(t, true)); });
+              });
+            } else rows.forEach(function(t){ list.appendChild(makeRow(t, true)); });
             if (pgo.length > 3) list.appendChild(bottomArchive(pk, 'Archive all ' + pgo.length + ' · ' + k, 'Archive ' + pgo.length + ' in "' + k + '"?', pgo));
           });
         // Starred with a note: own group at the bottom, folded like the others, each row shows Claude's status.
