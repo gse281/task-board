@@ -295,3 +295,4 @@
 - 2026-11-25 21:10  Drive to done category: in the task editor, a pane on Focus, list 5 on Run, a group in the AIOS map
 - 2026-11-25 21:18  Focus: ☀ Today pane (was Incoming). Drag any task in to do it today · 5 picked for you each morning (↻ redraws) · today's incoming · ⊘ = not today, back tomorrow. Same on every computer
 - 2026-11-25 21:19  Focus bubbles: click the task's text = open that task; click anywhere else in the bubble = open the category
+- 2026-11-25 21:28  Focus bubbles: dragging the task no longer drags or wobbles the bubble; Today and the center light up while a task is in the air

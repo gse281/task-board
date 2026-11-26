@@ -299,6 +299,8 @@ textarea,input{font:inherit;color:var(--ink);-webkit-user-select:text;user-selec
 .bub .bit[data-id]{border-radius:8px;padding:2px 5px;margin-left:-5px;margin-right:-5px}
 .bub .bit[data-id]:hover{background:rgba(57,199,223,.16);color:#fff}
 .bub .bcap{cursor:pointer}.bub:hover .bcap:hover,.bub:hover .bn:hover{color:#fff}
+.tdrag .bub{transition:none}.tdrag .bub:hover{transform:none}
+.tdrag .pane.today,.tdrag #core{border-color:var(--cyan);border-style:dashed}
 </style></head>
 <body>
 <div id="stage">
@@ -572,13 +574,16 @@ const TDY_N=5;
 let TDY=LS('focus.today',null)||{day:'',pins:[],hide:[],picks:[],ts:0}, tdyShow=false, tdyReady=!cfg.apiKey, _tdyT=0, _tdyAt=0;
 function tdyNorm(){ const td=todayISO(); TDY.pins=TDY.pins||[]; TDY.hide=TDY.hide||[]; TDY.picks=TDY.picks||[];
   if(TDY.day!==td) TDY={day:td,pins:TDY.pins,hide:[],picks:[],ts:TDY.ts||0}; }   // new day: pins carry over, the rest starts fresh
-function tdySave(){ TDY.ts=Date.now(); SV('focus.today',TDY); clearTimeout(_tdyT); if(demo||!cfg.apiKey) return;
-  _tdyT=setTimeout(()=>{ fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE,{method:'PATCH',headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
-    body:JSON.stringify({performUpsert:{fieldsToMergeOn:['Key']},typecast:true,records:[{fields:{Key:'focus:today',Text:JSON.stringify(TDY),Updated:new Date().toLocaleString()}}]})}).catch(()=>{}); },700); }
+function tdyPush(){ clearTimeout(_tdyT); _tdyT=0; if(demo||!cfg.apiKey) return;
+  fetch('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE,{method:'PATCH',keepalive:true,headers:{Authorization:'Bearer '+cfg.apiKey,'Content-Type':'application/json'},
+    body:JSON.stringify({performUpsert:{fieldsToMergeOn:['Key']},typecast:true,records:[{fields:{Key:'focus:today',Text:JSON.stringify(TDY),Updated:new Date().toLocaleString()}}]})}).catch(()=>{}); }
+function tdySave(){ TDY.ts=Date.now(); SV('focus.today',TDY); clearTimeout(_tdyT); _tdyT=0; if(demo||!cfg.apiKey) return; _tdyT=setTimeout(tdyPush,700); }
+addEventListener('pagehide',()=>{ if(_tdyT) tdyPush(); });   // closing or reloading right after a change: send it now, don't lose it
 async function tdyLoad(){ _tdyAt=Date.now();
   if(!demo&&cfg.apiKey){ try{ const u=new URL('https://api.airtable.com/v0/'+cfg.baseId+'/'+DN_TABLE); u.searchParams.set('pageSize','1'); u.searchParams.set('filterByFormula',"{Key}='focus:today'");
       const r=await fetch(u,{headers:{Authorization:'Bearer '+cfg.apiKey}}); const rec=r.ok?((await r.json()).records||[])[0]:null; const v=rec?JSON.parse(rec.fields.Text||'null'):null;
-      if(v&&(v.ts||0)>(TDY.ts||0)) TDY=v; }catch(e){} }   // whichever computer changed it last wins
+      if(v&&(v.ts||0)>(TDY.ts||0)) TDY=v;   // whichever computer changed it last wins
+      else if((TDY.ts||0)>((v&&v.ts)||0)) tdyPush(); }catch(e){} }   // this one is newer than Airtable (a save that never went out): send it
   tdyReady=true; SV('focus.today',TDY); renderCorners(); layout(); }
 function tdyWeight(t){ const td=todayISO(); return 1+Math.min(daysOpen(t),90)/15+(t.flag?3:0)+(t.nextUp?2:0)+(t.doDate&&t.doDate<=td?3:0)+Math.min(3,(t.priorityRemote||0)/3); }
 function tdyDraw(pool,n){ const out=[]; pool=pool.slice(); while(out.length<n&&pool.length){ const W=pool.map(tdyWeight), sum=W.reduce((a,b)=>a+b,0); let r=Math.random()*sum, i=0; while(i<pool.length-1&&(r-=W[i])>0) i++; out.push(pool.splice(i,1)[0]); } return out; }
@@ -722,7 +727,7 @@ function applyMoves(){ const [W,H]=stageWH(), sr=$('#stage').getBoundingClientRe
     else el.style.translate='';
     if(el.matches('.corner .pane')) ensureRz(el,k); });
   if(conv) SV('focus.mv',MV); }
-addEventListener('pointerdown',e=>{ if(e.button!==0) return; const t=e.target; if(t.closest('a,button,input,textarea,select,.lrow,.tick,.rmcat,.nhit')) return;
+addEventListener('pointerdown',e=>{ if(e.button!==0) return; const t=e.target; if(t.closest('a,button,input,textarea,select,.lrow,.tick,.rmcat,.nhit,.bit[data-id]')) return;   // .bit = the task inside a bubble: it drags on its own, the bubble stays put
   if(t.closest('.rz')) return;
   const el=t.closest('#core,#bubbles .bub')||((t.closest('.ph,.cxh,.cxf')||t.matches('.corner .pane,.cxb'))&&t.closest('.corner .pane'))||((t.closest('.amb .h'))&&t.closest('.corner .ampm')); if(!el) return;
   const o=mvNow(el); mvDrag={el,k:mvKey(el),x:e.clientX,y:e.clientY,o,on:false}; },true);
@@ -771,7 +776,9 @@ function enableDrag(pl,key){ let dragEl=null;
     r.addEventListener('dragover',e=>{ e.preventDefault(); if(!dragEl||dragEl===r)return; const rect=r.getBoundingClientRect(); const after=(e.clientY-rect.top)/rect.height>0.5; pl.querySelectorAll('.over').forEach(x=>x.classList.remove('over')); r.classList.add('over'); pl.insertBefore(dragEl, after?r.nextSibling:r); }); }); }
 
 /* drag any task row or bubble item onto the Focus core → set it to Now/Focus */
-document.addEventListener('dragstart',e=>{ const r=e.target.closest&&e.target.closest('.lrow[data-id],.bit[data-id]'); if(r&&r.dataset.id&&e.dataTransfer){ try{ e.dataTransfer.setData('text/tbid',r.dataset.id); e.dataTransfer.effectAllowed='copyMove'; }catch(_){} } });
+document.addEventListener('dragstart',e=>{ const r=e.target.closest&&e.target.closest('.lrow[data-id],.bit[data-id]'); if(r&&r.dataset.id&&e.dataTransfer){ try{ e.dataTransfer.setData('text/tbid',r.dataset.id); e.dataTransfer.effectAllowed='copyMove'; }catch(_){} document.body.classList.add('tdrag'); } });
+/* while a task is in the air: bubbles hold still (no hover grow), and the two places it can land light up */
+document.addEventListener('dragend',()=>document.body.classList.remove('tdrag')); document.addEventListener('drop',()=>document.body.classList.remove('tdrag'));
 (function(){ const core=$('#core'); if(!core) return;
   core.addEventListener('dragover',e=>{ if(e.dataTransfer&&(e.dataTransfer.types||[]).indexOf&&[].indexOf.call(e.dataTransfer.types,'text/tbid')>=0){ e.preventDefault(); core.classList.add('coredrop'); } });
   core.addEventListener('dragleave',e=>{ if(!core.contains(e.relatedTarget)) core.classList.remove('coredrop'); });
